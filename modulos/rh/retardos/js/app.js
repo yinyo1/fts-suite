@@ -1,11 +1,13 @@
 /* ═══ RH · Retardos · pantalla (#334) ═══
  *
- * Lo que RH hace aquí, en orden de frecuencia:
- *   1. Ver qué casos esperan algo de RH (hoja recibida, negativa, impugnación).
- *   2. Abrir el caso, mirar la hoja firmada y validarla o pedirla de nuevo.
- *   3. Registrar lo que pasó fuera del correo: se negó a firmar (dos testigos),
- *      impugnó, entregó la hoja en papel.
- *   4. Programar y confirmar una suspensión (1 a 8 días, art. 423 fr. X LFT).
+ * Lo que RH hace aquí, en orden de frecuencia (complemento S2: RH recolecta las firmas):
+ *   1. Firmas por recolectar: imprimir la hoja, citar a la persona, recolectar la firma
+ *      (o la negativa con dos testigos) y subir la hoja escaneada o en foto.
+ *   2. Hojas por confirmar: el lector sugiere, RH confirma, corrige, pide de nuevo o
+ *      registra la impugnación. La sugerencia nunca cierra un caso sola.
+ *   3. Reincidencia acumulada: semáforo por persona y alertas de "activar modo suspensión",
+ *      que se atienden aquí (cambiar, posponer o descartar con motivo) y nunca cambian el modo.
+ *   4. Programar y confirmar una suspensión (sólo en modo con suspensión, 1 a 8 días).
  *
  * La pantalla NO decide estados: pide la acción al servidor y pinta lo que el servidor
  * devuelve (CLAUDE.md §8, la UI no es fuente de verdad). Un 200 sin ok:true no cuenta.
@@ -15,22 +17,22 @@
   'use strict';
   var $ = function (s) { return document.querySelector(s); };
   var E = {
-    DETECTADO: ['Detectado', 'e-otro'], NOTIFICADO: ['Notificado', 'e-otro'], ESPERANDO_FIRMA: ['Esperando firma', 'e-espera'],
-    VENCIDO: ['Vencido', 'e-vencido'], ESCALADO: ['Escalado', 'e-escalado'], FIRMA_RECIBIDA: ['Hoja recibida', 'e-recibida'],
+    DETECTADO: ['Detectado', 'e-otro'], NOTIFICADO: ['Notificado', 'e-otro'], ESPERANDO_FIRMA: ['RH recolecta firma', 'e-espera'],
+    VENCIDO: ['Vencido', 'e-vencido'], ESCALADO: ['Escalado', 'e-escalado'], FIRMA_RECIBIDA: ['Hoja por confirmar', 'e-recibida'],
     SE_NEGO_A_FIRMAR: ['Se negó a firmar', 'e-negativa'], IMPUGNADO: ['Impugnado', 'e-impugnado'], VALIDADO_RH: ['Validado por RH', 'e-validado'],
     ACCION_PROGRAMADA: ['Suspensión programada', 'e-programada'], ACCION_VERIFICADA: ['Suspensión verificada', 'e-verificada'],
     CERRADO: ['Cerrado', 'e-cerrado'], CANCELADO_POR_RH: ['Cancelado por RH', 'e-otro'],
-    RETENIDO: ['Nivel alcanzado, no notificado', 'e-retenido']
+    RETENIDO: ['Nivel de suspensión alcanzado, no aplicado', 'e-retenido']
   };
   var NIVEL = { aviso: 'Aviso', carta_compromiso: 'Carta compromiso', acta: 'Acta administrativa', suspension: 'Suspensión' };
   var CUBETAS = [
-    { id: 'rh', t: 'Esperan a RH', q: 'Hoja recibida, negativa o impugnación', clase: 'rh', estados: ['FIRMA_RECIBIDA', 'SE_NEGO_A_FIRMAR', 'IMPUGNADO', 'VALIDADO_RH'] },
-    { id: 'espera', t: 'Esperando firma', q: 'Dentro del plazo', clase: '', estados: ['ESPERANDO_FIRMA', 'DETECTADO', 'NOTIFICADO'] },
-    { id: 'vencidos', t: 'Vencidos o escalados', q: 'Sin hoja al vencer el plazo', clase: 'urge', estados: ['VENCIDO', 'ESCALADO'] },
-    { id: 'programadas', t: 'Suspensiones programadas', q: 'Por aplicar y verificar', clase: '', estados: ['ACCION_PROGRAMADA'] },
-    { id: 'retenidos', t: 'Nivel alcanzado, no notificado', q: 'Arranque suave: no se le escribió a la persona', clase: 'ret', estados: ['RETENIDO'] }
+    { id: 'recolectar', t: 'Firmas por recolectar', q: 'Imprimir, citar y subir la hoja. Por vencimiento', clase: '', estados: ['ESPERANDO_FIRMA', 'VENCIDO', 'ESCALADO', 'DETECTADO', 'NOTIFICADO'] },
+    { id: 'rh', t: 'Casos con hoja recibida', q: 'Confírmala en Hojas por confirmar', clase: 'rh', estados: ['FIRMA_RECIBIDA'] },
+    { id: 'vencidos', t: 'Vencidos o escalados', q: 'RH no subió la hoja a tiempo', clase: 'urge', estados: ['VENCIDO', 'ESCALADO'] },
+    { id: 'resolver', t: 'Por resolver', q: 'Negativa, impugnación o validado', clase: '', estados: ['SE_NEGO_A_FIRMAR', 'IMPUGNADO', 'VALIDADO_RH', 'ACCION_PROGRAMADA'] },
+    { id: 'retenidos', t: 'Suspensión alcanzada, no aplicada', q: 'Modo sin suspensión: cuenta como antecedente', clase: 'ret', estados: ['RETENIDO'] }
   ];
-  var st = { casos: [], salud: null, filtro: 'todos', vista: 'lista', folio: null, editor: false, cerrados: false };
+  var st = { casos: [], salud: null, filtro: 'todos', vista: 'lista', folio: null, editor: false, cerrados: false, hojas: [], reinc: null };
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function chip(estado) { var e = E[estado] || [estado, 'e-otro']; return '<span class="chip ' + e[1] + '">' + esc(e[0]) + '</span>'; }
@@ -56,7 +58,11 @@
       SIN_EVIDENCIA: 'Primero sube la hoja firmada o la constancia.', FALTAN_TESTIGOS: 'Escribe el nombre completo de los dos testigos.',
       DIAS_FUERA_DE_LEY: 'La suspensión va de 1 a 8 días (artículo 423 fracción X de la LFT).', MOTIVO_OBLIGATORIO: 'Escribe el motivo (al menos 5 letras).',
       TRANSICION_INVALIDA: 'Ese paso no aplica en el estado actual del caso. Recarga para ver el estado vigente.',
-      ARCHIVO_ILEGIBLE: 'El archivo está vacío o dañado.', SOLO_LECTURA: 'Tu usuario sólo puede consultar.'
+      ARCHIVO_ILEGIBLE: 'El archivo está vacío o dañado.', SOLO_LECTURA: 'Tu usuario sólo puede consultar.',
+      LECTURA_YA_DECIDIDA: 'Esa hoja ya la resolvió alguien más. Recarga.', SIN_CASO_LIGADO: 'La hoja no está ligada a un caso: corrige el folio primero.',
+      CASO_NO_ESPERA_HOJA: 'El caso ya no espera hoja. Recarga para ver su estado.', FOLIO_INEXISTENTE: 'Ese folio no existe.',
+      MAXIMO_10_ARCHIVOS: 'Sube máximo 10 archivos a la vez.', TIPO_NO_ACEPTADO: 'Sólo PDF o fotos (JPG, PNG).', ARCHIVO_DEMASIADO_GRANDE: 'El archivo pesa demasiado.',
+      SEMANAS_INVALIDAS: 'Pospón entre 1 y 26 semanas.', DECISION_INVALIDA: 'Elige cambiar, posponer o descartar.'
     };
     return M[r.error] || ('El servidor no aceptó la acción (' + esc(r.error || 'sin código') + ').');
   }
@@ -124,20 +130,24 @@
   }
   function visibles() {
     var b = CUBETAS.filter(function (x) { return x.id === st.filtro; })[0];
-    return b ? st.casos.filter(function (c) { return b.estados.indexOf(c.estado) >= 0; }) : st.casos;
+    var cs = b ? st.casos.filter(function (c) { return b.estados.indexOf(c.estado) >= 0; }) : st.casos.slice();
+    if (st.filtro === 'recolectar') cs.sort(function (a, c) { return String(a.vence_at || '9') < String(c.vence_at || '9') ? -1 : 1; });
+    return cs;
   }
   function pintarLista() {
     var cs = visibles();
     $('#filtro-t').textContent = st.filtro === 'todos' ? (st.cerrados ? 'Todos los casos' : 'Casos abiertos') : CUBETAS.filter(function (x) { return x.id === st.filtro; })[0].t;
     $('#ver-todos').classList.toggle('hid', st.filtro === 'todos');
     if (!cs.length) { $('#lista').innerHTML = '<div class="vacio">No hay casos en esta vista.</div>'; return; }
-    $('#lista').innerHTML = '<div class="tabla-wrap"><table><thead><tr><th>Folio</th><th>Persona</th><th>Nivel</th><th class="num">Retardos</th><th>Estado</th><th>Vence</th><th class="num">Días abierto</th></tr></thead><tbody>' +
+    var imprimir = st.filtro === 'recolectar';
+    $('#lista').innerHTML = '<div class="tabla-wrap"><table><thead><tr><th>Folio</th><th>Persona</th><th>Nivel</th><th class="num">Retardos</th><th>Estado</th><th>Vence</th><th class="num">Días abierto</th>' + (imprimir ? '<th></th>' : '') + '</tr></thead><tbody>' +
       cs.map(function (c) {
         return '<tr class="fila" tabindex="0" data-folio="' + esc(c.folio) + '"><td class="folio">' + esc(c.folio) + '</td>' +
           '<td class="quien2"><b>' + esc(c.nombre || ('Empleado ' + c.employee_id)) + '</b><span>' + esc(c.periodo) + (c.ruta === 'supervisor' ? ' · entrega por supervisor' : '') + '</span></td>' +
           '<td class="nivel"><i>' + c.nivel + '</i>' + esc(NIVEL[c.accion] || c.accion) + '</td>' +
           '<td class="n">' + c.retardos_n + '</td><td>' + chip(c.estado) + '</td>' +
-          '<td class="num">' + (c.vence_at ? fechaDia(c.vence_at) : '') + '</td><td class="n">' + (c.dias_abierto == null ? '' : c.dias_abierto) + '</td></tr>';
+          '<td class="num vence">' + (c.vence_at ? fechaDia(c.vence_at) : '') + '</td><td class="n">' + (c.dias_abierto == null ? '' : c.dias_abierto) + '</td>' +
+          (imprimir ? '<td><button class="btn" data-imprimir="' + esc(c.folio) + '">Imprimir hoja</button></td>' : '') + '</tr>';
       }).join('') + '</tbody></table></div>';
   }
 
@@ -153,9 +163,9 @@
   function acciones(c, evs) {
     var a = [], s = c.estado;
     if (['ESPERANDO_FIRMA', 'VENCIDO', 'ESCALADO'].indexOf(s) >= 0) {
-      a.push(['subir', 'Subir hoja entregada en papel', 'pri'], ['negativa', 'Se negó a firmar'], ['impugnar', 'Registrar impugnación']);
+      a.push(['imprimir', 'Imprimir hoja', 'pri'], ['subir', 'Subir hoja recolectada'], ['negativa', 'Se negó a firmar (sin hoja)'], ['impugnar', 'Registrar impugnación']);
     }
-    if (s === 'FIRMA_RECIBIDA') a.push(['validar', 'Validar firma', 'pri'], ['rechazar', 'Pedir la hoja otra vez'], ['impugnar', 'Registrar impugnación']);
+    if (s === 'FIRMA_RECIBIDA') a.push(['ir_hojas', 'Confirmar en Hojas por confirmar', 'pri'], ['impugnar', 'Registrar impugnación']);
     if (s === 'SE_NEGO_A_FIRMAR') {
       a.push(['constancia', 'Subir constancia de negativa']);
       if (c.accion === 'suspension') a.push(['programar', 'Programar suspensión', 'pri']);
@@ -188,7 +198,7 @@
       '<section class="caja bloque"><h2>Hojas y constancias</h2>' + (evs.length ? evs.map(function (e) {
         return '<div class="ev"><span><b>' + esc(e.nombre) + '</b><br><span class="nivel">' + esc(e.tipo === 'hoja_firmada' ? 'Hoja firmada' : e.tipo) + ' · llegó por ' + esc(e.origen) + ' · ' + fechaCorta(e.at) + '</span></span>' +
                '<button class="btn" data-ver="' + esc(e.id) + '">Ver</button></div>'; }).join('') + '<div id="visor"></div>'
-        : '<div class="nivel">Todavía no hay ninguna hoja. Cuando la persona responda el correo con la hoja firmada, aparece aquí sola.</div>') + '</section>' +
+        : '<div class="nivel">Todavía no hay ninguna hoja. RH la sube cuando la recolecte (aquí, en Hojas por confirmar o en la carpeta de hojas) y el lector la liga sola por el código QR.</div>') + '</section>' +
       '</div><div style="display:grid;gap:14px;min-width:0">' +
       '<section class="caja bloque"><h3>Datos</h3><dl class="dl">' +
         '<dt>Puesto</dt><dd>' + esc(c.puesto) + '</dd><dt>Área</dt><dd>' + esc(c.departamento) + '</dd>' +
@@ -207,8 +217,10 @@
   }
 
   function form(tipo) {
+    if (tipo === 'imprimir') return imprimir(st.folio);
+    if (tipo === 'ir_hojas') return hojas(st.folio);
     var F = {
-      subir: '<label>Archivo (PDF o foto, máximo 8 MB)<input type="file" id="f-archivo" accept="application/pdf,image/*"></label><button class="btn pri" data-enviar="subir_hoja">Subir hoja</button>',
+      subir: '<label>Archivo (PDF o foto, máximo 8 MB)<input type="file" id="f-archivo" accept="application/pdf,image/*"></label><div class="nivel">El lector la revisa en unos minutos y aparece en Hojas por confirmar.</div><button class="btn pri" data-enviar="subir_hoja">Subir hoja</button>',
       constancia: '<label>Constancia de negativa firmada por los testigos<input type="file" id="f-archivo" accept="application/pdf,image/*"></label><button class="btn pri" data-enviar="constancia">Subir constancia</button>',
       negativa: '<div class="fila2"><label>Testigo 1<input id="f-t1" autocomplete="off"></label><label>Testigo 2<input id="f-t2" autocomplete="off"></label></div><button class="btn pri" data-enviar="registrar_negativa">Registrar negativa</button>',
       impugnar: '<label>Lo que dice la persona<textarea id="f-version" rows="3"></textarea></label><button class="btn pri" data-enviar="impugnar">Registrar impugnación</button>',
@@ -238,6 +250,7 @@
       d.accion = 'subir_hoja'; d.nombre = f.name; d.mime = f.type || 'application/pdf';
       d.tipo = accion === 'constancia' ? 'constancia_negativa' : 'hoja_firmada';
       d.contenido_b64 = await leerArchivo(f);
+      if (d.tipo === 'hoja_firmada') { d.accion = 'subir_hojas'; d.archivos = [{ nombre: d.nombre, mime: d.mime, contenido_b64: d.contenido_b64, folio: st.folio }]; delete d.contenido_b64; }
     }
     if ($('#f-motivo')) d.motivo = $('#f-motivo').value.trim();
     if ($('#f-t1')) { d.testigo1 = $('#f-t1').value.trim(); d.testigo2 = $('#f-t2').value.trim(); }
@@ -247,7 +260,7 @@
     var r;
     try { r = await pedir(d); } catch (e) { return; } finally { boton.disabled = false; }
     if (!r || r.ok !== true) { err.textContent = mensajeError(r || {}); return; }
-    toast('Listo. El caso quedó actualizado.');
+    toast(d.accion === 'subir_hojas' ? 'Subida. El lector la revisa y aparece en Hojas por confirmar.' : 'Listo. El caso quedó actualizado.');
     abrir(st.folio);
   }
   async function ver(id) {
@@ -282,7 +295,7 @@
     try { r = await pedir({ accion: 'config' }); } catch (e) { return; }
     if (!r || r.ok !== true) { $('#ajustes').innerHTML = '<div class="caja vacio">' + mensajeError(r || {}) + '</div>'; return; }
     var cfg = r.config || {}, esc2 = r.escalera || [], ex = r.exclusiones || [];
-    var claves = ['modo', 'nivel_maximo_habilitado', 'suspensiones_habilitadas', 'tolerancia_min', 'hora_fuente', 'periodo', 'reincidencia_dias', 'contar_desde', 'dias_validacion_rh', 'buzon_receptor'];
+    var claves = ['modo', 'modo_sanciones', 'dias_recoleccion_rh', 'correo_modo', 'tolerancia_min', 'hora_fuente', 'periodo', 'reincidencia_dias', 'contar_desde', 'dias_validacion_rh', 'hojas_carpeta', 'buzon_receptor', 'real_desde'];
     function val(v) { return v == null ? 'sin definir' : (typeof v === 'object' ? JSON.stringify(v) : String(v)); }
     $('#ajustes').innerHTML =
       '<div class="aviso demo"><div><b>Valores por confirmar</b>Lo marcado "por confirmar" salió de la reconstrucción del sistema anterior o es una propuesta. Dirección y RH los confirman antes de pasar a modo real.</div></div>' +
@@ -344,8 +357,11 @@
       st.calidad.map(function (p) {
         var b = Object.keys(p.banderas || {}).map(function (k) { return '<span class="chip e-espera">' + esc(BANDERAS[k] || k) + '</span>'; }).join('');
         var cambia = p.hora_sugerida != null && Number(p.hora_sugerida) !== Number(p.hora_entrada);
+        var usado = (p.correo_usado || []).map(function (x) { return esc(x.email) + ' <span class="nivel">(' + esc(x.campo) + ')</span>'; }).join(', ');
+        var otros = (p.correos || []).filter(function (x) { return !x.usable; }).map(function (x) { return esc(x.email) + ' <span class="nivel">(' + esc(x.motivo) + ')</span>'; }).join(', ');
         return '<tr><td class="quien2"><b>' + esc(p.nombre || ('Empleado ' + p.employee_id)) + '</b><span>' + esc(p.departamento || '') + ' · núm. ' + esc(p.employee_id) + ' · ' + esc(p.dias_con_checada) + ' días con checada</span>' +
-          (b ? '<div class="chips">' + b + '</div>' : '') + '</td>' +
+          (b ? '<div class="chips">' + b + '</div>' : '') +
+          '<div class="correo">Correo que se usa: ' + (usado || '<b>ninguno</b>') + '<br><span class="nivel">' + esc(p.correo_motivo || '') + '</span>' + (otros ? '<br><span class="nivel">Descartados: </span>' + otros : '') + '</div></td>' +
           '<td class="n">' + hhmm(p.hora_entrada) + '</td>' +
           '<td class="n">' + (cambia ? '<b class="cambia">' + hhmm(p.hora_sugerida) + '</b>' : hhmm(p.hora_sugerida)) + '</td>' +
           '<td class="n">' + (p.pct_tarde == null ? '' : esc(p.pct_tarde) + ' %') + '</td>' +
@@ -370,11 +386,190 @@
     toast('Guardado.'); calidad();
   }
 
+  // ── Imprimir la hoja (la genera el mismo retardos/lib/pdf.js que manda el correo) ──
+  async function imprimir(folio) {
+    var r; try { r = await pedir({ accion: 'caso', folio: folio }); } catch (e) { return; }
+    if (!r || r.ok !== true) { toast(mensajeError(r || {})); return; }
+    try {
+      var h = G.RetardosPDF.hoja(r.caso);
+      var u8 = new Uint8Array(h.binario.length);
+      for (var i = 0; i < h.binario.length; i++) u8[i] = h.binario.charCodeAt(i) & 255;
+      var url = URL.createObjectURL(new Blob([u8], { type: 'application/pdf' }));
+      var w = window.open(url, '_blank', 'noopener');
+      if (!w) { var a = document.createElement('a'); a.href = url; a.download = h.nombre; document.body.appendChild(a); a.click(); a.remove(); }
+      toast('Hoja de ' + folio + ' lista para imprimir.');
+    } catch (e) { toast('No se pudo generar la hoja.'); }
+  }
+
+  // ── Hojas por confirmar (complemento S2) ──
+  var SUG = {
+    lista_para_validar: 'e-validado', revisar_falta_firma: 'e-espera', revisar_folio: 'e-vencido',
+    revisar_impugnacion: 'e-impugnado', revisar_ilegible: 'e-vencido', revisar_inyeccion: 'e-vencido'
+  };
+  var CAMPO = { trabajador: 'Trabajador', rh: 'RH', jefe: 'Jefe', testigo1: 'Testigo 1', testigo2: 'Testigo 2' };
+  async function hojas(folio) {
+    st.vista = 'hojas'; st.hojasFolio = folio || null; mostrarVista();
+    $('#hojas').innerHTML = '<div class="caja vacio">Cargando…</div>';
+    var r; try { r = await pedir({ accion: 'hojas' }); } catch (e) { return; }
+    if (!r || r.ok !== true) { $('#hojas').innerHTML = '<div class="caja vacio">' + mensajeError(r || {}) + '</div>'; return; }
+    st.hojas = r.lecturas || [];
+    var ls = st.hojasFolio ? st.hojas.filter(function (l) { return l.folio === st.hojasFolio || (l.caso && l.caso.folio === st.hojasFolio); }) : st.hojas;
+    var m = r.metrica || {}, proc = r.hojas_en_proceso || [];
+    $('#hojas').innerHTML =
+      '<div class="aviso demo"><div><b>El lector sólo sugiere</b>Lee el código QR, busca tinta en cada recuadro de firma, la casilla de negativa y los comentarios. La decisión es de RH: ningún caso se cierra hasta que alguien confirma aquí.</div></div>' +
+      '<div class="resumen"><div class="cubeta rh"><span class="n">' + st.hojas.length + '</span><span class="l">Hojas por confirmar</span></div>' +
+        '<div class="cubeta"><span class="n">' + proc.length + '</span><span class="l">En proceso</span><span class="q">El lector las revisa cada 5 minutos</span></div>' +
+        '<div class="cubeta"><span class="n">' + (m.pct_acierto == null ? 'sin datos' : esc(m.pct_acierto) + ' %') + '</span><span class="l">Aciertos del lector</span><span class="q">' + esc(m.aciertos || 0) + ' de ' + esc(m.decididas || 0) + ' en 30 días</span></div></div>' +
+      (st.editor ? '<section class="caja bloque" style="margin-bottom:14px"><h2>Subir hojas</h2><div class="nivel">Una o varias (máximo 10 y 8 MB cada una). Pueden venir varias hojas en un mismo PDF: el lector las separa por el código QR.</div>' +
+        '<div class="acciones"><input type="file" id="h-archivos" accept="application/pdf,image/*" multiple><button class="btn pri" id="h-subir">Subir</button></div><div id="h-err" class="err"></div></section>' : '') +
+      (st.hojasFolio ? '<div class="cab"><h1>Hojas del folio ' + esc(st.hojasFolio) + '</h1><button class="enlace" data-vista="hojas">ver todas</button></div>' : '') +
+      (ls.length ? ls.map(tarjetaHoja).join('') : '<div class="caja vacio">No hay hojas por confirmar.</div>') +
+      (proc.length ? '<section class="caja bloque" style="margin-top:14px"><h3>En proceso</h3><ul class="linea">' + proc.map(function (p) {
+        return '<li><span class="cuando">' + esc(p.estado) + '</span><span class="que"><b>' + esc(p.nombre) + '</b>' + (p.error ? '<br><span>' + esc(p.error) + '</span>' : '') + '</span></li>'; }).join('') + '</ul></section>' : '');
+  }
+  function tarjetaHoja(l) {
+    var res = l.resultado || {}, f = res.firmas || {}, c = l.caso;
+    var firmas = Object.keys(CAMPO).map(function (k) {
+      var p = f[k] && f[k].presente;
+      return '<span class="chip ' + (p ? 'e-validado' : 'e-otro') + '">' + (p ? 'Sí: ' : 'No: ') + esc(CAMPO[k]) + '</span>';
+    }).join(' ');
+    var com = res.comentarios || {};
+    var d = function (k, t, cls) { return st.editor ? '<button class="btn ' + (cls || '') + '" data-decidir="' + k + '" data-lectura="' + l.lectura_id + '">' + t + '</button>' : ''; };
+    return '<section class="caja hoja-tarjeta" id="lectura-' + l.lectura_id + '"><div class="hoja-cab"><span class="chip ' + (SUG[l.sugerencia] || 'e-otro') + '">' + esc(l.sugerencia_texto) + '</span>' +
+      '<span class="folio">' + esc(l.folio || 'sin folio') + '</span>' + (l.pagina > 1 ? '<span class="nivel">página ' + l.pagina + '</span>' : '') + '</div>' +
+      '<div class="hoja-cuerpo"><div class="hoja-datos">' +
+        '<dl class="dl"><dt>Caso</dt><dd>' + (c ? esc(c.nombre || '') + ' · ' + esc(NIVEL[c.accion] || c.accion) + ' · ' + chip(c.estado) : '<b>sin caso ligado</b>') + '</dd>' +
+        '<dt>Firmas</dt><dd class="chips">' + firmas + '</dd>' +
+        '<dt>Negativa</dt><dd>' + (l.negativa ? '<b>marcada</b>' : 'no marcada') + '</dd>' +
+        '<dt>Comentarios</dt><dd>' + (com.presente ? (com.transcripcion ? '«' + esc(com.transcripcion) + '»' + (com.inconformidad ? ' <span class="chip e-impugnado">inconformidad</span>' : '') : '<b>hay texto escrito</b>; léelo en la hoja') : 'sin comentarios') + '</dd>' +
+        '<dt>Legibilidad</dt><dd>' + esc(res.legibilidad || '') + (l.confianza != null ? ' · confianza ' + Math.round(Number(l.confianza) * 100) + ' %' : '') + ((res.banderas || []).length ? ' · ' + esc(res.banderas.join(', ')) : '') + '</dd>' +
+        '<dt>Llegó por</dt><dd>' + esc(l.hoja && l.hoja.origen) + ' · ' + esc(l.hoja && l.hoja.nombre) + '</dd></dl>' +
+        '<div class="acciones">' + '<button class="btn" data-ver-hoja="' + l.hoja_id + '" data-lectura="' + l.lectura_id + '">Ver hoja</button>' +
+          d('firmada', 'Confirmar firmada', 'pri') + d('negativa', 'Confirmar negativa') + d('impugnacion', 'Registrar impugnación') +
+          d('corregir', 'Corregir folio') + d('pedir', 'Pedir de nuevo') + d('descartar', 'Descartar', 'peligro') + '</div>' +
+        '<div id="hf-' + l.lectura_id + '"></div></div>' +
+      '<div class="hoja-visor" id="hv-' + l.lectura_id + '"></div></div></section>';
+  }
+  async function verHoja(hojaId, lecturaId) {
+    var v = $('#hv-' + lecturaId); v.innerHTML = '<div class="nivel">Abriendo…</div>';
+    var r; try { r = await pedir({ accion: 'hoja_ver', hoja_id: Number(hojaId) }); } catch (e) { return; }
+    if (!r || r.ok !== true) { v.innerHTML = '<div class="err">' + mensajeError(r || {}) + '</div>'; return; }
+    var url = r.url_demo || null;
+    if (!url && r.contenido_b64) {
+      var bin = atob(r.contenido_b64), u8 = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      url = URL.createObjectURL(new Blob([u8], { type: r.mime }));
+    }
+    if (!url) { v.innerHTML = '<div class="visor">' + hojaEjemplo() + '</div>'; return; }
+    v.innerHTML = /^image[/]/.test(r.mime) ? '<div class="visor"><img alt="Hoja escaneada" src="' + url + '"></div>'
+      : '<div class="visor"><iframe title="Hoja escaneada" src="' + url + '" style="width:100%;height:520px;border:0"></iframe></div><a class="enlace" href="' + url + '" target="_blank" rel="noopener">Abrir en otra pestaña</a>';
+  }
+  function formDecidir(lecturaId, tipo) {
+    var l = st.hojas.filter(function (x) { return String(x.lectura_id) === String(lecturaId); })[0] || {};
+    var com = (l.resultado && l.resultado.comentarios) || {};
+    var F = {
+      firmada: '<label>Nota (opcional)<input id="hd-nota"></label><button class="btn pri" data-enviar-hoja="firmada" data-lectura="' + lecturaId + '">Confirmar firmada</button>',
+      negativa: '<div class="fila2"><label>Testigo 1 (nombre completo)<input id="hd-t1" autocomplete="off"></label><label>Testigo 2 (nombre completo)<input id="hd-t2" autocomplete="off"></label></div><button class="btn pri" data-enviar-hoja="negativa" data-lectura="' + lecturaId + '">Confirmar negativa</button>',
+      impugnacion: '<label>Lo que dice la persona<textarea id="hd-version" rows="3">' + esc(com.transcripcion || '') + '</textarea></label><button class="btn pri" data-enviar-hoja="impugnacion" data-lectura="' + lecturaId + '">Registrar impugnación</button>',
+      corregir: '<label>Folio correcto<input id="hd-folio" placeholder="RET-2026-0000" autocomplete="off"></label><button class="btn pri" data-enviar-hoja="corregir" data-lectura="' + lecturaId + '">Ligar a este folio</button>',
+      pedir: '<label>Motivo<select id="hd-motivo"><option value="falta_firma">Falta una firma</option><option value="ilegible">No se lee</option><option value="folio">Folio o nombre no coinciden</option><option value="otro">Otro</option></select></label><label>Nota<input id="hd-nota"></label><button class="btn pri" data-enviar-hoja="pedir" data-lectura="' + lecturaId + '">Pedir de nuevo</button>',
+      descartar: '<label>Motivo<select id="hd-motivo"><option value="duplicada">Es otra copia de una hoja ya confirmada</option><option value="inyeccion">Trae texto ajeno o instrucciones</option><option value="ajena">No es una hoja de retardos</option></select></label><label>Nota (obligatoria)<input id="hd-nota"></label><button class="btn peligro" data-enviar-hoja="descartar" data-lectura="' + lecturaId + '">Descartar</button>'
+    };
+    $('#hf-' + lecturaId).innerHTML = '<div class="form">' + F[tipo] + '<div id="hd-err" class="err"></div></div>';
+  }
+  async function enviarDecision(lecturaId, tipo, boton) {
+    var d = { lectura_id: Number(lecturaId) }, val = function (id) { var e = $(id); return e ? e.value.trim() : ''; };
+    if (tipo === 'firmada' || tipo === 'negativa' || tipo === 'impugnacion') { d.accion = 'hoja_confirmar'; d.resultado = tipo; }
+    if (tipo === 'corregir') { d.accion = 'hoja_corregir'; d.folio = val('#hd-folio').toUpperCase(); if (!/^RET-[0-9]{4}-[0-9]{4}/.test(d.folio)) { $('#hd-err').textContent = 'Escribe el folio completo, por ejemplo RET-2026-0041.'; return; } }
+    if (tipo === 'pedir') { d.accion = 'hoja_pedir_de_nuevo'; d.motivo = val('#hd-motivo'); }
+    if (tipo === 'descartar') { d.accion = 'hoja_descartar'; d.motivo = val('#hd-motivo'); }
+    if ($('#hd-nota')) d.nota = val('#hd-nota');
+    if (tipo === 'negativa') { d.testigo1 = val('#hd-t1'); d.testigo2 = val('#hd-t2'); }
+    if (tipo === 'impugnacion') d.version = val('#hd-version');
+    boton.disabled = true;
+    var r; try { r = await pedir(d); } catch (e) { return; } finally { boton.disabled = false; }
+    if (!r || r.ok !== true) { $('#hd-err').textContent = mensajeError(r || {}); return; }
+    toast(tipo === 'corregir' ? 'Ligada al folio. Ahora confírmala.' : 'Listo. La decisión quedó en la bitácora.');
+    hojas(st.hojasFolio);
+  }
+  async function subirVarias(boton) {
+    var fs = Array.prototype.slice.call($('#h-archivos').files || []), err = $('#h-err');
+    if (!fs.length) { err.textContent = 'Elige al menos un archivo.'; return; }
+    if (fs.length > 10) { err.textContent = mensajeError({ error: 'MAXIMO_10_ARCHIVOS' }); return; }
+    if (fs.some(function (f) { return f.size > 8 * 1024 * 1024; })) { err.textContent = 'Algún archivo pesa más de 8 MB.'; return; }
+    boton.disabled = true;
+    var archivos = [];
+    for (var i = 0; i < fs.length; i++) archivos.push({ nombre: fs[i].name, mime: fs[i].type || 'application/pdf', contenido_b64: await leerArchivo(fs[i]) });
+    var r; try { r = await pedir({ accion: 'subir_hojas', archivos: archivos }); } catch (e) { return; } finally { boton.disabled = false; }
+    if (!r || r.ok !== true) { err.textContent = mensajeError(r || {}); return; }
+    var dup = (r.archivos || []).filter(function (a) { return a.duplicada; }).length, mal = (r.archivos || []).filter(function (a) { return a.ok === false; }).length;
+    toast('Subidas ' + (archivos.length - mal) + '.' + (dup ? ' ' + dup + ' ya se habían recibido antes.' : '') + (mal ? ' ' + mal + ' no se aceptaron.' : ''));
+    hojas(st.hojasFolio);
+  }
+
+  // ── Reincidencia acumulada y alertas de modo (complemento S2) ──
+  var SEM = { rojo: ['Rojo', 'e-vencido'], amarillo: ['Amarillo', 'e-espera'], verde: ['Verde', 'e-validado'] };
+  var EST_AL = { abierta: ['Sin atender', 'e-vencido'], pospuesta: ['Pospuesta', 'e-espera'], descartada: ['Descartada', 'e-otro'], decidido_cambiar: ['Se decidió cambiar', 'e-impugnado'] };
+  async function reincidencia() {
+    st.vista = 'reincidencia'; mostrarVista();
+    $('#reincidencia').innerHTML = '<div class="caja vacio">Cargando…</div>';
+    var r; try { r = await pedir({ accion: 'reincidencia' }); } catch (e) { return; }
+    if (!r || r.ok !== true) { $('#reincidencia').innerHTML = '<div class="caja vacio">' + mensajeError(r || {}) + '</div>'; return; }
+    st.reinc = r;
+    var ps = r.personas || [], al = r.alertas || [], cuenta = { rojo: 0, amarillo: 0, verde: 0 };
+    ps.forEach(function (p) { cuenta[p.semaforo] = (cuenta[p.semaforo] || 0) + 1; });
+    var ab = al.filter(function (a) { return a.estado === 'abierta'; }).length;
+    $('#reincidencia').innerHTML =
+      '<div class="aviso sombra"><div><b>Modo de sanciones: ' + esc(r.modo_sanciones === 'con_suspension' ? 'con suspensión' : 'sin suspensión') + '</b>' +
+        'Aviso, carta compromiso y acta funcionan. El nivel de suspensión se registra como antecedente y no se notifica. Una alerta sólo recomienda: el modo lo cambian Esteban, RH y Legal con el checklist de MODO_SUSPENSION.md.</div></div>' +
+      '<div class="resumen"><div class="cubeta urge"><span class="n">' + ab + '</span><span class="l">Alertas sin atender</span></div>' +
+        '<div class="cubeta"><span class="n sem-rojo">' + cuenta.rojo + '</span><span class="l">Semáforo rojo</span></div>' +
+        '<div class="cubeta"><span class="n sem-amarillo">' + cuenta.amarillo + '</span><span class="l">Semáforo amarillo</span></div>' +
+        '<div class="cubeta"><span class="n sem-verde">' + cuenta.verde + '</span><span class="l">Semáforo verde</span></div></div>' +
+      '<section class="caja bloque" style="margin-bottom:14px"><h2>Alertas "Recomendación: activar modo suspensión"</h2>' +
+        (al.length ? al.map(function (a) {
+          var e = EST_AL[a.estado] || [a.estado, 'e-otro'];
+          var ev = Object.keys(a.evidencia || {}).map(function (k) { return k.replace(/_/g, ' ') + ': ' + (Array.isArray(a.evidencia[k]) ? a.evidencia[k].join(', ') : a.evidencia[k]); }).join(' · ');
+          return '<div class="ev alerta"><div><span class="chip ' + e[1] + '">' + esc(e[0]) + '</span> <b>' + esc(a.texto) + '</b><br><span class="nivel">' +
+            (a.nombre ? esc(a.nombre) + ' · ' : 'Toda la plantilla · ') + esc(ev) +
+            (a.posponer_hasta ? ' · vuelve el ' + esc(a.posponer_hasta) : '') + (a.motivo ? ' · ' + esc(a.motivo) : '') + '</span></div>' +
+            (st.editor && (a.estado === 'abierta' || a.estado === 'pospuesta') ? '<div class="acciones"><button class="btn" data-alerta="' + a.id + '" data-decision="cambiar">Cambiar a modo suspensión</button><button class="btn" data-alerta="' + a.id + '" data-decision="posponer">Posponer</button><button class="btn peligro" data-alerta="' + a.id + '" data-decision="descartar">Descartar</button></div>' : '') +
+            '<div id="af-' + a.id + '" class="alerta-form"></div></div>';
+        }).join('') : '<div class="nivel">No hay alertas.</div>') + '</section>' +
+      '<div class="caja"><div class="tabla-wrap"><table class="reinc"><thead><tr><th>Persona</th><th>Semáforo</th><th class="num">Meses con caso</th><th class="num">Seguidos</th><th class="num">Cartas 90 / 180 d</th><th class="num">Actas 90 / 180 d</th><th class="num">Suspensión no aplicada</th><th>Tendencia 30 d</th></tr></thead><tbody>' +
+      (ps.length ? ps.map(function (p) {
+        var s = SEM[p.semaforo] || [p.semaforo, 'e-otro'];
+        return '<tr><td class="quien2"><b>' + esc(p.nombre || ('Empleado ' + p.employee_id)) + '</b><span>' + esc(p.departamento || '') + '</span></td><td><span class="chip ' + s[1] + '">' + s[0] + '</span></td>' +
+          '<td class="n">' + p.meses_con_casos + '</td><td class="n">' + p.meses_consecutivos + '</td><td class="n">' + p.cartas_90 + ' / ' + p.cartas_180 + '</td><td class="n">' + p.actas_90 + ' / ' + p.actas_180 + '</td>' +
+          '<td class="n">' + p.suspension_no_aplicada + '</td><td>' + esc(p.tendencia) + ' <span class="nivel">(' + esc(p.retardos_30d) + ' contra ' + esc(p.promedio_30d_previo) + ')</span></td></tr>';
+      }).join('') : '<tr><td colspan="8" class="vacio">Nadie tiene casos.</td></tr>') + '</tbody></table></div></div>';
+  }
+  function formAlerta(id, decision) {
+    var F = {
+      cambiar: '<div class="nivel">Esto registra la decisión en la bitácora. El modo <b>no</b> cambia aquí: se cambia con el checklist y el SQL de MODO_SUSPENSION.md, con Legal.</div><label>Motivo<input id="al-motivo"></label>',
+      posponer: '<div class="fila2"><label>Semanas<input type="number" id="al-semanas" min="1" max="26" value="4"></label><label>Motivo<input id="al-motivo"></label></div>',
+      descartar: '<label>Motivo (queda en la bitácora)<input id="al-motivo"></label>'
+    };
+    $('#af-' + id).innerHTML = '<div class="form" style="margin-top:8px">' + F[decision] + '<button class="btn pri" data-enviar-alerta="' + id + '" data-decision="' + decision + '">Guardar decisión</button><div id="al-err" class="err"></div></div>';
+  }
+  async function enviarAlerta(id, decision, boton) {
+    var d = { accion: 'alerta_atender', alerta_id: Number(id), decision: decision, motivo: ($('#al-motivo') || {}).value || '' };
+    if ($('#al-semanas')) d.semanas = Number($('#al-semanas').value);
+    if (d.motivo.trim().length < 5) { $('#al-err').textContent = 'Escribe el motivo (al menos 5 letras).'; return; }
+    boton.disabled = true;
+    var r; try { r = await pedir(d); } catch (e) { return; } finally { boton.disabled = false; }
+    if (!r || r.ok !== true) { $('#al-err').textContent = mensajeError(r || {}); return; }
+    toast(decision === 'cambiar' ? 'Decisión registrada. El modo sigue igual hasta aplicar el checklist.' : 'Decisión registrada.');
+    reincidencia();
+  }
+
   function mostrarVista() {
     $('#v-lista').classList.toggle('hid', st.vista !== 'lista');
     $('#detalle').classList.toggle('hid', st.vista !== 'detalle');
     $('#ajustes').classList.toggle('hid', st.vista !== 'ajustes');
     $('#calidad').classList.toggle('hid', st.vista !== 'calidad');
+    $('#hojas').classList.toggle('hid', st.vista !== 'hojas');
+    $('#reincidencia').classList.toggle('hid', st.vista !== 'reincidencia');
     document.querySelectorAll('[data-vista]').forEach(function (t) { t.setAttribute('aria-selected', String(t.dataset.vista === st.vista || (t.dataset.vista === 'lista' && st.vista === 'detalle'))); });
     window.scrollTo(0, 0);
   }
@@ -388,7 +583,18 @@
     if (t.id === 'ver-todos') { st.filtro = 'todos'; pintarResumen(); return pintarLista(); }
     if (t.id === 'cerrados') { st.cerrados = !st.cerrados; t.textContent = st.cerrados ? 'Ocultar cerrados' : 'Incluir cerrados'; st.filtro = 'todos'; return cargar(); }
     if (t.id === 'x-agregar') return agregarExclusion();
-    if (t.dataset.vista) { if (t.dataset.vista === 'ajustes') return ajustes(); if (t.dataset.vista === 'calidad') return calidad(); st.vista = 'lista'; mostrarVista(); return cargar(); }
+    if (t.dataset.vista) {
+      if (t.dataset.vista === 'ajustes') return ajustes(); if (t.dataset.vista === 'calidad') return calidad();
+      if (t.dataset.vista === 'hojas') return hojas(); if (t.dataset.vista === 'reincidencia') return reincidencia();
+      st.vista = 'lista'; mostrarVista(); return cargar();
+    }
+    if (t.dataset.imprimir) return imprimir(t.dataset.imprimir);
+    if (t.id === 'h-subir') return subirVarias(t);
+    if (t.dataset.verHoja) return verHoja(t.dataset.verHoja, t.dataset.lectura);
+    if (t.dataset.decidir) return formDecidir(t.dataset.lectura, t.dataset.decidir);
+    if (t.dataset.enviarHoja) return enviarDecision(t.dataset.lectura, t.dataset.enviarHoja, t);
+    if (t.dataset.alerta) return formAlerta(t.dataset.alerta, t.dataset.decision);
+    if (t.dataset.enviarAlerta) return enviarAlerta(t.dataset.enviarAlerta, t.dataset.decision, t);
     if (t.dataset.revisar) return formRevisar(t.dataset.revisar, t.dataset.valor);
     if (t.dataset.guardarRevision) return guardarRevision(t.dataset.guardarRevision, t.dataset.valor, t);
     if (t.dataset.cubeta) { st.filtro = st.filtro === t.dataset.cubeta ? 'todos' : t.dataset.cubeta; pintarResumen(); return pintarLista(); }

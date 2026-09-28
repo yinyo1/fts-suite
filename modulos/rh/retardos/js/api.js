@@ -55,8 +55,11 @@
   ];
   var CONFIG = {
     modo: { valor: 'sombra', confirmado: false, descripcion: 'sombra: todo correo va a Dirección y RH con [SOMBRA]. real: al empleado.' },
-    nivel_maximo_habilitado: { valor: 2, confirmado: false, descripcion: 'Nivel más alto que se notifica. 2 = carta compromiso. Arriba de eso el caso queda como nivel alcanzado, no notificado.' },
-    suspensiones_habilitadas: { valor: false, confirmado: false, descripcion: 'Si es false, ninguna suspensión se notifica.' },
+    modo_sanciones: { valor: 'sin_suspension', confirmado: false, descripcion: 'sin_suspension: aviso, carta y acta funcionan; el nivel de suspensión queda como alcanzado, no aplicado. El cambio lo deciden Esteban, RH y Legal.' },
+    dias_recoleccion_rh: { valor: 3, confirmado: false, descripcion: 'Días hábiles que tiene RH para recolectar la firma y subir la hoja.' },
+    correo_modo: { valor: 'preferente', confirmado: false, descripcion: 'preferente: correo de empresa; si no hay, el personal. ambos: a los dos.' },
+    hojas_carpeta: { valor: null, confirmado: false, descripcion: 'Carpeta de OneDrive o SharePoint donde RH deja hojas escaneadas. Vacía: sólo se suben desde el panel.' },
+    real_desde: { valor: null, confirmado: false, descripcion: 'Fecha del paso a real. Sin ella no se evalúan las alertas globales.' },
     tolerancia_min: { valor: 20, confirmado: false, descripcion: 'Minutos de gracia después de la hora de entrada.' },
     hora_fuente: { valor: 'hora_entrada', confirmado: false, descripcion: 'De dónde sale la hora esperada: la ficha o el calendario.' },
     periodo: { valor: 'mes', confirmado: false, descripcion: 'Ventana en la que se cuentan los retardos.' },
@@ -108,7 +111,7 @@
     caso(P[5], 3, 'ESCALADO', 6, -9, -1, { ruta: 'supervisor', email_valido: false }),
     caso(P[6], 2, 'IMPUGNADO', 3, -5, 1),
     caso(P[7], 4, 'ACCION_PROGRAMADA', 7, -12, null, { accion_desde: fecha(3), accion_hasta: fecha(3) }),
-    caso(P[0], 3, 'RETENIDO', 5, 0, null)
+    caso(P[0], 4, 'RETENIDO', 7, 0, null)
   ];
   CASOS.forEach(function (c) {
     c.bitacora = [
@@ -118,9 +121,10 @@
     if (c.nivel > 1) c.bitacora.push({ at: c.abierto_at, evento: 'transicion', de: 'NOTIFICADO', a: 'ESPERANDO_FIRMA', actor: 'sistema', motivo: 'Plazo al ' + (c.vence || '') });
     if (c.estado !== 'ESPERANDO_FIRMA' && c.estado !== 'CERRADO' && c.nivel > 1)
       c.bitacora.push({ at: iso(-1), evento: 'transicion', de: 'ESPERANDO_FIRMA', a: c.estado, actor: c.estado === 'FIRMA_RECIBIDA' ? 'correo:empleado' : 'sistema', motivo: 'Ejemplo' });
-    c.envios = [{ tipo: 'notificacion', estado: 'enviado', modo: 'sombra', enviado_at: c.abierto_at, asunto: '[SOMBRA] [' + c.folio + '] ' + c.nombre_nivel }];
+    c.envios = [{ tipo: 'notificacion', estado: 'enviado', modo: 'sombra', enviado_at: c.abierto_at, asunto: '[SOMBRA] [' + c.folio + '] ' + (c.nivel > 1 ? 'Recolectar firma: ' : '') + c.nombre_nivel }];
+    if (c.nivel > 1) c.envios.push({ tipo: 'aviso_trabajador', estado: 'enviado', modo: 'sombra', enviado_at: c.abierto_at, asunto: '[SOMBRA] [' + c.folio + '] ' + c.nombre_nivel + ': Recursos Humanos te va a citar' });
     if (c.estado === 'RETENIDO') {
-      c.bitacora = [c.bitacora[0], { at: c.abierto_at, evento: 'transicion', de: 'DETECTADO', a: 'RETENIDO', actor: 'sistema', motivo: 'Nivel alcanzado, no notificado: el nivel 3 no está habilitado (arranque suave)' }];
+      c.bitacora = [c.bitacora[0], { at: c.abierto_at, evento: 'transicion', de: 'DETECTADO', a: 'RETENIDO', actor: 'sistema', motivo: 'Nivel de suspensión alcanzado, no aplicado (modo sin suspensión). Cuenta como antecedente.' }];
       c.envios = [];
     }
   });
@@ -158,6 +162,56 @@
     { employee_id: 506, nombre: 'Héctor Demo', departamento: 'Operaciones', hora_entrada: 7, hora_calendario: 7, dias_con_checada: 61, mediana: 7.15, p25: 7, pct_tarde: 18, hora_sugerida: 7, banderas: { dominio_invalido: true, correo_personal: true }, revisado: false },
     { employee_id: 507, nombre: 'Noemí Demo', departamento: 'Comercial', hora_entrada: 11, hora_calendario: 8, dias_con_checada: 0, mediana: null, p25: null, pct_tarde: null, hora_sugerida: null, banderas: { ficha_vs_calendario: true, correo_compartido: true, sin_checadas: true }, revisado: false }
   ];
+  var CORREOS = {
+    501: [{ email: 'laura.demo@fts.mx', campo: 'work_email', tipo: 'empresa', usable: true, motivo: 'ok' }],
+    503: [{ email: 'irene.demo@example.com', campo: 'work_email', tipo: 'personal', usable: true, motivo: 'ok' }],
+    504: [{ email: 'tomas.demo@fts.mx', campo: 'work_email', tipo: 'empresa', usable: true, motivo: 'ok' }, { email: 'tomas.demo@example.com', campo: 'private_email', tipo: 'personal', usable: true, motivo: 'ok' }],
+    505: [{ email: 'rebeca.demo@fts.mx', campo: 'work_email', tipo: 'empresa', usable: true, motivo: 'ok' }],
+    506: [{ email: 'hector.demo@gmai.com', campo: 'work_email', tipo: 'personal', usable: false, motivo: 'invalido' }],
+    507: [{ email: 'ventas@fts.mx', campo: 'work_email', tipo: 'empresa', usable: false, motivo: 'generico' }]
+  };
+  CALIDAD.forEach(function (p) {
+    p.correos = CORREOS[p.employee_id] || [];
+    var u = p.correos.filter(function (x) { return x.usable; });
+    p.correo_usado = u.filter(function (x) { return x.tipo === 'empresa'; }).slice(0, 1);
+    if (!p.correo_usado.length) p.correo_usado = u.slice(0, 1);
+    p.correo_motivo = !p.correo_usado.length ? 'sin correo utilizable: la hoja va sólo a RH y al jefe'
+      : (p.correo_usado[0].tipo === 'empresa' ? 'correo de empresa' : 'no tiene correo de empresa utilizable: se usa el personal');
+  });
+
+  // Hojas por confirmar de EJEMPLO: las imágenes son las hojas inventadas de las pruebas del lector.
+  var FIX = '../../../retardos/hojas/tests/fixtures/';
+  function fir(t, r, j, t1, t2) { var f = function (v) { return { presente: v, confianza: 0.97 }; }; return { trabajador: f(t), rh: f(r), jefe: f(j), testigo1: f(t1), testigo2: f(t2) }; }
+  var LECT = [
+    { lectura_id: 71, hoja_id: 31, pagina: 1, folio: CASOS[2].folio, folio_fuente: 'qr', sugerencia: 'lista_para_validar', sugerencia_texto: 'Lista para validar', negativa: false, confianza: 0.99,
+      hoja: { nombre: 'escaneo-rh-0928.jpg', mime: 'image/jpeg', origen: 'panel', url: FIX + '01-completa.jpg' }, caso: { folio: CASOS[2].folio, nivel: 2, accion: 'carta_compromiso', estado: 'FIRMA_RECIBIDA', nombre: CASOS[2].nombre },
+      resultado: { firmas: fir(true, true, true, false, false), negativa: { marcada: false }, comentarios: { presente: false }, legibilidad: 'buena', banderas: [] } },
+    { lectura_id: 72, hoja_id: 32, pagina: 1, folio: CASOS[1].folio, folio_fuente: 'qr', sugerencia: 'revisar_impugnacion', sugerencia_texto: 'Revisar: posible impugnación (el comentario expresa inconformidad)', negativa: false, confianza: 0.9,
+      hoja: { nombre: 'foto-celular.jpg', mime: 'image/jpeg', origen: 'carpeta', url: FIX + '05-inconformidad.jpg' }, caso: { folio: CASOS[1].folio, nivel: 3, accion: 'acta', estado: 'FIRMA_RECIBIDA', nombre: CASOS[1].nombre },
+      resultado: { firmas: fir(true, true, true, true, true), negativa: { marcada: false }, comentarios: { presente: true, transcripcion: 'No estoy de acuerdo, el dia 3 tenia permiso de mi jefe para llegar tarde.', inconformidad: true, fuente: 'ocr' }, legibilidad: 'buena', banderas: [] } },
+    { lectura_id: 73, hoja_id: 33, pagina: 1, folio: CASOS[5].folio, folio_fuente: 'qr', sugerencia: 'revisar_falta_firma', sugerencia_texto: 'Revisar: falta firma (testigo1, testigo2)', negativa: true, confianza: 0.95,
+      hoja: { nombre: 'negativa.jpg', mime: 'image/jpeg', origen: 'panel', url: FIX + '04-negativa-sin-testigos.jpg' }, caso: { folio: CASOS[5].folio, nivel: 3, accion: 'acta', estado: 'FIRMA_RECIBIDA', nombre: CASOS[5].nombre },
+      resultado: { firmas: fir(false, true, false, false, false), negativa: { marcada: true }, comentarios: { presente: false }, legibilidad: 'buena', banderas: [] } },
+    { lectura_id: 74, hoja_id: 34, pagina: 1, folio: 'RET-2026-9999', folio_fuente: 'qr', sugerencia: 'revisar_folio', sugerencia_texto: 'Revisar: folio o nombre no coinciden (el folio no existe)', negativa: false, confianza: 0.99,
+      hoja: { nombre: 'hoja-sin-caso.jpg', mime: 'image/jpeg', origen: 'correo', url: FIX + '08-folio-inexistente.jpg' }, caso: null,
+      resultado: { firmas: fir(true, true, true, false, false), negativa: { marcada: false }, comentarios: { presente: false }, legibilidad: 'regular', banderas: ['foto_inclinada'] } }
+  ];
+  CASOS[1].estado = 'FIRMA_RECIBIDA'; CASOS[5].estado = 'FIRMA_RECIBIDA';
+  var METRICA = { dias: 30, decididas: 18, aciertos: 16, pct_acierto: 88.9, por_confirmar: LECT.length };
+  var ENPROCESO = [{ hoja_id: 35, nombre: 'lote-tarde.pdf', estado: 'pendiente', intentos: 0 }];
+
+  var REINC = [
+    { employee_id: 501, nombre: 'Laura Demo', departamento: 'Operaciones', meses_con_casos: 3, meses_consecutivos: 3, cartas_90: 1, cartas_180: 1, actas_90: 1, actas_180: 1, suspension_no_aplicada: 1, meses_suspension_ventana: 1, retardos_30d: 7, promedio_30d_previo: 4.3, tendencia: 'sube', semaforo: 'rojo' },
+    { employee_id: 502, nombre: 'Óscar Demo', departamento: 'Operaciones', meses_con_casos: 2, meses_consecutivos: 2, cartas_90: 1, cartas_180: 1, actas_90: 1, actas_180: 1, suspension_no_aplicada: 0, meses_suspension_ventana: 0, retardos_30d: 5, promedio_30d_previo: 5, tendencia: 'igual', semaforo: 'amarillo' },
+    { employee_id: 503, nombre: 'Irene Demo', departamento: 'Comercial', meses_con_casos: 1, meses_consecutivos: 1, cartas_90: 1, cartas_180: 1, actas_90: 0, actas_180: 0, suspension_no_aplicada: 0, meses_suspension_ventana: 0, retardos_30d: 1, promedio_30d_previo: 3.7, tendencia: 'baja', semaforo: 'verde' },
+    { employee_id: 508, nombre: 'Damián Demo', departamento: 'Operaciones', meses_con_casos: 2, meses_consecutivos: 1, cartas_90: 0, cartas_180: 1, actas_90: 0, actas_180: 1, suspension_no_aplicada: 0, meses_suspension_ventana: 0, retardos_30d: 2, promedio_30d_previo: 2.7, tendencia: 'igual', semaforo: 'amarillo' }
+  ];
+  var ALERTAS = [
+    { id: 5, alcance: 'individual', disparador: 'reincide_tras_acta', texto: 'Una persona volvió a tener caso el mes siguiente a firmar un acta.', employee_id: 501, nombre: 'Laura Demo',
+      evidencia: { acta: 'RET-2026-0031', caso_siguiente: CASOS[8].folio }, estado: 'abierta', creado_at: iso(-2) },
+    { id: 4, alcance: 'global', disparador: 'plantilla_en_acta', texto: 'Una parte de la plantilla activa mayor al límite está en nivel de acta o superior.', employee_id: null, nombre: null,
+      evidencia: { personas_en_acta_o_mas: 5, activos: 29, pct: 17.2 }, estado: 'pospuesta', posponer_hasta: '2026-10-12', motivo: 'Esperar la corrección de horas de entrada (ejemplo)', atendida_por: 'rh.demo', creado_at: iso(-9) }
+  ];
   var sinSustituir = {};
   function listaFila(c) {
     return { folio: c.folio, employee_id: c.employee_id, nombre: c.nombre, nivel: c.nivel, accion: c.accion, estado: c.estado, periodo: c.periodo,
@@ -182,6 +236,52 @@
       }
       if (d.accion === 'calidad') return { ok: true, personas: CALIDAD, tolerancia_min: 20, regla_sugerida: 'Primer horario en punto o y media con el que habría llegado tarde en no más del 20% de sus días hábiles de los últimos 90.' };
       if (d.accion === 'calidad_revisar') { CALIDAD.forEach(function (x) { if (x.employee_id === Number(d.employee_id)) { x.revisado = !!d.revisado; x.nota = d.nota; x.revisado_por = actor; } }); return { ok: true }; }
+      if (d.accion === 'hojas') return { ok: true, lecturas: LECT, hojas_en_proceso: ENPROCESO, metrica: METRICA };
+      if (d.accion === 'hoja_ver') {
+        var lh = LECT.filter(function (x) { return x.hoja_id === Number(d.hoja_id); })[0];
+        if (!lh) return { ok: false, error: 'HOJA_INEXISTENTE' };
+        return { ok: true, nombre: lh.hoja.nombre, mime: lh.hoja.mime, url_demo: lh.hoja.url, contenido_b64: sinSustituir['h' + lh.hoja_id] || null };
+      }
+      if (d.accion === 'subir_hojas' || d.accion === 'subir_hoja') {
+        var arch = d.archivos || [{ nombre: d.nombre, mime: d.mime, contenido_b64: d.contenido_b64 }];
+        if (arch.length > 10) return { ok: false, error: 'MAXIMO_10_ARCHIVOS' };
+        arch.forEach(function (a) { ENPROCESO.push({ hoja_id: 200 + ENPROCESO.length, nombre: a.nombre, estado: 'pendiente', intentos: 0 }); });
+        return { ok: true, archivos: arch.map(function (a, i) { return { ok: true, nombre: a.nombre, hoja_id: 200 + i, duplicada: false }; }) };
+      }
+      if (['hoja_confirmar', 'hoja_corregir', 'hoja_pedir_de_nuevo', 'hoja_descartar'].indexOf(d.accion) >= 0) {
+        var l = LECT.filter(function (x) { return x.lectura_id === Number(d.lectura_id); })[0];
+        if (!l) return { ok: false, error: 'LECTURA_INEXISTENTE' };
+        var cc = l.caso ? CASOS.filter(function (x) { return x.folio === l.caso.folio; })[0] : null;
+        if (d.accion === 'hoja_corregir') {
+          var c2 = CASOS.filter(function (x) { return x.folio === d.folio; })[0];
+          if (!c2) return { ok: false, error: 'FOLIO_INEXISTENTE' };
+          l.caso = { folio: c2.folio, nivel: c2.nivel, accion: c2.accion, estado: c2.estado, nombre: c2.nombre }; l.folio = c2.folio;
+          return { ok: true };
+        }
+        if (d.accion === 'hoja_confirmar') {
+          if (!cc) return { ok: false, error: 'SIN_CASO_LIGADO' };
+          if (d.resultado === 'negativa' && ((d.testigo1 || '').trim().length < 3 || (d.testigo2 || '').trim().length < 3)) return { ok: false, error: 'FALTAN_TESTIGOS' };
+          if (d.resultado === 'firmada') { mover(cc, 'VALIDADO_RH', 'Hoja firmada confirmada por RH', actor); if (cc.accion !== 'suspension') mover(cc, 'CERRADO', 'Documento firmado y validado; queda en seguimiento de reincidencia', actor); }
+          else if (d.resultado === 'negativa') { mover(cc, 'SE_NEGO_A_FIRMAR', 'Se negó a firmar ante dos testigos', actor); mover(cc, 'VALIDADO_RH', 'Negativa documentada con dos testigos, confirmada por RH', actor); if (cc.accion !== 'suspension') mover(cc, 'CERRADO', 'Documento firmado y validado; queda en seguimiento de reincidencia', actor); }
+          else mover(cc, 'IMPUGNADO', d.nota || 'El trabajador impugna en la hoja', actor);
+        } else if (d.accion === 'hoja_pedir_de_nuevo') {
+          if (cc && cc.estado === 'FIRMA_RECIBIDA') mover(cc, 'ESPERANDO_FIRMA', 'RH pide la hoja de nuevo: ' + (d.motivo || 'otro'), actor);
+        } else if ((d.nota || '').trim().length < 5) return { ok: false, error: 'MOTIVO_OBLIGATORIO' };
+        LECT.splice(LECT.indexOf(l), 1); METRICA.decididas += 1; METRICA.aciertos += 1; METRICA.por_confirmar = LECT.length;
+        return { ok: true, caso: cc ? datosCaso(cc) : null };
+      }
+      if (d.accion === 'reincidencia') return { ok: true, modo_sanciones: 'sin_suspension', personas: REINC, alertas: ALERTAS,
+        disparadores: { individual: { ventana_dias: 90, meses_suspension: 2, actas_firmadas: 2, reincide_tras_acta: true }, global: { semanas_real: 8, reduccion_min_pct: 30, pct_plantilla_acta: 15 } } };
+      if (d.accion === 'alerta_atender') {
+        var al = ALERTAS.filter(function (x) { return x.id === Number(d.alerta_id); })[0];
+        if (!al) return { ok: false, error: 'ALERTA_INEXISTENTE' };
+        if ((d.motivo || '').trim().length < 5) return { ok: false, error: 'MOTIVO_OBLIGATORIO' };
+        if (d.decision === 'posponer' && !(Number(d.semanas) >= 1 && Number(d.semanas) <= 26)) return { ok: false, error: 'SEMANAS_INVALIDAS' };
+        al.estado = { posponer: 'pospuesta', descartar: 'descartada', cambiar: 'decidido_cambiar' }[d.decision] || al.estado;
+        al.motivo = d.motivo; al.atendida_por = actor;
+        if (d.decision === 'posponer') al.posponer_hasta = new Date(Date.now() + Number(d.semanas) * 7 * 86400000).toISOString().slice(0, 10);
+        return { ok: true, modo_sanciones: 'sin_suspension' };
+      }
       if (d.accion === 'exclusion_quitar') { EXCL.forEach(function (x) { if (x.id === Number(d.id)) x.activo = false; }); return { ok: true, caso: null }; }
       var c = CASOS.filter(function (x) { return x.folio === d.folio; })[0];
       if (!c) return { ok: false, error: 'FOLIO_INEXISTENTE' };

@@ -161,3 +161,31 @@ table.calidad td.quien2{min-width:230px}
 .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .cambia{color:var(--blue)}
 table.calidad .btn{white-space:nowrap}
+
+/* ── Hojas por confirmar (complemento S2) ── */
+.hoja-tarjeta{padding:14px 16px;margin-bottom:12px;display:grid;gap:10px}
+.hoja-cab{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.hoja-cuerpo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:860px){.hoja-cuerpo{grid-template-columns:minmax(0,1fr)}}
+.hoja-datos{display:grid;gap:10px;min-width:0}
+.hoja-visor{min-width:0}
+.hoja-visor:empty{display:none}
+.hoja-visor img{max-height:720px;width:auto}
+.hoja-cuerpo:has(.hoja-visor:empty){grid-template-columns:minmax(0,1fr)}
+input[type=file]{max-width:100%;min-width:0}
+.correo{font-size:12px;margin-top:6px;overflow-wrap:anywhere}
+
+/* ── Reincidencia y alertas ── */
+.alerta{align-items:flex-start;margin-bottom:8px}
+.alerta > div{min-width:0;flex:1 1 280px}
+.alerta-form:empty{display:none}
+.sem-rojo{color:var(--red)}
+.sem-amarillo{color:var(--amber)}
+.sem-verde{color:var(--green-d)}
+table.reinc td.quien2{min-width:200px}
+.alerta .nivel,.correo .nivel,.hoja-tarjeta .nivel{white-space:normal}
+.bloque{grid-template-columns:minmax(0,1fr)}
+.hoja-cab .chip,.alerta .chip{white-space:normal}
+.hoja-datos .chips .chip{white-space:nowrap}
+.bloque > .nivel{white-space:normal}
+td.vence,[data-imprimir]{white-space:nowrap}

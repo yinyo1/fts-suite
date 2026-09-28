@@ -1,9 +1,15 @@
 {
-  "version": "V1.01",
+  "version": "V1.02",
   "fecha": "2026-09-28",
   "modulo": "rh/retardos",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Contador propio de este modulo.",
   "historial": [
+    {
+      "version": "V1.02",
+      "fecha": "2026-09-28",
+      "titulo": "RH recolecta firmas, hojas por confirmar y reincidencia (#334, complemento S2)",
+      "nota": "Firmas por recolectar ordenadas por fecha limite, con boton para imprimir la hoja (la misma que genera el correo). Hojas por confirmar: la hoja junto a la sugerencia del lector, con confirmar firmada, negativa, impugnacion, corregir folio, pedir de nuevo o descartar; carga de varias hojas a la vez. Calidad de datos muestra correo de empresa, personal, cual se usa y por que. Reincidencia acumulada con semaforo y alertas de cambio de modo (cambiar, posponer o descartar con motivo; el modo nunca cambia solo). Nivel de suspension se muestra como no aplicado."
+    },
     {
       "version": "V1.01",
       "fecha": "2026-09-28",
