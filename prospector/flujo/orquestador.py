@@ -34,7 +34,7 @@ from .confianza import (Contacto, N1_CONFIRMADO, N2_PARCIAL, N3_PUESTO,
 from .estado import (Corrida, RESPONDIO, OLAS, NIVEL_PLANTA,
                      NIVEL_CORPORATIVO, LLAVE_CORPORATIVO, ORIGEN_MANUAL,
                      ORIGEN_RADAR, MARCA_ANGULO, MARCA_PADRON,
-                     MARCA_HISTORIA, MARCA_ALIAS)
+                     MARCA_HISTORIA, MARCA_ALIAS, MARCA_SENAL)
 from .ubicacion_de_proyectos import (declarar as declarar_ubicacion,
                                      carta_de_presentacion, de_la_cuenta,
                                      DeclaracionInvalida, RUTA as RUTA_UBICACION,
@@ -489,6 +489,34 @@ def _imprimir_paso(c: Corrida) -> None:
     print()
 
 
+def _mandar_regenera() -> int:
+    """El diagnostico de regeneracion de TODAS las corridas de la sesion."""
+    from .regeneracion import (NIVEL_NADA, comando_para, leer, plan)
+    rutas = _todas_las_corridas()
+    if not rutas:
+        print("\n  No hay corridas en esta sesion. El diagnostico de "
+              "regeneracion lee las corridas que existen: sin corridas no hay "
+              "nada que diagnosticar.\n")
+        return 0
+    pl = plan(leer(rutas))
+    print(f"\n  REGENERACION — {pl['cuentas']} cuenta(s) leida(s)")
+    print(f"  Consultas que costaria todo: {pl['consultas_totales']}\n")
+    for x in pl["detalle"]:
+        if x["nivel"] == NIVEL_NADA:
+            print(f"   ✓ {x['llave']}  — ya trae expediente de senal completo")
+            continue
+        print(f"   · {x['llave']}  [{x['nivel']}, {x['costo']}]")
+        print(f"       le falta: {', '.join(x['le_falta'])}")
+        for q in x["que_se_pierde"]:
+            print(f"       se pierde: {q}")
+        if x["senal_guardada"]:
+            print(f"       senal guardada: {x['senal_guardada'][0][:70]}")
+        print(f"       {comando_para(x)}")
+        print()
+    print(f"  REGLA: {pl['regla']}\n")
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="orquestador", description=__doc__)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -496,18 +524,21 @@ def main(argv=None) -> int:
                    "buscar", "registrar", "bloque", "cerrar", "vuelta",
                    "challenge", "ficha", "estado", "tope", "fusionar",
                    "conectores", "entregar", "sembrar", "tramo", "paquete",
-                   "importar", "alias", "donde-se-hizo", "donde-falta"):
+                   "importar", "alias", "donde-se-hizo", "donde-falta",
+                   "senal", "regenera", "aprendizaje"):
         s = sub.add_parser(nombre)
         if nombre == "estado":
             # `estado` sin --empresa resume TODAS las corridas de la sesion.
             s.add_argument("--empresa", default=None)
-        elif nombre not in ("listo", "conectores", "donde-falta"):
+        elif nombre not in ("listo", "conectores", "donde-falta", "regenera",
+                            "aprendizaje"):
             s.add_argument("--empresa", required=True)
         # `--ciudad` identifica la PLANTA en todos los comandos de corrida. En
         # `prospecta`, `iniciar` y `padron` ademas alimenta la resolucion del
         # padron, y ahi se declara aparte con su ayuda propia.
         if nombre not in ("listo", "conectores", "prospecta", "iniciar", "padron",
-                          "donde-se-hizo", "donde-falta"):
+                          "donde-se-hizo", "donde-falta", "regenera",
+                          "aprendizaje"):
             s.add_argument("--ciudad", default=None,
                            help="la planta, cuando la empresa tiene varias. Sin "
                                 "esto, si hay mas de una, el comando se niega en "
@@ -629,6 +660,40 @@ def main(argv=None) -> int:
                            help="el operador decide NO sacarla. Exige --razon: "
                                 "la ficha se va a perder al cerrar la sesion")
             s.add_argument("--razon", default="")
+        if nombre == "senal":
+            s.add_argument("--fuente", required=True,
+                           help="QUIEN nos lo dijo. Tiene que estar en el "
+                                "evaluador (FUERZA_DE_FUENTE): una fuente que el "
+                                "evaluador no conoce puntua cero y su leccion no "
+                                "tiene donde aterrizar")
+            s.add_argument("--tipo", default="",
+                           help="QUE esta pasando. Si no se declara se deriva de "
+                                "la fuente, y se dice de donde salio")
+            s.add_argument("--texto", default="",
+                           help="el hallazgo tal cual. Si no se pasa se toma la "
+                                "primera senal registrada de la corrida")
+            s.add_argument("--fecha-senal", default="", dest="fecha_senal",
+                           help="la fecha del EVENTO, no la de la consulta. El "
+                                "reloj de caducidad arranca aqui")
+            s.add_argument("--fecha-de-cierre", default="", dest="fecha_de_cierre",
+                           help="solo convocatorias: el plazo no lo decide FTS")
+            s.add_argument("--fecha-del-evento", default="", dest="fecha_del_evento",
+                           help="solo camaras y congresos: el evento ES el canal")
+            s.add_argument("--reevaluar", action="store_true",
+                           help="puntuar el texto con el evaluador AHORA. El "
+                                "puntaje que sale NO es el del dia de la corrida "
+                                "-- la frescura cambio-- y queda escrito asi")
+        if nombre == "regenera":
+            s.add_argument("--aplicar", action="store_true",
+                           help="por ahora no hace nada distinto: el diagnostico "
+                                "es de lectura y cada cuenta se arregla con su "
+                                "propio `senal`, que exige que el operador diga la "
+                                "fuente. Existe para que quede claro que NADA se "
+                                "regenera solo")
+        if nombre == "aprendizaje":
+            s.add_argument("--cierres", default="",
+                           help="el JSON con los expedientes de cierre. Sin el, "
+                                "el reporte sale vacio y lo dice")
         if nombre == "conectores":
             for k in CONECTORES:
                 s.add_argument(f"--{k}", default=None,
@@ -968,6 +1033,42 @@ def main(argv=None) -> int:
                   "corrida de la semana que entra vuelve a especular.\n")
             return 0
 
+        if a.cmd == "regenera":
+            return _mandar_regenera()
+
+        if a.cmd == "aprendizaje":
+            from .aprendizaje import los_tres_lazos
+            cierres = []
+            if a.cierres:
+                with open(a.cierres, encoding="utf-8") as f:
+                    cargado = json.load(f)
+                cierres = cargado if isinstance(cargado, list) else [cargado]
+            r = los_tres_lazos(cierres)
+            print(f"\n  LOS TRES LAZOS — {r['cierres_leidos']} cierre(s)")
+            if r["cierres_sin_expediente_de_senal"]:
+                print(f"  De esos, {r['cierres_sin_expediente_de_senal']} SIN "
+                      "expediente de senal: no cuentan para los lazos 1 y 3.")
+                print(f"  Por regenerar: "
+                      f"{', '.join(str(x) for x in r['cuentas_por_regenerar'])}")
+            print()
+            for l in r["lazos"]:
+                print(f"  LAZO {l['lazo']} · {l['nombre']} — {l['pregunta']}")
+                print(f"     destino: {', '.join(l['destinos'])}")
+                if not l["compuertas"]:
+                    print("     sin celdas: no hay cierres que leer")
+                for k in l["compuertas"]:
+                    if not k["n"] and not k["propuesta"]:
+                        continue
+                    marca = ("ABRE " if k["abre"]
+                             else f"faltan {k['faltan']}" if k["faltan"]
+                             else "cerrada")
+                    print(f"     [{marca:>9}] {k['celda']}")
+                    if k["propuesta"]:
+                        print(f"                 {k['propuesta']}")
+                print()
+            print(f"  {r['nada_se_movio_solo']}\n")
+            return 0
+
         c = _cargar(a.empresa, getattr(a, "ciudad", None))
 
         if a.cmd in ("siguiente", "estado"):
@@ -1044,6 +1145,55 @@ def main(argv=None) -> int:
                      if rescatados else ""))
             print("     Es criterio tuyo, no evidencia: queda escrito en la "
                   "corrida y en la ficha.\n")
+            return 0
+
+        if a.cmd == "senal":
+            from .radar import evaluar as _evaluar
+            texto = (a.texto or "").strip() or (c.senal[0] if c.senal else
+                                                c.angulo or "")
+            ev = None
+            if a.reevaluar:
+                if not texto:
+                    raise SystemExit(
+                        "--reevaluar sin texto de senal: no hay que puntuar. "
+                        "Pasa --texto, o registra la senal primero.")
+                ev = _evaluar({"texto": texto, "fuente": a.fuente,
+                               "fecha": a.fecha_senal or None})
+            sen = c.declarar_senal_origen(
+                a.fuente, texto=texto, tipo=a.tipo,
+                fecha_senal=a.fecha_senal, evaluacion=ev,
+                fecha_de_cierre=a.fecha_de_cierre,
+                fecha_del_evento=a.fecha_del_evento)
+            if ev is not None:
+                # QUEDA ESCRITO que el puntaje es de hoy y no del dia de la
+                # corrida. Sin esta linea, el lazo 1 usaria un numero reevaluado
+                # para corregir la curva de FRESCURA, que es justo el factor que
+                # cambio entre los dos dias: se estaria corrigiendo la curva con
+                # un numero que la curva ya afecto.
+                sen["puntaje_reevaluado_hoy"] = True
+                c.avisos.append(
+                    MARCA_SENAL + "El puntaje se REEVALUO hoy, no es el del dia "
+                    "de la corrida: la frescura de la senal cambio desde "
+                    "entonces. Sirve para los pesos por familia y para la "
+                    "conversion por fuente; NO sirve para corregir la curva de "
+                    "frescura.")
+            c.guardar(_ruta_de(c, a))
+            print(f"\n  ✓ SENAL DECLARADA para {c.llave}")
+            print(f"     fuente:  {sen['fuente']}")
+            print(f"     tipo:    {sen['tipo']}  ({sen['tipo_de_donde']})")
+            print(f"     fecha:   {sen['fecha_senal'] or 'SIN FECHA'}")
+            if sen.get("puntaje") is not None:
+                print(f"     puntaje: {sen['puntaje']} ({sen['veredicto']})"
+                      + ("  ← reevaluado HOY, no es el del dia de la corrida"
+                         if sen.get("puntaje_reevaluado_hoy") else ""))
+            else:
+                print("     puntaje: SIN EVALUAR — pasa --reevaluar si quieres "
+                      "puntuarlo ahora")
+            from .importacion_odoo import razon_de_caducidad
+            from .paquete import armar as _armar
+            f, por = razon_de_caducidad(_armar(c))
+            print(f"     caduca:  {f} — {por}")
+            print()
             return 0
 
         if a.cmd == "entregar":
