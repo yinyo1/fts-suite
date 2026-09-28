@@ -1,10 +1,15 @@
 {
-  "version": "v1.00",
+  "version": "v1.01",
   "fecha": "2026-09-28",
   "modulo": "finanzas/rentabilidad",
   "esquema": "v<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main que toque este modulo. Serie propia: NO comparte numeracion con finanzas/version.json (que va en V1.09), porque el panel tiene dirección, motor y ciclo de despliegue propios.",
   "ambito": "finanzas/rentabilidad/ + shared/panel/ + los workflows fin/rentabilidad-*",
   "historial": [
+    {
+      "version": "v1.01",
+      "issue": 332,
+      "nota": "Contrato 1.01, extension ADITIVA: ni un campo del contrato 1 cambia de nombre ni de forma. MOTOR fin/rentabilidad-motor (sBnP4IEBgJFAeanx): se dejo INTACTO el nodo Code - armar respuesta (es el que produjo el golden del gate) y se colgo Code - extender v1.01, mas 4 nodos de lectura (HTTP - config, Odoo - getAll analiticas, Odoo - getAll lineas cross-company, Odoo - getAll SO montos). PANEL: segunda fila de tarjetas con el semaforo simetrico (D3), filtro por semaforo, columnas Bonos real / Otros real / Cotizado de / Plan correcto / Semaforo, leyenda con los umbrales vigentes, hora del dato en CST y tipo de cambio. Umbrales configurables en vivo desde shared/finanzas/rentabilidad_config.json en main, sin republicar el motor. De paso quedo CERRADA la hipotesis BALANCE_VS_LINEAS: el balance de account.analytic.account viene en pesos y las lineas en dolares, el factor 17.6425 es el tipo de cambio del 2026-09-27, nunca hubo discrepancia. Gates: contrato 162/162 y panel 10/10, este ultimo corrido tambien contra el sobre extendido para probar que el panel viejo no truena a media transicion."
+    },
     {
       "version": "v1.00",
       "issue": 332,
