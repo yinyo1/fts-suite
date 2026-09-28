@@ -623,3 +623,109 @@ cableado—; y que nada desborda a 380, 760, 900 ni 1280.
 cliente:** el texto exacto de las cuatro leyendas de «no lleva IVA». La lista
 existe para que cada quien no la escriba distinta, no para decidir la redacción
 fiscal.
+
+---
+
+## 9 · Lo que se vio en la instancia real (Esteban, 28-sep-2026)
+
+Cuatro cosas medidas **con la pantalla enfrente**, que es lo que faltaba: desde el
+contenedor no se alcanza `serviciosfts.odoo.com` (`CONNECT tunnel failed, response
+403`) y todo lo de arriba se había deducido del código de la versión.
+
+### 9.1 · El morado: **medido**, ya no deducido
+
+**`#714B67`**, el de Enterprise. Cuentagotas sobre el botón primario de una
+cotización real. La deducción del §8 era correcta, pero hasta ahora era eso —una
+deducción— y ahora es una medición. La variable `--o19-brand` se queda como está y
+su nota cambia de *deducido* a *medido*.
+
+### 9.2 · Los campos de Studio YA EXISTEN · **no hay que crear nada**
+
+En la instancia ya están:
+
+| campo | para qué |
+|---|---|
+| **Purchase order No.** | el candado 10 |
+| **Purchase order or email file** | el candado 11 |
+| **Cotizador** | quién cotizó |
+| pestaña **Handoff** propia | lo que operaciones necesita |
+
+📌 **Esto cambia el plan de construcción, y para bien.** Todo lo que la
+especificación daba por «campo a crear» **ya tiene dónde vivir**: lo que falta es
+**llenarlo desde la suite**, no inventarlo en Odoo. Y de paso confirma los nombres
+técnicos del §17 quirk 5 de `CLAUDE.md` contra la pantalla, no contra el recuerdo.
+
+⚠️ Ojo con el nombre del segundo: es **«Purchase order *or email* file»**. El
+cliente a veces no manda una PO formal sino **un correo**, y el campo ya lo
+contempla. El candado 11 tiene que aceptar las dos cosas — un correo exportado a
+PDF es una prueba legítima —, y el olfateo de §8.3 no debe tratarlo como sospechoso
+por no parecer una orden de compra.
+
+### 9.3 · Las condiciones comerciales al pie vienen de plantilla, **con los huecos sin llenar**
+
+El bloque que va al pie del documento sale de una plantilla y llega con
+**tiempo de entrega, moneda y vigencia en blanco**. Eso explica por qué la medición
+de `compromisos.js` encontró **49 de 176 órdenes sin términos de pago, 0 con
+incoterm y 0 con fecha comprometida**: el hueco existe, se imprime, y nadie lo llena
+porque el documento *se ve completo*.
+
+**Confirma la decisión de fondo de los cinco compromisos:** el compromiso tiene que
+ser **campo**, no párrafo. Un hueco en un párrafo no se puede exigir; un campo
+vacío sí.
+
+### 9.4 · 🔴 `Payment Terms` arranca en «Immediate» · **un valor por omisión NO es una elección**
+
+Y ésta es la que más enseña. Odoo precarga **«Immediate»**, así que quien no lo
+cambia **deja lo que vino solo** — y la orden sale con un término que nadie
+decidió. Desde fuera, una orden «Immediate» puesta a propósito y una que nadie tocó
+**se ven idénticas**.
+
+📌 **La regla que sale de aquí, y vale para todos los candados:**
+
+> **Un candado no puede conformarse con «hay un valor»: tiene que exigir una
+> ELECCIÓN.** Un campo precargado se salta cualquier validación de presencia, y el
+> resultado es peor que el campo vacío — porque el vacío se ve, y el valor por
+> omisión se disfraza de decisión.
+
+Es la misma familia de los cuatro vacíos que ya están en `CLAUDE.md` §20 (#11 el
+`[]`, #17 el cero, #18 la fila ausente, §9 el `insertadas: 0`), pero **al revés**:
+ahí un vacío se leía como una respuesta; aquí **una respuesta que nadie dio se lee
+como una decisión**. Es más difícil de ver, porque no hay nada que falte.
+
+#### Lo que esto obliga, en dos sitios
+
+**(a) En el workflow que crea la orden.** Nunca omitir `payment_term_id` y dejar
+que Odoo lo rellene: **siempre** mandar el elegido. Omitirlo no es «no opinar», es
+**dejar que opine Odoo**.
+
+**(b) 🔴 En nuestro propio código, que tiene la misma enfermedad.** Medido hoy sobre
+un machote recién creado:
+
+```
+pago.dias      = null      → faltantes() lo pide  ✅
+incoterm       = null      → faltantes() lo pide  ✅
+entrega.texto  = ""        → faltantes() lo pide  ✅
+moneda         = "MXN"     → viene de la EMPRESA, no es un default que alguien deba elegir
+vigencia.dias  = 30        → faltantes() NO lo pide  🔴
+```
+
+**La vigencia es nuestro «Immediate».** Nace en 30 y `faltantes()` la da por buena
+porque `if (!c.vigencia.dias)` nunca es cierto. Así que **de los cinco compromisos,
+cuatro se exigen y uno se acepta** — y llevamos desde la V1.33 creyendo que se
+exigían los cinco.
+
+⚠️ **Y no es lo mismo que Monterrey.** El país/ciudad también nacen escritos, pero
+eso **está decidido a propósito y anotado en el código** («Monterrey
+PRESELECCIONADO, que es la decisión de Esteban… nace escrito»). La vigencia no tiene
+esa nota: es un default que se coló, no uno que alguien eligió.
+
+**Propuesta, NO aplicada esta noche** (toca `compromisos.js`, que se validó en la
+V1.33 y cuyas pruebas acaban de correr):
+- `vacio()` nace con `vigencia.dias: null`.
+- `faltantes()` la pide como a las otras tres.
+- La pantalla ofrece 15 / 30 / 45 / 60 como atajos, **sin ninguno preseleccionado**.
+- A los machotes que ya existen **no se les inventa** una vigencia: llegan sin ella
+  y la regla los manda a escribirla, igual que se hizo con el país en la V1.26.
+
+**Es decisión de Esteban** porque hace que los machotes en curso pidan un dato que
+hasta hoy no pedían.

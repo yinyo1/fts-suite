@@ -62,7 +62,7 @@ estas pantallas.**
 600 #6c757d   700 #495057   800 #343a40   900 #212529
 ```
 
-### Marca — 🔎 **y aquí hay que mirar la pantalla**
+### Marca — ✅ **MEDIDO en la instancia el 28-sep-2026**
 El código define **dos** y no son el mismo morado:
 
 ```
@@ -71,14 +71,17 @@ $o-enterprise-color: #714B67
 $o-brand-primary:    $o-community-color   (en el código de Community)
 ```
 
-**FTS corre Odoo 19 SaaS Enterprise**, y el módulo `web_enterprise` —que es privado y **no
-se pudo leer**— reasigna `$o-brand-primary` al color Enterprise. O sea que **lo más probable
-es que el morado vivo sea `#714B67`**, pero eso es una deducción, no una medición.
+**FTS corre Odoo 19 SaaS Enterprise**, y el módulo `web_enterprise` —que es privado y no se
+pudo leer— reasigna `$o-brand-primary` al color Enterprise.
 
-**Cómo se resuelve en diez segundos:** abrir cualquier orden en Odoo, tomar el color del
-botón primario con el cuentagotas, y escribirlo aquí. Mientras tanto la variable de la suite
-apunta a `#714B67` **con el porqué anotado**, para que quien lo corrija sepa que se eligió a
-sabiendas y no por descuido.
+✅ **El 28-sep-2026 Esteban lo midió con el cuentagotas sobre una cotización real: el
+primario de la instancia es `#714B67`.** La deducción era correcta, y ahora ya no es una
+deducción. `--o19-brand` se queda como está.
+
+📌 **Se deja escrito el camino, no sólo el resultado.** Durante unas horas este valor fue una
+suposición razonable marcada como tal, y eso es exactamente lo que permitió resolverla en
+diez segundos: la variable estaba en UN sitio y la nota decía qué faltaba comprobar. Una
+suposición escrita como hecho se habría quedado ahí para siempre.
 
 ### Semánticos
 ```
@@ -191,7 +194,7 @@ estilos sueltos.
 
 ## 8 · Lo que falta, para no fingir que está completo
 
-- 🔎 **El morado vivo** (`#714B67` contra `#71639e`) — un cuentagotas sobre la pantalla real.
+- ~~El morado vivo~~ — ✅ **resuelto el 28-sep-2026: `#714B67`**, medido con cuentagotas.
 - 🔎 **El aspecto del campo enfocado y del inválido** en Enterprise: el `web_enterprise` es
   privado y puede alterarlos. La fuente da el Community.
 - **La barra de estado de arriba** (`.o_statusbar_status`): se tiene su **altura** (33 px)
@@ -200,3 +203,25 @@ estilos sueltos.
 - **Los nombres de campo en español** de la pantalla de órdenes: ésos **sí** hay que sacarlos
   de la instancia, no del código, porque dependen de la traducción instalada. Es lo que más
   va a importar en la fase 2 y es trabajo de una pasada con la pantalla enfrente.
+
+---
+
+## 9 · Lo que la instancia enseñó, y el código no decía
+
+De la misma mirada del 28-sep-2026 salieron tres cosas que **ninguna hoja de estilo podía
+contar**, y están en `docs/trazabilidad/ESPECIFICACION-CONFIRMACION.md` §9:
+
+1. **Los campos de Studio que hacen falta YA existen** (`Purchase order No.`,
+   `Purchase order or email file`, `Cotizador`, y una pestaña `Handoff` propia). No hay que
+   crear nada: hay que **llenarlos desde la suite**.
+2. **El bloque de condiciones comerciales al pie llega de plantilla con los huecos vacíos.**
+   Por eso el compromiso tiene que ser CAMPO y no párrafo: un hueco en un párrafo no se puede
+   exigir.
+3. 🔴 **`Payment Terms` arranca en «Immediate»**, así que quien no lo cambia deja lo que vino
+   solo — y desde fuera una orden puesta a propósito y una que nadie tocó **se ven idénticas**.
+   De ahí sale la regla que vale para TODOS los candados: **un valor por omisión no es una
+   elección**.
+
+📌 **Y la lección sobre este documento:** las tres se vieron **mirando la pantalla**, no
+leyendo el código — igual que los bugs de `CLAUDE.md` §20 #12. Un sistema visual se puede
+leer del código; **cómo se usa de verdad, no.**
