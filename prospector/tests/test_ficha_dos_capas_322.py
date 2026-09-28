@@ -437,3 +437,22 @@ def test_el_correo_NO_lleva_un_BR_adentro():
         assert "<br>" not in cor, "un correo con <br> no se puede copiar"
     css = _t if False else limpia
     assert "word-break:break-all" in fichamod.modo_limpio(_corrida_rica())
+
+
+def test_NINGUNA_celda_de_la_pestana_usa_una_clase_SIN_CSS():
+    """#323 renombro las clases de la pestana y una celda se quedo con la vieja:
+    `class="q"` sobrevivio en la columna de consultas y despues del restyle esa
+    clase ya no existia en el CSS, asi que la consulta salia sin monoespaciada y
+    sin corte de palabra. No lo cacho ninguna prueba -- se vio al leer el HTML
+    generado--, y esta es la prueba que faltaba.
+    """
+    h = fichamod.modo_limpio(_corrida_rica())
+    css = h[h.index("<style>"):h.index("</style>")]
+    import re as _re
+    usadas = {c for attr in _re.findall(r'class="([^"]+)"', h)
+              for c in attr.split()}
+    definidas = set(_re.findall(r"[.#]([A-Za-z][\w-]*)", css))
+    # las que la plantilla usa y el CSS no define. `wrap` y las semanticas de
+    # estado van con prefijo, asi que se comparan por nombre simple.
+    huerfanas = {c for c in usadas if c not in definidas}
+    assert not huerfanas, f"clases usadas y sin CSS: {sorted(huerfanas)}"

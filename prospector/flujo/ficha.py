@@ -803,7 +803,7 @@ def capa_tecnica(c: Corrida) -> str:
         fuentes.append(
             f'<tr><td>{html.escape(b.modulo)}</td>'
             f'<td>{html.escape(b.etiqueta or b.fuente)}</td>'
-            f'<td class="q">{html.escape(b.consulta)}</td>'
+            f'<td class="mono">{html.escape(b.consulta)}</td>'
             f'<td class="c">{b.resultados}</td>'
             f'<td class="c">{html.escape(b.ts[:10])}</td>'
             f'<td class="c">{liga}</td></tr>')
