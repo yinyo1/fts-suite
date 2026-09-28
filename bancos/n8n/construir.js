@@ -37,7 +37,13 @@ const paramSol = `/* Parámetros de la corrida. Real: hoy de Monterrey, modo rea
  * Ensayos (a mano): fechas fijas, modo prueba (no se envía nada; se registra en bancos.correos con modo=prueba). */
 ${B64}
 const ens = n => { try { return $(n).isExecuted; } catch (e) { return false; } };
+// Arranque (decisión de Esteban, #331): el primer envío real sale el lunes 28-sep-2026 a las 10:00 (envío
+// único); ese lunes el disparador de las 9:00 no hace nada, y el de las 10:00 no hace nada ningún otro día.
+const hoyMty = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Monterrey' });
+if (ens('Arranque lun 28-sep-2026 10:00') && hoyMty !== '2026-09-28') return [];
+if (ens('Dias habiles 9:00') && hoyMty === '2026-09-28') return [];
 let ps = [{ modo: 'real' }];
+if (ens('Ensayo 0 · arranque (lun 28-sep)')) ps = [{ escenario: 0, hoy: '2026-09-28', modo: 'prueba' }];
 if (ens('Ensayo 1 · primer dia habil (1-oct)')) ps = [{ escenario: 1, hoy: '2026-10-01', modo: 'prueba' }];
 if (ens('Ensayo 2 · dia intermedio (2-oct)')) ps = [{ escenario: 2, hoy: '2026-10-02', modo: 'prueba' }];
 if (ens('Ensayo 3 · rezago semanal (mar 6 y lun 5-oct)')) ps = [
@@ -49,6 +55,9 @@ const sol = `import { workflow, node, trigger, expr } from '@n8n/workflow-sdk';
 ${comunes}
 const diario = trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.2, config: { name: 'Dias habiles 9:00',
   parameters: { rule: { interval: [{ field: 'cronExpression', expression: '0 9 * * 1-5' }] } } } });
+const arranque = trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.2, config: { name: 'Arranque lun 28-sep-2026 10:00',
+  parameters: { rule: { interval: [{ field: 'cronExpression', expression: '0 10 28 9 *' }] } } } });
+const e0 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Ensayo 0 · arranque (lun 28-sep)' } });
 const e1 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Ensayo 1 · primer dia habil (1-oct)' } });
 const e2 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Ensayo 2 · dia intermedio (2-oct)' } });
 const e3 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Ensayo 3 · rezago semanal (mar 6 y lun 5-oct)' } });
@@ -66,6 +75,8 @@ const liga = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { 
   credentials: ${GRAPH} } });
 const armar = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Code - Armar',
   parameters: { jsCode: ${J(correo + '\n' + leer('adaptador_solicitud.js'))} } } });
+const hilo = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Code - Hilo',
+  parameters: { jsCode: ${J(leer('hilo_solicitud.js'))} } } });
 ${filtro('fEnviar', 'Filtro - enviar', 'enviar')}
 ${filtro('fRegistrar', 'Filtro - ensayo (registrar sin enviar)', 'registrar')}
 ${filtro('fAviso', 'Filtro - aviso a Esteban', 'aviso')}
@@ -75,13 +86,15 @@ const aviso = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {
   credentials: ${GRAPH} } });
 export default workflow('fts-bancos-solicitud-v2', 'fts_bancos_solicitud_v2')
   .add(diario).to(params)
+  .add(arranque).to(params)
+  .add(e0).to(params)
   .add(e1).to(params)
   .add(e2).to(params)
   .add(e3).to(params)
-  .add(params).to(fsol).to(liga).to(armar)
-  .add(armar).to(fEnviar).to(enviarMime).to(renglon).to(registrar)
-  .add(armar).to(fRegistrar).to(renglon)
-  .add(armar).to(fAviso).to(aviso);
+  .add(params).to(fsol).to(liga).to(armar).to(hilo)
+  .add(hilo).to(fEnviar).to(enviarMime).to(renglon).to(registrar)
+  .add(hilo).to(fRegistrar).to(renglon)
+  .add(hilo).to(fAviso).to(aviso);
 `;
 
 // ── acuse ──
@@ -89,6 +102,7 @@ const paramAcu = `/* Una corrida del buzón = una tanda = un acuse. En ensayo (a
 ${B64}
 let modo = 'real';
 try { if ($('Ensayo (a mano)').isExecuted) modo = 'prueba'; } catch (e) {}
+try { if ($('Ensayo · corrida real (a mano)').isExecuted) modo = 'prueba'; } catch (e) {}
 return $input.all().map(it => { const p = { corrida_id: it.json.corrida_id, hoy: it.json.hoy || null, modo };
   return { json: { ...p, p_b64: b64(JSON.stringify(p)) } }; });
 `;
@@ -97,6 +111,10 @@ ${comunes}
 const cada30 = trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.2, config: { name: 'Cada 30 min 7-20 h (min 12 y 42)',
   parameters: { rule: { interval: [{ field: 'cronExpression', expression: '12,42 7-20 * * *' }] } } } });
 const ensayo = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Ensayo (a mano)' } });
+// Ensayo sobre una corrida real ya terminada (la carga inicial del buzón): arma el acuse sin enviarlo.
+const ensayoReal = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Ensayo · corrida real (a mano)' } });
+const corridaEnsayo = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Code - Corrida de ensayo',
+  parameters: { jsCode: "/* Corrida real a ensayar (sin enviar): la carga inicial del buzón del 28-sep-2026. */\nreturn [{ json: { corrida_id: 9 } }];\n" } } });
 const pend = node({ type: 'n8n-nodes-base.postgres', version: 2.6, config: { name: 'Postgres - Corridas sin acuse',
   parameters: { operation: 'executeQuery', query: 'SELECT corrida_id, terminada_at FROM bancos.f_corridas_sin_acuse();', options: {} },
   credentials: ${PG} } });
@@ -113,6 +131,7 @@ ${filtro('fRegistrar', 'Filtro - ensayo (registrar sin enviar)', 'registrar')}
 export default workflow('fts-bancos-acuse', 'fts_bancos_acuse')
   .add(cada30).to(pend)
   .add(ensayo).to(pend)
+  .add(ensayoReal).to(corridaEnsayo).to(params)
   .add(pend).to(params).to(facu).to(armar)
   .add(armar).to(fEnviar).to(enviarMime).to(renglon).to(registrar)
   .add(armar).to(fRegistrar).to(renglon);

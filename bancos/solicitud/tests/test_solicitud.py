@@ -150,7 +150,9 @@ def test_escenario_2_dia_intermedio_y_una_vez_al_dia(base):
     assert real["tipo"] == "solicitud"
     registrar(render("solicitud", real), modo="real", hoy="2026-10-02")
     assert uno("SELECT bancos.f_solicitud('2026-10-02','real')")["razon"] == "ya salió un correo hoy"
-    assert uno("SELECT bancos.f_solicitud('2026-09-28','real')")["razon"].startswith("antes de")
+    # arranque: desde el lunes 28-sep-2026 (bancos_0005); el domingo 27 todavía no
+    assert uno("SELECT bancos.f_solicitud('2026-09-27','real')")["razon"].startswith("antes de")
+    assert not uno("SELECT bancos.f_solicitud('2026-09-28','real')")["razon"].startswith("antes de")
 
 
 def test_escenario_3_rezago_semanal(base):
