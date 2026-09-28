@@ -59,7 +59,7 @@ LANGUAGE plpgsql IMMUTABLE AS $fn$
 DECLARE k text; v text; r text := p_txt;
 BEGIN
   FOR k, v IN SELECT key, value FROM jsonb_each_text(p_vars) LOOP
-    r := replace(r, '{{' || k || '}}', coalesce(v, ''));
+    r := replace(r, '[[' || k || ']]', coalesce(v, ''));
   END LOOP;
   RETURN r;
 END
@@ -854,26 +854,26 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA retardos TO retardos_app;
 
 -- ── plantillas (sin guiones largos) ───────────────────────────────────────
 INSERT INTO retardos.plantilla (clave, asunto, cuerpo_html) VALUES
-('notificacion_aviso', '[{{folio}}] Aviso de retardo',
- '<p>Hola {{nombre}}:</p><p>El control de asistencia registró retardos en el periodo {{periodo}}. Este correo es un <b>aviso informativo</b> y no requiere respuesta.</p>{{detalle}}<p>Si alguno de estos días tenías permiso, estabas en campo o hubo un error en la checada, avisa a Recursos Humanos o a tu supervisor para corregirlo.</p><p>Recursos Humanos<br>SERVICIOS FTS SA DE CV</p>'),
-('notificacion_carta_compromiso', '[{{folio}}] Carta compromiso por retardos',
- '<p>Hola {{nombre}}:</p><p>En el periodo {{periodo}} acumulaste {{retardos_n}} retardos:</p>{{detalle}}<p>Te adjuntamos una <b>carta compromiso</b>. Por favor imprímela, fírmala y <b>responde a este mismo correo</b> con la hoja firmada (PDF o foto clara desde el celular) a más tardar el <b>{{vence}}</b>. No cambies el asunto: el folio {{folio}} nos ayuda a encontrar tu caso.</p><p>Si no estás de acuerdo con algún retardo, responde explicando el motivo: tienes derecho a ser escuchado.</p><p>Recursos Humanos<br>SERVICIOS FTS SA DE CV</p>'),
-('notificacion_acta', '[{{folio}}] Acta administrativa por retardos',
- '<p>Hola {{nombre}}:</p><p>En el periodo {{periodo}} acumulaste {{retardos_n}} retardos:</p>{{detalle}}<p>Se levanta un <b>acta administrativa</b> (adjunta). Preséntate con Recursos Humanos para firmarla ante dos testigos, o responde a este correo con la hoja firmada a más tardar el <b>{{vence}}</b>, sin cambiar el asunto.</p><p>Si no estás de acuerdo, responde explicando el motivo: tienes derecho a ser escuchado antes de cualquier medida.</p><p>Recursos Humanos<br>SERVICIOS FTS SA DE CV</p>'),
-('notificacion_suspension', '[{{folio}}] Citatorio por reincidencia en retardos',
- '<p>Hola {{nombre}}:</p><p>En el periodo {{periodo}} acumulaste {{retardos_n}} retardos, después de haber firmado documentos previos:</p>{{detalle}}<p>Recursos Humanos te citará para escucharte antes de decidir una medida disciplinaria conforme al Reglamento Interior de Trabajo y a la Ley Federal del Trabajo. Adjuntamos el documento. Responde a este correo con la hoja firmada a más tardar el <b>{{vence}}</b>, sin cambiar el asunto.</p><p>Recursos Humanos<br>SERVICIOS FTS SA DE CV</p>'),
-('ruta_supervisor', '[{{folio}}] Entrega en físico: {{nombre_nivel}} para {{nombre}}',
- '<p>Hola:</p><p>{{nombre}} no tiene un correo válido registrado. Te pedimos imprimir el documento adjunto ({{nombre_nivel}}), entregárselo en físico y pedirle que lo firme. Después entrégalo a Recursos Humanos o respóndelo a este correo con la foto de la hoja firmada, sin cambiar el asunto.</p>{{detalle}}<p>Recursos Humanos<br>SERVICIOS FTS SA DE CV</p>'),
-('pide_hoja', 'RE: [{{folio}}] Falta la hoja firmada',
- '<p>Hola:</p><p>Recibimos tu respuesta al folio {{folio}}, pero no trae la hoja firmada o el archivo no se puede leer. Por favor responde a este correo adjuntando la hoja firmada en PDF o una foto clara tomada con el celular.</p><p>Recursos Humanos<br>SERVICIOS FTS SA DE CV</p>'),
-('recordatorio', 'Recordatorio: [{{folio}}] {{nombre_nivel}} pendiente de firma',
- '<p>Hola {{nombre}}:</p><p>Venció el plazo para entregar firmada la {{nombre_nivel}} del folio {{folio}}. Tienes hasta el <b>{{vence}}</b>. Responde a este correo con la hoja firmada, sin cambiar el asunto.</p><p>Con copia a tu supervisor y a Recursos Humanos.</p><p>Recursos Humanos<br>SERVICIOS FTS SA DE CV</p>'),
-('escalamiento', 'Escalamiento: [{{folio}}] sin firma después del recordatorio',
- '<p>El folio {{folio}} ({{nombre_nivel}} de {{nombre}}, periodo {{periodo}}) venció dos veces sin hoja firmada.</p>{{detalle}}<p>Se requiere que RH cite a la persona y, si se niega a firmar, lo registre con dos testigos en el panel de Retardos.</p>'),
-('aviso_rh_firma', 'Hoja recibida: [{{folio}}] {{nombre}}',
- '<p>Llegó la hoja firmada del folio {{folio}} ({{nombre_nivel}} de {{nombre}}). Revísala y valídala en el panel de Retardos.</p>'),
-('recordatorio_rh', 'Pendiente de validar: [{{folio}}] {{nombre}}',
- '<p>La hoja del folio {{folio}} ({{nombre_nivel}} de {{nombre}}) lleva más de dos días hábiles sin validar. Revísala en el panel de Retardos.</p>'),
-('alerta_accion', 'Alerta: [{{folio}}] la suspensión no cuadra',
- '<p>Folio {{folio}} ({{nombre}}), suspensión del {{accion_desde}} al {{accion_hasta}}.</p><p><b>{{hallazgo}}</b></p><p>Revisa el caso en el panel de Retardos y en Nómina · Incidencias antes del corte.</p>')
+('notificacion_aviso', '[[[folio]]] Aviso de retardo',
+ '<p>Hola [[nombre]]:</p><p>El control de asistencia registró retardos en el periodo [[periodo]]. Este correo es un <b>aviso informativo</b> y no requiere respuesta.</p>[[detalle]]<p>Si alguno de estos días tenías permiso, estabas en campo o hubo un error en la checada, avisa a Recursos Humanos o a tu supervisor para corregirlo.</p><p>Recursos Humanos<br>SERVICIOS FTS SA DE CV</p>'),
+('notificacion_carta_compromiso', '[[[folio]]] Carta compromiso por retardos',
+ '<p>Hola [[nombre]]:</p><p>En el periodo [[periodo]] acumulaste [[retardos_n]] retardos:</p>[[detalle]]<p>Te adjuntamos una <b>carta compromiso</b>. Por favor imprímela, fírmala y <b>responde a este mismo correo</b> con la hoja firmada (PDF o foto clara desde el celular) a más tardar el <b>[[vence]]</b>. No cambies el asunto: el folio [[folio]] nos ayuda a encontrar tu caso.</p><p>Si no estás de acuerdo con algún retardo, responde explicando el motivo: tienes derecho a ser escuchado.</p><p>Recursos Humanos<br>SERVICIOS FTS SA DE CV</p>'),
+('notificacion_acta', '[[[folio]]] Acta administrativa por retardos',
+ '<p>Hola [[nombre]]:</p><p>En el periodo [[periodo]] acumulaste [[retardos_n]] retardos:</p>[[detalle]]<p>Se levanta un <b>acta administrativa</b> (adjunta). Preséntate con Recursos Humanos para firmarla ante dos testigos, o responde a este correo con la hoja firmada a más tardar el <b>[[vence]]</b>, sin cambiar el asunto.</p><p>Si no estás de acuerdo, responde explicando el motivo: tienes derecho a ser escuchado antes de cualquier medida.</p><p>Recursos Humanos<br>SERVICIOS FTS SA DE CV</p>'),
+('notificacion_suspension', '[[[folio]]] Citatorio por reincidencia en retardos',
+ '<p>Hola [[nombre]]:</p><p>En el periodo [[periodo]] acumulaste [[retardos_n]] retardos, después de haber firmado documentos previos:</p>[[detalle]]<p>Recursos Humanos te citará para escucharte antes de decidir una medida disciplinaria conforme al Reglamento Interior de Trabajo y a la Ley Federal del Trabajo. Adjuntamos el documento. Responde a este correo con la hoja firmada a más tardar el <b>[[vence]]</b>, sin cambiar el asunto.</p><p>Recursos Humanos<br>SERVICIOS FTS SA DE CV</p>'),
+('ruta_supervisor', '[[[folio]]] Entrega en físico: [[nombre_nivel]] para [[nombre]]',
+ '<p>Hola:</p><p>[[nombre]] no tiene un correo válido registrado. Te pedimos imprimir el documento adjunto ([[nombre_nivel]]), entregárselo en físico y pedirle que lo firme. Después entrégalo a Recursos Humanos o respóndelo a este correo con la foto de la hoja firmada, sin cambiar el asunto.</p>[[detalle]]<p>Recursos Humanos<br>SERVICIOS FTS SA DE CV</p>'),
+('pide_hoja', 'RE: [[[folio]]] Falta la hoja firmada',
+ '<p>Hola:</p><p>Recibimos tu respuesta al folio [[folio]], pero no trae la hoja firmada o el archivo no se puede leer. Por favor responde a este correo adjuntando la hoja firmada en PDF o una foto clara tomada con el celular.</p><p>Recursos Humanos<br>SERVICIOS FTS SA DE CV</p>'),
+('recordatorio', 'Recordatorio: [[[folio]]] [[nombre_nivel]] pendiente de firma',
+ '<p>Hola [[nombre]]:</p><p>Venció el plazo para entregar firmada la [[nombre_nivel]] del folio [[folio]]. Tienes hasta el <b>[[vence]]</b>. Responde a este correo con la hoja firmada, sin cambiar el asunto.</p><p>Con copia a tu supervisor y a Recursos Humanos.</p><p>Recursos Humanos<br>SERVICIOS FTS SA DE CV</p>'),
+('escalamiento', 'Escalamiento: [[[folio]]] sin firma después del recordatorio',
+ '<p>El folio [[folio]] ([[nombre_nivel]] de [[nombre]], periodo [[periodo]]) venció dos veces sin hoja firmada.</p>[[detalle]]<p>Se requiere que RH cite a la persona y, si se niega a firmar, lo registre con dos testigos en el panel de Retardos.</p>'),
+('aviso_rh_firma', 'Hoja recibida: [[[folio]]] [[nombre]]',
+ '<p>Llegó la hoja firmada del folio [[folio]] ([[nombre_nivel]] de [[nombre]]). Revísala y valídala en el panel de Retardos.</p>'),
+('recordatorio_rh', 'Pendiente de validar: [[[folio]]] [[nombre]]',
+ '<p>La hoja del folio [[folio]] ([[nombre_nivel]] de [[nombre]]) lleva más de dos días hábiles sin validar. Revísala en el panel de Retardos.</p>'),
+('alerta_accion', 'Alerta: [[[folio]]] la suspensión no cuadra',
+ '<p>Folio [[folio]] ([[nombre]]), suspensión del [[accion_desde]] al [[accion_hasta]].</p><p><b>[[hallazgo]]</b></p><p>Revisa el caso en el panel de Retardos y en Nómina · Incidencias antes del corte.</p>')
 ON CONFLICT (clave) DO NOTHING;

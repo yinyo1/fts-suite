@@ -18,6 +18,10 @@
 --   5. Configuración en tablas, nunca en nodos de n8n.
 --   6. Etiquetas de dólar CON NOMBRE ($fn$, $trg$…), nunca dos signos de
 --      dólar juntos (db/README.md regla 4).
+--   7. NUNCA dos llaves juntas en el .sql: el nodo Postgres de n8n evalúa como
+--      expresión cualquier par de llaves dentro del query, aunque venga de un
+--      dato. Medido el 28-sep-2026 al aplicar esta migración: los marcadores
+--      de plantilla con llaves rompieron el SQL. Por eso los marcadores son [[x]].
 -- ═══════════════════════════════════════════════════════════════════════════
 
 CREATE SCHEMA IF NOT EXISTS retardos;
@@ -292,7 +296,7 @@ CREATE TABLE IF NOT EXISTS retardos.plantilla (
   actualizado_por text        NOT NULL DEFAULT 'semilla',
   actualizado_at  timestamptz NOT NULL DEFAULT now()
 );
-COMMENT ON TABLE retardos.plantilla IS 'Textos de los correos con marcadores {{folio}}, {{nombre}}, {{detalle}}… Sin guiones largos.';
+COMMENT ON TABLE retardos.plantilla IS 'Textos de los correos con marcadores [[folio]], [[nombre]], [[detalle]]… Sin guiones largos.';
 
 -- ══ PERMISOS ══════════════════════════════════════════════════════════════
 GRANT SELECT ON ALL TABLES IN SCHEMA retardos TO retardos_app;
