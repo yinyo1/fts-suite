@@ -19,6 +19,25 @@ HTML y los CSV privados de OneDrive, en `FTS Finanzas - Bancos/02 Base maestra d
 | `db/migrations/bancos/bancos_0008_*.sql` (v1) | Amplía las reglas (D2, D3, D6, Conmet por cliente). Agrega las tablas editables `nomina_oficina`, `partidas_identificadas` y `er_parametros`, la bitácora `er_calculos`, la vista `v_auditoria_estados` y el rol `bancos_er`. `bancos_er` lee como `bancos_lector` y **sólo inserta** en `er_calculos` y `partidas_identificadas`; no tiene UPDATE ni DELETE. |
 | workflow n8n `fts_bancos_estado_resultados` (`LW3DVENZjlI3Kurp`) | El recálculo automático. Baja `calcular.js` **fijado por commit** (constante `CALC_SHA` en el nodo `Code - Disparo`). |
 
+## Reglas vigentes (v1.1)
+
+- **R1, nómina por horas:** la nómina total del mes del banco se reparte entre las personas en proporción a su peso. El peso es su monto de Carga MO desde la semana 28 y sus horas de asistencia antes. Cada persona va a costo según su % a proyecto:
+  - sale de las órdenes de venta en `hr.attendance` o de las líneas `P` de Carga MO;
+  - el resto va a gastos administrativos (bolsas comunes);
+  - quien nunca cargó horas va a «Nómina sin horas cargadas»;
+  - los meses sin horas clasificadas se marcan «reparto de nómina estimado»;
+  - `nomina_oficina` queda sólo como corrección manual.
+- **R2, Jeeves y Payana por analítica:** primero la analítica de la factura, ignorando el plan 20.
+  - En Jeeves es la factura con la que se concilió el consumo (`reconciled_lines_name`).
+  - Proyecto → costo; común (plan 2) → administrativo; mixta → se parte.
+  - Sin analítica → reglas de comercio o proveedor. Sin regla → costo «sin clasificar».
+- **R3, BBVA es el universo:**
+  - conciliación mensual de Jeeves, Payana y Nómina contra sus fondeos desde BBVA, con la diferencia acumulada y el «pendiente de fondear»;
+  - el puente ampliado debe cuadrar al centavo;
+  - si no cuadra, no se publica versión nueva ni se sobrescribe el actual.
+- `pruebas.js`: pruebas con datos sintéticos de R1–R3 (a–h) y de la Vista D (a–c). Se corre con `node bancos/edo_resultados/pruebas.js`.
+- Publicar con etiqueta: `{ "publicar": true, "etiqueta": "v1.1", "forzar_correo": true, "motivo": "…" }` genera `historial/ER_2026_v1.1.*`.
+
 ## Disparos del workflow
 
 | disparo | cuándo | qué hace |
