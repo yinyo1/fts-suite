@@ -194,12 +194,18 @@ function simFoto(q){const c=RV.caj[RV.i];const cv=$('ft');cv.width=c.ancho;cv.he
  pintaCajon(ctx,c,q>=0?[q]:[]);// ruido de camara y luz
  const im=ctx.getImageData(0,0,cv.width,cv.height);let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;for(let i=0;i<im.data.length;i+=4){const n=(rnd()-0.5)*40;im.data[i]+=n;im.data[i+1]+=n;im.data[i+2]+=n}ctx.putImageData(im,0,0);detectar()}
 function fotoReal(inp){const f=inp.files[0];if(!f)return;const c=RV.caj[RV.i];const img=new Image();img.onload=()=>{const cv=$('ft');cv.width=c.ancho;cv.height=c.fondo;cv.style.display='block';cv.getContext('2d').drawImage(img,0,0,c.ancho,c.fondo);detectar(true)};img.src=URL.createObjectURL(f)}
+// #343 bloque 5: amarillo por TONO (42 a 52 grados, saturacion > 150/255, valor > 100/255). La regla anterior por RGB
+// aceptaba el naranja Truper (tono 36) y no veia el amarillo del hueco en sombra. Umbral 0.44 sacado del barrido de
+// renders (datos/prueba_deteccion_barrido.json): el peor faltante marca 0.459 y la peor pieza presente 0.418.
+const UMBRAL_HUECO=0.44;
+function esAmarillo(r,g,b){const mx=Math.max(r,g,b),mn=Math.min(r,g,b);if(mx<=100||mx===0||(mx-mn)*255<=150*mx)return false;
+ let h;const dl=mx-mn;if(mx===r)h=60*(((g-b)/dl)%6);else if(mx===g)h=60*((b-r)/dl+2);else h=60*((r-g)/dl+4);if(h<0)h+=360;return h>=42&&h<=52}
 function detectar(real){const c=RV.caj[RV.i];const cv=$('ft');const ctx=cv.getContext('2d');const res=[];
  c.p.forEach((p,i)=>{const x0=Math.round(p.x+p.w*0.2),y0=Math.round(p.y+p.h*0.2),w=Math.max(1,Math.round(p.w*0.6)),h=Math.max(1,Math.round(p.h*0.6));const d=ctx.getImageData(x0,y0,w,h).data;let am=0;
-  for(let j=0;j<d.length;j+=4){const r=d[j],g=d[j+1],bl=d[j+2];if(r>170&&g>120&&bl<110&&r-bl>90)am++}const frac=am/(d.length/4);res.push({i,a:p.a,d:p.d,frac,hueco:frac>0.45});
-  ctx.strokeStyle=frac>0.45?'#c62828':'#2e7d32';ctx.lineWidth=4;ctx.strokeRect(p.x,p.y,p.w,p.h)});
+  for(let j=0;j<d.length;j+=4){if(esAmarillo(d[j],d[j+1],d[j+2]))am++}const frac=am/(d.length/4);res.push({i,a:p.a,d:p.d,frac,hueco:frac>UMBRAL_HUECO});
+  ctx.strokeStyle=frac>UMBRAL_HUECO?'#c62828':'#2e7d32';ctx.lineWidth=4;ctx.strokeRect(p.x,p.y,p.w,p.h)});
  RV.res=res;$('det').innerHTML=`<table><tr><th>Activo</th><th>% amarillo visible</th><th>Resultado</th></tr>${res.map(r=>`<tr><td>${r.a}</td><td>${Math.round(r.frac*100)} %</td><td data-t="res-${r.a}">${r.hueco?'<b style="color:var(--bad)">HUECO</b>':'ok'}</td></tr>`).join('')}</table>
- <div class="mut">Regla: mas de 45 % de amarillo en el centro de la silueta = hueco. ${real?'Foto real: solo funciona si esta encuadrada al borde interior del cajon; el alineado automatico queda para la fase 2.':'Foto simulada con ruido; es la demo del metodo, no una prueba de campo.'}</div>`}
+ <div class="mut">Regla: mas de 44 % de amarillo (por tono) en el centro de cada hueco = hueco. Los juegos se revisan pieza por pieza. ${real?'Foto real: solo funciona si esta encuadrada al borde interior del cajon; el alineado automatico queda para la fase 2.':'Foto simulada con ruido; es la demo del metodo, no una prueba de campo.'}</div>`}
 function sigRev(){if(RV.res)for(const r of RV.res.filter(r=>r.hueco)){const f={kit:RV.id,a:r.a.replace(/-01-/,'-'+RV.id.slice(-2)+'-'),d:r.d,ts:S.reloj,cerrado:false};S.faltantes.push(f);RV.falt.push(f)}
  RV.res=null;if(RV.i<RV.caj.length-1){RV.i++;$('app').innerHTML=pasoRev();dibujarRef();return}
  const k=kit(RV.id);k.ult_revision=S.reloj;registrar('Revision',k,k.estado,k.estado,{nota:RV.falt.length?RV.falt.length+' faltante(s): alerta A4':'completo'});go('kits')}

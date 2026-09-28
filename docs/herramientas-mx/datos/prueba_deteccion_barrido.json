@@ -1,0 +1,954 @@
+{
+ "fecha": "2026-09-28",
+ "regla_v3": "tono 42-52, saturacion > 150, valor > 100, por hueco individual",
+ "barrido": {
+  "silueta": {
+   "0.45": {
+    "faltantes_probados": 102,
+    "v3_detectados": 102,
+    "v3_no_detectados": [],
+    "v3_falsos_huecos": 0,
+    "v3_falsos": [],
+    "v3_min_faltante": 0.719,
+    "v3_max_presente": [
+     0.23,
+     "BASE C3",
+     "FTS-BAS-01-C3-04"
+    ],
+    "v2_detectados": 59,
+    "v2_no_detectados": [
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-01",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-02",
+      0.174
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-03",
+      0.19
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-04",
+      0.183
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-05",
+      0.18
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-06",
+      0.18
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-07",
+      0.14
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-08",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-09",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-10",
+      0.137
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-11",
+      0.201
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-12",
+      0.195
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-13",
+      0.19
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-14",
+      0.19
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-15",
+      0.183
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-16",
+      0.177
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-17",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-18",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-19",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-20",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-21",
+      0.132
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-22",
+      0.132
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-23",
+      0.132
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-24",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-25",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-26",
+      0.132
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-27",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-28",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-29",
+      0.131
+     ],
+     [
+      "BASE C5",
+      "FTS-BAS-01-C5-02-01",
+      0.233
+     ],
+     [
+      "BASE C5",
+      "FTS-BAS-01-C5-02-03",
+      0.183
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-01-01",
+      0.233
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-01-03",
+      0.2
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-03-01",
+      0.157
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-03-03",
+      0.175
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-01",
+      0.0
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-02",
+      0.241
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-03",
+      0.278
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-04",
+      0.278
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-05",
+      0.185
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-06",
+      0.0
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-05-01",
+      0.211
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-05-03",
+      0.184
+     ]
+    ],
+    "v2_fichas_falsas": 61
+   },
+   "0.55": {
+    "faltantes_probados": 102,
+    "v3_detectados": 102,
+    "v3_no_detectados": [],
+    "v3_falsos_huecos": 0,
+    "v3_falsos": [],
+    "v3_min_faltante": 0.719,
+    "v3_max_presente": [
+     0.23,
+     "BASE C3",
+     "FTS-BAS-01-C3-04"
+    ],
+    "v2_detectados": 59,
+    "v2_no_detectados": [
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-01",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-02",
+      0.174
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-03",
+      0.19
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-04",
+      0.183
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-05",
+      0.18
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-06",
+      0.18
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-07",
+      0.14
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-08",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-09",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-10",
+      0.137
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-11",
+      0.201
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-12",
+      0.195
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-13",
+      0.19
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-14",
+      0.19
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-15",
+      0.183
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-16",
+      0.177
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-17",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-18",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-19",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-20",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-21",
+      0.132
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-22",
+      0.132
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-23",
+      0.132
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-24",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-25",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-26",
+      0.132
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-27",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-28",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-29",
+      0.131
+     ],
+     [
+      "BASE C5",
+      "FTS-BAS-01-C5-02-01",
+      0.233
+     ],
+     [
+      "BASE C5",
+      "FTS-BAS-01-C5-02-03",
+      0.183
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-01-01",
+      0.233
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-01-03",
+      0.2
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-03-01",
+      0.157
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-03-03",
+      0.175
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-01",
+      0.0
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-02",
+      0.241
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-03",
+      0.278
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-04",
+      0.278
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-05",
+      0.185
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-06",
+      0.0
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-05-01",
+      0.211
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-05-03",
+      0.184
+     ]
+    ],
+    "v2_fichas_falsas": 61
+   }
+  },
+  "foto": {
+   "0.45": {
+    "faltantes_probados": 102,
+    "v3_detectados": 102,
+    "v3_no_detectados": [],
+    "v3_falsos_huecos": 0,
+    "v3_falsos": [],
+    "v3_min_faltante": 0.459,
+    "v3_max_presente": [
+     0.418,
+     "BASE C6",
+     "FTS-BAS-01-C6-03-01"
+    ],
+    "v2_detectados": 59,
+    "v2_no_detectados": [
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-01",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-02",
+      0.174
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-03",
+      0.19
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-04",
+      0.183
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-05",
+      0.18
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-06",
+      0.18
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-07",
+      0.14
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-08",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-09",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-10",
+      0.137
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-11",
+      0.201
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-12",
+      0.195
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-13",
+      0.19
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-14",
+      0.19
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-15",
+      0.183
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-16",
+      0.177
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-17",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-18",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-19",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-20",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-21",
+      0.132
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-22",
+      0.132
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-23",
+      0.132
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-24",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-25",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-26",
+      0.132
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-27",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-28",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-29",
+      0.131
+     ],
+     [
+      "BASE C5",
+      "FTS-BAS-01-C5-02-01",
+      0.207
+     ],
+     [
+      "BASE C5",
+      "FTS-BAS-01-C5-02-03",
+      0.138
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-01-01",
+      0.253
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-01-03",
+      0.209
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-03-01",
+      0.128
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-03-03",
+      0.181
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-01",
+      0.207
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-02",
+      0.337
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-03",
+      0.362
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-04",
+      0.357
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-05",
+      0.277
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-06",
+      0.207
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-05-01",
+      0.257
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-05-03",
+      0.211
+     ]
+    ],
+    "v2_fichas_falsas": 16
+   },
+   "0.55": {
+    "faltantes_probados": 102,
+    "v3_detectados": 99,
+    "v3_no_detectados": [
+     [
+      "BASE C1",
+      "FTS-BAS-01-C1-06",
+      0.477
+     ],
+     [
+      "BASE C3",
+      "FTS-BAS-01-C3-01",
+      0.462
+     ],
+     [
+      "BASE C7",
+      "FTS-BAS-01-C7-01",
+      0.459
+     ]
+    ],
+    "v3_falsos_huecos": 0,
+    "v3_falsos": [],
+    "v3_min_faltante": 0.459,
+    "v3_max_presente": [
+     0.418,
+     "BASE C6",
+     "FTS-BAS-01-C6-03-01"
+    ],
+    "v2_detectados": 59,
+    "v2_no_detectados": [
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-01",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-02",
+      0.174
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-03",
+      0.19
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-04",
+      0.183
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-05",
+      0.18
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-06",
+      0.18
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-07",
+      0.14
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-08",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-09",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-10",
+      0.137
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-11",
+      0.201
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-12",
+      0.195
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-13",
+      0.19
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-14",
+      0.19
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-15",
+      0.183
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-16",
+      0.177
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-17",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-18",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-19",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-20",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-21",
+      0.132
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-22",
+      0.132
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-23",
+      0.132
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-24",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-25",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-26",
+      0.132
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-27",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-28",
+      0.131
+     ],
+     [
+      "BASE C4",
+      "FTS-BAS-01-C4-04-29",
+      0.131
+     ],
+     [
+      "BASE C5",
+      "FTS-BAS-01-C5-02-01",
+      0.207
+     ],
+     [
+      "BASE C5",
+      "FTS-BAS-01-C5-02-03",
+      0.138
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-01-01",
+      0.253
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-01-03",
+      0.209
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-03-01",
+      0.128
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-03-03",
+      0.181
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-01",
+      0.207
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-02",
+      0.337
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-03",
+      0.362
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-04",
+      0.357
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-05",
+      0.277
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-04-06",
+      0.207
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-05-01",
+      0.257
+     ],
+     [
+      "BASE C6",
+      "FTS-BAS-01-C6-05-03",
+      0.211
+     ]
+    ],
+    "v2_fichas_falsas": 16
+   }
+  }
+ }
+}

@@ -6,7 +6,7 @@ demo de deteccion de huecos contra la silueta amarilla; vista de direccion (kits
 alertas A1 a A7, valor de herramienta por planta); reloj de simulacion para probar escalamientos.
 NO es modulo de produccion: no llama a n8n ni a Odoo. Personas: solo rol + emp-<id>. Plantas: "cliente ejemplo".
 """
-import json, os
+import sys, json, os
 from openpyxl import load_workbook
 BASE = os.path.join(os.path.dirname(__file__), '..')
 d = json.load(open(os.path.join(BASE, 'diseno_carrito.json'), encoding='utf-8'))
@@ -18,6 +18,18 @@ def piezas_mod(m):
             for p in c['piezas']:
                 out.append({'a': p['activo'], 'd': p['corto'], 'c': c['n'], 'x': p['x'], 'y': p['y'], 'w': p['w'], 'h': p['h']})
     return out
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from vista_cajon import subs_en_cajon
+def huecos(c):
+    """Una entrada por hueco: los juegos (#343) se revisan pieza por pieza, no por ficha."""
+    out = []
+    for p in c['piezas']:
+        subs = subs_en_cajon(p)
+        if subs:
+            out += [{'a': s['activo'], 'd': s['desc'], 'x': round(p['x'] + s['x'], 1), 'y': round(p['y'] + s['y'], 1), 'w': s['w'], 'h': s['h']} for s in subs]
+        else:
+            out.append({'a': p['activo'], 'd': p['corto'], 'x': p['x'], 'y': p['y'], 'w': p['w'], 'h': p['h']})
+    return out
 cajones = {}
 for m in d['modulos']:
     lst = []
@@ -25,7 +37,7 @@ for m in d['modulos']:
         for c in caja['cajones']:
             if c['piezas']:
                 lst.append({'n': c['n'], 'modelo': caja['modelo'], 'ancho': c['ancho'], 'fondo': c['fondo'],
-                            'p': [{'a': p['activo'], 'd': p['corto'], 'x': p['x'], 'y': p['y'], 'w': p['w'], 'h': p['h']} for p in c['piezas']]})
+                            'p': huecos(c)})
     cajones[m] = lst
 # valor de herramienta por unidad de modulo: precio x cantidad por unidad (asignacion_y_compra.xlsx, hoja Herramienta)
 valor = {m: 0.0 for m in d['modulos']}
