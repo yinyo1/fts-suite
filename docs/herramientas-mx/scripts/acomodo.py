@@ -12,7 +12,7 @@ import copy, json, os, sys, itertools
 from collections import defaultdict
 
 BASE = os.path.join(os.path.dirname(__file__), '..'); D = os.path.join(BASE, 'datos')
-G_PIEZAS, G_PARED, H_LIBRE = 12, 6, 10
+G_PIEZAS, G_PARED, H_LIBRE = 12, int(os.environ.get('G_PARED', 6)), 10
 FREC_W = {'diario': 3, 'frecuente': 2, 'ocasional': 1}
 
 # Contenedores de diseno. Fuente (sesion nocturna 1, #330): ficha del fabricante leida el 2026-09-28.

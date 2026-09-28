@@ -42,7 +42,11 @@ module loseta(x0, y0, w, h, ancho_cajon, fondo_cajon) {
 // pts: contorno de la HERRAMIENTA en coordenadas locales (0,0 = esquina de su rectangulo envolvente), sin holgura.
 // L, A: rectangulo envolvente de la herramienta. prof: profundidad de la cavidad. (x, y): esquina de la herramienta
 // dentro del cajon, tal como la da el acomodo. etiqueta: numero de activo grabado en el piso de la ficha.
-module ficha(pts, L, A, prof, x, y, etiqueta = "") {
+// lados: rebajes de dedo que se cortan, en los dos lados LARGOS de la ficha. 0 = lado de coordenada menor, 1 = mayor.
+// Sesion nocturna 2 (#338): antes el rebaje iba siempre en los lados paralelos a L, o sea en los CORTOS cuando la pieza
+// va girada (L < A en el marco del cajon); ahora va en los largos, y solo del lado donde caben los dedos
+// (scripts/interferencias_3d.py decide cual, contra la pared y el labio).
+module ficha(pts, L, A, prof, x, y, etiqueta = "", lados = [0, 1]) {
     ext = PARED + HOLGURA;
     alto = BASE_FICHA + prof;
     translate([x, y, ESP_LOSETA]) difference() {
@@ -62,7 +66,10 @@ module ficha(pts, L, A, prof, x, y, etiqueta = "") {
         // cavidad de la herramienta
         translate([0, 0, BASE_FICHA]) linear_extrude(prof + 1) offset(delta = HOLGURA) polygon(pts);
         // rebajes para dedos, al centro de los dos lados largos
-        for (s = [0, 1]) translate([L / 2, s == 0 ? -ext : A + ext, BASE_FICHA + DEDO / 2]) rotate([0, 90, 0]) cylinder(d = DEDO, h = min(L * 0.5, 60), center = true);
+        for (s = lados) {
+            if (L >= A) translate([L / 2, s == 0 ? -ext : A + ext, BASE_FICHA + DEDO / 2]) rotate([0, 90, 0]) cylinder(d = DEDO, h = min(L * 0.5, 60), center = true);
+            else        translate([s == 0 ? -ext : L + ext, A / 2, BASE_FICHA + DEDO / 2]) rotate([90, 0, 0]) cylinder(d = DEDO, h = min(A * 0.5, 60), center = true);
+        }
         // numero de activo grabado en el piso (0.6 mm)
         if (etiqueta != "") translate([L / 2, A / 2, BASE_FICHA - 0.6]) linear_extrude(1) text(etiqueta, size = min(5, A / 4), halign = "center", valign = "center");
     }

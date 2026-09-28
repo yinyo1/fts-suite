@@ -63,14 +63,22 @@ def scad_cajon(modulo, cajon):
         assert w <= 220 and h <= 220, (w, h)
         lin.append(f'if (PARTE == "todo" || PARTE == "loseta{i}") color("#333") loseta({x0:.1f}, {y0:.1f}, {w:.1f}, {h:.1f}, {W}, {Hh});')
     fichas = []
+    # lado del rebaje de dedo: el que da el chequeo de extraccion 3D (datos/interferencias_3d.json); sin dato, los dos
+    lados_por = {}
+    ri = os.path.join(BASE, 'datos', 'interferencias_3d.json')
+    if os.path.exists(ri):
+        for r in json.load(open(ri, encoding='utf-8'))['cajones']:
+            if r['modulo'] == modulo and f"C{r['cajon']}" == cajon:
+                for x in r['piezas']:
+                    lados_por[x['activo']] = x.get('rebaje_lados') or [0, 1]
     for q in cj['piezas']:
         pts, tipo = contorno(q['id'], q['w'], q['h'], q['rot'])
         prof = round(min(PROF_MAX, PROF_FRAC * q['H']), 1)
         v = val.get(q['id'], {})
         nivel = ''.join(v.get(k, {}).get('nivel', '?') for k in ('L', 'A', 'H'))
         lin.append(f'// {q["activo"]} · {q["id"]} · {q["corto"]} · contorno {tipo} · niveles L/A/H {nivel}')
-        lin.append(f'if (PARTE == "todo" || PARTE == "{q["id"]}") color("#f2b705") ficha({json.dumps(pts)}, {q["w"]}, {q["h"]}, {prof}, {q["x"]}, {q["y"]}, "{q["activo"]}");')
-        fichas.append({'id': q['id'], 'activo': q['activo'], 'tipo': tipo, 'nivel': nivel, 'prof': prof})
+        lin.append(f'if (PARTE == "todo" || PARTE == "{q["id"]}") color("#f2b705") ficha({json.dumps(pts)}, {q["w"]}, {q["h"]}, {prof}, {q["x"]}, {q["y"]}, "{q["activo"]}", {json.dumps(lados_por.get(q["activo"], [0, 1]))});')
+        fichas.append({'id': q['id'], 'activo': q['activo'], 'tipo': tipo, 'nivel': nivel, 'prof': prof, 'rebaje_lados': lados_por.get(q['activo'], [0, 1])})
     p = os.path.join(AQUI, 'cajones', f'{nombre}.scad')
     open(p, 'w', encoding='utf-8').write('\n'.join(lin) + '\n')
     return p, fichas, len(tiles)

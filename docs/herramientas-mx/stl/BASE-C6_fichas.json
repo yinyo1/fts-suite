@@ -4,34 +4,51 @@
   "activo": "FTS-BAS-01-C6-01",
   "tipo": "simplificado",
   "nivel": "FFF",
-  "prof": 19.2
+  "prof": 19.2,
+  "rebaje_lados": [
+   1
+  ]
  },
  {
   "id": "PRES11",
   "activo": "FTS-BAS-01-C6-02",
   "tipo": "simplificado",
   "nivel": "D2FF",
-  "prof": 15.0
+  "prof": 15.0,
+  "rebaje_lados": [
+   1
+  ]
  },
  {
   "id": "EXTS",
   "activo": "FTS-BAS-01-C6-03",
   "tipo": "simplificado",
   "nivel": "FFF",
-  "prof": 15.0
+  "prof": 15.0,
+  "rebaje_lados": [
+   0,
+   1
+  ]
  },
  {
   "id": "PREC6",
   "activo": "FTS-BAS-01-C6-04",
   "tipo": "simplificado",
   "nivel": "FFF",
-  "prof": 15.0
+  "prof": 15.0,
+  "rebaje_lados": [
+   0
+  ]
  },
  {
   "id": "ADAP",
   "activo": "FTS-BAS-01-C6-05",
   "tipo": "simplificado",
   "nivel": "FFF",
-  "prof": 15.0
+  "prof": 15.0,
+  "rebaje_lados": [
+   0,
+   1
+  ]
  }
 ]
