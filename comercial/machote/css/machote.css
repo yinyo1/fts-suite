@@ -2280,3 +2280,161 @@ table.hoja-pad .padcel.ref2 { box-shadow: inset 0 0 0 2px var(--xl-ref2); backgr
  * Medido antes de elegir el 12: el hueco hasta el botón de arriba es de 18 px
  * a 1280 y de 33 px a 380, así que el área crecida no le roba el toque a
  * nadie. Con 20 px se lo habría robado al botón del pad. */
+
+/* ═══ V1.44 · la oportunidad de CRM y el beneficiario de comisión ══════════
+ *
+ * Nombres con prefijo `op-` y `ben-` a propósito. `.kpi` ya se reusó una vez
+ * en este archivo para dos cosas distintas y el choque metió un borde
+ * alrededor de cada número (§20 #12): un prefijo por concepto cuesta cuatro
+ * letras y evita esa clase entera de defecto.
+ *
+ * Los dos comparten el aire de los avisos que ya existen: nada nuevo de color,
+ * nada de modo oscuro (este módulo no lo tiene, medido en la V1.42). */
+
+/* ── La pastilla de «ya está ligada» ───────────────────────────────────────
+ * Es el estado bueno, así que NO lleva color de alarma: fondo de papel, línea
+ * fina, y el nombre en negrita porque es lo que se viene a leer. */
+.op-pastilla {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin: 0 0 10px; padding: 8px 12px;
+  background: var(--papel); border: 1px solid var(--linea); border-radius: 10px;
+  font-size: 13px; line-height: 1.5;
+}
+.op-pastilla .op-eti { color: var(--suave); text-transform: uppercase;
+  font-size: 10px; letter-spacing: .06em; }
+/* El botón de «Cambiar» no se estira al ancho de la fila como los `.btn` del
+ * módulo: aquí es un remate, no la acción principal. */
+.op-pastilla .btn { width: auto; min-height: 30px; padding: 0 10px; font-size: 12px; }
+
+/* ── El diálogo ───────────────────────────────────────────────────────────
+ * 560 px es lo que cabe en 900 px con aire a los lados; en el teléfono la
+ * `.caja` de `.modal` ya manda y esto no le pelea. */
+.modal .caja.op-caja { max-width: 560px; width: 100%; }
+.op-bloque { margin: 12px 0 0; }
+.op-sub { font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--suave); margin: 0 0 6px; }
+.op-l { display: block; margin: 12px 0 0; font-size: 13px; }
+.op-l .cel { width: 100%; box-sizing: border-box; }
+
+/* ── La lista de candidatas y de resultados ───────────────────────────────
+ * Cada opción es un BOTÓN, no un renglón con `onclick`: se alcanza con el
+ * tabulador y se dispara con Enter sin que haya que programarlo. Y con
+ * `text-align:left`, porque un botón centra su texto por omisión y un nombre
+ * largo centrado se lee como un título.
+ *
+ * `max-height` con desplazamiento: cinco candidatas caben, pero una búsqueda
+ * floja devuelve veinticinco y sin tope el diálogo se sale de la pantalla. */
+.op-lista { display: flex; flex-direction: column; gap: 6px; margin-top: 6px;
+  max-height: 260px; overflow-y: auto; }
+.op-op {
+  display: flex; flex-direction: column; gap: 2px; width: 100%;
+  text-align: left; padding: 8px 10px; cursor: pointer;
+  background: var(--fondo); color: var(--tinta);
+  border: 1px solid var(--linea); border-radius: 8px;
+  font: inherit; min-height: var(--toque);
+}
+.op-op:hover, .op-op:focus-visible { border-color: var(--acento); background: #f2f8ff; }
+.op-op .op-nom { font-weight: 600; font-size: 13px; }
+.op-op .op-cli { font-size: 12px; color: var(--suave); }
+.op-crear { margin: 14px 0 0; border-top: 1px solid var(--linea2); padding-top: 10px; }
+.op-crear summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+.op-crear .btn { width: auto; min-height: var(--toque); padding: 0 16px; margin-top: 8px; }
+
+/* ── El beneficiario de comisión, dentro de la tabla de DESGLOSE ───────────
+ * La celda del nombre deja de ser un texto libre y pasa a ser un botón que
+ * abre el selector. Se ve como una celda para no romper la retícula del
+ * machote, y se comporta como un botón.
+ *
+ * El estado va en un punto de color y ADEMÁS en el texto del `title`: un
+ * color solo no lo lee quien no distingue el ámbar del verde. */
+.ben-cel {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  text-align: left; background: none; border: 0; padding: 2px 4px;
+  font: inherit; color: var(--tinta); cursor: pointer; min-height: 28px;
+}
+.ben-cel:hover .ben-nom, .ben-cel:focus-visible .ben-nom { text-decoration: underline; }
+.ben-nom { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ben-vacio { color: var(--suave); font-style: italic; }
+.ben-punto { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--linea); }
+.ben-punto.ok { background: var(--verde); }
+.ben-punto.pend { background: var(--ambar); }
+.ben-punto.mal { background: var(--rojo); }
+.modal .caja.ben-caja { max-width: 560px; width: 100%; }
+.ben-grupo { margin: 12px 0 0; }
+.ben-aviso { margin: 10px 0 0; }
+
+/* ══ V1.45 · los campos de la CONFIRMACIÓN ═══════════════════════════════════
+ * Prefijo `cf-` en TODO. Reusar un nombre que ya existe en este archivo es cómo
+ * la V1.42 acabó con tres cajas donde iba una: el CSS nuevo era correcto y el
+ * choque estaba en otra parte del mismo archivo (§20 #12).
+ *
+ * Cero columnas fijas y cero tablas: `flex-wrap` con un mínimo por campo, así
+ * que a 380 cada campo ocupa su renglón y a 1280 se acomodan varios en fondo.
+ * La franja que se rompe en este módulo ha sido dos veces la de 721-980 px, y
+ * las dos por una rejilla con medidas escritas a mano. */
+.cfx-bloque { border-top: 1px solid var(--o19-border, #dee2e6);
+              padding: calc(var(--o19-form-unit, 5px) * 2.4) 0 var(--o19-form-unit, 5px); }
+.cfx-h { font-size: var(--o19-fs-sm, 13px); margin: 0 0 8px;
+         color: var(--o19-gray-700, #495057); font-weight: var(--o19-fw-medium, 500);
+         text-transform: uppercase; letter-spacing: .03em; }
+.cfx-fila { display: flex; flex-wrap: wrap; gap: 10px 14px; }
+.cfx-c { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cfx-et { font-size: var(--o19-fs-label, 11.2px); color: var(--o19-text-muted, #57606a);
+          font-weight: var(--o19-fw-normal, 400); }
+.cfx-ay { font-size: var(--o19-fs-xs, 12px); color: var(--o19-text-muted, #8b949e);
+          line-height: var(--o19-lh-sm, 1.25); }
+/* `min-width:0` en el input además del contenedor: sin él, el ancho intrínseco
+ * de un `<input>` (unas 20 letras) gana al `flex-shrink` y el campo se derrama
+ * fuera de su caja justo en los anchos de en medio. Es el mismo mecanismo que
+ * dejó el bloque del precio en 0 px de ancho a 760 en la V1.34. */
+/* El radio es el de Odoo. El relleno NO se baja a sus 2px/4px y el fondo no
+ * se hace transparente: en Odoo el campo no tiene caja hasta que lo tocas
+ * —un formulario en reposo parece un documento— y eso es bonito para LEER y
+ * peor para CAPTURAR, que es lo que este bloque hace. Aplica en la fase 2,
+ * cuando la cotización nazca en la suite. */
+.cfx-in { width: 100%; min-width: 0; border-radius: var(--o19-radius, 4px); }
+.cfx-file { font-size: 12px; max-width: 100%; }
+/* ⚠️ Odoo marca lo OBLIGATORIO con el morado de marca y reserva el rojo para
+ * lo que está MAL — son dos estados distintos y los distingue por color. Aquí
+ * los dos van en rojo, a sabiendas: cambiarlo toca los mensajes de los
+ * candados que se acaban de probar (doc §6). Lo que sí se tomó de Odoo es el
+ * TONO del rojo y su fondo al 10%. */
+.cfx-mal { border-color: var(--o19-danger, #dc3545) !important;
+           background: var(--o19-input-invalid-bg, #fdeaec); }
+.cfx-arch { font-size: var(--o19-fs-xs, 12px); color: var(--o19-text-muted, #57606a);
+            margin: 8px 0 0; word-break: break-word; }
+
+.cfx-cuadre { margin: 10px 0 0; padding: 10px 12px;
+              border-radius: var(--o19-radius-lg, 6px); font-size: var(--o19-fs-sm, 13px); }
+.cfx-cuadre p { margin: 6px 0 0; line-height: 1.45; }
+.cfx-si { background: #eaf6ec; border-left: 3px solid var(--o19-success, #28a745); }
+.cfx-no { background: var(--o19-input-invalid-bg, #fdeaec);
+          border-left: 3px solid var(--o19-danger, #dc3545); }
+/* Los tres números en fila cuando caben y apilados cuando no. Van juntos porque
+ * es lo único que permite decidir: ver el de la PO al lado de los dos de la
+ * cotización. */
+.cfx-tres { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.cfx-tres span { white-space: nowrap; }
+.cfx-tres b { color: var(--o19-gray-700, #495057);
+              font-weight: var(--o19-fw-medium, 500); margin-right: 4px; }
+.cfx-aviso { background: #fff8c5; padding: 6px 9px;
+             border-radius: var(--o19-radius, 4px); font-size: var(--o19-fs-xs, 12px); }
+.cfx-salida { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; }
+.cfx-salida .cfx-in { flex: 1 1 240px; }
+.cfx-varias-ok { font-size: 12.5px; color: #57606a; }
+.cfx-monto { margin: 8px 0 0; font-size: 13px; }
+
+.cfx-faltan { margin: 12px 0 0; display: flex; flex-direction: column; gap: 6px; }
+.cfx-falta { font-size: var(--o19-fs-xs, 12px); line-height: var(--o19-lh, 1.5);
+             padding: 7px 10px; border-radius: var(--o19-radius, 4px); }
+.cfx-dura { background: var(--o19-input-invalid-bg, #fdeaec);
+            border-left: 3px solid var(--o19-danger, #dc3545); }
+.cfx-blanda { background: #fff8c5; border-left: 3px solid var(--o19-warning, #ffac00); }
+.cfx-donde { color: var(--o19-text-muted, #8b949e); }
+
+@media (max-width: 420px) {
+  /* A 380 los campos ya se apilan solos por el `flex-wrap`; lo único que
+   * estorba es el espacio vertical entre bloques. */
+  .cfx-bloque { padding: 10px 0 2px; }
+  .cfx-fila { gap: 8px; }
+}

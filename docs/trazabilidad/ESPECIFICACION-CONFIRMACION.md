@@ -529,3 +529,278 @@ comercial.umbral_anticipo (
 mañana aparece una orden en euros, la Confirmación **no la deja pasar en silencio**: dice
 *«no hay umbral de anticipo configurado para EUR»* y manda a configurarlo. Un umbral ausente
 leído como «no aplica» es exactamente cómo un candado se apaga sin que nadie lo decida.
+
+---
+
+## 8 · Estado de construcción, al 28-sep-2026
+
+Lo que esta especificación describía ya no es sólo papel. Aquí queda **qué se
+construyó, qué no, y las cuatro decisiones que se tomaron sin preguntar** porque
+no había a quién preguntarle a esa hora.
+
+### 8.1 · Los candados, uno por uno
+
+| # | candado | dónde vive hoy | estado |
+|---|---|---|---|
+| 1 | versión vieja | servidor | pendiente |
+| 2 | scope | `orden.js` + servidor | ya estaba |
+| 3 | reglas duras | `reglas.js` | ya estaba |
+| 4 | cliente del catálogo | `orden.js` | ya estaba |
+| 5 | contacto con teléfono y correo | **`confirmacion.js`** | ✅ construido |
+| 6 | días de pago | `compromisos.js` | ya estaba |
+| 7 | decisión de IVA, explícita o leyenda | **`confirmacion.js`** | ✅ construido |
+| 8 | viáticos | V1.26 | ya estaba |
+| 9 | oportunidad ligada | `oportunidades.js` | ✅ V1.44 |
+| 10 | número de PO | **`confirmacion.js`** | ✅ construido |
+| 11 | archivo de PO | **`confirmacion.js`** | ✅ construido, **blando** (§8.3) |
+| 12 | el importe de la PO cuadra | **`confirmacion.js`** | ✅ construido |
+| 13 | anticipo arriba del umbral | **`confirmacion.js`** | ✅ construido |
+| 14 | beneficiario aprobado | `beneficiarios.js` | ✅ V1.44 |
+| 15 | las facturas cuadran | — | **no construido** |
+| 16 | la orden sigue cuadrando | servidor | pendiente |
+| 17 | idempotencia | servidor | pendiente |
+
+**Los candados 15, 16 y 17 son del SERVIDOR y no se construyeron.** El 15 en
+particular necesita leer `amount_invoiced` y `amount_to_invoice` de Odoo, que
+son calculados y sin almacenar: sólo se pueden comparar fuera, y eso vive en el
+workflow, no en el navegador.
+
+### 8.2 · Dónde se capturan, y por qué ahí
+
+En el modal de **«Pasar a orden de venta»**, no en la pantalla de confirmar.
+
+El contacto, el IVA, la PO y el anticipo son datos que **ya se tienen cuando se
+manda la orden**. Pedirlos al confirmar significa pedírselos a **otra persona,
+otro día, sin el correo del cliente delante** — y entonces se inventan o se
+paran. Al confirmar, el servidor los vuelve a comprobar; la pantalla existe para
+que nadie llegue hasta el final para que le digan que no.
+
+### 8.3 · Las cuatro decisiones propias
+
+**1 · El umbral del anticipo en dólares es 10,000, FIJO.** Un umbral es una
+política, no una conversión: si fuera `200,000 / tipo_de_cambio`, la **misma**
+orden estaría arriba del umbral un día y abajo el siguiente sin que nadie
+cambiara nada — la peor propiedad posible en una regla que la gente tiene que
+poder anticipar. Y se eligió del lado **estricto**: a ~17.35 MXN/USD, 10,000 USD
+son ~173,500 MXN. Es a propósito, por el modo de falla — un umbral bajo produce
+una conversación, uno alto produce arrancar una obra grande sin un peso
+adelantado (CLAUDE.md §9).
+
+**2 · El archivo escaneado avisa y DEJA PASAR**, contra la letra del §3.1 que lo
+ponía en la tabla de los que rechazan. Tres razones: el propio mensaje de la
+especificación es una **pregunta** («¿es el correcto?»); un escaneo sin capa de
+texto es un caso legítimo y frecuente; y si bloqueara, la salida obvia sería
+**subir otro archivo cualquiera que sí traiga texto**, con lo que el candado
+habría producido exactamente el dato falso que venía a impedir. Es la lección
+del tercer botón de [`IVA-EN-LA-PO.md`](IVA-EN-LA-PO.md) §4.1. Además el
+detector es un **olfateo**, no un intérprete de PDF: bloquear con una pista sería
+peor todavía.
+
+**3 · El descuadre tiene salida, y la salida deja rastro.** Si la PO cubre varias
+cotizaciones se anota el motivo, queda con autor y fecha, deja de bloquear y sale
+como aviso blando. Sin ella, la persona acabaría tecleando el número que hace
+cuadrar.
+
+**4 · La memoria por cliente (§3 de `IVA-EN-LA-PO.md`) NO se construyó**, pero
+`cuadrePO` la recibe como argumento con la forma ya fijada
+(`{convencion, veces_con, veces_sin}`) y funciona igual sin ella. Necesita una
+tabla y un endpoint; el día que existan se enchufa sin tocar la heurística.
+
+### 8.4 · Lo que se probó, y lo que no
+
+**Probado (276 aserciones de motor y 7 de navegador, todas en verde):** los
+cuatro veredictos del cuadre, incluido `NO_APLICA`; que la tolerancia es un
+centavo exacto; que la memoria no cambia el veredicto; el umbral en las dos
+monedas y **en su borde exacto**; que el anticipo se calcula sobre el subtotal y
+no sobre el total; el olfateo con bytes de PDF armados a mano; que las duras y
+las blandas no se confunden; que el botón de crear queda trabado y se destraba;
+que teclear dos veces sigue funcionando —o sea que el repintado no pierde el
+cableado—; y que nada desborda a 380, 760, 900 ni 1280.
+
+**No probado:** el ciclo contra Odoo. Nada de esto ha creado una orden real.
+
+⚠️ **Y una cosa que hay que confirmar con Gerardo antes de usarla con un
+cliente:** el texto exacto de las cuatro leyendas de «no lleva IVA». La lista
+existe para que cada quien no la escriba distinta, no para decidir la redacción
+fiscal.
+
+---
+
+## 9 · Lo que se vio en la instancia real (Esteban, 28-sep-2026)
+
+Cuatro cosas medidas **con la pantalla enfrente**, que es lo que faltaba: desde el
+contenedor no se alcanza `serviciosfts.odoo.com` (`CONNECT tunnel failed, response
+403`) y todo lo de arriba se había deducido del código de la versión.
+
+### 9.1 · El morado: **medido**, ya no deducido
+
+**`#714B67`**, el de Enterprise. Cuentagotas sobre el botón primario de una
+cotización real. La deducción del §8 era correcta, pero hasta ahora era eso —una
+deducción— y ahora es una medición. La variable `--o19-brand` se queda como está y
+su nota cambia de *deducido* a *medido*.
+
+### 9.2 · Los campos de Studio YA EXISTEN · **no hay que crear nada**
+
+En la instancia ya están:
+
+| campo | para qué |
+|---|---|
+| **Purchase order No.** | el candado 10 |
+| **Purchase order or email file** | el candado 11 |
+| **Cotizador** | quién cotizó |
+| pestaña **Handoff** propia | lo que operaciones necesita |
+
+📌 **Esto cambia el plan de construcción, y para bien.** Todo lo que la
+especificación daba por «campo a crear» **ya tiene dónde vivir**: lo que falta es
+**llenarlo desde la suite**, no inventarlo en Odoo. Y de paso confirma los nombres
+técnicos del §17 quirk 5 de `CLAUDE.md` contra la pantalla, no contra el recuerdo.
+
+⚠️ Ojo con el nombre del segundo: es **«Purchase order *or email* file»**. El
+cliente a veces no manda una PO formal sino **un correo**, y el campo ya lo
+contempla. El candado 11 tiene que aceptar las dos cosas — un correo exportado a
+PDF es una prueba legítima —, y el olfateo de §8.3 no debe tratarlo como sospechoso
+por no parecer una orden de compra.
+
+### 9.3 · Las condiciones comerciales al pie vienen de plantilla, **con los huecos sin llenar**
+
+El bloque que va al pie del documento sale de una plantilla y llega con
+**tiempo de entrega, moneda y vigencia en blanco**. Eso explica por qué la medición
+de `compromisos.js` encontró **49 de 176 órdenes sin términos de pago, 0 con
+incoterm y 0 con fecha comprometida**: el hueco existe, se imprime, y nadie lo llena
+porque el documento *se ve completo*.
+
+**Confirma la decisión de fondo de los cinco compromisos:** el compromiso tiene que
+ser **campo**, no párrafo. Un hueco en un párrafo no se puede exigir; un campo
+vacío sí.
+
+### 9.4 · 🔴 `Payment Terms` arranca en «Immediate» · **un valor por omisión NO es una elección**
+
+Y ésta es la que más enseña. Odoo precarga **«Immediate»**, así que quien no lo
+cambia **deja lo que vino solo** — y la orden sale con un término que nadie
+decidió. Desde fuera, una orden «Immediate» puesta a propósito y una que nadie tocó
+**se ven idénticas**.
+
+📌 **La regla que sale de aquí, y vale para todos los candados:**
+
+> **Un candado no puede conformarse con «hay un valor»: tiene que exigir una
+> ELECCIÓN.** Un campo precargado se salta cualquier validación de presencia, y el
+> resultado es peor que el campo vacío — porque el vacío se ve, y el valor por
+> omisión se disfraza de decisión.
+
+Es la misma familia de los cuatro vacíos que ya están en `CLAUDE.md` §20 (#11 el
+`[]`, #17 el cero, #18 la fila ausente, §9 el `insertadas: 0`), pero **al revés**:
+ahí un vacío se leía como una respuesta; aquí **una respuesta que nadie dio se lee
+como una decisión**. Es más difícil de ver, porque no hay nada que falte.
+
+#### Lo que esto obliga, en dos sitios
+
+**(a) En el workflow que crea la orden.** Nunca omitir `payment_term_id` y dejar
+que Odoo lo rellene: **siempre** mandar el elegido. Omitirlo no es «no opinar», es
+**dejar que opine Odoo**.
+
+**(b) 🔴 En nuestro propio código, que tiene la misma enfermedad.** Medido hoy sobre
+un machote recién creado:
+
+```
+pago.dias      = null      → faltantes() lo pide  ✅
+incoterm       = null      → faltantes() lo pide  ✅
+entrega.texto  = ""        → faltantes() lo pide  ✅
+moneda         = "MXN"     → viene de la EMPRESA, no es un default que alguien deba elegir
+vigencia.dias  = 30        → faltantes() NO lo pide  🔴
+```
+
+**La vigencia es nuestro «Immediate».** Nace en 30 y `faltantes()` la da por buena
+porque `if (!c.vigencia.dias)` nunca es cierto. Así que **de los cinco compromisos,
+cuatro se exigen y uno se acepta** — y llevamos desde la V1.33 creyendo que se
+exigían los cinco.
+
+⚠️ **Y no es lo mismo que Monterrey.** El país/ciudad también nacen escritos, pero
+eso **está decidido a propósito y anotado en el código** («Monterrey
+PRESELECCIONADO, que es la decisión de Esteban… nace escrito»). La vigencia no tiene
+esa nota: es un default que se coló, no uno que alguien eligió.
+
+**Propuesta, NO aplicada esta noche** (toca `compromisos.js`, que se validó en la
+V1.33 y cuyas pruebas acaban de correr):
+- `vacio()` nace con `vigencia.dias: null`.
+- `faltantes()` la pide como a las otras tres.
+- La pantalla ofrece 15 / 30 / 45 / 60 como atajos, **sin ninguno preseleccionado**.
+- A los machotes que ya existen **no se les inventa** una vigencia: llegan sin ella
+  y la regla los manda a escribirla, igual que se hizo con el país en la V1.26.
+
+**Es decisión de Esteban** porque hace que los machotes en curso pidan un dato que
+hasta hoy no pedían.
+
+---
+
+## 10 · La falla que encontró la suite completa, y por qué importa más que las otras cinco
+
+La suite completa, sobre el árbol quieto, dio **255 pasaron y 6 fallaron**. Cinco eran
+fixturas que envejecieron y una era un hueco de diseño. Queda escrita porque el hueco
+tiene una forma que se va a repetir.
+
+### 10.1 · El trabón se calculaba en DOS sitios, y uno se quedó atrás
+
+`orden.js` decide si el botón «Crear la orden en Odoo» está bloqueado en **dos lugares**:
+el render completo del modal, y `refrescarTrabado()`, el repintado parcial que corre en
+cada tecleo para no quitarle el foco a quien escribe. Al agregar los candados de la
+confirmación se actualizó el render y **no** el parcial.
+
+El efecto:
+
+```
+abrir el modal                → botón BLOQUEADO   ✅  (render completo)
+teclear en cualquier campo    → botón DESBLOQUEADO 🔴  (repintado parcial)
+```
+
+O sea que el candado se abría **tocando algo que no tenía nada que ver** — un término de
+pago, la cantidad de un renglón. Cualquiera de las dos cosas que una persona hace
+inevitablemente antes de apretar el botón.
+
+**Lo grave no es que dejara pasar. Es que la prueba de los cinco compromisos PASABA.**
+Esa prueba llena los compromisos y exige que el botón se destrabe; se destrababa, así que
+el ✓ salía. Pasaba **por la razón equivocada**, que es el modo de falla de CLAUDE.md
+§20 #18: una ausencia —de la falla— leída como una respuesta. Si no se hubiera corrido la
+suite completa, el ✓ de esa prueba habría sido la evidencia de que el candado servía.
+
+Y el pie mentía en los dos caminos. Con la confirmación incompleta y los compromisos
+puestos, decía **«Faltan 0 de los cinco compromisos»** — un mensaje que manda a la
+persona a arreglar lo que no es (§20 #12b), exactamente lo que el comentario escrito
+encima de esa línea decía estar evitando. **Un comentario no es una garantía.**
+
+**Arreglo:** una sola función `razones(m, p)` que devuelve las cuatro razones del trabón
+en orden de qué arreglar primero, usada por el render y por el repintado. Los dos locales
+que quedaron sin uso se quitaron, en vez de dejarlos calculando lo mismo dos veces.
+
+**La lección, que es de la familia de §20 #4 (un solo escritor por campo) en una
+superficie nueva:** cuando una decisión —un gate, un permiso, un total— se calcula en dos
+sitios, la copia que se olvide **no falla**: contesta distinto. Y el que contesta distinto
+es el que corre más seguido, porque el que se actualiza es el que se está escribiendo.
+La forma de que no vuelva a pasar no es acordarse: es que la decisión tenga **un solo
+cuerpo** y los dos caminos lo llamen.
+
+**Y una prueba de un gate tiene que ejercer el camino PARCIAL, no sólo el inicial.** La
+prueba nueva (`el candado NO se abre al teclear en OTRO campo`) toca los dos repintados
+y exige que el botón siga trabado y que el pie nombre la confirmación.
+
+### 10.2 · Las otras cinco, y la que era mía por descuido
+
+**`version.json`** · este módulo tiene su propia convención: `build` es **igual** a
+`version`, porque el vigilante del kiosko compara `MACHOTE_BUILD` contra
+`version.json`. Le había puesto la cadena `YYYYMMDD-modulo-hito` de CLAUDE.md §8, que es
+la de otros módulos. La prueba `V1.27 · H` lo cazó, que para eso está.
+
+**Cuatro pruebas de V1.30 / V1.31 / V1.33** esperaban un botón que ya no se habilita, y
+fallaban con «Timeout esperando el click» y «el botón siguió bloqueado» — mensajes que
+mandan a buscar en el selector, no en la fixtura. Es la **tercera vez** que pasa lo mismo:
+ya había pasado con el `cliente_id` de la V1.31 y con los cinco compromisos de la V1.33, y
+las dos veces se resolvió igual, con la razón escrita al lado en la fixtura.
+
+Dos cosas se hicieron distinto esta vez, para que no haya cuarta:
+
+1. **El importe de la PO sale del motor** (`CALC.calcular(m).precio`), no de un número
+   copiado. Un número copiado cuadra hoy y envejece mal, y cuando envejezca la falla no
+   va a decir «la fixtura envejeció» sino «el botón sigue bloqueado».
+2. **Hay una prueba que vigila la fixtura** (`la fixtura de la confirmación está
+   COMPLETA`): corre en Node contra los módulos reales y exige cero candados duros. El día
+   que se agregue el sexto candado, lo que falla es ella, **con el nombre del candado que
+   falta** — en vez de cinco pruebas ajenas con mensajes que no apuntan a nada.

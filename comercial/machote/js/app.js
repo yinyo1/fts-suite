@@ -57,7 +57,7 @@
    *   2. el `?v=` de la URL con la que el navegador lo bajó,
    *   3. la que declara cada pieza que se carga aparte (hoy el motor).
    * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
-  const VERSION_ARCHIVO = 'V1.43';
+  const VERSION_ARCHIVO = 'V1.45';
 
   const VERSION_URL = (function () {
     try {
@@ -1921,6 +1921,15 @@
        * es justo lo que pidió Esteban— y no cuesta nada de lo capturado:
        * ponerlo sólo escribe `cliente_id`. */
       (G.ClienteFalta ? G.ClienteFalta.franja(m) : '') +
+      /* ── V1.44 · LA OPORTUNIDAD DE CRM ────────────────────────────────────
+       * Los dos estados del mismo dato en el mismo sitio: la franja cuando
+       * falta, la pastilla cuando está. Uno de los dos siempre se pinta, para
+       * que la pantalla no tenga un hueco donde antes había un aviso — y para
+       * que ligarla se vea de inmediato, sin buscar dónde quedó.
+       *
+       * Va DESPUÉS de la del cliente a propósito: sin cliente del catálogo no
+       * hay candidatas que proponer, así que ése es el primer paso. */
+      (G.Oportunidades ? (G.Oportunidades.franja(m) + G.Oportunidades.pastilla(m)) : '') +
       '<div class="libro' + (soloLectura ? ' solo-lectura' : '') + '">' +
       '<div class="hojas" id="hojas">' + hojas.map((h, i) =>
         '<button class="pestana' + (h.id === ST.hoja ? ' on' : '') +
@@ -1959,6 +1968,40 @@
         m.cliente = hit.nombre;
         tocado(m);
         vMachote(id);
+      });
+    }
+
+    /* V1.44 · elegir la oportunidad. Se escribe en el DOCUMENTO —y por eso
+     * `tocado(m)`: es un cambio de la cotización y tiene que subir— y además se
+     * intenta la liga en el servidor, que es quien escribe la columna y el
+     * folio en la tarjeta de CRM.
+     *
+     * Las dos mitades están separadas a propósito: si el endpoint todavía no
+     * está publicado (nace INACTIVO), la elección **no se pierde** — queda en
+     * el documento, sube con la siguiente versión, y la liga del lado de Odoo
+     * se puede rehacer después. Lo contrario —no dejar elegir hasta que el
+     * servidor conteste— es el lado estricto desplegado primero, justo lo que
+     * prohíbe la regla anti-trabón (CLAUDE.md §8). */
+    if (G.Oportunidades && !soloLectura) {
+      G.Oportunidades.enlazar(m, (op) => {
+        G.Oportunidades.marcar(m, op);
+        tocado(m);
+        vMachote(id);
+        const uuid = A && A.idServidor ? A.idServidor(m.id) : null;
+        const ver = A && A.ultimaVersion ? A.ultimaVersion(m.id) : null;
+        if (uuid) {
+          G.Oportunidades.ligar(uuid, ver, op.id).then((r) => {
+            /* No se repinta con el resultado: lo que la pantalla enseña ya es
+             * cierto (el documento lo tiene). Esto sólo avisa si la mitad del
+             * servidor no se pudo hacer, para que nadie crea que la tarjeta de
+             * CRM ya quedó marcada cuando no. */
+            if (!r || r.ok !== true) {
+              toast('La oportunidad quedó en la cotización, pero no se pudo marcar en Odoo' +
+                   (r && r.error ? ' (' + r.error + ')' : '') +
+                   '. Sube la cotización y vuelve a intentarlo.');
+            }
+          });
+        }
       });
     }
 
@@ -3310,7 +3353,16 @@
       const suma = (m[key] || []).reduce((a, x) => a + Number(x.pct || 0), 0);
       return '<tr class="grupo"><td colspan="3">' + titulo + ' · bolsa ' + mx(bolsa) + '</td></tr>' +
         (m[key] || []).map((it, i) =>
-          '<tr><td>' + cel('eq:' + rep + ':' + i + ':nombre', it.nombre, 'desc') + '</td>' +
+          /* ── V1.44 · el nombre deja de ser texto libre ────────────────────
+           * La celda ahora es un BOTÓN que abre el selector de beneficiarios y
+           * enseña el estado de la liga con un punto de color y con palabras.
+           *
+           * En sólo lectura se queda la celda de texto de siempre: sin permiso
+           * de escritura no hay nada que elegir, y un botón que no hace nada
+           * es peor que un texto. */
+          '<tr><td>' + (G.Beneficiarios && puedoEscribir(m)
+            ? G.Beneficiarios.celda(it, 'eq:' + rep + ':' + i + ':nombre')
+            : cel('eq:' + rep + ':' + i + ':nombre', it.nombre, 'desc')) + '</td>' +
           '<td>' + celPct('eq:' + rep + ':' + i + ':pct', it.pct) + '</td>' +
           '<td class="vl mono calc">' + mx(bolsa * Number(it.pct)) + '</td></tr>').join('') +
         '<tr class="total"><td class="et">Suma</td><td class="vl mono n-' +
@@ -3694,6 +3746,48 @@
         tocado(m);
         render();
         toast('Renombrada. El cambio queda en el historial.');
+      };
+    });
+
+    /* ── V1.44 · elegir el beneficiario de un renglón de comisión ──────────
+     * La celda del nombre es un botón y abre el selector. Lo que se escribe es
+     * la CUENTA del plan 20; el nombre se actualiza de paso porque es lo que se
+     * imprime.
+     *
+     * `null` desde el selector significa DESLIGAR, no cancelar: cancelar cierra
+     * el diálogo sin llamar de vuelta. Son dos cosas distintas y por eso la
+     * respuesta es distinta (§20 #12b).
+     *
+     * La ruta viaja en el `data-ben` con la MISMA forma que usa la celda de
+     * texto (`eq:venta:0:nombre`), así que el día que cambie la forma del
+     * documento sólo hay un sitio que la entiende: `setPath`/`getPath`. */
+    $$('[data-ben]').forEach(el => {
+      el.onclick = () => {
+        const p = el.dataset.ben.split(':');          // eq · rep · i · nombre
+        const key = p[1] === 'venta' ? 'equipo_venta'
+                  : p[1] === 'ops' ? 'equipo_operaciones' : 'equipo_cliente';
+        const it = (m[key] || [])[parseInt(p[2], 10)];
+        if (!it) return;
+        G.Beneficiarios.abrir({
+          it: it,
+          cliente_id: m.cliente_id || null,
+          empresa_id: m.empresa_id || null,
+          /* El lado cliente sólo ofrece externos: un empleado de FTS cobrando
+           * como «contacto del cliente» es exactamente lo que no debe pasar
+           * sin que alguien lo decida a propósito. */
+          solo_externos: p[1] === 'cli',
+          alElegir: (ben) => {
+            if (ben) G.Beneficiarios.marcar(it, ben);
+            else G.Beneficiarios.soltar(it);
+            /* El motivo se anota solo: cambiar a quién le toca una comisión es
+             * justo el cambio que la 003 exige explicar, y dejarlo al criterio
+             * de quien guarda es cómo se pierde. */
+            ST.motivos[m.id] = 'Beneficiario de comisión: ' +
+              (ben ? ('«' + (ben.nombre || '') + '» (cuenta ' + ben.cuenta_id + ')') : 'desligado');
+            tocado(m);
+            pintarHoja(m); barra(m, C.calcular(m));
+          }
+        });
       };
     });
 

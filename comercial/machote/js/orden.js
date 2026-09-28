@@ -319,6 +319,20 @@
       de_captura.push('El machote mezcla monedas en sus renglones. Se convierte con el ' +
         'TC, pero conviene revisarlo antes de mandarlo a Odoo.');
     }
+    /* ── V1.45 · los candados de la CONFIRMACIÓN ──────────────────────────
+     * Se listan UNO POR UNO y no como «faltan 4 datos»: lo que la persona
+     * necesita saber es cuál falta y dónde se arregla, que es la diferencia
+     * entre «no puedes seguir» y «te falta el correo del contacto».
+     *
+     * Y salen de `Confirmacion.duras`, que es el único que decide qué es duro:
+     * volver a decidirlo aquí serían dos definiciones divergiendo (§20 #4). */
+    var CF = G.Confirmacion;
+    if (CF) {
+      CF.duras(m, c).forEach(function (x) {
+        de_captura.push('<strong>' + esc(x.que) + '</strong> — ' + esc(x.porque) +
+          ' <em>' + esc(x.donde) + '</em>');
+      });
+    }
     if (R && R.revisar) {
       var rev = R.revisar(m);
       if (rev.duras && rev.duras.length) {
@@ -396,16 +410,46 @@
    * repinta entero cuando cambia la estructura de la pantalla.
    */
 
+  /** La razón por la que el botón está trabado, en UN SOLO SITIO.
+   *
+   * ⚠️ Existe porque no existía, y eso costó una falla real: el trabón se
+   * calculaba en DOS lados —el render completo y este repintado parcial— y el
+   * parcial se quedó sin los candados de la confirmación. O sea que el botón
+   * nacía bloqueado y se DESBLOQUEABA al teclear en cualquier otro campo, que
+   * es un candado peor que ninguno: da la impresión de estar cuidando algo.
+   * La prueba de los cinco compromisos pasaba, y pasaba por la razón
+   * equivocada (CLAUDE.md §20 #18).
+   *
+   * Devuelve la lista de razones EN ORDEN de qué arreglar primero. Decirlas
+   * todas juntas manda a la persona a arreglar lo que no es (§20 #12b), así
+   * que el pie sólo pinta la primera. */
+  function razones(m, p) {
+    var CP = G.MachoteCompromisos, D = G.MachoteDocumento, CFM = G.Confirmacion;
+    var out = [];
+    if (!(p.cliente && p.cliente.odoo_partner_id))
+      out.push('Falta elegir el cliente del catálogo. ');
+    var conPrecio = (D && _st.doc) ? D.cuenta(_st.doc.bloques).linea : 0;
+    if (conPrecio === 0)
+      out.push('El documento no tiene ninguna línea con precio: una orden sin ' +
+               'importe no es una orden. ');
+    var fCp = CP ? CP.faltantes(m) : [];
+    if (fCp.length) out.push('Faltan ' + fCp.length + ' de los cinco compromisos. ');
+    var fCf = CFM ? CFM.duras(m, p._calc) : [];
+    if (fCf.length)
+      out.push((fCf.length === 1 ? 'Falta un dato' : 'Faltan ' + fCf.length + ' datos') +
+               ' de la confirmación: ' + fCf[0].que + '. ');
+    return { lista: out, compromisos: fCp, confirmacion: fCf };
+  }
+
   /** El botón de crear y la razón por la que está trabado. Es lo único que
-   *  depende de los compromisos y del documento a la vez. */
+   *  depende de los compromisos, del documento y de la confirmación a la vez. */
   function refrescarTrabado() {
     if (!_st) return;
     var m = _st.machote;
-    var CP = G.MachoteCompromisos, D = G.MachoteDocumento;
-    var faltaCliente = !(_st.pre.cliente && _st.pre.cliente.odoo_partner_id);
-    var falta = CP ? CP.faltantes(m) : [];
-    var conPrecio = (D && _st.doc) ? D.cuenta(_st.doc.bloques).linea : 0;
-    var trabado = faltaCliente || falta.length > 0 || conPrecio === 0;
+    var CP = G.MachoteCompromisos;
+    var rz = razones(m, _st.pre);
+    var falta = rz.compromisos;
+    var trabado = rz.lista.length > 0;
 
     var b = document.getElementById('or-crear');
     if (b) b.disabled = trabado;
@@ -423,15 +467,29 @@
     }
 
     var pie = document.querySelector('.or-trabado');
-    var texto = faltaCliente ? 'Falta elegir el cliente del catálogo. '
-      : conPrecio === 0 ? 'El documento no tiene ninguna línea con precio: una orden sin ' +
-                          'importe no es una orden. '
-      : falta.length ? 'Faltan ' + falta.length + ' de los cinco compromisos. ' : '';
-    if (pie) { pie.textContent = texto; pie.style.display = trabado ? '' : 'none'; }
+    if (pie) { pie.textContent = rz.lista[0] || '';
+               pie.style.display = trabado ? '' : 'none'; }
   }
 
   /** El bloque de compromisos, cuando cambió su ESTRUCTURA — se agregó o se
    *  quitó un hito. Vuelve a cablear, porque los nodos de antes ya no existen. */
+  /** V1.45 · repinta SÓLO el bloque de la confirmación y lo vuelve a cablear.
+   *  Se llama cuando el cambio altera la FORMA (aparece la leyenda del IVA,
+   *  aparece el porcentaje del anticipo, aparece el cuadre de la PO), no en
+   *  cada tecla. Y tras repintar hay que re-cablear: los manejadores viven en
+   *  los nodos que se acaban de tirar, así que sin esto la pantalla queda
+   *  pintada y muerta — el mismo fallo silencioso del rename a medias. */
+  function repintarConfirmables() {
+    var host = document.getElementById('or-confirmables');
+    var CFM = G.Confirmacion;
+    if (!host || !CFM) return;
+    host.innerHTML = CFM.html(_st.machote, _st.pre._calc);
+    CFM.cablear(host, _st.machote, function (repintar) {
+      if (repintar) { repintarConfirmables(); } else { refrescarTrabado(); }
+    });
+    refrescarTrabado();
+  }
+
   function repintarCompromisos() {
     if (!_st) return;
     var CP = G.MachoteCompromisos;
@@ -507,7 +565,13 @@
 
     var CP = G.MachoteCompromisos;
     var D = G.MachoteDocumento;
-    var faltaCompromiso = CP ? CP.faltantes(m) : [];
+    var CFM = G.Confirmacion;
+    /* V1.45 · los campos que la confirmación va a exigir. Se capturan AQUÍ, al
+     * crear la orden, y no al confirmarla: el cliente, el contacto, la PO y el
+     * anticipo son datos que ya se tienen cuando se manda la orden, y pedirlos
+     * al final significa pedírselos a otra persona, otro día, sin el correo del
+     * cliente delante. */
+    var confirmables = CFM ? CFM.html(m, p._calc) : '';
     var campos = CP ? CP.html(m)
       : '<p class="tiny nota">Los compromisos no están disponibles en esta pantalla.</p>';
 
@@ -522,9 +586,12 @@
              (_st.tipoTrabajo === t.id ? ' selected' : '') + '>' + esc(t.n) + '</option>';
     }).join('');
 
-    /* Tres cosas distintas impiden crear la orden, y decirlas juntas manda a
-     * la persona a arreglar lo que no es (CLAUDE.md §20 #12b). */
-    var trabado = faltaCliente || faltaCompromiso.length > 0 || conPrecio === 0;
+    /* CUATRO cosas distintas impiden crear la orden, y decirlas juntas manda a
+     * la persona a arreglar lo que no es (CLAUDE.md §20 #12b). La cuenta sale
+     * de `razones()`, que es la misma que usa el repintado parcial — tenerla
+     * dos veces es cómo se le cayó la confirmación a uno de los dos. */
+    var rz = razones(m, p);
+    var trabado = rz.lista.length > 0;
 
     cascaron(
       '<div class="or-cab">' +
@@ -579,6 +646,18 @@
       'pago y ninguna con incoterm ni con fecha comprometida.</p>' +
       '<div class="or-compromisos">' + campos + '</div>' +
 
+      /* V1.45 · va DESPUÉS de los compromisos y ANTES del documento, a
+       * propósito: es la misma conversación —qué le falta a esta cotización
+       * para volverse una orden— y el documento es ya la salida. Poner los
+       * candados después del documento haría que la persona edite el texto que
+       * va al cliente y sólo entonces descubra que no puede emitir. */
+      '<h4 class="or-h">Lo que la confirmación va a exigir</h4>' +
+      '<p class="tiny nota">Se captura <strong>aquí</strong> y no al confirmar. Al confirmar, ' +
+      'estos datos los pide otra persona, otro día, sin el correo del cliente delante. ' +
+      'El servidor los vuelve a comprobar antes de escribir: esta pantalla existe para que ' +
+      'nadie llegue hasta el final para que le digan que no.</p>' +
+      '<div class="or-confirmables" id="or-confirmables">' + confirmables + '</div>' +
+
       '<h4 class="or-h">El documento que va a llevar la orden</h4>' +
       '<p class="tiny nota">Ésta es la forma que FTS ya usa: encabezado de sección, su ' +
       'línea con precio, y debajo las notas de ese tramo — donde vive el contrato. ' +
@@ -601,12 +680,7 @@
           'Crear la orden en Odoo</button>' +
       '</div>' +
       (trabado
-        ? '<p class="tiny nota or-trabado">' +
-            (faltaCliente ? 'Falta elegir el cliente del catálogo. '
-             : conPrecio === 0 ? 'El documento no tiene ninguna línea con precio: una orden sin ' +
-                                'importe no es una orden. '
-             : 'Faltan ' + faltaCompromiso.length + ' de los cinco compromisos. ') +
-          '</p>'
+        ? '<p class="tiny nota or-trabado">' + esc(rz.lista[0] || '') + '</p>'
         : '') +
       '<div id="or-contrato-caja"></div>');
 
@@ -712,6 +786,16 @@
      * Repintar el configurador entero tras cada tecla haría perder el foco a
      * media palabra, así que sólo se repinta cuando cambia lo que la pantalla
      * pinta a partir de ellos: el botón y su explicación. */
+    /* V1.45 · el cableado de los campos de la confirmación. Su repintado es
+     * PARCIAL, igual que el de compromisos y por la misma razón: repintar el
+     * modal entero tras cada tecla le quita el foco a quien está escribiendo a
+     * media palabra. */
+    if (G.Confirmacion) {
+      G.Confirmacion.cablear(document.getElementById('or-confirmables'), m,
+        function (repintar) {
+          if (repintar) { repintarConfirmables(); } else { refrescarTrabado(); }
+        });
+    }
     if (G.MachoteCompromisos) {
       G.MachoteCompromisos.cablear(m, function (repintar) {
         if (repintar) { repintarCompromisos(); } else { refrescarTrabado(); }
@@ -787,7 +871,23 @@
        * orden de Odoo: es lo que el servidor escribe en `sequence`. */
       bloques: bloques,
       compromisos: CP ? CP.paraOrden(_st.machote) : {},
-      lead_id: _st.machote.lead_id || null
+      /* V1.45 · lo que la confirmacion va a exigir, ya capturado. Va en su
+       * propia llave y no mezclado con los compromisos: son dos contratos
+       * distintos y el dia que uno cambie no tiene por que mover al otro.
+       * El ARCHIVO de la PO no va aqui — viaja aparte, porque un base64 de dos
+       * megas dentro del payload convierte cada reintento en dos megas mas. */
+      confirmacion: G.Confirmacion
+        ? G.Confirmacion.paraOrden(_st.machote, _st.pre._calc) : {},
+      /* ── V1.44 · la oportunidad, leída de donde de verdad vive ────────────
+       * Aquí decía `_st.machote.lead_id`, y esa propiedad **no la escribía
+       * nadie**: el campo del servidor se llama `odoo_lead_id` y la pantalla no
+       * tenía dónde elegirla. O sea que este contrato enseñaba `null` siempre,
+       * y la orden se creaba sin oportunidad sin que nada avisara. Ahora sale
+       * de `Oportunidades.idDe`, que sabe mirar el documento y la libreta.
+       *
+       * El nombre de la LLAVE se queda como `lead_id`: es lo que espera
+       * `comercial/orden-crear-v2`, que está activo y no se toca. */
+      lead_id: (G.Oportunidades ? G.Oportunidades.idDe(_st.machote) : null)
     };
     caja.innerHTML =
       '<div class="contrato">' +
@@ -950,7 +1050,11 @@
     _a.crearOrden(_st.machote.id,
                   D && _st.doc ? D.paraOdoo(_st.doc.bloques) : [],
                   CP ? CP.paraOrden(_st.machote) : {},
-                  _st.machote.lead_id || null)
+                  /* V1.44 · lo mismo que en el contrato de arriba: el campo se
+                   * lee de `Oportunidades`, no de una propiedad que nunca se
+                   * escribió. Los dos sitios tienen que leer LO MISMO o el
+                   * contrato que se enseña no es el que se manda. */
+                  (G.Oportunidades ? G.Oportunidades.idDe(_st.machote) : null))
       .then(function (r) {
         b.disabled = false;
         b.textContent = texto;

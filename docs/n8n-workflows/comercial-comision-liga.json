@@ -1,0 +1,546 @@
+{
+  "name": "comercial/comision-liga",
+  "nodes": [
+    {
+      "id": "nd0001-0000-4000-8000-000000000000",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        560,
+        -820
+      ],
+      "parameters": {
+        "content": "## comercial/comision-liga · INACTIVO\n\nLa liga que abre Erick. Flujo **C** del **#294**. Un solo camino, dos verbos:\n\n| verbo | que hace |\n|---|---|\n| **GET** | PINTA la pagina. No escribe NADA. |\n| **POST** | DECIDE (autorizar o rechazar). Lo dispara el boton. |\n\n### POR QUE EL GET NO APRUEBA\nPorque un GET que aprueba **se dispara solo**. Outlook Safe Links, los antivirus de correo\ny los previsualizadores abren las ligas de un mensaje sin que nadie las toque: una\naprobacion por GET queda aprobada antes de que Erick vea el correo, y sin que nadie lo\ndecida. Es una trampa que no se nota porque el resultado se parece a que funciono.\n\nLo que aprueba es **el boton**, no la liga.\n\n### Los dos candados, en ESE orden\n1. **FIRMA** (HMAC con la llave derivada de `SUITE_JWT_SECRET`, etiqueta\n   `fts-comision-aprobar-v1`). No toca la base: una liga inventada se rechaza sin gastar\n   una consulta.\n2. **HUELLA** (`sha256` del token contra `token_sha256`). Dice si es LA liga de esta\n   solicitud y si ya se uso.\n\nEl cuerpo de las dos funciones sale de `liga.js` del guion generador, el MISMO que usa\n`comercial/comision-pedir` para firmar. Una diferencia de un caracter entre el que firma y\nel que verifica se veria como «liga invalida» y mandaria a buscar el error donde no esta.\n\n### Uso unico: el candado esta en el WHERE, no en el IF\n`UPDATE ... WHERE estado='viva' AND vence_at > now()`, y se exige **1 fila tocada**. Dos\nclics juntos: el segundo toca cero y se entera. No se confia en haber leido «viva» hace un\ninstante — entre leer y escribir cabe otro clic.\n\n### Seis pantallas, no una\n`no existe` / `ya contestada` / `anulada` / `vencida` / `el beneficiario cambio` /\n`decidible`. Juntarlas en «liga no valida» es elegir el peor mensaje por omision.\nY **vencida NO es un rechazo**: nadie dijo que no, nadie quedo autorizado, hay que volver a pedir.\n\n### MODO_PRUEBA ENCENDIDO en `Code - Aviso`\nLos acuses van **solo a sales@fts.mx**. Los de verdad (quien lo pidio, y Esteban **solo al\naprobarse**) se calculan igual y salen en `_para_real`.\n\n### Limite CONOCIDO, y no lo arregla la criptografia\nEl token ES la credencial: una liga reenviada la usa quien la reciba. Atarla a Erick exige\nque Erick tenga sesion en la suite y que la pagina pida ese login — al backlog. Lo que si\nqueda es **rastro**: IP y navegador de quien la abrio, que es lo que permite auditar un\n«yo no aprobe eso».\n\n### Depende de la migracion 010, que NO esta aplicada.",
+        "color": 4,
+        "width": 560,
+        "height": 940
+      }
+    },
+    {
+      "id": "nd0002-0000-4000-8000-000000000000",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "comercial/comision-liga",
+        "multipleMethods": true,
+        "httpMethods": [
+          "GET",
+          "POST"
+        ],
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "nd0003-0000-4000-8000-000000000000",
+      "name": "Set - secreto",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "secret",
+              "value": "={{ $env.SUITE_JWT_SECRET }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "nd0004-0000-4000-8000-000000000000",
+      "name": "Code - Abrir liga",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// ── SHA-256 + HMAC-SHA256 + verificacion JWT, JS PURO (sandbox n8n: sin require/crypto) ──\nfunction sha256Bytes(bytes) {\n  const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,\n    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,\n    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,\n    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,\n    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,\n    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,\n    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,\n    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];\n  let H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];\n  const ml = bytes.length * 8;\n  const withPad = bytes.slice();\n  withPad.push(0x80);\n  while (withPad.length % 64 !== 56) withPad.push(0);\n  for (let i = 7; i >= 0; i--) withPad.push((ml / Math.pow(2, i * 8)) & 0xff);\n  const rr = (x, n) => (x >>> n) | (x << (32 - n));\n  for (let i = 0; i < withPad.length; i += 64) {\n    const w = new Array(64);\n    for (let j = 0; j < 16; j++) {\n      w[j] = (withPad[i+j*4] << 24) | (withPad[i+j*4+1] << 16) | (withPad[i+j*4+2] << 8) | withPad[i+j*4+3];\n    }\n    for (let j = 16; j < 64; j++) {\n      const s0 = rr(w[j-15],7) ^ rr(w[j-15],18) ^ (w[j-15] >>> 3);\n      const s1 = rr(w[j-2],17) ^ rr(w[j-2],19) ^ (w[j-2] >>> 10);\n      w[j] = (w[j-16] + s0 + w[j-7] + s1) | 0;\n    }\n    let [a,b,c,d,e,f,g,h] = H;\n    for (let j = 0; j < 64; j++) {\n      const S1 = rr(e,6) ^ rr(e,11) ^ rr(e,25);\n      const ch = (e & f) ^ (~e & g);\n      const t1 = (h + S1 + ch + K[j] + w[j]) | 0;\n      const S0 = rr(a,2) ^ rr(a,13) ^ rr(a,22);\n      const mj = (a & b) ^ (a & c) ^ (b & c);\n      const t2 = (S0 + mj) | 0;\n      h=g; g=f; f=e; e=(d+t1)|0; d=c; c=b; b=a; a=(t1+t2)|0;\n    }\n    H = [(H[0]+a)|0,(H[1]+b)|0,(H[2]+c)|0,(H[3]+d)|0,(H[4]+e)|0,(H[5]+f)|0,(H[6]+g)|0,(H[7]+h)|0];\n  }\n  const out = [];\n  for (const x of H) { out.push((x>>>24)&0xff,(x>>>16)&0xff,(x>>>8)&0xff,x&0xff); }\n  return out;\n}\nfunction strBytes(s) { const o=[]; for (const ch of unescape(encodeURIComponent(s))) o.push(ch.charCodeAt(0)); return o; }\nfunction hmacSha256(keyStr, msgStr) {\n  let key = strBytes(keyStr);\n  if (key.length > 64) key = sha256Bytes(key);\n  while (key.length < 64) key.push(0);\n  const ipad = key.map(b => b ^ 0x36), opad = key.map(b => b ^ 0x5c);\n  return sha256Bytes(opad.concat(sha256Bytes(ipad.concat(strBytes(msgStr)))));\n}\nfunction hex(bytes) { return bytes.map(b => b.toString(16).padStart(2,'0')).join(''); }\nfunction sha256Hex(s) { return hex(sha256Bytes(strBytes(s))); }\nfunction b64urlFromBytes(bytes) {\n  const A='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';\n  let out='';\n  for (let i=0;i<bytes.length;i+=3){\n    const b0=bytes[i],b1=bytes[i+1],b2=bytes[i+2];\n    out+=A[b0>>2]; out+=A[((b0&3)<<4)|((b1===undefined?0:b1)>>4)];\n    if(b1!==undefined){ out+=A[((b1&15)<<2)|((b2===undefined?0:b2)>>6)]; if(b2!==undefined) out+=A[b2&63]; }\n  }\n  return out;\n}\nfunction b64urlDecodeToStr(s) {\n  const A='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';\n  let bits='', out=[];\n  for (const ch of s) { const idx=A.indexOf(ch); if(idx<0) continue; bits+=idx.toString(2).padStart(6,'0'); }\n  for (let i=0;i+8<=bits.length;i+=8) out.push(parseInt(bits.slice(i,i+8),2));\n  return decodeURIComponent(escape(String.fromCharCode.apply(null,out)));\n}\nfunction safeEq(a,b){ if(a.length!==b.length) return false; let d=0; for(let i=0;i<a.length;i++) d|=a.charCodeAt(i)^b.charCodeAt(i); return d===0; }\n\nfunction verifyJWT(token, secret, scopeRequerido) {\n  if (typeof token !== 'string') return { ok:false, error:'TOKEN_AUSENTE' };\n  const p = token.split('.');\n  if (p.length !== 3) return { ok:false, error:'TOKEN_MALFORMADO' };\n  const esperado = b64urlFromBytes(hmacSha256(secret, p[0] + '.' + p[1]));\n  if (!safeEq(esperado, p[2])) return { ok:false, error:'FIRMA_INVALIDA' };\n  let payload;\n  try { payload = JSON.parse(b64urlDecodeToStr(p[1])); } catch(e){ return { ok:false, error:'PAYLOAD_ILEGIBLE' }; }\n  const ahora = Math.floor(Date.now()/1000);\n  if (!payload.exp || payload.exp <= ahora) return { ok:false, error:'TOKEN_EXPIRADO' };\n  const scopes = Array.isArray(payload.scopes) ? payload.scopes : ['finanzas:read','finanzas:write'];\n  if (scopeRequerido && scopes.indexOf(scopeRequerido) < 0) {\n    return { ok:false, error:'SCOPE_INSUFICIENTE', requerido:scopeRequerido, tiene:scopes };\n  }\n  return { ok:true, actor: payload.sub || payload.username || null, nombre: payload.nombre || null, scopes: scopes, exp: payload.exp };\n}\n\n/* ── La llave de la liga se DERIVA, no se agrega al entorno ────────────────\n * Decision propia de la sesion del 27/28-sep-2026: agregar una variable nueva\n * a Railway estaba fuera de lo autorizado, y ademas una llave por proposito es\n * mejor practica que reusar la de las sesiones. Las dos cosas se resuelven\n * derivandola:\n *\n *     k = HMAC(SUITE_JWT_SECRET, 'fts-comision-aprobar-v1')\n *\n * Es separacion de llaves estandar: de `k` no se saca el secreto de las\n * sesiones, asi que una liga filtrada no compromete el login de nadie, y al\n * contrario tampoco. La etiqueta lleva version por si algun dia hay que\n * invalidar todas las ligas vivas de golpe: se sube a -v2 y se caen solas. */\nfunction llaveLiga(secreto) {\n  return hex(hmacSha256('' + secreto, 'fts-comision-aprobar-v1'));\n}\n/* El token son tres partes: la solicitud, un azar de 24 bytes que sale de\n * `gen_random_bytes` de Postgres (CSPRNG de verdad — el sandbox de n8n no\n * expone uno, y `Math.random` no sirve para esto), y la firma de las dos.\n *\n * La firma es lo que hace que no se pueda inventar una liga: sin `k` no se\n * puede producir un `sig` valido para ninguna solicitud, ni conociendo su id. */\nfunction armarToken(k, sol, nonce) {\n  return sol + '.' + nonce + '.' + b64urlFromBytes(hmacSha256(k, sol + '.' + nonce));\n}\n/* Verifica la FORMA y la FIRMA. No toca la base: eso es el segundo candado y\n * va aparte a proposito — asi una liga inventada se rechaza sin gastar una\n * consulta, y una liga bien firmada pero ya usada da un mensaje distinto. */\nfunction abrirToken(k, token) {\n  const t = '' + (token || '');\n  if (!t || t.length > 300) return { ok:false, error:'LIGA_MALFORMADA' };\n  const p = t.split('.');\n  if (p.length !== 3) return { ok:false, error:'LIGA_MALFORMADA' };\n  const sol = p[0], nonce = p[1], sig = p[2];\n  if (!/^[0-9a-f-]{36}$/.test(sol))  return { ok:false, error:'LIGA_MALFORMADA' };\n  if (!/^[0-9a-f]{48}$/.test(nonce)) return { ok:false, error:'LIGA_MALFORMADA' };\n  const esperada = b64urlFromBytes(hmacSha256(k, sol + '.' + nonce));\n  if (!safeEq(sig, esperada)) return { ok:false, error:'FIRMA_INVALIDA' };\n  return { ok:true, sol: sol, nonce: nonce, huella: sha256Hex(t) };\n}\n\n/* ── Abrir la liga ─────────────────────────────────────────────────────────\n * try/catch total: la entrada es el Set del secreto (CLAUDE.md §9).\n *\n * ── POR QUE EL GET NO APRUEBA NADA ──────────────────────────────────────\n * Un GET que aprueba se dispara solo. Outlook Safe Links, los antivirus de\n * correo y los previsualizadores ABREN las ligas de un mensaje sin que nadie\n * las toque — asi que una liga de aprobacion por GET queda aprobada antes de\n * que Erick vea el correo, y sin que nadie lo decida. Es una de esas trampas\n * que no se notan porque el resultado se parece a que funciono.\n *\n * Asi que: el GET PINTA y el POST DECIDE. Lo que aprueba es el boton, no la\n * liga. Y como la pagina la sirve el mismo n8n, el POST es del mismo origen.\n *\n * ── LOS DOS CANDADOS, EN ORDEN ──────────────────────────────────────────\n * Primero la FIRMA, que no toca la base: una liga inventada se rechaza sin\n * gastar una consulta. Despues la HUELLA contra la base, que dice si esta es la\n * liga de esta solicitud y si ya se uso. Dos respuestas distintas para dos\n * cosas distintas (§20 #12b). */\ntry {\n  const E = $input.first().json;\n  const secreto = $('Set - secreto').item.json.secret;\n  if (!secreto || ('' + secreto).length < 32) {\n    return [{ json: { ok:false, http:500, error:'SECRETO_NO_CONFIGURADO', decidible:false,\n      titulo:'No se puede comprobar la liga',\n      mensaje:'Falta la configuracion del servidor. Avisale a Esteban: esto no lo arregla reintentar.' } }];\n  }\n  const metodo = ('' + (E.method || 'GET')).toUpperCase();\n  const cuerpo = E.body || {};\n  const q = E.query || {};\n  const token = metodo === 'POST' ? (cuerpo.t || q.t) : q.t;\n\n  const k = llaveLiga(secreto);\n  const a = abrirToken(k, token);\n  if (!a.ok) {\n    return [{ json: { ok:false, http:400, error:a.error, decidible:false,\n      titulo: a.error === 'FIRMA_INVALIDA' ? 'Esta liga no la emitimos nosotros' : 'Esta liga esta incompleta',\n      mensaje: a.error === 'FIRMA_INVALIDA'\n        ? 'La firma no cuadra. Si la copiaste a mano, puede que se haya cortado; si te llego asi por correo, no la uses y avisale a Esteban.'\n        : 'Le falta una parte. Normalmente pasa cuando la liga se corta al copiarla: abrela desde el correo, sin copiarla.' } }];\n  }\n\n  /* La accion solo existe en el POST, y solo dos valores. Un tercer valor no es\n   * «lo que sea»: es que algo esta mal, y se dice. */\n  let accion = null, motivo = null;\n  if (metodo === 'POST') {\n    accion = ('' + (cuerpo.accion || '')).trim();\n    if (accion !== 'aprobar' && accion !== 'rechazar') {\n      return [{ json: { ok:false, http:400, error:'ACCION_INVALIDA', decidible:false,\n        titulo:'No entendi que querias hacer',\n        mensaje:'Vuelve a abrir la liga del correo y usa uno de los dos botones.' } }];\n    }\n    motivo = ('' + (cuerpo.motivo || '')).trim().slice(0, 500);\n    /* Un rechazo sin motivo es un «no» que nadie puede atender: quien lo recibe\n     * no sabe si falta un dato, si la persona no va, o si hay que hablarlo. El\n     * CHECK de la migracion 010 tambien lo exige, asi que esto es el mensaje\n     * amable de algo que la base ya no permite. */\n    if (accion === 'rechazar' && motivo.length < 3) {\n      return [{ json: { ok:false, http:400, error:'RECHAZO_SIN_MOTIVO', decidible:false,\n        titulo:'Falta decir por que',\n        mensaje:'Un rechazo sin motivo no lo puede atender nadie. Escribe una linea, aunque sea corta.' } }];\n    }\n  }\n\n  const h = E.headers || {};\n  return [{ json: { ok:true, metodo:metodo, accion:accion, motivo:motivo || null,\n    huella:a.huella, solicitud_id:a.sol,\n    /* La IP de quien abrio. `x-forwarded-for` porque n8n va detras del proxy de\n     * Railway; el primer valor de la lista es el cliente. No es seguridad — una\n     * liga reenviada la abre quien la reciba— pero es RASTRO, y es lo que\n     * permite auditar un «yo no aprobe eso». */\n    ip: ('' + (h['x-forwarded-for'] || h['x-real-ip'] || '')).split(',')[0].trim().slice(0,45) || null,\n    ua: ('' + (h['user-agent'] || '')).slice(0, 250) || null } }];\n} catch (e) {\n  return [{ json: { ok:false, http:500, error:'FALLO_APERTURA', decidible:false,\n    titulo:'No se pudo comprobar la liga',\n    mensaje:'Algo fallo del lado del servidor. Vuelve a intentar en un minuto; si sigue, avisale a Esteban.' } }];\n}\n"
+      }
+    },
+    {
+      "id": "nd0005-0000-4000-8000-000000000000",
+      "name": "IF - Firma ok?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.ok }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "nd0006-0000-4000-8000-000000000000",
+      "name": "Postgres - leer solicitud",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "resource": "database",
+        "operation": "executeQuery",
+        "query": "SELECT a.id, a.estado, a.pedido_a, a.pedido_at, a.pedido_por, a.vence_at,\n       a.respondido_at, a.motivo_rechazo, a.recordatorios,\n       (a.vence_at <= now())            AS ya_vencio,\n       b.id AS ben_id, b.nombre AS ben_nombre, b.tipo AS ben_tipo,\n       b.motivo AS ben_motivo, b.estado AS ben_estado, b.odoo_cuenta_id\n  FROM comercial.comision_aprobacion a\n  JOIN comercial.comision_beneficiario b ON b.id = a.beneficiario_id\n WHERE a.token_sha256 = $1;",
+        "options": {
+          "queryReplacement": "={{ [$json.huella] }}"
+        }
+      },
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "1bfO8GLZoWdMHIf5",
+          "name": "fts-suite-db · comercial_app"
+        }
+      }
+    },
+    {
+      "id": "nd0007-0000-4000-8000-000000000000",
+      "name": "Code - Evaluar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "jsCode": "/* ── Que se puede hacer con esta liga ──────────────────────────────────────\n * Seis respuestas, cada una con su texto, porque son seis cosas distintas y\n * juntarlas en «liga no valida» es elegir el peor mensaje por omision (§20 #12b):\n *\n *   no existe   -> la firma era valida pero la solicitud no esta. Raro de\n *                  verdad, y se dice que es raro en vez de disimularlo.\n *   contestada  -> ya se aprobo o rechazo, con su fecha y lo que se dijo.\n *   anulada     -> se mando otra despues. La buena es la del correo mas nuevo.\n *   vencida     -> se le paso el tiempo. NADIE dijo que no; hay que volver a pedir.\n *   el beneficiario cambio -> alguien lo movio por otro lado mientras la liga viajaba.\n *   viva        -> se puede decidir. El unico caso que pinta botones.\n *\n * Una fila ausente de la consulta NO dice nada sobre su valor: solo que no\n * cumplio el filtro (§20 #18). Por eso el «no existe» se distingue del resto y\n * no se confunde con «vencida». */\nconst filas = $input.all().map(i => i.json).filter(f => f && f.id);\nconst a = $('Code - Abrir liga').first().json;\nconst cuando = (x) => String(x || '').slice(0,16).replace('T',' ') + ' UTC';\n\nif (!filas.length) {\n  return [{ json: { ok:false, http:404, error:'SOLICITUD_NO_EXISTE', decidible:false,\n    titulo:'No encuentro esta solicitud',\n    mensaje:'La firma de la liga es buena, asi que la emitimos nosotros, pero la solicitud ya no esta en la base. Es raro: avisale a Esteban con la hora a la que abriste la liga.' } }];\n}\nconst s = filas[0];\n\n/* El orden de estas dos importa: una solicitud ya contestada se reporta como\n * contestada aunque el tiempo tambien se le haya pasado. Al contrario seria\n * decirle «se vencio» a alguien que si aprobo — un mensaje falso. */\nif (s.estado === 'aprobada' || s.estado === 'rechazada') {\n  return [{ json: { ok:true, http:200, decidible:false, estado:s.estado, ben_nombre:s.ben_nombre,\n    titulo: s.estado === 'aprobada' ? 'Esto ya se autorizo' : 'Esto ya se rechazo',\n    mensaje: (s.estado === 'aprobada'\n      ? s.ben_nombre + ' quedo autorizado el ' + cuando(s.respondido_at) + '.'\n      : s.ben_nombre + ' se rechazo el ' + cuando(s.respondido_at) + ': ' + (s.motivo_rechazo || 'sin motivo escrito') + '.') +\n      ' La liga es de un solo uso, asi que ya no hace nada.' } }];\n}\nif (s.estado === 'anulada') {\n  return [{ json: { ok:true, http:200, decidible:false, estado:'anulada', ben_nombre:s.ben_nombre,\n    titulo:'Esta liga ya no es la buena',\n    mensaje:'Se volvio a pedir la autorizacion de ' + s.ben_nombre + ' despues de mandarte esta, asi que esta quedo sin efecto. Usa la del correo mas reciente.' } }];\n}\nif (s.estado === 'vencida' || s.ya_vencio === true) {\n  return [{ json: { ok:true, http:200, decidible:false, estado:'vencida', ben_nombre:s.ben_nombre,\n    titulo:'A esta liga se le paso el tiempo',\n    mensaje:'Vencio el ' + cuando(s.vence_at) + '. Que se venza NO es un rechazo: nadie dijo que no, nadie quedo autorizado, y hay que volver a pedirla desde la cotizacion.' } }];\n}\n/* Y el beneficiario pudo cambiar de estado por otro lado mientras la liga\n * viajaba. Aprobar algo archivado dejaria un renglon aprobado que nadie puede\n * usar — y el CHECK de la 010 ni lo permitiria. */\nif (s.ben_estado !== 'pendiente') {\n  return [{ json: { ok:true, http:200, decidible:false, estado:'beneficiario_' + s.ben_estado, ben_nombre:s.ben_nombre,\n    titulo: s.ben_estado === 'vigente' ? 'Ya estaba autorizado' : 'Este beneficiario ya no esta pendiente',\n    mensaje: s.ben_estado === 'vigente'\n      ? s.ben_nombre + ' ya aparece como autorizado por otro camino. No hace falta que hagas nada.'\n      : s.ben_nombre + ' esta ' + s.ben_estado + ', asi que esta autorizacion ya no aplica.' } }];\n}\nreturn [{ json: { ok:true, http:200, decidible:true, estado:'viva',\n  solicitud_id:s.id, ben_id:s.ben_id, ben_nombre:s.ben_nombre, ben_tipo:s.ben_tipo,\n  ben_motivo:s.ben_motivo, odoo_cuenta_id:s.odoo_cuenta_id, pedido_a:s.pedido_a,\n  pedido_por:s.pedido_por, pedido_at:s.pedido_at, vence_at:s.vence_at,\n  metodo:a.metodo, accion:a.accion, motivo:a.motivo, ip:a.ip, ua:a.ua, huella:a.huella } }];\n"
+      }
+    },
+    {
+      "id": "nd0008-0000-4000-8000-000000000000",
+      "name": "IF - Escribir?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1344,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.decidible }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.metodo }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "POST"
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "nd0009-0000-4000-8000-000000000000",
+      "name": "Postgres - resolver",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1568,
+        0
+      ],
+      "parameters": {
+        "resource": "database",
+        "operation": "executeQuery",
+        "query": "WITH tocada AS (\n  UPDATE comercial.comision_aprobacion\n     SET estado         = CASE WHEN $2 = 'aprobar' THEN 'aprobada' ELSE 'rechazada' END,\n         respondido_at  = now(),\n         respondido_ip  = $3,\n         respondido_ua  = $4,\n         motivo_rechazo = CASE WHEN $2 = 'rechazar' THEN $5 ELSE NULL END\n   WHERE id = $1::uuid AND estado = 'viva' AND vence_at > now()\n  RETURNING id, beneficiario_id, estado, respondido_at\n), ben AS (\n  UPDATE comercial.comision_beneficiario\n     SET estado       = CASE WHEN $2 = 'aprobar' THEN 'vigente' ELSE 'rechazado' END,\n         aprobado_at  = CASE WHEN $2 = 'aprobar' THEN now() ELSE NULL END,\n         aprobado_por = CASE WHEN $2 = 'aprobar' THEN $6 ELSE NULL END,\n         motivo       = CASE WHEN $2 = 'rechazar' THEN $5 ELSE motivo END\n   WHERE id = (SELECT beneficiario_id FROM tocada)\n     AND estado = 'pendiente'\n     AND EXISTS (SELECT 1 FROM tocada)\n  RETURNING id, nombre, estado, aprobado_at, odoo_cuenta_id\n)\nSELECT (SELECT count(*) FROM tocada)::int AS solicitudes_tocadas,\n       (SELECT count(*) FROM ben)::int    AS beneficiarios_tocados,\n       (SELECT estado FROM tocada)        AS solicitud_estado,\n       (SELECT respondido_at FROM tocada) AS respondido_at,\n       (SELECT nombre FROM ben)           AS ben_nombre,\n       (SELECT estado FROM ben)           AS ben_estado;",
+        "options": {
+          "queryReplacement": "={{ [$json.solicitud_id, $json.accion, $json.ip, $json.ua, $json.motivo, $json.pedido_a] }}"
+        }
+      },
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "1bfO8GLZoWdMHIf5",
+          "name": "fts-suite-db · comercial_app"
+        }
+      }
+    },
+    {
+      "id": "nd0010-0000-4000-8000-000000000000",
+      "name": "Code - Resuelto",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        0
+      ],
+      "parameters": {
+        "jsCode": "/* ── Lo que de verdad paso ─────────────────────────────────────────────────\n * Se lee el CONTADOR de filas tocadas, no el «no hubo error». Cero filas con\n * cero error es exactamente como se ve un segundo clic — y tambien como se ve\n * una liga que vencio entre que se pinto la pagina y que se apreto el boton.\n * Un `insertadas: 0` se parece a un exito (§9), asi que aqui se exige == 1. */\nconst r = $input.first().json || {};\nconst ev = $('Code - Evaluar').first().json;\nconst a = $('Code - Abrir liga').first().json;\n\nif (Number(r.solicitudes_tocadas) !== 1) {\n  return [{ json: { ok:false, http:409, decidible:false, error:'YA_NO_SE_PODIA',\n    titulo:'No alcance a guardarlo',\n    mensaje:'Entre que se abrio la pagina y que apretaste el boton, esta liga dejo de servir: o alguien ya la contesto, o se le paso el tiempo. Vuelve a abrirla desde el correo para ver como quedo.',\n    crudo: { solicitudes_tocadas: r.solicitudes_tocadas || 0 } } }];\n}\n/* Y el gemelo: la solicitud si cambio y el beneficiario NO. Solo puede pasar si\n * alguien lo movio por otro lado en el mismo instante. No se puede deshacer\n * desde aqui sin adivinar, asi que se DICE — con los dos numeros crudos, que es\n * lo que permite arreglarlo a mano sin reconstruir la historia. */\nif (Number(r.beneficiarios_tocados) !== 1) {\n  return [{ json: { ok:false, http:409, decidible:false, error:'CATALOGO_NO_CUADRO',\n    titulo:'Se guardo tu respuesta pero el catalogo no la tomo',\n    mensaje:'Tu respuesta quedo escrita, pero el beneficiario ya no estaba pendiente cuando se intento marcar, asi que el catalogo NO cambio. Avisale a Esteban: hay que revisarlo a mano.',\n    crudo: { solicitudes_tocadas: r.solicitudes_tocadas, beneficiarios_tocados: r.beneficiarios_tocados,\n             solicitud_estado: r.solicitud_estado, ben_estado: r.ben_estado } } }];\n}\nconst aprobo = a.accion === 'aprobar';\nreturn [{ json: { ok:true, http:200, decidible:false, hecho:true,\n  accion: a.accion, estado: r.solicitud_estado, ben_estado: r.ben_estado,\n  ben_nombre: r.ben_nombre || ev.ben_nombre, respondido_at: r.respondido_at,\n  motivo: a.motivo || null, odoo_cuenta_id: ev.odoo_cuenta_id, pedido_por: ev.pedido_por,\n  titulo: aprobo ? 'Listo, quedo autorizado' : 'Listo, quedo rechazado',\n  mensaje: aprobo\n    ? (r.ben_nombre || ev.ben_nombre) + ' ya puede aparecer como beneficiario de comision. Recuerda: esto NO autorizo ningun pago.'\n    : (r.ben_nombre || ev.ben_nombre) + ' no queda autorizado. Se le avisa a quien lo pidio, con tu motivo.',\n  crudo: { solicitudes_tocadas: r.solicitudes_tocadas, beneficiarios_tocados: r.beneficiarios_tocados } } }];\n"
+      }
+    },
+    {
+      "id": "nd0011-0000-4000-8000-000000000000",
+      "name": "Code - Aviso",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2016,
+        0
+      ],
+      "parameters": {
+        "jsCode": "/* El acuse a quien lo pidio, y la copia a Esteban al aprobarse — que es lo que\n * pide el punto C del #294.\n *\n * A quien le toca saberlo: quien lo pidio SIEMPRE; Esteban SOLO al aprobarse. Un\n * rechazo no le llega porque no cambia nada que el tenga que atender — y un\n * correo que no hay que atender es como se ensena a la gente a filtrar los que si.\n *\n * MODO_PRUEBA hace lo mismo que en comision-pedir: todo a sales@fts.mx y a nadie\n * mas, con los destinatarios de verdad calculados y visibles en la respuesta\n * para poder ver a donde HABRIAN ido. */\nconst MODO_PRUEBA = true;\nconst BUZON_PRUEBA = 'sales@fts.mx';\nconst COPIA_CEO = 'estebandelacruz@fts.mx';\n\nconst d = $('Code - Resuelto').first().json;\nconst ev = $('Code - Evaluar').first().json;\nconst esc = (s) => String(s == null ? '' : s)\n  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;');\nconst aprobo = d.accion === 'aprobar';\n\n/* El correo de quien lo pidio se arma del actor de la suite. Es una suposicion\n * —que el usuario de la suite es el buzon de FTS— y por eso va marcada: el dia\n * que haya un usuario cuyo correo no siga ese patron, esto manda a un buzon que\n * no existe. Cuando el padron de usuarios guarde el correo, se lee de ahi. */\nconst reales = [ ('' + (ev.pedido_por || '')).indexOf('@') >= 0 ? ev.pedido_por : (ev.pedido_por + '@fts.mx') ];\nif (aprobo) reales.push(COPIA_CEO);\n\nconst html =\n  '<div style=\"font:14px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1c1c1c;max-width:560px\">' +\n  '<p style=\"margin:0 0 14px\"><strong>' + esc(d.ben_nombre) + '</strong> ' +\n  (aprobo ? 'quedo <strong>autorizado</strong> como beneficiario de comision.'\n          : 'fue <strong>rechazado</strong> como beneficiario de comision.') + '</p>' +\n  '<table style=\"border-collapse:collapse;margin:0 0 16px\">' +\n  '<tr><td style=\"padding:3px 12px 3px 0;color:#6b6b6b\">Cuando</td><td style=\"padding:3px 0\">' +\n    esc(String(d.respondido_at || '').slice(0,16).replace('T',' ')) + ' UTC</td></tr>' +\n  '<tr><td style=\"padding:3px 12px 3px 0;color:#6b6b6b\">Lo pidio</td><td style=\"padding:3px 0\">' + esc(ev.pedido_por) + '</td></tr>' +\n  (d.motivo ? '<tr><td style=\"padding:3px 12px 3px 0;color:#6b6b6b\">Motivo</td><td style=\"padding:3px 0\">' + esc(d.motivo) + '</td></tr>' : '') +\n  '</table>' +\n  (aprobo\n    ? '<div style=\"background:#f6f7f8;border-left:3px solid #1a7f37;padding:10px 14px;margin:0 0 14px\">' +\n      '<strong>Esto no autorizo ningun pago.</strong> Autorizo que pueda aparecer como beneficiario. ' +\n      'Ya se puede confirmar la orden donde sale.</div>'\n    : '<div style=\"background:#f6f7f8;border-left:3px solid #cf222e;padding:10px 14px;margin:0 0 14px\">' +\n      'La orden donde aparece <strong>sigue sin poder confirmarse</strong> mientras este beneficiario ' +\n      'este ahi. Hay que quitarlo, o volver a pedirlo con lo que falta.</div>') +\n  (MODO_PRUEBA ? '<p style=\"margin:0 0 6px;padding:8px 12px;background:#fff8c5;font-size:12px\">MODO PRUEBA: ' +\n    'esto habria ido a ' + esc(reales.join(', ')) + '.</p>' : '') +\n  '<p style=\"margin:0;color:#6b6b6b;font-size:12px\">FTS Suite &middot; modulo comercial</p>' +\n  '</div>';\n\nconst para = MODO_PRUEBA ? [BUZON_PRUEBA] : reales;\nreturn [{ json: {\n  message: {\n    subject: '[FTS] Beneficiario de comision ' + (aprobo ? 'autorizado' : 'rechazado') + ': ' +\n             d.ben_nombre + (MODO_PRUEBA ? ' (PRUEBA)' : ''),\n    body: { contentType: 'HTML', content: html },\n    toRecipients: para.map(x => ({ emailAddress: { address: x } }))\n  },\n  saveToSentItems: true,\n  _para: para, _para_real: reales, _modo_prueba: MODO_PRUEBA\n} }];\n"
+      }
+    },
+    {
+      "id": "nd0012-0000-4000-8000-000000000000",
+      "name": "HTTP - Acuse (Graph)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2240,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.microsoft.com/v1.0/users/sales@fts.mx/sendMail",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: $json.message, saveToSentItems: $json.saveToSentItems }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "alwaysOutputData": true,
+      "credentials": {
+        "oAuth2Api": {
+          "id": "Mh5kBNduMzOl3nzT",
+          "name": "Microsoft Graph - sales"
+        }
+      }
+    },
+    {
+      "id": "nd0013-0000-4000-8000-000000000000",
+      "name": "Respond JSON",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2464,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($('Code - Resuelto').item.json) }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "nd0014-0000-4000-8000-000000000000",
+      "name": "Code - Pintar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        176
+      ],
+      "parameters": {
+        "jsCode": "/* ── La pagina que ve Erick ────────────────────────────────────────────────\n * HTML servido por n8n, sin CSS de fuera ni una sola peticion a otro sitio: una\n * pagina que autoriza algo no deberia depender de que un CDN este vivo, y menos\n * abierta desde el correo de un telefono.\n *\n * Tres formas de pantalla y nada mas: decidible (dos botones), y no-decidible\n * (que se pinta verde si ya se aprobo, roja si fue un fallo, amarilla si es un\n * «no se puede»). El estado lo deciden los nodos de arriba; este solo pinta.\n *\n * ── Ancho ──────────────────────────────────────────────────────────────\n * Un contenedor de 560 px con `max-width` y `padding`, los datos en `flex-wrap`\n * y los botones en `flex:1 1 180px`: a 380 se apilan solos. No hay tabla ni\n * columnas fijas, que es donde se rompen las pantallas de este proyecto entre\n * 720 y 980 px (§20 #20). */\nconst d = $input.first().json || {};\nconst esc = (s) => String(s == null ? '' : s)\n  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;');\nconst cuando = (x) => String(x || '').slice(0,16).replace('T',' ') + ' UTC';\n\nconst cab =\n  '<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\">' +\n  '<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">' +\n  '<title>Autorizar beneficiario de comision &middot; FTS</title><style>' +\n  '*{box-sizing:border-box}' +\n  'body{margin:0;background:#f6f7f8;font:15px/1.6 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1c1c1c}' +\n  '.caja{max-width:560px;margin:0 auto;padding:24px 16px 48px}' +\n  '.tarjeta{background:#fff;border:1px solid #d8dee4;border-radius:12px;padding:20px 18px}' +\n  'h1{font-size:19px;line-height:1.35;margin:0 0 12px}' +\n  '.dato{display:flex;flex-wrap:wrap;gap:4px 10px;margin:0 0 4px}' +\n  '.dato b{color:#57606a;font-weight:500;min-width:92px}' +\n  '.nota{background:#fff8c5;border-left:3px solid #9a6700;padding:10px 12px;margin:16px 0;font-size:14px}' +\n  '.bien{background:#dafbe1;border-left:3px solid #1a7f37;padding:10px 12px;margin:16px 0}' +\n  '.mal{background:#ffebe9;border-left:3px solid #cf222e;padding:10px 12px;margin:16px 0}' +\n  '.botones{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 0}' +\n  'button{font:inherit;font-weight:600;padding:12px 18px;border-radius:8px;border:1px solid transparent;cursor:pointer;flex:1 1 180px}' +\n  '.si{background:#1f883d;color:#fff}.no{background:#fff;color:#cf222e;border-color:#cf222e}' +\n  'button[disabled]{opacity:.55;cursor:progress}' +\n  'label{display:block;color:#57606a;font-size:13.5px;margin:14px 0 0}' +\n  'textarea{width:100%;font:inherit;padding:9px 10px;border:1px solid #d8dee4;border-radius:8px;margin:6px 0 0;min-height:70px}' +\n  '.pie{color:#57606a;font-size:12.5px;margin:18px 0 0}' +\n  '#salida{margin:16px 0 0}' +\n  '</style></head><body><div class=\"caja\"><div class=\"tarjeta\">';\nconst pie = '</div></div></body></html>';\n\nif (d.decidible !== true) {\n  const clase = d.ok === false ? 'mal' : (d.estado === 'aprobada' || d.hecho === true ? 'bien' : 'nota');\n  return [{ json: { html: cab +\n    '<h1>' + esc(d.titulo || 'No se puede continuar') + '</h1>' +\n    '<div class=\"' + clase + '\">' + esc(d.mensaje || '') + '</div>' +\n    '<p class=\"pie\">FTS Suite &middot; modulo comercial</p>' + pie,\n    http: Number(d.http) || 200 } }];\n}\n\nconst html = cab +\n  '<h1>Autorizar a ' + esc(d.ben_nombre) + ' como beneficiario de comision</h1>' +\n  '<p class=\"dato\"><b>Lado</b> <span>' + esc(d.ben_tipo === 'externo' ? 'Del lado del cliente' : 'De FTS') + '</span></p>' +\n  (d.ben_motivo ? '<p class=\"dato\"><b>Por que</b> <span>' + esc(d.ben_motivo) + '</span></p>' : '') +\n  '<p class=\"dato\"><b>Lo pidio</b> <span>' + esc(d.pedido_por) + '</span></p>' +\n  '<p class=\"dato\"><b>Vence</b> <span>' + esc(cuando(d.vence_at)) + '</span></p>' +\n  '<div class=\"nota\"><strong>Esto NO autoriza un pago.</strong> Lo que autorizas es que esta ' +\n  'persona pueda aparecer como beneficiaria de comision. Cuanto se le paga, y cuando, son ' +\n  'decisiones aparte y cada una se aprueba por su cuenta.</div>' +\n  '<div id=\"zmotivo\" style=\"display:none\"><label for=\"motivo\">Por que lo rechazas ' +\n  '(quien lo pidio va a leer esto)</label><textarea id=\"motivo\" maxlength=\"500\"></textarea></div>' +\n  '<div class=\"botones\">' +\n  '<button class=\"si\" id=\"bsi\">Autorizar</button>' +\n  '<button class=\"no\" id=\"bno\">Rechazar</button>' +\n  '</div><div id=\"salida\"></div>' +\n  '<p class=\"pie\">La liga es de un solo uso. FTS Suite &middot; modulo comercial</p>' +\n  '<scr' + 'ipt>' + \"(function(){var T=\\\"\\\";try{T=new URLSearchParams(location.search).get(\\\"t\\\")||\\\"\\\";}catch(e){}var s=document.getElementById(\\\"salida\\\"),zm=document.getElementById(\\\"zmotivo\\\"),bs=document.getElementById(\\\"bsi\\\"),bn=document.getElementById(\\\"bno\\\"),pidio=false;function esc(t){return String(t).replace(/[<>&]/g,function(x){return {\\\"<\\\":\\\"&lt;\\\",\\\">\\\":\\\"&gt;\\\",\\\"&\\\":\\\"&amp;\\\"}[x];});}function di(c,t){s.innerHTML=\\\"<div class=\\\\\\\"\\\"+c+\\\"\\\\\\\">\\\"+esc(t)+\\\"</div>\\\";}function fin(){zm.style.display=\\\"none\\\";bs.style.display=\\\"none\\\";bn.style.display=\\\"none\\\";}function manda(a,m){bs.disabled=true;bn.disabled=true;di(\\\"nota\\\",\\\"Guardando...\\\");fetch(location.pathname,{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:JSON.stringify({t:T,accion:a,motivo:m||\\\"\\\"})}).then(function(r){return r.json();}).then(function(j){j=j||{};if(j.ok){di(\\\"bien\\\",(j.titulo||\\\"Listo\\\")+\\\". \\\"+(j.mensaje||\\\"\\\"));fin();}else{di(\\\"mal\\\",(j.titulo||\\\"No se pudo\\\")+\\\". \\\"+(j.mensaje||\\\"\\\"));bs.disabled=false;bn.disabled=false;}}).catch(function(){di(\\\"mal\\\",\\\"No pude hablar con el servidor, asi que NO SE si tu respuesta se guardo. No vuelvas a apretar: recarga esta pagina desde la liga del correo y ahi va a decir como quedo.\\\");bs.disabled=false;bn.disabled=false;});}bs.onclick=function(){manda(\\\"aprobar\\\",\\\"\\\");};bn.onclick=function(){if(!pidio){pidio=true;zm.style.display=\\\"block\\\";di(\\\"nota\\\",\\\"Escribe el motivo y vuelve a apretar Rechazar.\\\");document.getElementById(\\\"motivo\\\").focus();return;}var m=document.getElementById(\\\"motivo\\\").value.trim();if(m.length<3){di(\\\"mal\\\",\\\"Falta el motivo. Un rechazo sin motivo no lo puede atender nadie.\\\");return;}manda(\\\"rechazar\\\",m);};})();\" + '</scr' + 'ipt>' + pie;\nreturn [{ json: { html: html, http: 200 } }];\n"
+      }
+    },
+    {
+      "id": "nd0015-0000-4000-8000-000000000000",
+      "name": "Respond HTML",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1792,
+        176
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              },
+              {
+                "name": "Referrer-Policy",
+                "value": "no-referrer"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "nd0016-0000-4000-8000-000000000000",
+      "name": "Code - Pintar rechazo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        176
+      ],
+      "parameters": {
+        "jsCode": "/* ── La pagina que ve Erick ────────────────────────────────────────────────\n * HTML servido por n8n, sin CSS de fuera ni una sola peticion a otro sitio: una\n * pagina que autoriza algo no deberia depender de que un CDN este vivo, y menos\n * abierta desde el correo de un telefono.\n *\n * Tres formas de pantalla y nada mas: decidible (dos botones), y no-decidible\n * (que se pinta verde si ya se aprobo, roja si fue un fallo, amarilla si es un\n * «no se puede»). El estado lo deciden los nodos de arriba; este solo pinta.\n *\n * ── Ancho ──────────────────────────────────────────────────────────────\n * Un contenedor de 560 px con `max-width` y `padding`, los datos en `flex-wrap`\n * y los botones en `flex:1 1 180px`: a 380 se apilan solos. No hay tabla ni\n * columnas fijas, que es donde se rompen las pantallas de este proyecto entre\n * 720 y 980 px (§20 #20). */\nconst d = $input.first().json || {};\nconst esc = (s) => String(s == null ? '' : s)\n  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;');\nconst cuando = (x) => String(x || '').slice(0,16).replace('T',' ') + ' UTC';\n\nconst cab =\n  '<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\">' +\n  '<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">' +\n  '<title>Autorizar beneficiario de comision &middot; FTS</title><style>' +\n  '*{box-sizing:border-box}' +\n  'body{margin:0;background:#f6f7f8;font:15px/1.6 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1c1c1c}' +\n  '.caja{max-width:560px;margin:0 auto;padding:24px 16px 48px}' +\n  '.tarjeta{background:#fff;border:1px solid #d8dee4;border-radius:12px;padding:20px 18px}' +\n  'h1{font-size:19px;line-height:1.35;margin:0 0 12px}' +\n  '.dato{display:flex;flex-wrap:wrap;gap:4px 10px;margin:0 0 4px}' +\n  '.dato b{color:#57606a;font-weight:500;min-width:92px}' +\n  '.nota{background:#fff8c5;border-left:3px solid #9a6700;padding:10px 12px;margin:16px 0;font-size:14px}' +\n  '.bien{background:#dafbe1;border-left:3px solid #1a7f37;padding:10px 12px;margin:16px 0}' +\n  '.mal{background:#ffebe9;border-left:3px solid #cf222e;padding:10px 12px;margin:16px 0}' +\n  '.botones{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 0}' +\n  'button{font:inherit;font-weight:600;padding:12px 18px;border-radius:8px;border:1px solid transparent;cursor:pointer;flex:1 1 180px}' +\n  '.si{background:#1f883d;color:#fff}.no{background:#fff;color:#cf222e;border-color:#cf222e}' +\n  'button[disabled]{opacity:.55;cursor:progress}' +\n  'label{display:block;color:#57606a;font-size:13.5px;margin:14px 0 0}' +\n  'textarea{width:100%;font:inherit;padding:9px 10px;border:1px solid #d8dee4;border-radius:8px;margin:6px 0 0;min-height:70px}' +\n  '.pie{color:#57606a;font-size:12.5px;margin:18px 0 0}' +\n  '#salida{margin:16px 0 0}' +\n  '</style></head><body><div class=\"caja\"><div class=\"tarjeta\">';\nconst pie = '</div></div></body></html>';\n\nif (d.decidible !== true) {\n  const clase = d.ok === false ? 'mal' : (d.estado === 'aprobada' || d.hecho === true ? 'bien' : 'nota');\n  return [{ json: { html: cab +\n    '<h1>' + esc(d.titulo || 'No se puede continuar') + '</h1>' +\n    '<div class=\"' + clase + '\">' + esc(d.mensaje || '') + '</div>' +\n    '<p class=\"pie\">FTS Suite &middot; modulo comercial</p>' + pie,\n    http: Number(d.http) || 200 } }];\n}\n\nconst html = cab +\n  '<h1>Autorizar a ' + esc(d.ben_nombre) + ' como beneficiario de comision</h1>' +\n  '<p class=\"dato\"><b>Lado</b> <span>' + esc(d.ben_tipo === 'externo' ? 'Del lado del cliente' : 'De FTS') + '</span></p>' +\n  (d.ben_motivo ? '<p class=\"dato\"><b>Por que</b> <span>' + esc(d.ben_motivo) + '</span></p>' : '') +\n  '<p class=\"dato\"><b>Lo pidio</b> <span>' + esc(d.pedido_por) + '</span></p>' +\n  '<p class=\"dato\"><b>Vence</b> <span>' + esc(cuando(d.vence_at)) + '</span></p>' +\n  '<div class=\"nota\"><strong>Esto NO autoriza un pago.</strong> Lo que autorizas es que esta ' +\n  'persona pueda aparecer como beneficiaria de comision. Cuanto se le paga, y cuando, son ' +\n  'decisiones aparte y cada una se aprueba por su cuenta.</div>' +\n  '<div id=\"zmotivo\" style=\"display:none\"><label for=\"motivo\">Por que lo rechazas ' +\n  '(quien lo pidio va a leer esto)</label><textarea id=\"motivo\" maxlength=\"500\"></textarea></div>' +\n  '<div class=\"botones\">' +\n  '<button class=\"si\" id=\"bsi\">Autorizar</button>' +\n  '<button class=\"no\" id=\"bno\">Rechazar</button>' +\n  '</div><div id=\"salida\"></div>' +\n  '<p class=\"pie\">La liga es de un solo uso. FTS Suite &middot; modulo comercial</p>' +\n  '<scr' + 'ipt>' + \"(function(){var T=\\\"\\\";try{T=new URLSearchParams(location.search).get(\\\"t\\\")||\\\"\\\";}catch(e){}var s=document.getElementById(\\\"salida\\\"),zm=document.getElementById(\\\"zmotivo\\\"),bs=document.getElementById(\\\"bsi\\\"),bn=document.getElementById(\\\"bno\\\"),pidio=false;function esc(t){return String(t).replace(/[<>&]/g,function(x){return {\\\"<\\\":\\\"&lt;\\\",\\\">\\\":\\\"&gt;\\\",\\\"&\\\":\\\"&amp;\\\"}[x];});}function di(c,t){s.innerHTML=\\\"<div class=\\\\\\\"\\\"+c+\\\"\\\\\\\">\\\"+esc(t)+\\\"</div>\\\";}function fin(){zm.style.display=\\\"none\\\";bs.style.display=\\\"none\\\";bn.style.display=\\\"none\\\";}function manda(a,m){bs.disabled=true;bn.disabled=true;di(\\\"nota\\\",\\\"Guardando...\\\");fetch(location.pathname,{method:\\\"POST\\\",headers:{\\\"Content-Type\\\":\\\"application/json\\\"},body:JSON.stringify({t:T,accion:a,motivo:m||\\\"\\\"})}).then(function(r){return r.json();}).then(function(j){j=j||{};if(j.ok){di(\\\"bien\\\",(j.titulo||\\\"Listo\\\")+\\\". \\\"+(j.mensaje||\\\"\\\"));fin();}else{di(\\\"mal\\\",(j.titulo||\\\"No se pudo\\\")+\\\". \\\"+(j.mensaje||\\\"\\\"));bs.disabled=false;bn.disabled=false;}}).catch(function(){di(\\\"mal\\\",\\\"No pude hablar con el servidor, asi que NO SE si tu respuesta se guardo. No vuelvas a apretar: recarga esta pagina desde la liga del correo y ahi va a decir como quedo.\\\");bs.disabled=false;bn.disabled=false;});}bs.onclick=function(){manda(\\\"aprobar\\\",\\\"\\\");};bn.onclick=function(){if(!pidio){pidio=true;zm.style.display=\\\"block\\\";di(\\\"nota\\\",\\\"Escribe el motivo y vuelve a apretar Rechazar.\\\");document.getElementById(\\\"motivo\\\").focus();return;}var m=document.getElementById(\\\"motivo\\\").value.trim();if(m.length<3){di(\\\"mal\\\",\\\"Falta el motivo. Un rechazo sin motivo no lo puede atender nadie.\\\");return;}manda(\\\"rechazar\\\",m);};})();\" + '</scr' + 'ipt>' + pie;\nreturn [{ json: { html: html, http: 200 } }];\n"
+      }
+    },
+    {
+      "id": "nd0017-0000-4000-8000-000000000000",
+      "name": "Respond HTML rechazo",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1120,
+        176
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              },
+              {
+                "name": "Referrer-Policy",
+                "value": "no-referrer"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set - secreto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - secreto": {
+      "main": [
+        [
+          {
+            "node": "Code - Abrir liga",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Abrir liga": {
+      "main": [
+        [
+          {
+            "node": "IF - Firma ok?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Firma ok?": {
+      "main": [
+        [
+          {
+            "node": "Postgres - leer solicitud",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - Pintar rechazo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - leer solicitud": {
+      "main": [
+        [
+          {
+            "node": "Code - Evaluar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Evaluar": {
+      "main": [
+        [
+          {
+            "node": "IF - Escribir?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Escribir?": {
+      "main": [
+        [
+          {
+            "node": "Postgres - resolver",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - Pintar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - resolver": {
+      "main": [
+        [
+          {
+            "node": "Code - Resuelto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Resuelto": {
+      "main": [
+        [
+          {
+            "node": "Code - Aviso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Aviso": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Acuse (Graph)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Acuse (Graph)": {
+      "main": [
+        [
+          {
+            "node": "Respond JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Pintar": {
+      "main": [
+        [
+          {
+            "node": "Respond HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Pintar rechazo": {
+      "main": [
+        [
+          {
+            "node": "Respond HTML rechazo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Etc/UTC"
+  }
+}

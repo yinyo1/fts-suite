@@ -1,0 +1,536 @@
+{
+  "name": "comercial/comision-pedir",
+  "nodes": [
+    {
+      "id": "nd0001-0000-4000-8000-000000000000",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        560,
+        -820
+      ],
+      "parameters": {
+        "content": "## comercial/comision-pedir · INACTIVO\n\nPide a Erick que autorice un **beneficiario de comision**. Flujo **C** del **#294**.\n\n### LA FRASE QUE LO GOBIERNA\n**La liga aprueba un RENGLON DE CATALOGO. No aprueba un pago.** Ningun peso se mueve por\nesto: lo que se autoriza es que esa persona PUEDA aparecer como beneficiaria. Cuanto y\ncuando son decisiones aparte, cada una con su propio acto humano. Por eso la liga puede\nviajar por correo sin ser una llave del banco.\n\n### Los dos candados de la liga, independientes\n1. **La FIRMA** (HMAC con una llave derivada de `SUITE_JWT_SECRET`, etiqueta\n   `fts-comision-aprobar-v1`) prueba que la emitimos nosotros. Sin la llave no se puede\n   inventar una liga ni conociendo el id de la solicitud.\n2. **La HUELLA** (`sha256` del token, lo unico que se guarda) prueba que es LA liga de\n   esta solicitud. De la base no se saca el token: si se filtra, no abre nada.\n\nEl azar de 24 bytes sale de `gen_random_bytes` de **Postgres** — el sandbox de n8n no\nexpone un generador criptografico, y `Math.random` no sirve para esto.\n\n### MODO_PRUEBA esta ENCENDIDO\nEn `Code - Correo`, `MODO_PRUEBA = true` manda **todo a sales@fts.mx y a nadie mas**.\nEl destinatario real se calcula igual y viaja en `pedido_a_real` para poder ver a donde\nhabria ido. Apagarlo = esa linea, y poner el correo de Erick en `APROBADOR`.\n\n### Limite CONOCIDO, y no lo arregla la criptografia\nEl token ES la credencial. Una liga **reenviada** la puede usar quien la reciba. Atarla a\nErick de verdad exige que Erick tenga sesion en la suite y que la aprobacion pida ese\nlogin — esta al backlog. Lo que si queda es **rastro**: la solicitud guarda IP y navegador\nde quien la abrio, que es lo que permite auditar un «yo no aprobe eso».\n\n### Depende de la migracion 010, que NO esta aplicada\n`comercial.comision_beneficiario` y `comercial.comision_aprobacion` viven en\n`db/migrations/comercial/010_comision_beneficiario.sql`. **Sin aplicarla este workflow\nno corre.** Aplicarla y encender esto son un solo paso, y lo hace Esteban.",
+        "color": 4,
+        "width": 560,
+        "height": 780
+      }
+    },
+    {
+      "id": "nd0002-0000-4000-8000-000000000000",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "comercial/comision-pedir",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "nd0003-0000-4000-8000-000000000000",
+      "name": "Set - secreto",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "secret",
+              "value": "={{ $env.SUITE_JWT_SECRET }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "nd0004-0000-4000-8000-000000000000",
+      "name": "Code - Verificar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// ── SHA-256 + HMAC-SHA256 + verificacion JWT, JS PURO (sandbox n8n: sin require/crypto) ──\nfunction sha256Bytes(bytes) {\n  const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,\n    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,\n    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,\n    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,\n    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,\n    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,\n    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,\n    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];\n  let H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];\n  const ml = bytes.length * 8;\n  const withPad = bytes.slice();\n  withPad.push(0x80);\n  while (withPad.length % 64 !== 56) withPad.push(0);\n  for (let i = 7; i >= 0; i--) withPad.push((ml / Math.pow(2, i * 8)) & 0xff);\n  const rr = (x, n) => (x >>> n) | (x << (32 - n));\n  for (let i = 0; i < withPad.length; i += 64) {\n    const w = new Array(64);\n    for (let j = 0; j < 16; j++) {\n      w[j] = (withPad[i+j*4] << 24) | (withPad[i+j*4+1] << 16) | (withPad[i+j*4+2] << 8) | withPad[i+j*4+3];\n    }\n    for (let j = 16; j < 64; j++) {\n      const s0 = rr(w[j-15],7) ^ rr(w[j-15],18) ^ (w[j-15] >>> 3);\n      const s1 = rr(w[j-2],17) ^ rr(w[j-2],19) ^ (w[j-2] >>> 10);\n      w[j] = (w[j-16] + s0 + w[j-7] + s1) | 0;\n    }\n    let [a,b,c,d,e,f,g,h] = H;\n    for (let j = 0; j < 64; j++) {\n      const S1 = rr(e,6) ^ rr(e,11) ^ rr(e,25);\n      const ch = (e & f) ^ (~e & g);\n      const t1 = (h + S1 + ch + K[j] + w[j]) | 0;\n      const S0 = rr(a,2) ^ rr(a,13) ^ rr(a,22);\n      const mj = (a & b) ^ (a & c) ^ (b & c);\n      const t2 = (S0 + mj) | 0;\n      h=g; g=f; f=e; e=(d+t1)|0; d=c; c=b; b=a; a=(t1+t2)|0;\n    }\n    H = [(H[0]+a)|0,(H[1]+b)|0,(H[2]+c)|0,(H[3]+d)|0,(H[4]+e)|0,(H[5]+f)|0,(H[6]+g)|0,(H[7]+h)|0];\n  }\n  const out = [];\n  for (const x of H) { out.push((x>>>24)&0xff,(x>>>16)&0xff,(x>>>8)&0xff,x&0xff); }\n  return out;\n}\nfunction strBytes(s) { const o=[]; for (const ch of unescape(encodeURIComponent(s))) o.push(ch.charCodeAt(0)); return o; }\nfunction hmacSha256(keyStr, msgStr) {\n  let key = strBytes(keyStr);\n  if (key.length > 64) key = sha256Bytes(key);\n  while (key.length < 64) key.push(0);\n  const ipad = key.map(b => b ^ 0x36), opad = key.map(b => b ^ 0x5c);\n  return sha256Bytes(opad.concat(sha256Bytes(ipad.concat(strBytes(msgStr)))));\n}\nfunction hex(bytes) { return bytes.map(b => b.toString(16).padStart(2,'0')).join(''); }\nfunction sha256Hex(s) { return hex(sha256Bytes(strBytes(s))); }\nfunction b64urlFromBytes(bytes) {\n  const A='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';\n  let out='';\n  for (let i=0;i<bytes.length;i+=3){\n    const b0=bytes[i],b1=bytes[i+1],b2=bytes[i+2];\n    out+=A[b0>>2]; out+=A[((b0&3)<<4)|((b1===undefined?0:b1)>>4)];\n    if(b1!==undefined){ out+=A[((b1&15)<<2)|((b2===undefined?0:b2)>>6)]; if(b2!==undefined) out+=A[b2&63]; }\n  }\n  return out;\n}\nfunction b64urlDecodeToStr(s) {\n  const A='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';\n  let bits='', out=[];\n  for (const ch of s) { const idx=A.indexOf(ch); if(idx<0) continue; bits+=idx.toString(2).padStart(6,'0'); }\n  for (let i=0;i+8<=bits.length;i+=8) out.push(parseInt(bits.slice(i,i+8),2));\n  return decodeURIComponent(escape(String.fromCharCode.apply(null,out)));\n}\nfunction safeEq(a,b){ if(a.length!==b.length) return false; let d=0; for(let i=0;i<a.length;i++) d|=a.charCodeAt(i)^b.charCodeAt(i); return d===0; }\n\nfunction verifyJWT(token, secret, scopeRequerido) {\n  if (typeof token !== 'string') return { ok:false, error:'TOKEN_AUSENTE' };\n  const p = token.split('.');\n  if (p.length !== 3) return { ok:false, error:'TOKEN_MALFORMADO' };\n  const esperado = b64urlFromBytes(hmacSha256(secret, p[0] + '.' + p[1]));\n  if (!safeEq(esperado, p[2])) return { ok:false, error:'FIRMA_INVALIDA' };\n  let payload;\n  try { payload = JSON.parse(b64urlDecodeToStr(p[1])); } catch(e){ return { ok:false, error:'PAYLOAD_ILEGIBLE' }; }\n  const ahora = Math.floor(Date.now()/1000);\n  if (!payload.exp || payload.exp <= ahora) return { ok:false, error:'TOKEN_EXPIRADO' };\n  const scopes = Array.isArray(payload.scopes) ? payload.scopes : ['finanzas:read','finanzas:write'];\n  if (scopeRequerido && scopes.indexOf(scopeRequerido) < 0) {\n    return { ok:false, error:'SCOPE_INSUFICIENTE', requerido:scopeRequerido, tiene:scopes };\n  }\n  return { ok:true, actor: payload.sub || payload.username || null, nombre: payload.nombre || null, scopes: scopes, exp: payload.exp };\n}\n\n/* ── La llave de la liga se DERIVA, no se agrega al entorno ────────────────\n * Decision propia de la sesion del 27/28-sep-2026: agregar una variable nueva\n * a Railway estaba fuera de lo autorizado, y ademas una llave por proposito es\n * mejor practica que reusar la de las sesiones. Las dos cosas se resuelven\n * derivandola:\n *\n *     k = HMAC(SUITE_JWT_SECRET, 'fts-comision-aprobar-v1')\n *\n * Es separacion de llaves estandar: de `k` no se saca el secreto de las\n * sesiones, asi que una liga filtrada no compromete el login de nadie, y al\n * contrario tampoco. La etiqueta lleva version por si algun dia hay que\n * invalidar todas las ligas vivas de golpe: se sube a -v2 y se caen solas. */\nfunction llaveLiga(secreto) {\n  return hex(hmacSha256('' + secreto, 'fts-comision-aprobar-v1'));\n}\n/* El token son tres partes: la solicitud, un azar de 24 bytes que sale de\n * `gen_random_bytes` de Postgres (CSPRNG de verdad — el sandbox de n8n no\n * expone uno, y `Math.random` no sirve para esto), y la firma de las dos.\n *\n * La firma es lo que hace que no se pueda inventar una liga: sin `k` no se\n * puede producir un `sig` valido para ninguna solicitud, ni conociendo su id. */\nfunction armarToken(k, sol, nonce) {\n  return sol + '.' + nonce + '.' + b64urlFromBytes(hmacSha256(k, sol + '.' + nonce));\n}\n/* Verifica la FORMA y la FIRMA. No toca la base: eso es el segundo candado y\n * va aparte a proposito — asi una liga inventada se rechaza sin gastar una\n * consulta, y una liga bien firmada pero ya usada da un mensaje distinto. */\nfunction abrirToken(k, token) {\n  const t = '' + (token || '');\n  if (!t || t.length > 300) return { ok:false, error:'LIGA_MALFORMADA' };\n  const p = t.split('.');\n  if (p.length !== 3) return { ok:false, error:'LIGA_MALFORMADA' };\n  const sol = p[0], nonce = p[1], sig = p[2];\n  if (!/^[0-9a-f-]{36}$/.test(sol))  return { ok:false, error:'LIGA_MALFORMADA' };\n  if (!/^[0-9a-f]{48}$/.test(nonce)) return { ok:false, error:'LIGA_MALFORMADA' };\n  const esperada = b64urlFromBytes(hmacSha256(k, sol + '.' + nonce));\n  if (!safeEq(sig, esperada)) return { ok:false, error:'FIRMA_INVALIDA' };\n  return { ok:true, sol: sol, nonce: nonce, huella: sha256Hex(t) };\n}\n\n/* ── comercial/comision-pedir · verificar la sesion y preparar la solicitud ──\n * TODO en try/catch: la entrada es el Set que resolvio $env.SUITE_JWT_SECRET, y\n * un nodo que truena devuelve su ENTRADA en nodeExecutionStack — el 8-sep-2026\n * asi acabo una llave de produccion en un transcript (CLAUDE.md §9). */\ntry {\n  const ENTRADA = $input.first().json;\n  const cuerpo  = ENTRADA.body || ENTRADA || {};\n  const secreto = $('Set - secreto').item.json.secret;\n  if (!secreto || ('' + secreto).length < 32) {\n    return [{ json: { ok:false, error:'SECRETO_NO_CONFIGURADO',\n      mensaje:'SUITE_JWT_SECRET no esta definida o es muy corta en el entorno de n8n.' } }];\n  }\n  const v = verifyJWT(cuerpo.token, '' + secreto, 'comercial:read');\n  if (!v.ok) {\n    return [{ json: { ok:false, error:v.error,\n      mensaje: v.error === 'TOKEN_EXPIRADO' ? 'La sesion vencio. Vuelve a entrar.'\n             : v.error === 'SCOPE_INSUFICIENTE' ? 'Tu usuario no tiene acceso al modulo comercial.'\n             : 'Sesion no valida. Vuelve a entrar.' } }];\n  }\n  if (v.scopes.indexOf('comercial:write') < 0) {\n    return [{ json: { ok:false, error:'SIN_PERMISO_ESCRITURA',\n      mensaje:'Tu usuario puede leer el modulo comercial pero no pedir autorizaciones.' } }];\n  }\n  const ben = ('' + (cuerpo.beneficiario_id || '')).trim();\n  if (!/^[0-9a-f-]{36}$/.test(ben)) {\n    return [{ json: { ok:false, error:'SIN_BENEFICIARIO',\n      mensaje:'Falta el beneficiario, o su id no tiene forma de id.' } }];\n  }\n\n  /* ── La caducidad ───────────────────────────────────────────────────────\n   * 72 horas. Decision propia, y el razonamiento importa mas que el numero:\n   * una liga que aprueba algo no puede vivir para siempre en una bandeja, y al\n   * mismo tiempo tiene que aguantar un fin de semana — si vence en 24 h, todo\n   * lo que se pida un viernes nace muerto. 72 h cubre viernes→lunes.\n   * Se puede pedir otra cosa entre 1 y 168 h; fuera de ese rango se ignora y\n   * se DICE, en vez de aceptar un 0 que caduca al instante. */\n  let horas = Number(cuerpo.horas);\n  const horas_pedidas = cuerpo.horas === undefined ? null : Number(cuerpo.horas);\n  if (!(horas >= 1 && horas <= 168)) horas = 72;\n\n  return [{ json: { ok:true, actor:v.actor, nombre_actor:v.nombre,\n    beneficiario_id: ben, horas: horas,\n    horas_ignoradas: horas_pedidas !== null && horas_pedidas !== horas,\n    reenvio: cuerpo.reenvio === true } }];\n} catch (e) {\n  return [{ json: { ok:false, error:'FALLO_VERIFICACION', mensaje:'No se pudo validar la sesion.' } }];\n}\n"
+      }
+    },
+    {
+      "id": "nd0005-0000-4000-8000-000000000000",
+      "name": "IF - Puede?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.ok }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "nd0006-0000-4000-8000-000000000000",
+      "name": "Postgres - leer beneficiario",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "resource": "database",
+        "operation": "executeQuery",
+        "query": "SELECT b.id, b.tipo, b.nombre, b.estado, b.motivo,\n       b.odoo_cuenta_id, b.odoo_empleado_id, b.odoo_company_id,\n       a.id AS solicitud_viva, a.pedido_at, a.vence_at, a.pedido_a,\n       a.recordatorios\n  FROM comercial.comision_beneficiario b\n  LEFT JOIN comercial.comision_aprobacion a\n         ON a.beneficiario_id = b.id AND a.estado = 'viva'\n WHERE b.id = $1;",
+        "options": {
+          "queryReplacement": "={{ [$json.beneficiario_id] }}"
+        }
+      },
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "1bfO8GLZoWdMHIf5",
+          "name": "fts-suite-db · comercial_app"
+        }
+      }
+    },
+    {
+      "id": "nd0007-0000-4000-8000-000000000000",
+      "name": "Code - Decidir",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "jsCode": "/* ── Que hacer con lo que hay ──────────────────────────────────────────────\n * Cuatro respuestas posibles, y ninguna es «error»:\n *   - el beneficiario no existe                 -> no se puede pedir\n *   - ya esta vigente                           -> no hace falta pedir nada\n *   - hay una solicitud viva y NO es reenvio    -> se dice que ya se pidio, y cuando\n *   - hay una viva y SI es reenvio              -> se anula la anterior y se manda otra\n * El indice `comision_apr_viva_uq` de la migracion 010 solo deja UNA viva por\n * beneficiario, asi que el reenvio TIENE que anular; si no, el INSERT choca.\n * Que el candado este en la base y no solo aqui es a proposito: asi no depende\n * de que este nodo se haya acordado. */\nconst filas = $input.all().map(i => i.json).filter(f => f && f.id);\nconst pet = $('Code - Verificar').first().json;\n\nif (!filas.length) {\n  return [{ json: { ok:false, error:'BENEFICIARIO_NO_EXISTE',\n    mensaje:'Ese beneficiario no esta en el catalogo. Puede que se haya archivado.' } }];\n}\nconst b = filas[0];\nif (b.estado === 'vigente') {\n  return [{ json: { ok:true, hecho:false, ya:'vigente', beneficiario_id:b.id, nombre:b.nombre,\n    mensaje: b.nombre + ' ya esta autorizado. No hace falta pedir nada.' } }];\n}\nif (b.estado === 'archivado' || b.estado === 'rechazado') {\n  return [{ json: { ok:false, error:'BENEFICIARIO_' + String(b.estado).toUpperCase(),\n    mensaje: b.nombre + ' esta ' + b.estado + '. Para volver a usarlo hay que darlo de alta otra vez.' } }];\n}\nif (b.solicitud_viva && !pet.reenvio) {\n  return [{ json: { ok:true, hecho:false, ya:'pedida', beneficiario_id:b.id, nombre:b.nombre,\n    solicitud_id:b.solicitud_viva, pedido_at:b.pedido_at, vence_at:b.vence_at,\n    pedido_a:b.pedido_a, recordatorios:b.recordatorios,\n    mensaje: 'Ya se pidio la autorizacion de ' + b.nombre + '. Vence el ' +\n             String(b.vence_at || '').slice(0,16).replace('T',' ') + ' UTC.' } }];\n}\n/* Sigue: hay que crear la solicitud (y anular la anterior si era reenvio). */\nreturn [{ json: { ok:true, hecho:null, crear:true,\n  beneficiario_id: b.id, nombre: b.nombre, tipo: b.tipo, motivo: b.motivo,\n  odoo_cuenta_id: b.odoo_cuenta_id, anular: b.solicitud_viva || null,\n  horas: pet.horas, horas_ignoradas: pet.horas_ignoradas, actor: pet.actor } }];\n"
+      }
+    },
+    {
+      "id": "nd0008-0000-4000-8000-000000000000",
+      "name": "IF - Crear?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1344,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.crear }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "nd0009-0000-4000-8000-000000000000",
+      "name": "Postgres - anular y semilla",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1568,
+        0
+      ],
+      "parameters": {
+        "resource": "database",
+        "operation": "executeQuery",
+        "query": "WITH anulada AS (\n  UPDATE comercial.comision_aprobacion\n     SET estado = 'anulada'\n   WHERE beneficiario_id = $1 AND estado = 'viva'\n  RETURNING id\n)\nSELECT gen_random_uuid()::text                   AS sol,\n       encode(gen_random_bytes(24), 'hex')       AS nonce,\n       (SELECT count(*) FROM anulada)::int       AS anuladas,\n       now()                                     AS ahora;",
+        "options": {
+          "queryReplacement": "={{ [$json.beneficiario_id] }}"
+        }
+      },
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "1bfO8GLZoWdMHIf5",
+          "name": "fts-suite-db · comercial_app"
+        }
+      }
+    },
+    {
+      "id": "nd0010-0000-4000-8000-000000000000",
+      "name": "Set - secreto 2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1792,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "secret",
+              "value": "={{ $env.SUITE_JWT_SECRET }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "nd0011-0000-4000-8000-000000000000",
+      "name": "Code - Firmar liga",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2016,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// ── SHA-256 + HMAC-SHA256 + verificacion JWT, JS PURO (sandbox n8n: sin require/crypto) ──\nfunction sha256Bytes(bytes) {\n  const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,\n    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,\n    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,\n    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,\n    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,\n    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,\n    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,\n    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];\n  let H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];\n  const ml = bytes.length * 8;\n  const withPad = bytes.slice();\n  withPad.push(0x80);\n  while (withPad.length % 64 !== 56) withPad.push(0);\n  for (let i = 7; i >= 0; i--) withPad.push((ml / Math.pow(2, i * 8)) & 0xff);\n  const rr = (x, n) => (x >>> n) | (x << (32 - n));\n  for (let i = 0; i < withPad.length; i += 64) {\n    const w = new Array(64);\n    for (let j = 0; j < 16; j++) {\n      w[j] = (withPad[i+j*4] << 24) | (withPad[i+j*4+1] << 16) | (withPad[i+j*4+2] << 8) | withPad[i+j*4+3];\n    }\n    for (let j = 16; j < 64; j++) {\n      const s0 = rr(w[j-15],7) ^ rr(w[j-15],18) ^ (w[j-15] >>> 3);\n      const s1 = rr(w[j-2],17) ^ rr(w[j-2],19) ^ (w[j-2] >>> 10);\n      w[j] = (w[j-16] + s0 + w[j-7] + s1) | 0;\n    }\n    let [a,b,c,d,e,f,g,h] = H;\n    for (let j = 0; j < 64; j++) {\n      const S1 = rr(e,6) ^ rr(e,11) ^ rr(e,25);\n      const ch = (e & f) ^ (~e & g);\n      const t1 = (h + S1 + ch + K[j] + w[j]) | 0;\n      const S0 = rr(a,2) ^ rr(a,13) ^ rr(a,22);\n      const mj = (a & b) ^ (a & c) ^ (b & c);\n      const t2 = (S0 + mj) | 0;\n      h=g; g=f; f=e; e=(d+t1)|0; d=c; c=b; b=a; a=(t1+t2)|0;\n    }\n    H = [(H[0]+a)|0,(H[1]+b)|0,(H[2]+c)|0,(H[3]+d)|0,(H[4]+e)|0,(H[5]+f)|0,(H[6]+g)|0,(H[7]+h)|0];\n  }\n  const out = [];\n  for (const x of H) { out.push((x>>>24)&0xff,(x>>>16)&0xff,(x>>>8)&0xff,x&0xff); }\n  return out;\n}\nfunction strBytes(s) { const o=[]; for (const ch of unescape(encodeURIComponent(s))) o.push(ch.charCodeAt(0)); return o; }\nfunction hmacSha256(keyStr, msgStr) {\n  let key = strBytes(keyStr);\n  if (key.length > 64) key = sha256Bytes(key);\n  while (key.length < 64) key.push(0);\n  const ipad = key.map(b => b ^ 0x36), opad = key.map(b => b ^ 0x5c);\n  return sha256Bytes(opad.concat(sha256Bytes(ipad.concat(strBytes(msgStr)))));\n}\nfunction hex(bytes) { return bytes.map(b => b.toString(16).padStart(2,'0')).join(''); }\nfunction sha256Hex(s) { return hex(sha256Bytes(strBytes(s))); }\nfunction b64urlFromBytes(bytes) {\n  const A='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';\n  let out='';\n  for (let i=0;i<bytes.length;i+=3){\n    const b0=bytes[i],b1=bytes[i+1],b2=bytes[i+2];\n    out+=A[b0>>2]; out+=A[((b0&3)<<4)|((b1===undefined?0:b1)>>4)];\n    if(b1!==undefined){ out+=A[((b1&15)<<2)|((b2===undefined?0:b2)>>6)]; if(b2!==undefined) out+=A[b2&63]; }\n  }\n  return out;\n}\nfunction b64urlDecodeToStr(s) {\n  const A='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';\n  let bits='', out=[];\n  for (const ch of s) { const idx=A.indexOf(ch); if(idx<0) continue; bits+=idx.toString(2).padStart(6,'0'); }\n  for (let i=0;i+8<=bits.length;i+=8) out.push(parseInt(bits.slice(i,i+8),2));\n  return decodeURIComponent(escape(String.fromCharCode.apply(null,out)));\n}\nfunction safeEq(a,b){ if(a.length!==b.length) return false; let d=0; for(let i=0;i<a.length;i++) d|=a.charCodeAt(i)^b.charCodeAt(i); return d===0; }\n\nfunction verifyJWT(token, secret, scopeRequerido) {\n  if (typeof token !== 'string') return { ok:false, error:'TOKEN_AUSENTE' };\n  const p = token.split('.');\n  if (p.length !== 3) return { ok:false, error:'TOKEN_MALFORMADO' };\n  const esperado = b64urlFromBytes(hmacSha256(secret, p[0] + '.' + p[1]));\n  if (!safeEq(esperado, p[2])) return { ok:false, error:'FIRMA_INVALIDA' };\n  let payload;\n  try { payload = JSON.parse(b64urlDecodeToStr(p[1])); } catch(e){ return { ok:false, error:'PAYLOAD_ILEGIBLE' }; }\n  const ahora = Math.floor(Date.now()/1000);\n  if (!payload.exp || payload.exp <= ahora) return { ok:false, error:'TOKEN_EXPIRADO' };\n  const scopes = Array.isArray(payload.scopes) ? payload.scopes : ['finanzas:read','finanzas:write'];\n  if (scopeRequerido && scopes.indexOf(scopeRequerido) < 0) {\n    return { ok:false, error:'SCOPE_INSUFICIENTE', requerido:scopeRequerido, tiene:scopes };\n  }\n  return { ok:true, actor: payload.sub || payload.username || null, nombre: payload.nombre || null, scopes: scopes, exp: payload.exp };\n}\n\n/* ── La llave de la liga se DERIVA, no se agrega al entorno ────────────────\n * Decision propia de la sesion del 27/28-sep-2026: agregar una variable nueva\n * a Railway estaba fuera de lo autorizado, y ademas una llave por proposito es\n * mejor practica que reusar la de las sesiones. Las dos cosas se resuelven\n * derivandola:\n *\n *     k = HMAC(SUITE_JWT_SECRET, 'fts-comision-aprobar-v1')\n *\n * Es separacion de llaves estandar: de `k` no se saca el secreto de las\n * sesiones, asi que una liga filtrada no compromete el login de nadie, y al\n * contrario tampoco. La etiqueta lleva version por si algun dia hay que\n * invalidar todas las ligas vivas de golpe: se sube a -v2 y se caen solas. */\nfunction llaveLiga(secreto) {\n  return hex(hmacSha256('' + secreto, 'fts-comision-aprobar-v1'));\n}\n/* El token son tres partes: la solicitud, un azar de 24 bytes que sale de\n * `gen_random_bytes` de Postgres (CSPRNG de verdad — el sandbox de n8n no\n * expone uno, y `Math.random` no sirve para esto), y la firma de las dos.\n *\n * La firma es lo que hace que no se pueda inventar una liga: sin `k` no se\n * puede producir un `sig` valido para ninguna solicitud, ni conociendo su id. */\nfunction armarToken(k, sol, nonce) {\n  return sol + '.' + nonce + '.' + b64urlFromBytes(hmacSha256(k, sol + '.' + nonce));\n}\n/* Verifica la FORMA y la FIRMA. No toca la base: eso es el segundo candado y\n * va aparte a proposito — asi una liga inventada se rechaza sin gastar una\n * consulta, y una liga bien firmada pero ya usada da un mensaje distinto. */\nfunction abrirToken(k, token) {\n  const t = '' + (token || '');\n  if (!t || t.length > 300) return { ok:false, error:'LIGA_MALFORMADA' };\n  const p = t.split('.');\n  if (p.length !== 3) return { ok:false, error:'LIGA_MALFORMADA' };\n  const sol = p[0], nonce = p[1], sig = p[2];\n  if (!/^[0-9a-f-]{36}$/.test(sol))  return { ok:false, error:'LIGA_MALFORMADA' };\n  if (!/^[0-9a-f]{48}$/.test(nonce)) return { ok:false, error:'LIGA_MALFORMADA' };\n  const esperada = b64urlFromBytes(hmacSha256(k, sol + '.' + nonce));\n  if (!safeEq(sig, esperada)) return { ok:false, error:'FIRMA_INVALIDA' };\n  return { ok:true, sol: sol, nonce: nonce, huella: sha256Hex(t) };\n}\n\n/* ── Firmar la liga ────────────────────────────────────────────────────────\n * try/catch total por lo mismo de siempre: la entrada trae el secreto.\n *\n * Y el orden importa: la liga se firma ANTES de guardar, y lo que se guarda es\n * su huella. Asi la base nunca ve el token — si se filtra, lo que se filtra no\n * abre nada (de un sha256 no se saca el original). Es la misma razon por la que\n * una contrasena se guarda hasheada. */\ntry {\n  const s = $input.first().json;\n  const secreto = $('Set - secreto 2').item.json.secret;\n  if (!secreto || ('' + secreto).length < 32) {\n    return [{ json: { ok:false, error:'SECRETO_NO_CONFIGURADO',\n      mensaje:'SUITE_JWT_SECRET no esta definida en el entorno de n8n.' } }];\n  }\n  const d = $('Code - Decidir').first().json;\n  const k = llaveLiga(secreto);\n  const token = armarToken(k, s.sol, s.nonce);\n  const vence = new Date(Date.now() + d.horas * 3600 * 1000);\n  return [{ json: { ok:true,\n    sol: s.sol, huella: sha256Hex(token), token: token,\n    anuladas: s.anuladas,\n    beneficiario_id: d.beneficiario_id, nombre: d.nombre, tipo: d.tipo,\n    motivo: d.motivo, odoo_cuenta_id: d.odoo_cuenta_id,\n    horas: d.horas, horas_ignoradas: d.horas_ignoradas, actor: d.actor,\n    vence_iso: vence.toISOString(),\n    liga: 'https://primary-production-5c3c.up.railway.app/webhook/comercial/comision-liga?t=' + encodeURIComponent(token) } }];\n} catch (e) {\n  return [{ json: { ok:false, error:'FALLO_FIRMA', mensaje:'No se pudo firmar la liga.' } }];\n}\n"
+      }
+    },
+    {
+      "id": "nd0012-0000-4000-8000-000000000000",
+      "name": "Postgres - insertar solicitud",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        2240,
+        0
+      ],
+      "parameters": {
+        "resource": "database",
+        "operation": "executeQuery",
+        "query": "INSERT INTO comercial.comision_aprobacion\n  (id, beneficiario_id, token_sha256, pedido_a, pedido_por, vence_at)\nVALUES ($1::uuid, $2::uuid, $3, $4, $5, $6::timestamptz)\nRETURNING id, beneficiario_id, pedido_a, pedido_at, vence_at, estado;",
+        "options": {
+          "queryReplacement": "={{ [$json.sol, $json.beneficiario_id, $json.huella, 'sales@fts.mx', $json.actor, $json.vence_iso] }}"
+        }
+      },
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "1bfO8GLZoWdMHIf5",
+          "name": "fts-suite-db · comercial_app"
+        }
+      }
+    },
+    {
+      "id": "nd0013-0000-4000-8000-000000000000",
+      "name": "Code - Correo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2464,
+        0
+      ],
+      "parameters": {
+        "jsCode": "/* ── El correo ─────────────────────────────────────────────────────────────\n * LA FRASE QUE GOBIERNA EL TEXTO:\n *\n *     LA LIGA APRUEBA UN RENGLON DE CATALOGO. NO APRUEBA UN PAGO.\n *\n * Y el correo lo dice con esas palabras, ARRIBA, antes del boton. Quien recibe\n * una liga que dice «autorizar comision» asume que autoriza dinero; si lo\n * asume, o no la aprieta nunca, o la aprieta sin leer. Las dos cosas son malas\n * y las dos se arreglan diciendo la verdad.\n *\n * ── LO QUE NO LLEVA ──────────────────────────────────────────────────────\n * Ni importes, ni porcentajes, ni el nombre del cliente. No hacen falta para\n * decidir si alguien puede ser beneficiario, y un correo que los lleva se\n * reenvia con ellos dentro.\n *\n * ── EL INTERRUPTOR DE PRUEBA ─────────────────────────────────────────────\n * Mientras `MODO_PRUEBA` sea true, TODO sale a sales@fts.mx y a nadie mas —\n * la sesion del 27/28-sep tenia autorizado ese buzon y ninguno mas. El\n * destinatario de verdad se calcula igual y viaja en `para_real` para que se\n * pueda ver a donde HABRIA ido sin mandarselo a nadie. Se apaga cambiando esta\n * linea, y entonces `APROBADOR` tiene que traer el correo de Erick. */\nconst MODO_PRUEBA = true;\nconst BUZON_PRUEBA = 'sales@fts.mx';\nconst APROBADOR = 'sales@fts.mx';   // <- el de Erick cuando se apague MODO_PRUEBA\n\nconst d = $('Code - Firmar liga').first().json;\nconst fila = $input.first().json || {};\n\nconst esc = (s) => String(s == null ? '' : s)\n  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst cuando = (x) => String(x || '').slice(0, 16).replace('T', ' ') + ' UTC';\n\nconst html =\n  '<div style=\"font:14px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1c1c1c;max-width:560px\">' +\n  '<p style=\"margin:0 0 14px\">Hola,</p>' +\n  '<p style=\"margin:0 0 14px\">Se dio de alta un <strong>beneficiario de comision</strong> nuevo y hace falta tu ' +\n  'autorizacion para poder <strong>confirmar la orden</strong> donde aparece.</p>' +\n  '<table style=\"border-collapse:collapse;margin:0 0 16px\">' +\n  '<tr><td style=\"padding:3px 12px 3px 0;color:#6b6b6b\">Quien</td><td style=\"padding:3px 0\"><strong>' + esc(d.nombre) + '</strong></td></tr>' +\n  '<tr><td style=\"padding:3px 12px 3px 0;color:#6b6b6b\">Lado</td><td style=\"padding:3px 0\">' +\n    esc(d.tipo === 'externo' ? 'Del lado del cliente' : 'De FTS') + '</td></tr>' +\n  (d.motivo ? '<tr><td style=\"padding:3px 12px 3px 0;color:#6b6b6b\">Por que</td><td style=\"padding:3px 0\">' + esc(d.motivo) + '</td></tr>' : '') +\n  '<tr><td style=\"padding:3px 12px 3px 0;color:#6b6b6b\">Lo pidio</td><td style=\"padding:3px 0\">' + esc(d.actor) + '</td></tr>' +\n  '</table>' +\n  '<div style=\"background:#f6f7f8;border-left:3px solid #9a6700;padding:10px 14px;margin:0 0 18px\">' +\n  '<strong>Esto NO autoriza un pago.</strong> Lo que autorizas es que esta persona pueda aparecer como ' +\n  'beneficiaria de comision. Cuanto se le paga, y cuando, son decisiones aparte y cada una se aprueba por su cuenta.' +\n  '</div>' +\n  '<p style=\"margin:0 0 18px\"><a href=\"' + esc(d.liga) + '\" ' +\n  'style=\"display:inline-block;background:#0969da;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-weight:600\">' +\n  'Abrir para autorizar o rechazar</a></p>' +\n  '<p style=\"margin:0 0 6px;color:#6b6b6b;font-size:13px\">La liga es de un solo uso y vence el <strong>' +\n  esc(cuando(fila.vence_at || d.vence_iso)) + '</strong>. Si se vence, <strong>nadie queda autorizado</strong>: ' +\n  'no es un rechazo, es que nadie contesto, y hay que volver a pedirlo.</p>' +\n  (MODO_PRUEBA ? '<p style=\"margin:10px 0 0;padding:8px 12px;background:#fff8c5;font-size:12px\">' +\n    'MODO PRUEBA: este correo habria ido a ' + esc(APROBADOR) + '. La liga SI esta firmada de verdad.</p>' : '') +\n  '<p style=\"margin:14px 0 0;color:#6b6b6b;font-size:12px\">FTS Suite &middot; modulo comercial</p>' +\n  '</div>';\n\nconst para = MODO_PRUEBA ? BUZON_PRUEBA : APROBADOR;\nreturn [{ json: {\n  message: {\n    subject: '[FTS] Autorizar beneficiario de comision: ' + d.nombre + (MODO_PRUEBA ? ' (PRUEBA)' : ''),\n    body: { contentType: 'HTML', content: html },\n    toRecipients: [{ emailAddress: { address: para } }]\n  },\n  saveToSentItems: true,\n  _para: para, _para_real: APROBADOR, _modo_prueba: MODO_PRUEBA,\n  _solicitud_id: fila.id || d.sol, _vence_at: fila.vence_at || d.vence_iso,\n  _nombre: d.nombre, _anuladas: d.anuladas, _horas: d.horas,\n  _horas_ignoradas: d.horas_ignoradas, _beneficiario_id: d.beneficiario_id\n} }];\n"
+      }
+    },
+    {
+      "id": "nd0014-0000-4000-8000-000000000000",
+      "name": "HTTP - Enviar correo (Graph)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2688,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.microsoft.com/v1.0/users/sales@fts.mx/sendMail",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: $json.message, saveToSentItems: $json.saveToSentItems }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "alwaysOutputData": true,
+      "credentials": {
+        "oAuth2Api": {
+          "id": "Mh5kBNduMzOl3nzT",
+          "name": "Microsoft Graph - sales"
+        }
+      }
+    },
+    {
+      "id": "nd0015-0000-4000-8000-000000000000",
+      "name": "Code - Armar respuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2912,
+        0
+      ],
+      "parameters": {
+        "jsCode": "/* ── La respuesta, y lo que NO lleva ──────────────────────────────────────\n * El token NO sale por aqui. Quien pide la autorizacion desde la suite no tiene\n * por que poder aprobarla: si la respuesta trajera la liga, cualquiera que\n * pidiera una podria abrirla el mismo, y el acto de Erick dejaria de ser un\n * acto de Erick. Es la misma razon por la que un sistema de pagos no te devuelve\n * el token que le manda al autorizador.\n *\n * Graph contesta 202 con cuerpo vacio cuando acepta. Un 202 NO prueba que el\n * correo llego a la bandeja — prueba que Graph lo acepto— y por eso el mensaje\n * dice «se mando», no «lo recibio». */\nconst r = $input.first().json || {};\nconst code = Number(r.statusCode);\nconst c = $('Code - Correo').first().json;\nconst salio = code === 202;\nreturn [{ json: {\n  ok: true, hecho: true,\n  solicitud_id: c._solicitud_id, beneficiario_id: c._beneficiario_id,\n  nombre: c._nombre, vence_at: c._vence_at, horas: c._horas,\n  horas_ignoradas: c._horas_ignoradas === true,\n  anuladas: c._anuladas || 0,\n  correo_salio: salio, correo_status: code || null,\n  modo_prueba: c._modo_prueba === true,\n  pedido_a: c._para, pedido_a_real: c._para_real,\n  mensaje: salio\n    ? 'Se pidio la autorizacion de ' + c._nombre + ' a ' + c._para + '. Vence el ' +\n      String(c._vence_at || '').slice(0,16).replace('T',' ') + ' UTC.'\n    : 'La solicitud QUEDO GUARDADA, pero el correo no salio (Graph contesto ' + (code || 'nada') +\n      '). Se puede reenviar sin crear otra: la liga sigue viva.',\n  aviso: salio ? null : 'CORREO_NO_SALIO',\n  nota_prueba: c._modo_prueba === true\n    ? 'MODO_PRUEBA activo: el correo fue a ' + c._para + ', no a ' + c._para_real + '.' : null\n} }];\n"
+      }
+    },
+    {
+      "id": "nd0016-0000-4000-8000-000000000000",
+      "name": "Code - Rechazo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        176
+      ],
+      "parameters": {
+        "jsCode": "const e = $input.first().json;\nreturn [{ json: { ok:false, error: e.error || 'RECHAZADO', mensaje: e.mensaje || 'No se pudo.' } }];\n"
+      }
+    },
+    {
+      "id": "nd0017-0000-4000-8000-000000000000",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1120,
+        176
+      ],
+      "parameters": {
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set - secreto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - secreto": {
+      "main": [
+        [
+          {
+            "node": "Code - Verificar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Verificar": {
+      "main": [
+        [
+          {
+            "node": "IF - Puede?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Puede?": {
+      "main": [
+        [
+          {
+            "node": "Postgres - leer beneficiario",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - Rechazo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - leer beneficiario": {
+      "main": [
+        [
+          {
+            "node": "Code - Decidir",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Decidir": {
+      "main": [
+        [
+          {
+            "node": "IF - Crear?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Crear?": {
+      "main": [
+        [
+          {
+            "node": "Postgres - anular y semilla",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - anular y semilla": {
+      "main": [
+        [
+          {
+            "node": "Set - secreto 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - secreto 2": {
+      "main": [
+        [
+          {
+            "node": "Code - Firmar liga",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Firmar liga": {
+      "main": [
+        [
+          {
+            "node": "Postgres - insertar solicitud",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - insertar solicitud": {
+      "main": [
+        [
+          {
+            "node": "Code - Correo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Correo": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Enviar correo (Graph)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Enviar correo (Graph)": {
+      "main": [
+        [
+          {
+            "node": "Code - Armar respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Armar respuesta": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Rechazo": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Etc/UTC"
+  }
+}

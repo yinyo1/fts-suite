@@ -67,6 +67,54 @@ const CALC = (function () {
   return ctx.window.MachoteCalc;
 })();
 
+/* ── V1.45 · la CONFIRMACIÓN completa, en las fixturas ───────────────────
+ *
+ * Tercera vez que hace falta lo mismo, y por la misma razón que el `cliente_id`
+ * de V1.31 y los cinco compromisos de V1.33: desde V1.45 el botón de crear la
+ * orden nace bloqueado si faltan los datos que la confirmación va a exigir
+ * (contacto, decisión de IVA, PO con número y archivo, cuadre y anticipo). Las
+ * pruebas que miden OTRA cosa tienen que traerlos puestos, o se quedan
+ * esperando un botón que nunca se habilita y acaban midiendo un candado
+ * distinto del que dicen medir.
+ *
+ * ⚠️ El importe de la PO NO va a mano: sale de `CALC.calcular(m).precio`, el
+ * mismo motor que corre en la pantalla. Un número copiado cuadraría hoy y
+ * dejaría de cuadrar el día que alguien toque el motor o la fixtura — y la
+ * falla no diría «la fixtura envejeció», diría «el botón sigue bloqueado»,
+ * que manda a buscar al lugar equivocado. Puesto igual al SUBTOTAL, así que el
+ * veredicto del cuadre es SIN_IVA, que es como emite su PO la mayoría de los
+ * clientes de FTS.
+ *
+ * Y hay una prueba dedicada (`V1.45 · la fixtura de la confirmación está
+ * COMPLETA`) que exige cero candados duros sobre esta misma fixtura: sin ella,
+ * el día que se agregue un candado nuevo, cinco pruebas de otras versiones
+ * empezarían a fallar sin decir por qué. */
+const CONFIRMACION_OK = (m) => {
+  const c = CALC.calcular(m);
+  if (!c || !(c.precio > 0))
+    throw new Error('la fixtura de confirmación necesita un precio del motor y no lo hay: ' +
+                    m.id + ' → ' + JSON.stringify(c && c.precio));
+  return {
+    contacto: { partner_id: 991, nombre: 'ZZ Contacto de Prueba',
+                correo: 'zz.prueba@ejemplo.mx', tel: '81 8888 8888' },
+    iva: { decision: 'lleva', leyenda_id: null, leyenda_texto: '' },
+    po: { numero: 'ZZ-PO-0001', importe: c.precio,
+          archivo: { nombre: 'zz-po-0001.pdf', tipo: 'application/pdf',
+                     bytes: 4096, paginas: 1, con_texto: true,
+                     subido_at: '2026-09-28T00:00:00.000Z' },
+          veredicto: null, varias: null },
+    anticipo: { aplica: true, pct: 50 },
+    at: '2026-09-28T00:00:00.000Z', por: 'zz.prueba'
+  };
+};
+/** El mapa id → confirmación, que es lo que se puede meter a un initScript:
+ *  el motor vive en Node y dentro del navegador no está disponible. */
+const CONF_POR_ID = (function () {
+  const out = {};
+  MACHOTES_FIXTURE.forEach(function (m) { out[m.id] = CONFIRMACION_OK(m); });
+  return out;
+})();
+
 /* ── V1.27 · las pruebas SIEMBRAN sus datos ──────────────────────────────
  *
  * Hasta V1.26 la pantalla arrancaba con los cuatro ejemplos de `demo.js` y las
@@ -3502,6 +3550,11 @@ const CP = { pago: { dias: 30, termino_texto: 'Crédito 30 días',
             d.machotes.forEach(function (m) {
               if (!m.cliente_id) { m.cliente_id = 991; m.cliente = 'ZZ Cliente de prueba'; }
               if (!m.compromisos) m.compromisos = JSON.parse(JSON.stringify(CP));
+              /* V1.45 · y la confirmación, por la misma razón que las dos de
+               * arriba. Por id, porque el importe de la PO es el subtotal de
+               * ESE machote y cada uno tiene el suyo. */
+              if (!m.confirmacion && cfg.conf && cfg.conf[m.id])
+                m.confirmacion = JSON.parse(JSON.stringify(cfg.conf[m.id]));
             });
             localStorage.setItem('fts_machote_v1', JSON.stringify(d));
           }
@@ -3521,7 +3574,7 @@ const CP = { pago: { dias: 30, termino_texto: 'Crédito 30 días',
         if (s.indexOf('/comercial/') >= 0) return new Promise(function () {});
         return orig.apply(this, arguments);
       };
-    }, { r: respuestaOrden });
+    }, { r: respuestaOrden, conf: CONF_POR_ID });
     return q;
   };
 
@@ -6500,6 +6553,8 @@ await sembrarMachotes(q);
                             entrega: { texto: '8 a 10 semanas', fecha: '2026-12-15' },
                             vigencia: { dias: 30, hasta: '2026-10-15' },
                             at: new Date().toISOString(), por: 'zz.prueba' };
+          /* V1.45 · y la confirmación completa, por la misma razón. */
+          m.confirmacion = JSON.parse(JSON.stringify(cfg.conf));
           localStorage.setItem('fts_machote_v1', JSON.stringify({
             v: 1, guardado_at: new Date().toISOString(), machotes: [m], handoff: {} }));
         } catch (e) {}
@@ -6517,7 +6572,8 @@ await sembrarMachotes(q);
         if (s.indexOf('/comercial/') >= 0) return new Promise(function () {});
         return orig.apply(this, arguments);
       };
-    }, { uno: MACHOTES_FIXTURE[0], cat: CATALOGO });
+    }, { uno: MACHOTES_FIXTURE[0], cat: CATALOGO,
+         conf: CONF_POR_ID[MACHOTES_FIXTURE[0].id] });
     return q;
   };
 
@@ -7161,13 +7217,23 @@ await sembrarMachotes(q);
     await ir('#/m/M-1041');
     await p.waitForTimeout(400);
 
-    const nom = '[data-cel="eq:venta:0:nombre"]';
+    /* ⚠️ V1.44 · esta prueba probaba el deshacer CON LA CELDA DEL NOMBRE DE UNA
+     * COMISIÓN, y esa celda dejó de ser un campo de texto: ahora es un botón
+     * que abre el selector de beneficiarios, porque lo que se guarda es la
+     * CUENTA del plan 20 y no un nombre tecleado. La prueba se cayó con «no se
+     * encontró el campo», que es exactamente lo que tenía que pasar.
+     *
+     * Se cambia al campo de la FUENTE DEL TIPO DE CAMBIO, que sigue siendo
+     * texto libre y vive en la misma pantalla. El deshacer no tiene nada que
+     * ver con comisiones: lo que se mide es que tres pasos atrás funcionen y
+     * que el almacén los siga. */
+    const nom = '[data-cel="tc_fuente"]';
     if (!(await p.$(nom))) throw new Error('no se encontró el campo con el que probar');
     const original = await p.inputValue(nom);
     const escribir = async (v) => {
       await p.fill(nom, v); await p.dispatchEvent(nom, 'change'); await p.waitForTimeout(450);
     };
-    const enAlmacen = () => delAlmacen((m) => ((m.equipo_venta || [])[0] || {}).nombre);
+    const enAlmacen = () => delAlmacen((m) => m.tc_fuente);
 
     await escribir('PASO UNO'); await escribir('PASO DOS'); await escribir('PASO TRES');
 
@@ -8415,7 +8481,7 @@ await sembrarMachotes(q);
             machotes:[{ id:'M-NUEVO', nombre:'Recién creada', cliente:'ZZ', moneda:'MXN',
               reparto:{ venta:0.73, operaciones:0.27 },
               comision_fts:0.055, comision_cliente:0, margen_deseado:0.4,
-              equipo_venta:[{ nombre:'MONTY', pct:1 }],
+              equipo_venta:[{ nombre:'Vendedor 1', pct:1 }],
               equipo_operaciones:[{ nombre:'SUPERVISOR FTS', pct:1 }],
               equipo_cliente:[{ nombre:'Contacto cliente 1', pct:1 }],
               secciones:[{ id:'s-nueva', nombre:'SECCIÓN 1', mo:[], partidas:[
@@ -9720,6 +9786,648 @@ await sembrarMachotes(q);
       } finally { await q.close(); }
     }
     if (malos.length) throw new Error(malos.join(' | '));
+  });
+
+  /* ═══ V1.44 · la oportunidad de CRM y el beneficiario de comisión ═══════
+   *
+   * Lo que sólo se puede comprobar MIRANDO la pantalla: que la franja aparece,
+   * que la celda del nombre de una comisión ya no es un campo sino un botón, y
+   * que sin catálogo nada se traba. La lógica pura —de dónde sale el id, quién
+   * está vigente— vive en `pruebas-motor.js`, que corre en un segundo.
+   *
+   * ⚠️ El catálogo de oportunidades y el de beneficiarios se FINGEN, por las
+   * mismas dos razones que el de clientes: determinismo, y que el contenedor no
+   * alcanza Railway. Los nombres son inventados. */
+  /* ── Sembrar la SESIÓN en una página secundaria ─────────────────────────
+   * La página principal la recibe del `addInitScript` de arriba; una
+   * `b.newPage()` NO. Y sin sesión la aplicación no pinta el libro, así que los
+   * clics se quedan esperando un botón que nunca va a existir: los cinco
+   * primeros intentos de estas pruebas murieron con «Timeout 30000ms». */
+  const sembrarSesion = (pg) => pg.addInitScript(() => {
+    try {
+      localStorage.setItem('fts_suite_session', JSON.stringify({
+        token: 'prueba.prueba.prueba',
+        actor: 'zz.prueba', nombre: 'ZZ Prueba', empleado_id: null,
+        scopes: ['comercial:read'],
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        debe_cambiar_password: false
+      }));
+    } catch (e) {}
+  });
+
+  /* Lee un machote del almacén REAL del módulo. La llave es `fts_machote_v1` y
+   * el sobre es `{v, guardado_at, machotes, handoff}` — leerlo como un arreglo
+   * plano devuelve undefined, y el primer intento de estas pruebas lo hizo:
+   * «Cannot read properties of undefined (reading 'secciones')». */
+  const delAlmacenReal = (pg, id) => pg.evaluate((x) => {
+    const sobre = JSON.parse(localStorage.getItem('fts_machote_v1') || '{}');
+    return (sobre.machotes || []).find(m => m.id === x) || null;
+  }, id);
+
+  const sembrarOp = async (pg, opciones) => {
+    await pg.addInitScript((cfg) => {
+      const orig = window.fetch;
+      window.fetch = function (u, o) {
+        const s = String(u);
+        if (s.indexOf('/comercial/oportunidades') >= 0) {
+          if (cfg.muerto) return Promise.reject(new Error('sin red de prueba'));
+          const cuerpo = JSON.parse((o && o.body) || '{}');
+          if (cuerpo.modo === 'candidatas') {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({
+              ok: true, modo: 'candidatas', candidatas: [
+                { id: 901, nombre: 'Cambio de bomba en planta piloto', cliente: 'Cliente Inventado',
+                  etapa: 'Cotizacion Enviada', puntos: 5, por_que: 'coincide una palabra · etapa viva' },
+                { id: 902, nombre: 'Otra cosa del mismo cliente', cliente: 'Cliente Inventado',
+                  etapa: 'Prospecto Lead', puntos: 2, por_que: 'mismo cliente' }
+              ] }) });
+          }
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, modo: 'buscar', oportunidades: [], total: 0 }) });
+        }
+        if (s.indexOf('/comercial/beneficiarios') >= 0) {
+          if (cfg.muerto) return Promise.reject(new Error('sin red de prueba'));
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, modo: 'catalogo',
+            internos: [{ cuenta_id: 1156, cuenta_nombre: '3.4 Comisiones Apellido Uno',
+                         nombre: '3.4 Comisiones Apellido Uno', tipo: 'interno', empleado_id: 8,
+                         vigente: true, pendiente: false, ambiguo: true, como: 'varios empleados casan' },
+                        { cuenta_id: 1179, cuenta_nombre: '3.1.1 Comisiones Apellido Dos',
+                          nombre: '3.1.1 Comisiones Apellido Dos', tipo: 'interno', empleado_id: 97,
+                          vigente: true, pendiente: false, ambiguo: false, como: 'nombre de la cuenta contra el padron' }],
+            externos: [{ cuenta_id: 9001, cuenta_nombre: '5. Comisiones Clientes externo · Contacto Inventado',
+                         nombre: 'Contacto Inventado', tipo: 'externo', vigente: true,
+                         pendiente: true, ambiguo: false, como: 'guardado en la base' }] }) });
+        }
+        /* Los endpoints del almacen y el catalogo se fingen IGUAL que en la
+         * pagina principal. Sin esto la pantalla intenta salir a Railway, que
+         * el contenedor no alcanza, y lo que se mide es el error del proxy en
+         * vez del render. */
+        if (s.indexOf('/comercial/clientes') >= 0) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, total: 3, clientes: [
+              { id: 49,   nombre: 'ABINSA SA DE CV' },
+              { id: 1247, nombre: 'BBVA Mexico' },
+              { id: 385,  nombre: 'Abamex Ingenieria, SA de CV' }
+            ] }) });
+        }
+        if (s.indexOf('/comercial/machotes-leer') >= 0) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, modo: 'lista', actor: 'zz.prueba', machotes: [], total: 0 }) });
+        }
+        if (s.indexOf('/comercial/machote-guardar') >= 0) {
+          var cg = {};
+          try { cg = JSON.parse((o && o.body) || '{}'); } catch (e) {}
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, machote_id: 'uuid-de-mentiras', id_local: cg.id_local,
+            dueno: 'zz.prueba', version: (Number(cg.version_leida) || 0) + 1,
+            versiones: 1 }) });
+        }
+        if (s.indexOf('/comercial/machote-archivar') >= 0) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, hecho: true }) });
+        }
+        return orig(u, o);
+      };
+    }, opciones || {});
+  };
+
+  await paso('V1.44 · A · sin oportunidad: la franja lo pide y el revisador BLOQUEA', async () => {
+    await ir('#/m/M-1041');
+    await p.waitForTimeout(400);
+    if (!(await p.$('#opFranja')))
+      throw new Error('no apareció la franja de la oportunidad que falta');
+    const txt = (await p.textContent('#opFranja')).replace(/\s+/g, ' ');
+    /* El mensaje tiene que decir QUÉ falta, POR QUÉ importa y DÓNDE se
+     * arregla: un aviso que sólo dice «falta» es uno que la gente aprende a
+     * rodear. */
+    if (txt.indexOf('no se puede confirmar') < 0)
+      throw new Error('la franja no dice que bloquea la confirmación: «' + txt + '»');
+    if (!(await p.$('#opElegir'))) throw new Error('la franja no trae el botón de elegir');
+    if (await p.$('#opPastilla')) throw new Error('pinta la pastilla de ligada y NO lo está');
+
+    /* Y la regla DURA, que es lo que de verdad bloquea. Se mide con el motor de
+     * reglas dentro de la página, no leyendo el texto de la pantalla. */
+    const r = await p.evaluate(() => {
+      const sobre = JSON.parse(localStorage.getItem('fts_machote_v1') || '{}');
+      const doc = (sobre.machotes || []).find(x => x.id === 'M-1041');
+      if (!doc) return { falta: true };
+      const rev = window.REGLAS.revisar(doc);
+      return { bloquea: rev.duras.some(h => h.id === 'sin-oportunidad'),
+               puede: rev.puedeConfirmar };
+    });
+    if (r.falta) throw new Error('el machote de ejemplo no está en el almacén');
+    if (!r.bloquea) throw new Error('la regla dura sin-oportunidad NO saltó');
+    if (r.puede) throw new Error('dice que se puede confirmar sin oportunidad');
+    console.log('    franja + regla dura: dice qué falta, por qué importa y dónde se arregla');
+  });
+
+  await paso('V1.44 · A · las candidatas se ofrecen, y al elegir aparece la pastilla', async () => {
+    const q = await b.newPage();
+    try {
+      await sembrarGeo(q);
+      await sembrarMachotes(q);
+      await sembrarSesion(q);
+      await sembrarOp(q, { muerto: false });
+      await q.goto(BASE); await q.waitForTimeout(260);
+      await q.evaluate(() => { location.hash = '#/m/M-1041'; });
+      await q.waitForTimeout(420);
+      await q.click('#opElegir'); await q.waitForTimeout(500);
+      if (!(await q.$('#opCaja'))) throw new Error('no abrió el diálogo');
+      const ops = await q.$$('#opCandsCuerpo [data-opid]');
+      if (ops.length !== 2) throw new Error('se ofrecieron ' + ops.length + ' candidatas, no 2');
+      /* La razón por la que se propone va A LA VISTA: una sugerencia que no
+       * dice por qué lo es no se puede contradecir. */
+      const meta = await q.textContent('#opCandsCuerpo [data-opid] .op-meta');
+      if (meta.indexOf('coincide') < 0)
+        throw new Error('la candidata no dice por qué se propone: «' + meta + '»');
+      await ops[0].click(); await q.waitForTimeout(500);
+      if (await q.$('#opFranja')) throw new Error('sigue pidiendo la oportunidad después de elegirla');
+      if (!(await q.$('#opPastilla'))) throw new Error('no pintó la pastilla de ligada');
+      const past = (await q.textContent('#opPastilla')).replace(/\s+/g, ' ');
+      if (past.indexOf('901') < 0) throw new Error('la pastilla no trae el id: «' + past + '»');
+      const enDoc = ((await delAlmacenReal(q, 'M-1041')) || {}).oportunidad;
+      if (!enDoc || enDoc.lead_id !== 901)
+        throw new Error('no quedó en el documento: ' + JSON.stringify(enDoc));
+      console.log('    2 candidatas con su porqué · elegida 901 · franja fuera, pastilla dentro, y en el documento');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.44 · A · sin catálogo NO se traba: se puede capturar y se dice el porqué', async () => {
+    const q = await b.newPage();
+    try {
+      await sembrarGeo(q);
+      await sembrarMachotes(q);
+      await sembrarSesion(q);
+      await sembrarOp(q, { muerto: true });
+      await q.goto(BASE); await q.waitForTimeout(260);
+      await q.evaluate(() => { location.hash = '#/m/M-1041'; });
+      await q.waitForTimeout(420);
+      await q.click('#opElegir'); await q.waitForTimeout(700);
+      const cuerpo = (await q.textContent('#opCandsCuerpo')).replace(/\s+/g, ' ');
+      if (cuerpo.indexOf('No se pudo leer Odoo') < 0)
+        throw new Error('no dijo que no pudo leer Odoo: «' + cuerpo + '»');
+      /* Y lo importante: la cotización sigue viva. Sin catálogo se sigue
+       * capturando; lo único que no se puede es ligar. */
+      await q.click('#opDespues'); await q.waitForTimeout(200);
+      const cel = '[data-cel="tc_fuente"]';
+      await q.fill(cel, 'DOF del día'); await q.dispatchEvent(cel, 'change');
+      await q.waitForTimeout(400);
+      if (await q.inputValue(cel) !== 'DOF del día')
+        throw new Error('sin catálogo la captura dejó de funcionar');
+      console.log('    dice el porqué · y la captura sigue viva');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.44 · B · la celda del beneficiario es un BOTÓN y abre el selector', async () => {
+    const q = await b.newPage();
+    try {
+      await sembrarGeo(q);
+      await sembrarMachotes(q);
+      await sembrarSesion(q);
+      await sembrarOp(q, { muerto: false });
+      await q.goto(BASE); await q.waitForTimeout(260);
+      await q.evaluate(() => { location.hash = '#/m/M-1041'; });
+      await q.waitForTimeout(420);
+      /* Lo que cambió de forma: donde había un input hay un botón. Se exige que
+       * el input YA NO exista, no sólo que el botón esté: si quedaran los dos,
+       * habría dos formas de escribir el mismo campo. */
+      if (await q.$('[data-cel="eq:venta:0:nombre"]'))
+        throw new Error('sigue existiendo el campo de texto del nombre de la comisión');
+      const cel = '[data-ben="eq:venta:0:nombre"]';
+      if (!(await q.$(cel))) throw new Error('no apareció la celda-botón del beneficiario');
+      /* Un renglón de la plantilla reparte dinero y no dice a quién: se marca
+       * «sin ligar», que es el estado de los 19 machotes que ya existen. */
+      const t = (await q.textContent(cel)).replace(/\s+/g, ' ');
+      if (t.indexOf('sin ligar') < 0) throw new Error('no marca el renglón como suelto: «' + t + '»');
+      await q.click(cel); await q.waitForTimeout(600);
+      if (!(await q.$('#benCaja'))) throw new Error('no abrió el selector de beneficiarios');
+      const ints = await q.$$('#benInternos [data-cuenta]');
+      const exts = await q.$$('#benExternos [data-cuenta]');
+      if (ints.length !== 2) throw new Error('internos ofrecidos: ' + ints.length + ', se esperaban 2');
+      if (exts.length !== 1) throw new Error('externos ofrecidos: ' + exts.length + ', se esperaba 1');
+      /* AMBIGUO se ve. No es «se fue» y no es «confirmado»: es una tercera cosa
+       * y la pantalla la dice con palabras, no sólo con un color. */
+      const metas = await q.$$eval('#benInternos [data-cuenta] .op-meta', ns => ns.map(n => n.textContent));
+      if (!metas.some(x => /confírmalo|confirmalo/i.test(x)))
+        throw new Error('no pide confirmar el caso ambiguo: ' + JSON.stringify(metas));
+      /* Y el externo PENDIENTE DE AUTORIZAR se anuncia antes de elegirlo. */
+      const mExt = await q.textContent('#benExternos [data-cuenta] .op-meta');
+      if (mExt.indexOf('pendiente de autorizar') < 0)
+        throw new Error('no avisa que el externo está pendiente: «' + mExt + '»');
+
+      await ints[1].click(); await q.waitForTimeout(500);
+      const t2 = (await q.textContent(cel)).replace(/\s+/g, ' ');
+      if (t2.indexOf('sin ligar') >= 0) throw new Error('después de ligar sigue diciendo «sin ligar»');
+      const guardado = (((await delAlmacenReal(q, 'M-1041')) || {}).equipo_venta || [])[0];
+      if (!guardado || !guardado.beneficiario || guardado.beneficiario.cuenta_id !== 1179)
+        throw new Error('no guardó la CUENTA: ' + JSON.stringify(guardado));
+      console.log('    botón en vez de campo · ambiguo y pendiente dichos con palabras · guarda la cuenta 1179');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.44 · nada desborda a 380, 760, 900 y 1280 con la franja y el selector', async () => {
+    /* Los CUATRO anchos de la regla de CLAUDE.md §20 #20, y los dos de en medio
+     * son el punto: lo que se rompe se rompe entre 721 y 980, donde una media
+     * query ya se apagó y la otra no ha entrado. */
+    const malos = [];
+    for (const w of [380, 760, 900, 1280]) {
+      const q = await b.newPage();
+      try {
+        await sembrarGeo(q);
+        await sembrarMachotes(q);
+        await sembrarSesion(q);
+        await sembrarOp(q, { muerto: false });
+        await q.setViewportSize({ width: w, height: 900 });
+        await q.goto(BASE); await q.waitForTimeout(260);
+        await q.evaluate(() => { location.hash = '#/m/M-1041'; });
+        await q.waitForTimeout(420);
+        const desborde = await q.evaluate(() => {
+          const d = document.documentElement;
+          return { pagina: d.scrollWidth - d.clientWidth,
+                   franja: !!document.querySelector('#opFranja') };
+        });
+        if (desborde.pagina > 2) malos.push(w + ': la página desborda ' + desborde.pagina + 'px');
+        if (!desborde.franja) malos.push(w + ': no se ve la franja de la oportunidad');
+        /* Y el diálogo abierto, que es donde caben menos cosas. */
+        await q.click('#opElegir'); await q.waitForTimeout(600);
+        const dlg = await q.evaluate(() => {
+          const c = document.querySelector('#opCaja .caja');
+          if (!c) return null;
+          const r = c.getBoundingClientRect();
+          return { ancho: Math.round(r.width), fuera: Math.round(r.right - window.innerWidth),
+                   desborde: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+        });
+        if (!dlg) { malos.push(w + ': el diálogo no abrió'); }
+        else {
+          if (dlg.fuera > 2) malos.push(w + ': el diálogo se sale ' + dlg.fuera + 'px');
+          if (dlg.desborde > 2) malos.push(w + ': con el diálogo abierto la página desborda ' + dlg.desborde + 'px');
+        }
+      } finally { await q.close(); }
+    }
+    if (malos.length) throw new Error(malos.join(' | '));
+  });
+
+
+  /* ══ V1.45 · los candados de la CONFIRMACIÓN, en el modal de la orden ══════
+   *
+   * Lo que se mide aquí y NO se puede medir sin navegador: que el bloque se
+   * pinte dentro del modal, que el botón de crear quede TRABADO mientras falte
+   * algo, que teclear cambie el estado de verdad, y que un cambio que altera la
+   * forma repinte y SIGA cableado — el fallo silencioso del repintado sin
+   * re-cablear, que no truena y deja la pantalla muerta. */
+
+
+  /* El machote se arma DENTRO del navegador, con el motor que ya está cargado
+   * ahí: armarlo aquí obligaría a cargar calc.js en Node y a mantener dos
+   * caminos de construcción que se separan. El precio es redondo —100,000— para
+   * que el cuadre se pueda verificar a mano: 100,000 y 116,000. */
+  const conMachoteOrden = async (conf, grande) => {
+    const q = await b.newPage({ viewport: { width: 1280, height: 1000 } });
+    await sembrarGeo(q);
+    await q.addInitScript((cfg) => {
+      try {
+        /* El clear va SOLO en la primera carga. Este guion se vuelve a correr en
+         * cada navegacion, incluida la RECARGA de mas abajo, asi que sin la
+         * guarda borraba el machote que se acababa de sembrar — y el modal no
+         * abria porque no habia cotizacion. El sintoma era «no encontre el
+         * boton», que manda a buscar el error en el selector y no aqui. */
+        if (!sessionStorage.getItem('__limpio_v145')) {
+          localStorage.clear();
+          sessionStorage.setItem('__limpio_v145', '1');
+        }
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'p.p.p', actor: 'zz.prueba', nombre: 'ZZ Prueba', empleado_id: null,
+          scopes: ['comercial:read', 'comercial:write'],
+          exp: Math.floor(Date.now() / 1000) + 3600 }));
+      } catch (e) {}
+      window.__CONF_PRUEBA = cfg;
+      const orig = window.fetch;
+      window.fetch = function (u, o) {
+        const s2 = String(u);
+        if (s2.indexOf('/comercial/clientes') >= 0)
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, total: 1,
+            clientes: [{ id: 49, nombre: 'Cliente Industrial Inventado, SA de CV' }] }) });
+        if (s2.indexOf('/comercial/machotes-leer') >= 0)
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true,
+            modo: 'lista', actor: 'zz.prueba', machotes: [], total: 0 }) });
+        if (s2.indexOf('/comercial/machote-guardar') >= 0 || s2.indexOf('/comercial/machote-archivar') >= 0)
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, hecho: true,
+            machote_id: 'uuid-inventado', version: 4, versiones: 4 }) });
+        if (s2.indexOf('/comercial/oportunidades') >= 0)
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true,
+            modo: 'buscar', oportunidades: [], total: 0 }) });
+        if (s2.indexOf('/comercial/beneficiarios') >= 0)
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true,
+            modo: 'catalogo', internos: [], externos: [] }) });
+        return orig(u, o);
+      };
+    }, { conf: conf, grande: !!grande });
+
+    await q.goto(BASE); await q.waitForTimeout(700);
+    /* El machote se siembra AQUÍ, con el motor de la página, y después se
+     * recarga: así el documento es exactamente el que produce la aplicación. */
+    await q.evaluate(() => {
+      const cfg = window.__CONF_PRUEBA || {};
+      const C = window.MachoteCalc;
+      const m = C.machoteNuevo({ nombre: 'Cotización de prueba V1.45',
+                                 creado_por: 'zz.prueba', empresa_id: 1 });
+      m.id = 'M-9145';
+      m.cliente_id = 49;
+      m.cliente = 'Cliente Industrial Inventado, SA de CV';
+      m.escenario = 'costo';
+      m.diagnostico = { tipo: 'instalacion', respuestas: {} };
+      const s = m.secciones[0];
+      s.nombre = 'SUMINISTRO E INSTALACIÓN';
+      s.partidas[0].desc = 'Partida inventada';
+      s.partidas[0].qty = 1;
+      s.partidas[0].pu = cfg.grande ? 850000 : 100000;
+      s.partidas[0].tipo = 'Materiales';
+      s.partidas[0].fuente = 'lista';
+      s.partidas[0].unidad = 'lote';
+      s.mo.find(l => l.rol === 'tecnicos').qty = 0;
+      m.compromisos = { pago: { dias: 30, termino_texto: '30 dias', termino_id: null, hitos: [] },
+                        incoterm: 'DAP', entrega: { texto: '8 a 10 semanas', fecha: null },
+                        vigencia: { dias: 30, hasta: null }, at: null, por: null };
+      m.oportunidad = { lead_id: 901, nombre: 'Oportunidad inventada' };
+      if (cfg.conf) m.confirmacion = cfg.conf;
+      localStorage.setItem('fts_machote_v1', JSON.stringify({ v: 1,
+        guardado_at: new Date().toISOString(), machotes: [m], handoff: {} }));
+      localStorage.setItem('fts_machote_sync_v1', JSON.stringify({ v: 1, filas: [
+        { id_local: 'M-9145', machote_id: 'uuid-inventado', version: 3, folio: 77,
+          folio_txt: 'COT-0077', subido_at: new Date().toISOString(),
+          huella: 'x', odoo_lead_id: 901 }] }));
+    });
+    await q.reload(); await q.waitForTimeout(700);
+    await q.evaluate(() => { location.hash = '#/m/M-9145'; });
+    await q.waitForTimeout(700);
+    const abierto = await q.evaluate(() => {
+      const bs = Array.prototype.slice.call(document.querySelectorAll('button, a'));
+      const b2 = bs.find(x => /orden de venta|pasar a orden/i.test(x.textContent || ''));
+      if (!b2) return false; b2.click(); return true;
+    });
+    if (!abierto) { await q.close(); throw new Error('no encontre el boton de pasar a orden'); }
+    await q.waitForTimeout(1100);
+    return q;
+  };
+
+  /* Se lee el atributo disabled del boton REAL, no un texto: un aviso que se
+   * puede ignorar produce exactamente la tabla de ordenes sin terminos de pago
+   * que motivo los compromisos. */
+  const botonTrabado = (q) => q.evaluate(() => {
+    const bs = Array.prototype.slice.call(document.querySelectorAll('button'));
+    const b2 = bs.find(x => /crear la orden|crear orden/i.test(x.textContent || ''));
+    return b2 ? b2.disabled === true : null;
+  });
+
+  const CONF_COMPLETA = {
+    contacto: { partner_id: 1, nombre: 'Contacto Inventado Del Cliente',
+                tel: '81 1234 5678', correo: 'contacto@ejemplo.invalid' },
+    iva: { decision: 'lleva', leyenda_id: null, leyenda_texto: '' },
+    po: { numero: 'PO-INVENTADA-4471', importe: 100000,
+          archivo: { nombre: 'po.pdf', tipo: 'application/pdf', bytes: 184320,
+                     paginas: 3, con_texto: true, subido_at: '2026-09-28T00:00:00Z' },
+          veredicto: null, varias: null },
+    anticipo: { aplica: false, pct: null }
+  };
+  const clon = (x) => JSON.parse(JSON.stringify(x));
+
+  await paso('V1.45 · D · el bloque de la confirmación se pinta DENTRO del modal de la orden', async () => {
+    const q = await conMachoteOrden(null, false);
+    try {
+      if (!(await q.$('#or-confirmables'))) throw new Error('el bloque no se pintó');
+      const txt = ((await q.textContent('#or-confirmables')) || '').replace(/\s+/g, ' ').toUpperCase();
+      /* Los cuatro sub-bloques por su título, no por un contador: si mañana se
+       * agrega uno, la prueba sigue sirviendo y dice cuál falta. */
+      ['A QUIÉN SE LE FACTURA', 'IMPUESTO', 'LA ORDEN DE COMPRA', 'ANTICIPO'].forEach(t => {
+        if (txt.indexOf(t) < 0) throw new Error('falta el bloque «' + t + '»');
+      });
+      console.log('    los cuatro bloques en su sitio, dentro del modal');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.45 · D · con datos faltando, el botón de crear la orden queda TRABADO', async () => {
+    const q = await conMachoteOrden(null, false);
+    try {
+      const t = await botonTrabado(q);
+      if (t === null) throw new Error('no encontré el botón de crear la orden');
+      if (t !== true) throw new Error('el botón NO está trabado con datos faltando');
+      /* Y los candados salen UNO POR UNO en la lista de estorbos, con su dónde:
+       * «faltan 4 datos» manda a la persona a buscar cuáles. */
+      const est = (await q.textContent('.estorbos')) || '';
+      ['Contacto del cliente', 'Correo del contacto', 'El número de la orden de compra']
+        .forEach(x => { if (est.indexOf(x) < 0) throw new Error('el estorbo «' + x + '» no se listó'); });
+      console.log('    botón trabado · y cada candado dicho por su nombre');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.45 · D · con todo lleno, el botón se destraba', async () => {
+    const q = await conMachoteOrden(CONF_COMPLETA, false);
+    try {
+      const t = await botonTrabado(q);
+      if (t === null) throw new Error('no encontré el botón');
+      if (t !== false) throw new Error('el botón sigue trabado con todo lleno');
+      console.log('    destrabado');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.45 · D · el candado NO se abre al teclear en OTRO campo', async () => {
+    /* La prueba que faltaba, y por eso hubo falla.
+     *
+     * El trabón se calculaba en DOS sitios —el render completo y el repintado
+     * parcial del botón— y el parcial se quedó SIN los candados de la
+     * confirmación. O sea que el botón nacía bloqueado, y bastaba tocar
+     * cualquier otro campo (los compromisos, un precio del documento) para que
+     * el repintado lo DESBLOQUEARA con la confirmación todavía incompleta.
+     *
+     * Lo peor no es que dejara pasar: es que la prueba de los cinco
+     * compromisos PASABA, porque llenarlos destrababa el botón — y pasaba por
+     * la razón equivocada (CLAUDE.md §20 #18: una ausencia se lee como una
+     * respuesta). Un candado que se abre al teclear al lado es peor que no
+     * tenerlo: da la impresión de estar cuidando algo.
+     *
+     * Así que esto mide el repintado PARCIAL, no el render: se toca un campo
+     * que dispara `refrescarTrabado()` y se exige que el botón siga trabado. */
+    const q = await conMachoteOrden(null, false);
+    try {
+      if ((await botonTrabado(q)) !== true)
+        throw new Error('no arrancó trabado, así que esta prueba no mide nada');
+
+      /* Un compromiso: es el camino exacto por el que se colaba. */
+      await q.selectOption('#cp-pago', '30');
+      await q.waitForTimeout(400);
+      if ((await botonTrabado(q)) !== true)
+        throw new Error('el botón se DESTRABÓ al tocar los compromisos, con la confirmación incompleta');
+
+      /* Y un renglón del documento, que es el otro repintado parcial. */
+      const hayLinea = await q.evaluate(() => {
+        const i = document.querySelector('#modalOrden input[type="number"]');
+        if (!i) return false;
+        i.value = String((Number(i.value) || 1) + 1);
+        i.dispatchEvent(new Event('input', { bubbles: true }));
+        i.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+      });
+      await q.waitForTimeout(400);
+      if ((await botonTrabado(q)) !== true)
+        throw new Error('el botón se DESTRABÓ al tocar el documento, con la confirmación incompleta');
+
+      /* Y el pie tiene que decir QUÉ falta de verdad. Decir «faltan 0 de los
+       * cinco compromisos» cuando lo que falta es la PO manda a la persona a
+       * arreglar lo que no es (§20 #12b). */
+      const pie = ((await q.textContent('.or-trabado')) || '').replace(/\s+/g, ' ');
+      if (!/confirmaci[óo]n/i.test(pie))
+        throw new Error('el pie no nombra la confirmación: «' + pie + '»');
+      if (/Faltan 0 /.test(pie))
+        throw new Error('el pie dice que faltan 0 de algo: «' + pie + '»');
+      console.log('    trabado tras tocar compromisos' + (hayLinea ? ' y documento' : '') +
+                  ' · el pie dice: «' + pie.trim().slice(0, 70) + '»');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.45 · D · la fixtura de la confirmación está COMPLETA para las pruebas viejas', async () => {
+    /* La red que evita el próximo desconcierto.
+     *
+     * Cinco pruebas de V1.30, V1.31 y V1.33 miden otras cosas y necesitan un
+     * machote confirmable. Cuando se agregó el candado de la confirmación, esas
+     * cinco empezaron a fallar con «Timeout esperando el click» y «el botón
+     * siguió bloqueado» — mensajes que mandan a buscar al selector, no a la
+     * fixtura. Esta prueba falla PRIMERO y dice el nombre del candado, así que
+     * el día que se agregue el sexto, lo que se lee es qué le falta a la
+     * fixtura y no cinco pruebas rotas sin relación aparente.
+     *
+     * Corre en Node contra los módulos REALES, sin navegador: es una pregunta
+     * sobre los datos, no sobre la pantalla. */
+    const vm = require('vm');
+    const ctx = { window: {}, console: { log: function () {} } };
+    ctx.window.window = ctx.window;
+    vm.createContext(ctx);
+    ['calc.js', 'confirmacion.js'].forEach(function (f) {
+      vm.runInContext(require('fs').readFileSync(
+        path.resolve(__dirname, '..', 'js', f), 'utf8'), ctx);
+    });
+    const CF = ctx.window.Confirmacion;
+    if (!CF || !CF.duras) throw new Error('no cargó Confirmacion desde Node');
+
+    const malos = [];
+    MACHOTES_FIXTURE.forEach(function (base) {
+      const m = JSON.parse(JSON.stringify(base));
+      m.confirmacion = JSON.parse(JSON.stringify(CONF_POR_ID[m.id]));
+      const d = CF.duras(m, ctx.window.MachoteCalc.calcular(m));
+      if (d.length) malos.push(m.id + ' → ' + d.map(function (x) { return x.id; }).join(', '));
+    });
+    if (malos.length)
+      throw new Error('la fixtura de confirmación ya no alcanza: ' + malos.join(' | ') +
+                      ' — hay que completarla en CONFIRMACION_OK, no aflojar el candado');
+    console.log('    ' + MACHOTES_FIXTURE.length + ' machotes de fixtura, cero candados duros');
+  });
+
+  await paso('V1.45 · D · teclear el total de la PO deduce el IVA, y el repintado NO pierde el cableado', async () => {
+    const q = await conMachoteOrden(CONF_COMPLETA, false);
+    try {
+      let t = ((await q.textContent('#or-confirmables')) || '').replace(/\s+/g, ' ');
+      if (t.indexOf('sin el IVA dentro') < 0)
+        throw new Error('con 100,000 no dedujo SIN_IVA: «' + t.slice(0, 200) + '»');
+
+      /* Se teclea DOS veces a propósito. El cambio del importe altera la FORMA,
+       * así que dispara un repintado; si tras repintar no se re-cableara, el
+       * SEGUNDO cambio no haría nada y la pantalla quedaría muerta sin tronar.
+       * Ese fallo no se ve leyendo el diff: sólo se ve tecleando dos veces. */
+      const sel = '#or-confirmables [data-cfx="po.importe"]';
+      await q.fill(sel, '116000'); await q.waitForTimeout(600);
+      t = ((await q.textContent('#or-confirmables')) || '').replace(/\s+/g, ' ');
+      if (t.indexOf('con el IVA dentro') < 0)
+        throw new Error('con 116,000 no dedujo CON_IVA: «' + t.slice(0, 200) + '»');
+
+      await q.fill(sel, '234567.89'); await q.waitForTimeout(600);
+      t = ((await q.textContent('#or-confirmables')) || '').replace(/\s+/g, ' ');
+      if (t.indexOf('no cuadra con la cotización') < 0)
+        throw new Error('tras DOS cambios dejó de reaccionar: el repintado no re-cableó');
+      if (t.indexOf('Diferencia contra el total') < 0)
+        throw new Error('no dice la diferencia contra el más cercano');
+      console.log('    SIN_IVA → CON_IVA → NO_DETERMINADO tecleando · el repintado sigue vivo');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.45 · D · el descuadre tiene SALIDA: se anota el motivo y destraba', async () => {
+    const conf = clon(CONF_COMPLETA); conf.po.importe = 234567.89;
+    const q = await conMachoteOrden(conf, false);
+    try {
+      if ((await botonTrabado(q)) !== true)
+        throw new Error('una PO que no cuadra NO trabó el botón');
+      /* Un motivo de dos letras NO debe pasar: la salida existe para dejar
+       * rastro, y un rastro que dice «ok» no es rastro. */
+      await q.fill('#or-confirmables [data-cfx-varias]', 'ok');
+      await q.click('#or-confirmables [data-cfx-varias-ok]');
+      await q.waitForTimeout(500);
+      if ((await botonTrabado(q)) !== true)
+        throw new Error('un motivo de dos letras destrabó el botón');
+
+      await q.fill('#or-confirmables [data-cfx-varias]', 'La PO del cliente cubre tres cotizaciones');
+      await q.click('#or-confirmables [data-cfx-varias-ok]');
+      await q.waitForTimeout(700);
+      if ((await botonTrabado(q)) !== false)
+        throw new Error('con el motivo escrito el botón SIGUE trabado');
+      const t = ((await q.textContent('#or-confirmables')) || '').replace(/\s+/g, ' ');
+      if (t.indexOf('cubre tres cotizaciones') < 0)
+        throw new Error('el motivo no quedó a la vista');
+      console.log('    anotado y destrabado · y el motivo queda escrito');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.45 · D · arriba del umbral el anticipo obliga, y se calcula sobre el SUBTOTAL', async () => {
+    const conf = clon(CONF_COMPLETA); conf.po.importe = 986000;   /* 850,000 × 1.16 */
+    const q = await conMachoteOrden(conf, true);
+    try {
+      if ((await botonTrabado(q)) !== true)
+        throw new Error('850,000 sin anticipo NO trabó el botón');
+      await q.selectOption('#or-confirmables [data-cfx="anticipo.aplica"]', 'si');
+      await q.waitForTimeout(600);
+      await q.fill('#or-confirmables [data-cfx="anticipo.pct"]', '30');
+      await q.waitForTimeout(600);
+      const t = ((await q.textContent('#or-confirmables')) || '').replace(/\s+/g, ' ');
+      /* 30% de 850,000 son 255,000. Sobre el total serían 295,800, o sea
+       * anticipar el IVA que no es nuestro. El número está en la pantalla
+       * justamente para que eso se pueda ver. */
+      if (t.indexOf('255,000.00') < 0)
+        throw new Error('el anticipo no dice 255,000: «' + t.slice(0, 300) + '»');
+      if (t.indexOf('295,800') >= 0)
+        throw new Error('cobra el anticipo sobre el TOTAL, con el IVA dentro');
+      console.log('    255,000 sobre el subtotal · no 295,800 sobre el total');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.45 · D · nada desborda a 380, 760, 900 y 1280 con el bloque abierto', async () => {
+    const malos = [];
+    /* Los cuatro anchos, y 760 y 900 son EL PUNTO: en este módulo la franja de
+     * 721-980 se ha roto dos veces por cosas distintas (§20 #20). */
+    for (const w of [380, 760, 900, 1280]) {
+      const q = await conMachoteOrden(CONF_COMPLETA, false);
+      try {
+        await q.setViewportSize({ width: w, height: 1000 });
+        await q.waitForTimeout(500);
+        const r = await q.evaluate((ancho) => {
+          const host = document.getElementById('or-confirmables');
+          if (!host) return { falta: true };
+          const out = { cero: 0, sale: 0, campos: 0 };
+          const cs = host.querySelectorAll('input, select, .cfx-c, .cfx-cuadre');
+          out.campos = cs.length;
+          Array.prototype.forEach.call(cs, function (e) {
+            const bb = e.getBoundingClientRect();
+            if (bb.height > 0 && bb.width < 1) out.cero++;
+            if (bb.right > ancho + 2) out.sale++;
+          });
+          out.desborde = document.documentElement.scrollWidth - document.documentElement.clientWidth;
+          return out;
+        }, w);
+        if (r.falta) { malos.push(w + ': el bloque no está'); continue; }
+        if (!r.campos) malos.push(w + ': el bloque no tiene campos');
+        if (r.cero) malos.push(w + ': ' + r.cero + ' campo(s) con ancho CERO');
+        if (r.sale) malos.push(w + ': ' + r.sale + ' elemento(s) se salen por la derecha');
+        if (r.desborde > 2) malos.push(w + ': la página desborda ' + r.desborde + 'px');
+      } finally { await q.close(); }
+    }
+    if (malos.length) throw new Error(malos.join(' | '));
+    console.log('    380 · 760 · 900 · 1280 sin desbordes ni anchos en cero');
   });
 
   await paso('sin errores de consola propios del prototipo', async () => {

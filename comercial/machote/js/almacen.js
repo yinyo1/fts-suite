@@ -717,6 +717,11 @@
           doc._version_servidor = fila.version;
           doc._folio = fila.folio || null;
           doc._folio_txt = fila.folio_txt || null;
+          /* V1.44 · lo ajeno trae su oportunidad encima y no en la libreta,
+           * porque la libreta está indexada por `id_local` y lo ajeno se abre
+           * por uuid. Puede ir en el objeto sin riesgo: `pendienteUno` excluye
+           * lo ajeno del conteo de «por subir». */
+          doc._odoo_lead_id = fila.odoo_lead_id || null;
 
           /* Los préstamos VIGENTES que el servidor decidió enseñarme: los que
            * yo otorgué (si el machote es mío) o el mío (si soy prestatario).
@@ -746,6 +751,7 @@
             recuperado._version_servidor = fila.version;
             recuperado._folio = doc._folio;
             recuperado._folio_txt = doc._folio_txt;
+            recuperado._odoo_lead_id = doc._odoo_lead_id;
             recuperado._prestamos = doc._prestamos;
             recuperado._prestamo_para_mi = doc._prestamo_para_mi;
             recuperado._sin_subir = true;
@@ -810,6 +816,17 @@
            * viven los datos que el servidor pone y el documento no lleva. */
           folio: fila.folio || null,
           folio_txt: fila.folio_txt || null,
+          /* ── V1.44 · la oportunidad que el SERVIDOR ya tiene ligada ───────
+           * `comercial/machotes-leer` manda **`odoo_lead_id`** (así se llama en
+           * su respuesta; la pantalla llevaba tres usos escritos `lead_id`, que
+           * no existía en ninguna parte y por eso la orden se creaba siempre
+           * sin oportunidad).
+           *
+           * Va en la libreta por lo mismo que el folio y `creado_at`: dentro
+           * del documento entraría en `huella(m)` y los machotes ya ligados
+           * dirían «por subir» en cuanto se cargara la lista. Lo lee
+           * `Oportunidades.idDe`, que es el único que sabe de dónde sale. */
+          odoo_lead_id: fila.odoo_lead_id || null,
           /* ── CUÁNDO SE CREÓ, y por qué vive AQUÍ y no en el documento ─────
            * `comercial/machotes-leer` manda `creado_at` en cada fila (de la
            * columna `machote.created_at`, que existe para los 19 machotes que
@@ -1023,6 +1040,20 @@
     var meta = leerSync()[idLocal];
     if (!meta || !meta.folio) return null;
     return { folio: meta.folio, folio_txt: meta.folio_txt || null };
+  }
+
+  /** ── V1.44 · la oportunidad que el SERVIDOR tiene ligada a este machote ──
+   *
+   *  `null` significa «el servidor no tiene ninguna», no «no hay». Puede haber
+   *  una recién elegida en el documento y todavía sin subir: eso lo resuelve
+   *  `Oportunidades.idDe`, que mira primero el documento. Aquí sólo se contesta
+   *  por la columna `odoo_lead_id` que trajo la última bajada.
+   *
+   *  Devuelve el número, no un objeto: el nombre de la oportunidad NO lo manda
+   *  este endpoint y no se va a inventar uno. */
+  function leadServidor(idLocal) {
+    var meta = leerSync()[idLocal];
+    return (meta && meta.odoo_lead_id) ? Number(meta.odoo_lead_id) : null;
   }
 
   /** ── V1.34 · cuándo se guardó la última versión, y quién ────────────────
@@ -1516,6 +1547,7 @@
     // para que abra al instante y funcione sin red.
     leer: leerLocal,
     folio: folio,
+    leadServidor: leadServidor,
     ultimaVersion: ultimaVersion,
     marcarBorrado: marcarBorrado,
     archivar: archivar,
