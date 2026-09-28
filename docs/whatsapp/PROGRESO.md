@@ -5,11 +5,11 @@ Inicio: 2026-09-28 07:08 UTC (01:08 CST). Límite: 06:00 CST.
 
 | fase | estado | nota |
 |---|---|---|
-| F0 auditoría de lo que cambió | en curso | |
-| F1 fundación en la base | pendiente | |
-| F2 almacenamiento | pendiente | |
-| F3 receptor | pendiente | |
-| F4 pasarela | pendiente | |
+| F0 auditoría de lo que cambió | hecho | db-migrate no sirve tal cual (N1); verificar-scope y alerta-errores inactivos |
+| F1 fundación en la base | **hecho, en vivo** | `memoria_0001` aplicada con read-back (ejecución n8n 116319) |
+| F2 almacenamiento | **hecho, en vivo** | buckets `memoria-archivos` y `memoria-respaldos` (ams) |
+| F3 receptor | desplegado; **sin base** | `memoria-receptor` corre (config completa); no puede entrar a la base hasta que el mantenimiento ponga la contraseña del rol (N5) |
+| F4 pasarela | **preparada (staged)** | Evolution v2.3.7 lista en Railway, falta aplicar el cambio (N5) |
 | F5 pruebas de captura | pendiente | |
 | F6 respaldos | pendiente | |
 | F7 bandeja y vínculos | pendiente | |
