@@ -44,3 +44,65 @@ const ok=(n,cond,det)=>console.log((cond?'✅':'❌')+' '+n+(det?' · '+det:''))
   let r=c.escenarioCore(b,mv,['a','b','e'],12); ok('Vista D a) 116+232+348 al 12 %', Math.round(r.acum.subtotal)===60000&&Math.round(r.acum.costo)===7200&&Math.round(r.acum.neto)===52800&&Math.round(r.acum.hipotetica)===152800);
   r=c.escenarioCore(b,mv,['a','b','e'],0); ok('Vista D b) al 0 % sube la suma de subtotales', Math.round(r.acum.hipotetica-r.acum.base)===60000);
   r=c.escenarioCore(b,mv,[],12); ok('Vista D c) sin selección = base', r.acum.hipotetica===r.acum.base); }
+
+// ═══ Vista E (datos sintéticos, centavos) ═══
+{
+  const CAT = Object.values(c.leerCatalogo([])).map(x => ({ clave: x.clave, tipo: x.tipo, seccion: x.seccion, etiqueta: x.etiqueta, renglon: x.renglon, entra: x.entra }));
+  const v = n => ({ '2026-01': n, acum: n });
+  const lin = [{ c: 'costo_prov_sin', e: 'Proveedores sin CFDI', s: 'costo', v: v(100000) }, { c: 'costo_nomina', e: 'Nómina de proyectos', s: 'costo', v: v(70000) },
+    { c: 'ga_nomina_oficina', e: 'Nómina común', s: 'ga', v: v(30000) }, { c: 'ga_nomina_sin_horas', e: 'Sin horas', s: 'ga', v: v(0) }, { c: 'partidas', e: 'Partidas', s: 'pi', v: v(10000) }];
+  const mv = (k, t, b, n, pz, extra) => Object.assign({ k, f: 'banco', fe: '2026-01-10', m: '2026-01', cu: 'General', co: 'MOV ' + k, cp: '', t, b, n, cf: false, cx: false, ca: '', cat: '', rg: '', o: '', pz, ex: pz.every(x => !x[0]), pi: false }, extra || {});
+  const D = { meses: ['2026-01'], cat: CAT, lineas: { A: lin, B: lin, C: lin }, ventas: { A: v(500000), B: v(500000), C: v(500000) }, nom: { '2026-01': { p: 0.7, c: 0.3, s: 0 } }, proyectos: [],
+    movs: [mv('m1', 'cargo', 11600, 10000, [['costo_prov_sin', 10000]]), mv('mT', 'cargo', 50000, 50000, [[null, 50000]]), mv('mP', 'cargo', 10000, 10000, [['partidas', 10000]]),
+      mv('mN', 'cargo', 100000, 100000, [['__nomina', 100000]]), mv('mR', 'cargo', 116000, 100000, [['costo_prov_sin', 100000]]),
+      mv('x1', 'cargo', 2000, 2000, [['costo_prov_sin', 2000]], { cp: 'PROVEEDOR X' }), mv('x2', 'cargo', 3000, 3000, [['costo_prov_sin', 3000]], { cp: 'PROVEEDOR X' })] };
+  const val = (r, c) => { const l = r.lineas.find(x => x.c === c); return l ? l.v.acum : 0; };
+  const P = c.personalizadoCore;
+  let r = P(D, { modo: 'reclasificacion', base: 'C', cambios: { m1: { partes: [{ dest: 'costo_proveedores', pct: 60 }, { dest: 'admin_otros', pct: 40 }] } } });
+  ok('E a) partir 116.00 bruto (100.00 subtotal) en 60 % costo / 40 % administrativo', val(r, 'costo_prov_sin') === 100000 - 10000 + 6000 && val(r, 'ga_admin_otros') === 4000 && r.puente.cuadra, '60.00 / 40.00 · puente ' + (r.puente.cuadra ? 'verde' : 'rojo'));
+  r = P(D, { modo: 'reclasificacion', base: 'C', cambios: { m1: { partes: [{ dest: 'costo_proveedores', pct: 50 }, { dest: 'admin_otros', pct: 40 }] } } });
+  ok('E b) partición que suma 90 % → rojo, no se aplica ni se exporta', !r.puente.cuadra && r.errores.length === 1 && val(r, 'costo_prov_sin') === 100000 && !r.aplicados.length, r.errores[0] && r.errores[0].motivo);
+  r = P(D, { modo: 'escenario', base: 'C', ajMov: { m1: -25 } });
+  ok('E c) ajuste −25 % a un subtotal de 100.00 → 75.00; difiere del banco en 25.00 con desglose', val(r, 'costo_prov_sin') === 100000 - 2500 && Math.round(r.difBanco) === -2500 && r.ajustes.length === 1, 'diferencia ' + (r.difBanco / 100).toFixed(2));
+  r = P(D, { modo: 'escenario', base: 'C', ajMov: { mN: 10 }, ajRen: { costo_nomina: { pct: -10, meses: [] } } });
+  const esperado = (70000 + 100000 * 0.7 * 0.10) * 0.9;
+  ok('E d) −10 % al renglón nómina de campo después de un ajuste por movimiento', Math.abs(val(r, 'costo_nomina') - esperado) < 1e-6, (val(r, 'costo_nomina') / 100).toFixed(2) + ' = (700.00 + 70.00) × 0.9');
+  { const q = c.escenarioCore({ '2026-01': 0, acum: 0 }, [{ id: 'mR', mes: '2026-01', bruto: 116000 }], ['mR'], 12).acum; const r2 = P(D, { modo: 'escenario', base: 'C' });
+    ok('E e) retener 1,160.00 bruto al 12 %: 1,000.00 · 120.00 · 880.00, sin descontarlo arriba', Math.round(q.subtotal) === 100000 && Math.round(q.costo) === 12000 && Math.round(q.neto) === 88000 && val(r2, 'costo_prov_sin') === 100000); }
+  { const S1 = { modo: 'escenario', base: 'C', cambios: { mT: { partes: [{ dest: 'costo_proveedores', pct: 100 }] } }, ajMov: { m1: -25 } }, S2 = { modo: 'reclasificacion', base: 'A', cambios: { mP: { partes: [{ dest: 'fuera_prestamo', pct: 100 }] } } },
+      S3 = { modo: 'escenario', base: 'B', ajRen: { partidas: { pct: -50, meses: ['2026-01'] } } };
+    const antes = [S1, S2, S3].map(s => P(D, s).tot.UOP.acum), guardados = JSON.parse(JSON.stringify([S1, S2, S3])), despues = guardados.map(s => P(D, s).tot.UOP.acum);
+    ok('E h) guardar, cargar y comparar tres escenarios da los mismos números', antes.every((x, i) => x === despues[i]), antes.map(x => (x / 100).toFixed(2)).join(' · ')); }
+  r = P(D, { modo: 'reclasificacion', base: 'C', cambios: { mT: { partes: [{ dest: 'costo_proveedores', pct: 100 }] } } });
+  ok('E orig a) traspaso excluido → «Costo · proveedores»: la utilidad baja ese subtotal y el puente cuadra', r.tot0.UO.acum - r.tot.UO.acum === 50000 && r.puente.cuadra, 'baja ' + ((r.tot0.UO.acum - r.tot.UO.acum) / 100).toFixed(2));
+  r = P(D, { modo: 'reclasificacion', base: 'C', cambios: { mP: { partes: [{ dest: 'fuera_prestamo', pct: 100 }] } } });
+  ok('E orig b) partida por identificar → pago de préstamo: sale del resultado y la utilidad después de partidas sube', r.tot.UOP.acum - r.tot0.UOP.acum === 10000 && r.tot.UO.acum === r.tot0.UO.acum && r.puente.cuadra, 'sube ' + ((r.tot.UOP.acum - r.tot0.UOP.acum) / 100).toFixed(2));
+  r = P(D, { modo: 'reclasificacion', base: 'C', reglas: [{ campo: 'contraparte', texto: 'PROVEEDOR X', dest: 'admin_otros' }] });
+  ok('E orig c) regla por contraparte reclasifica todos sus movimientos (vista)', val(r, 'ga_admin_otros') === 5000 && r.aplicados.length === 2);
+  // motor: la regla de Esteban también toma un movimiento nuevo que entra después
+  { const i = base(); i.reglas = reglas.concat([{ id: 900, prioridad: 5, destino: 'reclasificacion', campo: 'descripcion', patron: 'PROVEEDOR X', subcategoria: 'fuera_traspaso', origen: 'reclasificación de Esteban' }]);
+    i.banco.push(mov('General', '2026-02', '2026-02-20', 'SPEI PROVEEDOR X NUEVO', 777, 0));
+    const it = c.calcular(i, { sin_archivos: true })._interno.m.items.find(x => /PROVEEDOR X/.test(x.concepto));
+    ok('E orig c) … y un movimiento nuevo que entra después (motor)', it && it.destino === 'excl_traspaso' && it.reclas && it.reclas.fuente === 'regla', it && it.destino); }
+  // validación del archivo (servidor)
+  const I0 = base(), cp0 = () => JSON.parse(JSON.stringify(I0));
+  const mm = c.calcular(cp0(), { sin_archivos: true })._interno.m, CATm = c.leerCatalogo([]);
+  const idReal = mm.items.find(x => x.fuente === 'banco' && x.tipo_mov === 'cargo').mov;
+  const armar = filas => { const cab = c.CSV_RECLAS_COLUMNAS.slice(0, -1); const h = c.huellaReclas([cab].concat(filas)); return [c.CSV_RECLAS_COLUMNAS].concat(filas.map(f => f.concat([h]))).map(f => f.map(x => /[",\n;]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x).join(',')).join('\n'); };
+  let vv = c.validarReclasificaciones(armar([['b:no-existe', '1', '1', '100', '', 'costo_otros', '', '', 'movimiento', '', '', 'h']]), 'reclasificaciones_20260928_1000.csv', mm, CATm);
+  ok('E orig d) CSV con un id inexistente → se rechaza completo', !vv.ok && /no existe/.test(vv.motivo) && vv.filas.length === 0, vv.motivo);
+  vv = c.validarReclasificaciones('tipo,id_movimiento,destino,porcentaje_parte,ajuste_pct\najuste_movimiento,b:x,,,-25\n', 'escenario_20260928_1000.csv', mm, CATm);
+  ok('E f) un escenario_*.csv se rechaza completo con su motivo', !vv.ok && vv.motivo === 'contiene ajustes de % de escenario; solo se aplican reclasificaciones', vv.motivo);
+  const csvOk = armar([[idReal, '1', '2', '60', 'x', 'costo_otros', '', 'prueba', 'movimiento', '', '', 'h'], [idReal, '2', '2', '40', 'x', 'admin_otros', '', 'prueba', 'movimiento', '', '', 'h']]);
+  let adulterado = csvOk.replace(',60,', ',61,');
+  vv = c.validarReclasificaciones(adulterado, 'reclasificaciones_x.csv', mm, CATm);
+  ok('E validación: un archivo modificado después de exportarlo se rechaza por huella', !vv.ok && /huella/.test(vv.motivo), vv.motivo);
+  { const res = c.calcular(cp0(), { sin_archivos: true, reclas_csv: { nombre: 'reclasificaciones_20260928_1000.csv', contenido: csvOk }, generado_at: '2026-09-28T10:00:00Z' });
+    const ps = res._interno.m.items.filter(x => x.mov === idReal);
+    ok('E g) un reclasificaciones_*.csv con partición se aplica y el estado oficial lo refleja', res.reclas.ok && ps.length === 2 && ps[0].destino === 'costo_otros' && ps[1].destino === 'admin_otros' && ps[0].bruto + ps[1].bruto === 100000 && res.resumen.cuadra_al_centavo,
+      'partes ' + ps.map(x => x.destino + ' ' + (x.bruto / 100).toFixed(2)).join(' + ')); }
+  // e) dos reclasificaciones del mismo movimiento: vigente la última (la vista v_reclasificaciones marca la anterior como no vigente)
+  { const i = cp0(); i.reclasificaciones = [{ tipo: 'movimiento', movimiento_id: idReal, parte: 1, porcentaje: 100, destino: 'costo_otros', vigente: false, archivo_origen: 'r1.csv' }, { tipo: 'movimiento', movimiento_id: idReal, parte: 1, porcentaje: 100, destino: 'fuera_traspaso', vigente: true, archivo_origen: 'r2.csv' }];
+    const it = c.calcular(i, { sin_archivos: true })._interno.m.items.filter(x => x.mov === idReal);
+    ok('E orig e) reclasificar dos veces: queda vigente la última', it.length === 1 && it[0].destino === 'excl_traspaso' && it[0].reclas.archivo === 'r2.csv', it[0] && it[0].destino); }
+}

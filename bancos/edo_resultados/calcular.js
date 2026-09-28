@@ -15,7 +15,7 @@
  * ═══════════════════════════════════════════════════════════════════════════ */
 'use strict';
 
-const VERSION = 'er-2026-v1.1';
+const VERSION = 'er-2026-v1.2';
 const ANIO = '2026';
 const NOMBRE_MES = { '01': 'ene', '02': 'feb', '03': 'mar', '04': 'abr', '05': 'may', '06': 'jun', '07': 'jul', '08': 'ago', '09': 'sep', '10': 'oct', '11': 'nov', '12': 'dic' };
 const CONMET_SO = 'SO11771';                 // contrato Conmet (decisión de Esteban: renglón propio)
@@ -24,6 +24,42 @@ const VENTANA_CFDI_DIAS = 15;                // ajuste C
 const VENTANA_DEVOLUCION_DIAS = 5;
 const CUENTAS = ['General', 'Nomina', 'USD'];
 const TODAS = { d1: true, d2: true, d3: true, d5: true, d6: true, d7: true, r1: true, r2: true };
+// Catálogo de destinos de la Vista E (espejo de bancos.destinos_edo_resultados; se usa si la tabla llega vacía)
+const DESTINOS_DEFECTO = [
+  ['costo_proveedores', 'egreso', 'costo', 'Costo · proveedores', 'costo_prov', true, 'costo_proveedor'],
+  ['costo_subcontratos', 'egreso', 'costo', 'Costo · subcontratos', 'costo_subcontratos', true, 'costo_subcontratos'],
+  ['costo_nomina_proyectos', 'egreso', 'costo', 'Costo · nómina de proyectos', 'costo_nomina', true, 'nomina_proyectos'],
+  ['costo_jeeves', 'egreso', 'costo', 'Costo · Jeeves', 'costo_jeeves', true, 'costo_jeeves_reclasificado'],
+  ['costo_payana', 'egreso', 'costo', 'Costo · Payana', 'costo_payana_proy', true, 'costo_payana_proyecto'],
+  ['costo_otros', 'egreso', 'costo', 'Costo · otros costos', 'costo_otros', true, 'costo_otros'],
+  ['admin_nomina_comun', 'egreso', 'administrativo', 'Administrativo · nómina de cuentas comunes', 'ga_nomina_oficina', true, 'nomina_comun'],
+  ['admin_renta', 'egreso', 'administrativo', 'Administrativo · renta', 'ga_admin_renta_oficina', true, 'admin_renta_oficina'],
+  ['admin_software', 'egreso', 'administrativo', 'Administrativo · software', 'ga_admin_software', true, 'admin_software'],
+  ['admin_servicios_oficina', 'egreso', 'administrativo', 'Administrativo · servicios de oficina', 'ga_admin_servicios_oficina', true, 'admin_servicios_oficina'],
+  ['admin_contabilidad_legal', 'egreso', 'administrativo', 'Administrativo · contabilidad y legal', 'ga_admin_contabilidad_legal', true, 'admin_contabilidad_legal'],
+  ['admin_comisiones', 'egreso', 'administrativo', 'Administrativo · comisiones bancarias', 'ga_admin_comisiones_bancarias', true, 'admin_comisiones_bancarias'],
+  ['admin_otros', 'egreso', 'administrativo', 'Administrativo · otros administrativos', 'ga_admin_otros', true, 'admin_otros'],
+  ['partidas', 'egreso', 'partidas', 'Partidas por identificar', 'partidas', true, 'partida_reclasificada'],
+  ['fuera_prestamo', 'egreso', 'fuera', 'Fuera del resultado · pago de préstamo', null, false, 'excl_financiamiento'],
+  ['fuera_devolucion_aportacion', 'egreso', 'fuera', 'Fuera del resultado · devolución de aportación a socios', null, false, 'excl_devolucion_aportacion'],
+  ['fuera_traspaso', 'egreso', 'fuera', 'Fuera del resultado · traspaso entre cuentas propias', null, false, 'excl_traspaso'],
+  ['fuera_activo_fijo', 'egreso', 'fuera', 'Fuera del resultado · activo fijo', null, false, 'activo_fijo'],
+  ['fuera_anticipo_proveedor', 'egreso', 'fuera', 'Fuera del resultado · anticipo a proveedor', null, false, 'excl_anticipo_proveedor'],
+  ['fuera_impuestos', 'egreso', 'fuera', 'Fuera del resultado · impuestos y cuotas (informativo)', null, false, 'impuestos_reclasificado'],
+  ['fuera_sin_clasificar', 'egreso', 'fuera', 'Fuera del resultado · excluir sin clasificar', null, false, 'excl_sin_clasificar'],
+  ['ingreso_cobro_cliente', 'ingreso', 'informativo', 'Informativo · cobro de cliente', null, false, 'info_cobro_cliente'],
+  ['ingreso_anticipo_cliente', 'ingreso', 'informativo', 'Informativo · anticipo de cliente', null, false, 'info_anticipo_cliente'],
+  ['ingreso_financiamiento', 'ingreso', 'fuera', 'Fuera del resultado · financiamiento recibido', null, false, 'info_entrada_financiamiento'],
+  ['ingreso_aportacion_socio', 'ingreso', 'fuera', 'Fuera del resultado · aportación de socio', null, false, 'info_aportacion_socio'],
+  ['ingreso_traspaso', 'ingreso', 'fuera', 'Fuera del resultado · traspaso propio', null, false, 'info_traspaso_recibido'],
+  ['ingreso_devolucion', 'ingreso', 'fuera', 'Fuera del resultado · devolución', null, false, 'info_devolucion_recibida'],
+  ['otros_ingresos', 'ingreso', 'otros_ingresos', 'Entra al resultado · otros ingresos', 'otros_ingresos', true, 'otros_ingresos'],
+].map(([clave, tipo, seccion, etiqueta, renglon, entra, destino_motor], i) => ({ clave, tipo, seccion, etiqueta, renglon, entra, destino_motor, orden: i + 1 }));
+function leerCatalogo(filas) {
+  const xs = (filas && filas.length ? filas : DESTINOS_DEFECTO).filter(d => d.activo !== false && d.activo !== 'f');
+  const C = {}; for (const d of ordenar(xs.map(d => Object.assign({}, d, { orden: Number(d.orden) || 0, entra: d.entra === true || d.entra === 't' })), 'orden', 'clave')) C[d.clave] = d;
+  return C;
+}
 const UMBRAL_HORAS_MEDIDAS = 0.8;          // R1: un mes de una persona se toma como medido si ≥80 % de sus horas tiene proyecto o bolsa
 
 // ── utilidades ───────────────────────────────────────────────────────────────
@@ -266,11 +302,56 @@ function motor(ins, F) {
 
   const items = [];
   const push = o => { items.push(o); return o; };
-  const itemBanco = (m, destino, extra) => push(Object.assign({
-    fuente: 'banco', id: 'mov ' + m.id, mov_id: m.id, hash: m.hash, periodo: m.periodo, fecha: m.fecha, renglon: m.renglon, cuenta: m.alias, mask: m.mask, moneda: m.moneda,
-    monto_nat: m.cargo_nat || m.abono_nat, tc: m.tc, bruto: m.cargo || m.abono, neto: m.cargo || m.abono, destino, concepto: m.descripcion,
-    archivo: m.archivo, pagina: m.pagina, sha256: m.sha256, cfdi: null, proveedor: '', regla: null, conmet: false, previo: false, iva_estimado: false,
-  }, extra || {}));
+
+  // ── Vista E: capa de reclasificación (los datos bancarios no se tocan) ──
+  // Prioridad: reclasificación vigente del movimiento > regla de Esteban > reglas del v1 > clasificación del servicio.
+  const CAT = leerCatalogo(ins.destinos);
+  const RM = {};
+  for (const r of (ins.reclasificaciones || [])) {
+    if (r.tipo !== 'movimiento' || r.vigente === false || r.vigente === 'f' || !r.movimiento_id) continue;
+    (RM[r.movimiento_id] || (RM[r.movimiento_id] = [])).push(r);
+  }
+  const reclasInvalidas = [];
+  const compatible = (clave, tipo) => CAT[clave] && ((tipo === 'abono') === (CAT[clave].tipo === 'ingreso'));
+  function override(key, v, tipo) {
+    const xs = RM[key];
+    if (xs && xs.length) {
+      const partes = ordenar(xs.map(r => ({ parte: Number(r.parte) || 1, clave: r.destino, pct: Number(r.porcentaje), proyecto: r.proyecto || '', nota: r.nota || '' })), 'parte');
+      const suma = partes.reduce((a, x) => a + x.pct, 0);
+      if (partes.every(x => compatible(x.clave, tipo)) && Math.abs(suma - 100) < 1e-6 && partes.length <= 5)
+        return { fuente: 'movimiento', partes, archivo: xs[0].archivo_origen || '', aplicada_en: String(xs[0].aplicada_en || '').slice(0, 16), lote: xs[0].lote || '' };
+      reclasInvalidas.push({ mov: key, motivo: 'partes o destino inválidos' });
+    }
+    for (const r of reglas.todas) if (r.destino === 'reclasificacion' && v[r.campo] && r.re.test(v[r.campo]) && compatible(r.subcategoria, tipo))
+      return { fuente: 'regla', partes: [{ parte: 1, clave: r.subcategoria, pct: 100, proyecto: '', nota: '' }], regla_id: r.id };
+    return null;
+  }
+  const destinoDeCatalogo = (clave, o) => { const d = CAT[clave].destino_motor; return d === 'costo_proveedor' ? (o.cfdi ? 'costo_proveedor_con_cfdi' : 'costo_proveedor_sin_cfdi') : d; };
+  function emitirReclas(o, ov) {
+    let rb = o.bruto, rn = o.neto;
+    ov.partes.forEach((x, k) => {
+      const ult = k === ov.partes.length - 1;
+      const b = ult ? rb : Math.round(o.bruto * x.pct / 100), n = ult ? rn : Math.round(o.neto * x.pct / 100); rb -= b; rn -= n;
+      const destino = destinoDeCatalogo(x.clave, o);
+      push(Object.assign({}, o, { id: o.id + (ov.partes.length > 1 ? '#r' + x.parte : ''), destino, bruto: b, neto: n, destino_v1: o.destino, regla_v1: o.regla,
+        regla: 'reclasificación de Esteban (' + (ov.fuente === 'movimiento' ? 'archivo ' + ov.archivo + ', ' + ov.aplicada_en : 'regla ' + ov.regla_id) + ') · antes: ' + o.destino,
+        reclas: { fuente: ov.fuente, clave: x.clave, pct: x.pct, parte: x.parte, partes: ov.partes.length, proyecto: x.proyecto, nota: x.nota, archivo: ov.archivo || '', aplicada_en: ov.aplicada_en || '', regla_id: ov.regla_id || null } }));
+      if (destino === 'activo_fijo' && o.destino !== 'activo_fijo') activos.push({ periodo: o.periodo, base: n, ref: o.id, concepto: o.concepto });
+    });
+  }
+  const conOverride = (o, v) => { const ov = override(o.mov, v, o.tipo_mov); if (ov) { emitirReclas(o, ov); return true; } push(o); return false; };
+  const itemizados = new Set();
+  const itemBanco = (m, destino, extra) => {
+    itemizados.add(m.id);
+    const o = Object.assign({
+      fuente: 'banco', id: 'mov ' + m.id, mov_id: m.id, hash: m.hash, mov: 'b:' + m.hash, tipo_mov: m.cargo_nat > 0 ? 'cargo' : 'abono', periodo: m.periodo, fecha: m.fecha, renglon: m.renglon, cuenta: m.alias, mask: m.mask, moneda: m.moneda,
+      monto_nat: m.cargo_nat || m.abono_nat, tc: m.tc, bruto: m.cargo || m.abono, neto: m.cargo || m.abono, destino, concepto: m.descripcion,
+      archivo: m.archivo, pagina: m.pagina, sha256: m.sha256, cfdi: null, proveedor: '', regla: null, conmet: false, previo: false, iva_estimado: false,
+    }, extra || {});
+    o.contraparte = o.proveedor || '';
+    conOverride(o, { contraparte: o.contraparte, descripcion: m.descripcion + ' ' + m.referencia });
+    return o;
+  };
   const itemAjuste = (periodo, destino, monto, concepto, extra) => push(Object.assign({ fuente: 'ajuste', id: 'ajuste ' + destino + ' ' + periodo + ' ' + (extra && extra.ref || ''),
     periodo, fecha: periodo + '-01', renglon: 0, cuenta: 'cálculo', mask: '', moneda: 'MXN', monto_nat: monto, tc: null, bruto: monto, neto: monto, destino, concepto,
     archivo: null, pagina: null, sha256: null, cfdi: null, proveedor: '', regla: 'cálculo', conmet: false, previo: false, iva_estimado: false }, extra || {}));
@@ -444,12 +525,14 @@ function motor(ins, F) {
     const x = items.filter(i => i.fuente === 'banco' && i.destino === 'excl_cubierto_fondeo_nomina' && i.oficina && i.periodo === p).reduce((s, i) => s + i.bruto, 0);
     if (x) { itemAjuste(p, 'nomina_oficina', x, 'nómina de oficina pagada desde la cuenta Nómina (D1)'); itemAjuste(p, 'nomina_fondeo', -x, 'se resta de la nómina de campo (D1)'); }
   }
-  // abonos informativos
+  // abonos: todos quedan listados (Vista E); sólo algunos tienen renglón informativo
   for (const m of banco.filter(x => x.abono_nat > 0)) {
+    if (itemizados.has(m.id)) continue;
     const v = { descripcion: m.descripcion + ' ' + m.referencia };
     if (m.categoria === 'credito_financiamiento') itemBanco(m, 'info_entrada_financiamiento', { regla: 'categoría crédito/financiamiento' });
     else if (abonoDevolucion.has(m.id)) itemBanco(m, 'info_devolucion_recibida', { regla: 'SPEI DEVUELTO' });
     else if (reglas.primera('conmet', v)) itemBanco(m, 'info_anticipo_conmet_cobrado', { regla: 'cobro del contrato Conmet', conmet: true, neto: Math.round(m.abono * 100 / 116) });
+    else itemBanco(m, 'info_abono_sin_clasificar', { regla: m.ti ? 'traspaso entre cuentas propias (servicio)' : 'abono sin renglón (informativo; las ventas salen de Odoo)' });
   }
 
   // ── Jeeves: consumos de la tarjeta (diario 61) por tipo de comercio (D3) ──
@@ -458,8 +541,10 @@ function motor(ins, F) {
     const c = cents(j.amount), ref = String(j.payment_ref || '');
     const comercio = norm(ref.replace(/^\[[^\]]*\]\s*/, ''));
     const base = { fuente: 'odoo', id: 'account.bank.statement.line ' + j.id, periodo: p, fecha: f, renglon: 0, cuenta: 'Jeeves (diario 61)', mask: '', moneda: 'MXN', monto_nat: Math.abs(c), tc: null,
-      concepto: ref, archivo: null, pagina: null, sha256: null, cfdi: null, proveedor: '', conmet: false, previo: false, iva_estimado: false };
-    if (/\[FONDEO\]/i.test(ref)) { push(Object.assign(base, { destino: 'info_fondeo_jeeves_odoo', bruto: Math.abs(c), neto: Math.abs(c), regla: 'fondeo registrado en Jeeves' })); continue; }
+      concepto: ref, archivo: null, pagina: null, sha256: null, cfdi: null, proveedor: '', conmet: false, previo: false, iva_estimado: false,
+      mov: 'j:' + j.id, tipo_mov: /\[FONDEO\]/i.test(ref) ? 'abono' : 'cargo', contraparte: ref.replace(/^\[[^\]]*\]\s*/, '') };
+    const vE = { contraparte: base.contraparte, descripcion: ref };
+    if (/\[FONDEO\]/i.test(ref)) { conOverride(Object.assign(base, { destino: 'info_fondeo_jeeves_odoo', bruto: Math.abs(c), neto: Math.abs(c), regla: 'fondeo registrado en Jeeves' }), vE); continue; }
     if (!F.d3) {
       if (c < 0) push(Object.assign(base, { destino: 'costo_jeeves', bruto: -c, neto: -c, regla: 'consumo de tarjeta (regla 3 de Esteban)' }));
       else push(Object.assign(base, { destino: 'costo_jeeves_devolucion', bruto: -c, neto: -c, regla: 'devolución de comercio' }));
@@ -469,7 +554,9 @@ function motor(ins, F) {
     const ext = reglas.primera('jeeves_extranjero', vj);
     const bruto = -c, iva = b => ext ? b : Math.round(b * 100 / 116);        // IVA estimado (D3), sin cambio en R2
     const notaIva = ext ? ' · comercio extranjero, sin IVA' : ' · IVA estimado ÷1.16, sin CFDI';
-    if (c > 0) { push(Object.assign(base, { destino: 'costo_jeeves_devolucion', bruto, neto: iva(bruto), iva_estimado: !ext, regla: 'devolución de comercio' + notaIva })); continue; }
+    if (c > 0) { conOverride(Object.assign(base, { destino: 'costo_jeeves_devolucion', bruto, neto: iva(bruto), iva_estimado: !ext, regla: 'devolución de comercio' + notaIva }), vE); continue; }
+    { const ov = override(base.mov, vE, 'cargo');
+      if (ov) { emitirReclas(Object.assign({}, base, { destino: 'costo_jeeves (v1.1)', bruto, neto: iva(bruto), iva_estimado: !ext, regla: 'consumo de Jeeves' + notaIva }), ov); continue; } }
     // R2: primero la analítica de la factura con la que se concilió el consumo
     const fac = (F.r2 && (j.is_reconciled === true || j.is_reconciled === 't') && j.reconciled_lines_name) ? facturaPorNombre[String(j.reconciled_lines_name).match(/BILL\d+/) ? String(j.reconciled_lines_name).match(/BILL\d+/)[0] : ''] || null : null;
     const pz = F.r2 ? partirPorAnalitica(fac, bruto) : { p: 0, c: 0, n: bruto };
@@ -490,10 +577,14 @@ function motor(ins, F) {
     const cr = cents(y.credit), db = cents(y.debit), prov = m2o(y.partner_id).name;
     const bill = billDe(y.ref, y.name, m2o(y.move_id).name), fac = bill ? facturaPorNombre[bill] || null : null;
     const base = { fuente: 'odoo', id: 'account.move.line ' + y.id, periodo: p, fecha: f, renglon: 0, cuenta: 'Payana (diario 74)', mask: '', moneda: 'MXN', monto_nat: cr || db, tc: null,
-      concepto: [bill, prov].filter(Boolean).join(' · '), archivo: null, pagina: null, sha256: null, proveedor: fac ? fac.partner : prov, conmet: false, previo: proyectoPrevio(fac), iva_estimado: false };
-    if (!(cr > 0)) { push(Object.assign(base, { destino: 'info_payana_entrada', bruto: db, neto: db, cfdi: null, regla: 'entrada en Payana (no es pago)' })); continue; }
+      concepto: [bill, prov].filter(Boolean).join(' · '), archivo: null, pagina: null, sha256: null, proveedor: fac ? fac.partner : prov, conmet: false, previo: proyectoPrevio(fac), iva_estimado: false,
+      mov: 'y:' + y.id, tipo_mov: cr > 0 ? 'cargo' : 'abono', contraparte: fac ? fac.partner : prov };
+    const vY = { contraparte: base.contraparte, descripcion: base.concepto };
+    if (!(cr > 0)) { conOverride(Object.assign(base, { destino: 'info_payana_entrada', bruto: db, neto: db, cfdi: null, regla: 'entrada en Payana (no es pago)' }), vY); continue; }
     const rr = ratio(fac), neto = rr ? aplicarRatio(cr, rr) : cr;
     const cfdi = fac ? { via: 'factura_del_pago', ref: 'account.move ' + fac.id + ' · ' + fac.name, factura: fac.name, sin_iva_sobre_total: fac.sin_iva + '/' + fac.total } : null;
+    { const ov = override(base.mov, vY, 'cargo');
+      if (ov) { emitirReclas(Object.assign({}, base, { destino: 'payana (v1.1)', bruto: cr, neto, cfdi, regla: 'pago de Payana' }), ov); continue; } }
     const v = { descripcion: base.concepto, categoria: '', proveedor_odoo: base.proveedor, plan_analitico: fac && !fac.proyecto ? fac.planes.join(',') : '' };
     let r;
     if (F.d6 && (r = reglas.primera('activo_fijo', v))) {
@@ -634,6 +725,8 @@ function armarVistas(m, F) {
         : renglon('costo_nomina', F.d1 ? 'Nómina de campo' : 'Nómina (sin separar campo/oficina)', i => NOMINA.includes(i.destino), 'fondeos General→Nómina + pagos directos (− oficina, D1)'),
       renglon('costo_depreciacion', 'Depreciación asignable (activo fijo)', D('costo_depreciacion'), '25 % anual en línea recta desde el mes de compra (D6)'),
     ];
+    if (items.some(D('costo_subcontratos'))) cs.push(renglon('costo_subcontratos', 'Subcontratos (reclasificado)', D('costo_subcontratos'), 'reclasificación de Esteban (Vista E)'));
+    if (items.some(D('costo_otros'))) cs.push(renglon('costo_otros', 'Otros costos (reclasificado)', D('costo_otros'), 'reclasificación de Esteban (Vista E)'));
     if (tipo === 'A') cs.push(renglon('costo_conmet', 'Conmet: costo del proyecto (sin IVA)', D('costo_conmet'), 'cargos con CONMET o proveedor del proyecto'));
     const C = linea('costo', 'Costo de ventas', 1, p => cs.reduce((s, x) => s + x[p], 0));
     const UB = linea('utilidad_bruta', 'Utilidad bruta', 1, p => V[p] - C[p]);
@@ -648,8 +741,9 @@ function armarVistas(m, F) {
     const otros = Array.from(new Set(items.filter(i => i.destino.indexOf('admin_') === 0 && i.destino.indexOf('admin_jeeves_') !== 0 && i.destino !== 'admin_payana_indirecto').map(i => i.destino))).sort();
     for (const d of otros) ga.push(renglon('ga_' + d, d.replace('admin_', '').replace(/_/g, ' ').replace(/^./, x => x.toUpperCase()), D(d), 'reglas administrativo (bancos.reglas_edo_resultados)'));
     const GA = linea('gastos_admin', 'Gastos administrativos', 1, p => ga.reduce((s, x) => s + x[p], 0));
-    const UO = linea('utilidad_operacion', 'Utilidad de operación', 1, p => UB[p] - GA[p]);
-    const PI = renglon('partidas', 'Partidas por identificar (pendiente de Esteban)', i => i.destino === 'partida_por_identificar' || i.destino === 'partida_otro', 'D5 · SPEI sin concepto ni CFDI desde el umbral, casa de cambio sin entrada, y las marcadas «otro»');
+    const OI = items.some(D('otros_ingresos')) ? renglon('otros_ingresos', 'Otros ingresos (reclasificado)', D('otros_ingresos'), 'abonos reclasificados por Esteban (Vista E)') : null;
+    const UO = linea('utilidad_operacion', 'Utilidad de operación', 1, p => UB[p] - GA[p] + (OI ? OI[p] : 0));
+    const PI = renglon('partidas', 'Partidas por identificar (pendiente de Esteban)', P('partida_'), 'D5 · SPEI sin concepto ni CFDI desde el umbral, casa de cambio sin entrada, las marcadas «otro» y las reclasificadas');
     L[L.length - 1].nivel = 1;
     const UOP = linea('utilidad_operacion_partidas', 'Utilidad de operación después de partidas', 1, p => UO[p] - PI[p]);
     // informativos
@@ -669,13 +763,30 @@ function armarVistas(m, F) {
   return { COLS, A: vista('A'), B: vista('B'), C: vista('C') };
 }
 
+// renglón del estado (clave de armarVistas) donde cae cada destino interno; '__nomina' = se reparte por R1
+function renglonPieza(d) {
+  if (['nomina_fondeo', 'nomina_directa', 'nomina_fondeo_lado_nomina', 'nomina_oficina'].includes(d)) return '__nomina';
+  const M = { costo_proveedor_con_cfdi: 'costo_prov_cfdi', costo_proveedor_sin_cfdi: 'costo_prov_sin', costo_jeeves_proyecto: 'costo_jeeves_proy', costo_jeeves_sin_clasificar: 'costo_jeeves_sin',
+    costo_jeeves_devolucion: 'costo_jeeves_dev', costo_payana_proyecto: 'costo_payana_proy', costo_payana_sin_clasificar: 'costo_payana_pc', nomina_proyectos: 'costo_nomina', nomina_comun: 'ga_nomina_oficina',
+    nomina_sin_horas: 'ga_nomina_sin_horas', admin_jeeves_analitica_comun: 'ga_jeeves_an', admin_payana_indirecto: 'ga_payana', otros_ingresos: 'otros_ingresos' };
+  if (M[d]) return M[d];
+  if (['costo_depreciacion', 'costo_conmet', 'costo_subcontratos', 'costo_otros'].includes(d)) return d;
+  if (d.indexOf('costo_jeeves') === 0) return 'costo_jeeves';
+  if (d.indexOf('admin_jeeves_') === 0) return 'ga_jeeves';
+  if (d.indexOf('admin_') === 0) return 'ga_' + d;
+  if (d.indexOf('partida_') === 0) return 'partidas';
+  return null;
+}
+
 // ── puente banco → estado (Vista A) ──
 function armarPuente(m, A) {
   const { MESES, items } = m;
   const suma = (pred, campo, p) => items.filter(i => pred(i) && i.periodo === p).reduce((s, i) => s + i[campo], 0);
   const EXCL = [['excl_cubierto_fondeo_nomina', 'dispersiones de la cuenta Nómina (ya contadas en los fondeos General → Nómina)'], ['excl_traspaso', 'traspasos entre cuentas BBVA propias (no Nómina)'],
     ['excl_fondeo_payana', 'fondeos BBVA → Payana'], ['excl_fondeo_jeeves', 'fondeos BBVA → Jeeves'], ['excl_financiamiento', 'Pagos de financiamiento, préstamos y aportaciones'],
-    ['impuestos_', 'Impuestos y cuotas (SAT, IMSS/INFONAVIT, ISN)'], ['excl_devolucion', 'Cargos devueltos por el banco'], ['activo_fijo', 'Compras de activo fijo (fuera del resultado)']];
+    ['impuestos_', 'Impuestos y cuotas (SAT, IMSS/INFONAVIT, ISN)'], ['excl_devolucion', 'Cargos devueltos por el banco'], ['activo_fijo', 'Compras de activo fijo (fuera del resultado)']]
+    .concat([['excl_devolucion_aportacion', 'devoluciones de aportación a socios (reclasificado)'], ['excl_anticipo_proveedor', 'anticipos a proveedor (reclasificado)'], ['excl_sin_clasificar', 'excluidos sin clasificar (reclasificado)']]
+      .filter(([d]) => items.some(i => i.fuente === 'banco' && i.destino === d)));
   const puente = [];
   const pl = (clave, etiqueta, fn, signo) => { const vals = {}; for (const p of MESES) vals[p] = fn(p); vals.acum = MESES.reduce((s, p) => s + vals[p], 0); puente.push({ clave, etiqueta, signo, vals }); return vals; };
   const esBancoCargo = i => i.fuente === 'banco' && i.destino.indexOf('info_') !== 0 && i.destino !== 'nomina_fondeo_lado_nomina';
@@ -713,6 +824,196 @@ function escenarioCore(base, movs, seleccion, pctFin) {
   return out;
 }
 
+// ── Vista E: núcleo del estado personalizado (se incrusta tal cual en el HTML y se prueba en node) ──
+// D: datos del motor (meses, cat, lineas por vista, ventas, nom, movs). S: estado del usuario.
+// Orden de cálculo: 1) v1 · 2) reclasificaciones oficiales vigentes (ya vienen en D) · 3) reclasificaciones y particiones
+// de este escenario · 4) ajustes % por movimiento · 5) ajustes % por renglón · 6) utilidad retenida (bloque aparte).
+function personalizadoCore(D, S) {
+  S = S || {};
+  var base = S.base === 'A' || S.base === 'B' ? S.base : 'C', esc = S.modo === 'escenario';
+  var meses = D.meses, cols = meses.concat(['acum']);
+  var cero = function () { var o = {}; cols.forEach(function (p) { o[p] = 0; }); return o; };
+  var copia = function (v) { var o = {}; cols.forEach(function (p) { o[p] = Number(v && v[p]) || 0; }); return o; };
+  var cat = {}; D.cat.forEach(function (c) { cat[c.clave] = c; });
+  var SEC = { costo: 'costo', administrativo: 'ga', partidas: 'pi', otros_ingresos: 'oi' };
+  var L = {}, orden = [];
+  D.lineas[base].forEach(function (l) { L[l.c] = { c: l.c, e: l.e, s: l.s, base: copia(l.v), v: copia(l.v), det: [] }; orden.push(l.c); });
+  function linea(c, e, s) {
+    if (L[c]) return L[c];
+    L[c] = { c: c, e: e || c, s: s, base: cero(), v: cero(), det: [], nueva: true };
+    var pos = -1; orden.forEach(function (x, i) { if (L[x].s === s) pos = i; });
+    if (pos < 0) { var ordS = ['venta', 'costo', 'ga', 'oi', 'pi']; orden.forEach(function (x, i) { if (ordS.indexOf(L[x].s) < ordS.indexOf(s)) pos = i; }); }
+    orden.splice(pos + 1, 0, c); return L[c];
+  }
+  var etiquetaDe = function (rg) { var e = null; D.cat.forEach(function (c) { if (c.renglon === rg) e = c.etiqueta; }); return e; };
+  var seccionDe = function (rg) { var s = null; D.cat.forEach(function (c) { if (c.renglon === rg) s = SEC[c.seccion]; }); return s || (rg.indexOf('ga_') === 0 ? 'ga' : rg === 'partidas' ? 'pi' : rg === 'otros_ingresos' ? 'oi' : 'costo'); };
+  function sumar(rg, mes, val, det) {
+    if (!rg || !val) return;
+    var l = L[rg] || linea(rg, etiquetaDe(rg), seccionDe(rg));
+    l.v[mes] += val; l.v.acum += val; if (det) l.det.push(det);
+  }
+  var efectoMov = {};                                          // por clave de cambio: suma firmada por sección (para «mayores efectos»)
+  function contribuir(rg, m, monto, det, clave) {
+    var partes = rg === '__nomina' ? (function () { var q = D.nom[m.m] || { p: 1, c: 0, s: 0 }; return [['costo_nomina', q.p], ['ga_nomina_oficina', q.c], ['ga_nomina_sin_horas', q.s]]; })() : [[rg, 1]];
+    partes.forEach(function (x) {
+      if (!x[0] || !x[1]) return;
+      var v = monto * x[1]; sumar(x[0], m.m, v, det && Object.assign({}, det, { monto: v }));
+      if (clave) { var e = efectoMov[clave] || (efectoMov[clave] = { costo: 0, ga: 0, oi: 0, pi: 0 }); e[(L[x[0]] || {}).s || 'costo'] += v; }
+    });
+  }
+  var tipoOk = function (dest, m) { var c = cat[dest]; return !!c && ((m.t === 'abono') === (c.tipo === 'ingreso')); };
+  var renglonDe = function (dest, m) { var c = cat[dest]; if (!c || !c.renglon) return null; if (c.renglon === 'costo_prov') return m.cf ? 'costo_prov_cfdi' : 'costo_prov_sin'; return c.renglon; };
+  var movMap = {}; D.movs.forEach(function (m) { movMap[m.k] = m; });
+  var visible = function (m) { return base === 'A' || !m.cx; };
+  // 3a) reglas propuestas: aplican a los movimientos que coinciden y no tienen cambio propio
+  var cambios = {}; Object.keys(S.cambios || {}).forEach(function (k) { cambios[k] = S.cambios[k]; });
+  (S.reglas || []).forEach(function (r, ir) {
+    var t = String(r.texto || '').toUpperCase(); if (t.length < 3) return;
+    D.movs.forEach(function (m) {
+      if (cambios[m.k]) return;
+      var campo = String((r.campo === 'contraparte' ? m.cp : m.co) || '').toUpperCase();
+      if (campo.indexOf(t) >= 0 && tipoOk(r.dest, m)) cambios[m.k] = { partes: [{ dest: r.dest, pct: 100, proy: r.proy || '' }], regla: ir };
+    });
+  });
+  var errores = [], avisos = [], nuevos = {}, aplicados = [], chkLineas = 0, chkMovs = 0;
+  var enER = function (rg) { return rg && rg !== null; };
+  var signoSec = function (rg) { var s = rg === '__nomina' ? 'costo' : (L[rg] ? L[rg].s : seccionDe(rg)); return s === 'oi' ? -1 : 1; };
+  // 3b) reclasificaciones y particiones
+  Object.keys(cambios).forEach(function (k) {
+    var m = movMap[k]; if (!m) { errores.push({ k: k, motivo: 'el movimiento no existe' }); return; }
+    if (!visible(m)) { avisos.push({ k: k, motivo: 'Conmet no está en la Vista ' + base }); return; }
+    var ch = cambios[k], ps = ch.partes || [], suma = 0;
+    ps.forEach(function (x) { suma += Number(x.pct) || 0; });
+    var mal = !ps.length ? 'sin destino' : ps.length > 5 ? 'más de 5 partes' : Math.abs(suma - 100) > 1e-9 ? 'las partes suman ' + (Math.round(suma * 10000) / 10000) + ' %, no 100 %' :
+      ps.some(function (x) { return !(Number(x.pct) > 0); }) ? 'una parte sin porcentaje' : ps.some(function (x) { return !tipoOk(x.dest, m); }) ? 'destino no válido para un ' + m.t : null;
+    if (mal) { errores.push({ k: k, motivo: mal }); return; }
+    m.pz.forEach(function (pz) { if (enER(pz[0])) { contribuir(pz[0], m, -pz[1], { tipo: 'sale', k: k }, k); chkMovs -= pz[1] * signoSec(pz[0]); } });
+    nuevos[k] = [];
+    var resto = m.n;
+    ps.forEach(function (x, i) {
+      var monto = i === ps.length - 1 ? resto : m.n * Number(x.pct) / 100; resto -= monto;
+      var rg = renglonDe(x.dest, m);
+      nuevos[k].push([rg, monto, x.dest]);
+      if (rg) { contribuir(rg, m, monto, { tipo: 'entra', k: k, dest: x.dest, pct: Number(x.pct) }, k); chkMovs += monto * signoSec(rg); }
+    });
+    aplicados.push(k);
+  });
+  var piezas = function (m) { return nuevos[m.k] || m.pz; };
+  var ajustes = [];
+  // 4) ajuste % por movimiento (sólo escenario): monto ajustado = subtotal usado × (1 + % / 100)
+  if (esc) Object.keys(S.ajMov || {}).forEach(function (k) {
+    var p = Math.min(500, Math.max(-100, Number(S.ajMov[k]) || 0)), m = movMap[k]; if (!p || !m || !visible(m)) return;
+    piezas(m).forEach(function (pz) {
+      if (!enER(pz[0])) return;
+      var d = pz[1] * p / 100; contribuir(pz[0], m, d, { tipo: 'ajuste_movimiento', k: k, pct: p, sobre: pz[1] }, 'aj:' + k);
+      ajustes.push({ tipo: 'movimiento', k: k, pct: p, sobre: pz[1], monto: d * signoSec(pz[0]), mes: m.m, renglon: pz[0] });
+    });
+  });
+  // 5) ajuste % por renglón (sólo escenario), después de 3 y 4
+  if (esc) Object.keys(S.ajRen || {}).forEach(function (c) {
+    var a = S.ajRen[c] || {}, p = Math.min(500, Math.max(-100, Number(a.pct) || 0)), l = L[c]; if (!p || !l) return;
+    meses.forEach(function (mes) {
+      if (a.meses && a.meses.length && a.meses.indexOf(mes) < 0) return;
+      var sobre = l.v[mes], d = sobre * p / 100; if (!d) return;
+      l.v[mes] += d; l.v.acum += d; l.det.push({ tipo: 'ajuste_renglon', mes: mes, pct: p, sobre: sobre, monto: d });
+      var e = efectoMov['ren:' + c] || (efectoMov['ren:' + c] = { costo: 0, ga: 0, oi: 0, pi: 0 }); e[l.s] += d;
+      ajustes.push({ tipo: 'renglon', c: c, pct: p, sobre: sobre, monto: d * (l.s === 'oi' ? -1 : 1), mes: mes, renglon: c });
+    });
+  });
+  // totales
+  var tot = function (campo) {
+    var r = { V: copia(D.ventas[base]), C: cero(), GA: cero(), OI: cero(), PI: cero() };
+    orden.forEach(function (c) { var l = L[c], k = l.s === 'costo' ? 'C' : l.s === 'ga' ? 'GA' : l.s === 'oi' ? 'OI' : l.s === 'pi' ? 'PI' : null; if (k) cols.forEach(function (p) { r[k][p] += l[campo][p]; }); });
+    r.UB = cero(); r.UO = cero(); r.UOP = cero(); r.MB = {}; r.MO = {};
+    cols.forEach(function (p) { r.UB[p] = r.V[p] - r.C[p]; r.UO[p] = r.UB[p] - r.GA[p] + r.OI[p]; r.UOP[p] = r.UO[p] - r.PI[p];
+      r.MB[p] = r.V[p] ? r.UB[p] / r.V[p] : null; r.MO[p] = r.V[p] ? r.UO[p] / r.V[p] : null; });
+    return r;
+  };
+  var T = tot('v'), T0 = tot('base');
+  // puente: el total del banco no cambia; sólo a qué renglón va cada peso (modo reclasificación)
+  cols.forEach(function (p) { if (p !== 'acum') orden.forEach(function (c) { var l = L[c]; if (l.s === 'costo' || l.s === 'ga' || l.s === 'pi') chkLineas += l.v[p] - l.base[p]; if (l.s === 'oi') chkLineas -= l.v[p] - l.base[p]; }); });
+  var difBanco = ajustes.reduce(function (a, x) { return a + x.monto; }, 0);
+  if (!esc) chkLineas = chkLineas;          // en reclasificación no hay ajustes
+  var cuadra = errores.length === 0 && Math.abs((esc ? chkLineas - difBanco : chkLineas) - chkMovs) < 0.5;
+  // mayores efectos sobre la utilidad de operación (y después de partidas)
+  var efectos = Object.keys(efectoMov).map(function (k) {
+    var e = efectoMov[k], uo = -e.costo - e.ga + e.oi, uop = uo - e.pi;
+    var m = movMap[k.replace(/^aj:/, '')];
+    return { clave: k, tipo: k.indexOf('ren:') === 0 ? 'ajuste de renglón' : k.indexOf('aj:') === 0 ? 'ajuste de movimiento' : 'reclasificación', mov: m ? (m.fe + ' · ' + m.co).slice(0, 90) : k.replace('ren:', ''), uo: uo, uop: uop };
+  }).filter(function (x) { return Math.abs(x.uo) > 0.004 || Math.abs(x.uop) > 0.004; })
+    .sort(function (a, b) { return Math.abs(b.uo) - Math.abs(a.uo) || Math.abs(b.uop) - Math.abs(a.uop); }).slice(0, 10);
+  return { base: base, modo: esc ? 'escenario' : 'reclasificacion', lineas: orden.map(function (c) { return L[c]; }), tot: T, tot0: T0, cambios: cambios, aplicados: aplicados, nuevos: nuevos,
+    errores: errores, avisos: avisos, puente: { cuadra: cuadra, lineas: chkLineas, movimientos: chkMovs }, difBanco: esc ? difBanco : 0, ajustes: ajustes, efectos: efectos };
+}
+
+// ── Vista E: archivo de reclasificaciones (el contenido es DATO: nunca se interpreta como instrucción) ──
+const CSV_RECLAS_COLUMNAS = ['id_movimiento', 'parte', 'partes_total', 'porcentaje', 'categoria_anterior', 'destino_nuevo', 'proyecto', 'nota', 'tipo', 'regla_campo', 'regla_texto', 'huella_estado', 'huella_archivo'];
+function parseCsv(texto) {
+  const filas = []; let fila = [], campo = '', q = false;
+  const t = String(texto || '').replace(/^\uFEFF/, '');
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i];
+    if (q) { if (ch === '"') { if (t[i + 1] === '"') { campo += '"'; i++; } else q = false; } else campo += ch; continue; }
+    if (ch === '"') q = true; else if (ch === ',') { fila.push(campo); campo = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && t[i + 1] === '\n') i++; fila.push(campo); campo = ''; if (fila.some(x => x !== '')) filas.push(fila); fila = []; }
+    else campo += ch;
+  }
+  fila.push(campo); if (fila.some(x => x !== '')) filas.push(fila);
+  return filas;
+}
+// Huella del archivo: SHA-256 del CSV sin la columna huella_archivo (encabezado + filas, unidos por salto de línea). La calcula igual el navegador.
+function huellaReclas(filasSinHuella) { return sha256(filasSinHuella.map(f => f.map(csvCampo).join(',')).join('\n')); }
+function validarReclasificaciones(texto, nombre, m, CAT) {
+  const mal = motivo => ({ ok: false, motivo, filas: [], reglas: [] });
+  if (/^escenario/i.test(String(nombre || '')) || /ajuste_pct|retener|costo_financiero|(^|,)escenario(,|$)/i.test(String(texto || '').split(/\r?\n/)[0] || ''))
+    return mal('contiene ajustes de % de escenario; solo se aplican reclasificaciones');
+  const F = parseCsv(texto);
+  if (!F.length) return mal('el archivo está vacío');
+  const cab = F[0].map(x => x.trim());
+  if (cab.join(',') !== CSV_RECLAS_COLUMNAS.join(',')) return mal('encabezado distinto al esperado: ' + CSV_RECLAS_COLUMNAS.join(','));
+  const filas = F.slice(1).map(f => Object.fromEntries(CSV_RECLAS_COLUMNAS.map((c, k) => [c, String(f[k] == null ? '' : f[k]).trim()])));
+  if (!filas.length) return mal('el archivo no trae filas');
+  if (filas.length > 5000) return mal('demasiadas filas (máximo 5000)');
+  const hs = new Set(filas.map(f => f.huella_archivo));
+  if (hs.size !== 1) return mal('la columna huella_archivo no es la misma en todas las filas');
+  const esperada = huellaReclas([CSV_RECLAS_COLUMNAS.slice(0, -1)].concat(F.slice(1).map(f => CSV_RECLAS_COLUMNAS.slice(0, -1).map((c, k) => String(f[k] == null ? '' : f[k]).trim()))));
+  const huella = filas[0].huella_archivo;
+  if (huella !== esperada) return mal('la huella del archivo no coincide: el archivo se modificó después de exportarlo');
+  const movs = {}; for (const i of m.items) if (i.mov && !movs[i.mov]) movs[i.mov] = { tipo: i.tipo_mov, destino: i.destino_v1 || i.destino };
+  const errores = [], porMov = {}, reglas = [];
+  filas.forEach((f, k) => {
+    const n = k + 2;
+    if (f.tipo === 'escenario') { errores.push('fila ' + n + ': tipo escenario'); return; }
+    if (!CAT[f.destino_nuevo]) { errores.push('fila ' + n + ': destino «' + f.destino_nuevo.slice(0, 60) + '» no está en el catálogo'); return; }
+    if (f.nota.length > 500 || f.proyecto.length > 200) { errores.push('fila ' + n + ': nota o proyecto demasiado largos'); return; }
+    if (f.tipo === 'movimiento') {
+      const mv = movs[f.id_movimiento];
+      if (!mv) { errores.push('fila ' + n + ': el id de movimiento «' + f.id_movimiento.slice(0, 80) + '» no existe'); return; }
+      if ((mv.tipo === 'abono') !== (CAT[f.destino_nuevo].tipo === 'ingreso')) { errores.push('fila ' + n + ': un ' + mv.tipo + ' no puede ir a «' + f.destino_nuevo + '»'); return; }
+      const parte = Number(f.parte), total = Number(f.partes_total), pct = Number(f.porcentaje);
+      if (!(parte >= 1 && parte <= 5 && total >= 1 && total <= 5 && parte <= total && pct > 0 && pct <= 100)) { errores.push('fila ' + n + ': parte, partes_total o porcentaje fuera de rango'); return; }
+      (porMov[f.id_movimiento] || (porMov[f.id_movimiento] = [])).push({ parte, total, pct, f });
+    } else if (f.tipo === 'regla') {
+      if (!['contraparte', 'descripcion'].includes(f.regla_campo) || f.regla_texto.length < 3 || f.regla_texto.length > 120) { errores.push('fila ' + n + ': regla sin campo válido o con texto de menos de 3 caracteres'); return; }
+      reglas.push({ campo: f.regla_campo, texto: f.regla_texto, destino: f.destino_nuevo, nota: f.nota });
+    } else errores.push('fila ' + n + ': tipo «' + f.tipo.slice(0, 20) + '» desconocido (movimiento o regla)');
+  });
+  for (const id of Object.keys(porMov)) {
+    const ps = ordenar(porMov[id], 'parte'), suma = ps.reduce((a, x) => a + x.pct, 0);
+    if (ps.some((x, k) => x.parte !== k + 1 || x.total !== ps.length)) errores.push('movimiento ' + id.slice(0, 80) + ': las partes no son 1..' + ps.length);
+    if (Math.abs(suma - 100) > 1e-4) errores.push('movimiento ' + id.slice(0, 80) + ': las partes suman ' + suma.toFixed(4) + ' %, no 100 %');
+  }
+  if (errores.length) return Object.assign(mal(errores.slice(0, 20).join(' · ') + (errores.length > 20 ? ' · (' + (errores.length - 20) + ' errores más)' : '')), { errores });
+  const out = [];
+  for (const id of Object.keys(porMov)) for (const x of ordenar(porMov[id], 'parte'))
+    out.push({ lote: huella, tipo: 'movimiento', movimiento_id: id, parte: x.parte, partes_total: x.total, porcentaje: x.pct, destino: x.f.destino_nuevo, categoria_anterior: x.f.categoria_anterior || movs[id].destino,
+      proyecto: x.f.proyecto || null, nota: x.f.nota || null, regla_campo: null, regla_texto: null, archivo_origen: String(nombre || ''), huella_archivo: huella });
+  for (const r of reglas) out.push({ lote: huella, tipo: 'regla', movimiento_id: null, parte: 1, partes_total: 1, porcentaje: 100, destino: r.destino, categoria_anterior: null, proyecto: null, nota: r.nota || null,
+    regla_campo: r.campo, regla_texto: r.texto, archivo_origen: String(nombre || ''), huella_archivo: huella });
+  return { ok: true, motivo: '', filas: out, reglas: reglas.map(r => ({ prioridad: 5, destino: 'reclasificacion', campo: r.campo, patron: r.texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), subcategoria: r.destino, origen: 'reclasificación de Esteban', nota: r.nota || ('archivo ' + String(nombre || '')) })),
+    lote: huella, n_movimientos: Object.keys(porMov).length, n_reglas: reglas.length };
+}
+
 // ── decisión de versión y de correo ──
 function decidir(res, opciones) {
   const ult = opciones.ultimo_calculo || null, ver = opciones.ultima_version || null;
@@ -730,13 +1031,38 @@ function decidir(res, opciones) {
     if (typeof a === 'number' && Math.abs(b - a) > Math.abs(a) * um / 100) motivos.push('la utilidad de operación de la Vista ' + k + ' cambió ' + (a ? ((b - a) * 100 / Math.abs(a)).toFixed(2) : '∞') + ' %');
   }
   if (ult && opciones.firma && ult.firma_tablas && opciones.firma.tablas !== ult.firma_tablas) motivos.push('cambió una tabla editable (reglas, nómina de oficina, partidas o parámetros)');
+  if (res.reclas) motivos.push(res.reclas.ok ? 'se aplicaron ' + res.reclas.n_movimientos + ' reclasificaciones de movimiento y ' + res.reclas.n_reglas + ' reglas del archivo ' + res.reclas.archivo
+    : 'se RECHAZÓ el archivo de reclasificaciones ' + res.reclas.archivo + ': ' + res.reclas.motivo);
   return { version: nuevaVersion ? ((ver && ver.version) || 0) + 1 : null, nueva_version: nuevaVersion, motivos, enviar_correo: motivos.length > 0 };
 }
 
 // ════════════════════════════════════════════════════════════════════════════
 function calcular(insumos, opciones) {
   opciones = opciones || {};
-  const ins = insumos || {};
+  let ins = insumos || {};
+  // Vista E: un archivo nuevo de reclasificaciones se valida completo; si pasa, se aplica todo; si no, nada.
+  let reclas = null;
+  if (opciones.reclas_csv && opciones.reclas_csv.contenido != null) {
+    const nombre = String(opciones.reclas_csv.nombre || '');
+    const m0 = motor(ins, TODAS), a0 = armarVistas(m0, TODAS);
+    const v = validarReclasificaciones(opciones.reclas_csv.contenido, nombre, m0, leerCatalogo(ins.destinos));
+    reclas = { archivo: nombre, ok: v.ok, motivo: v.motivo, n_movimientos: v.n_movimientos || 0, n_reglas: v.n_reglas || 0, filas: v.filas, reglas: v.reglas, lote: v.lote || null };
+    if (v.ok) {
+      const ids = new Set(v.filas.filter(f => f.tipo === 'movimiento').map(f => f.movimiento_id));
+      const ahora = String(opciones.generado_at || '').slice(0, 16);
+      const ins2 = Object.assign({}, ins, {
+        reclasificaciones: (ins.reclasificaciones || []).filter(r => !ids.has(r.movimiento_id)).concat(v.filas.filter(f => f.tipo === 'movimiento').map(f => Object.assign({}, f, { vigente: true, aplicada_en: ahora }))),
+        reglas: (ins.reglas || []).concat(v.reglas.map((r, k) => Object.assign({ id: 'nueva-' + (k + 1) }, r))) });
+      const m2 = motor(ins2, TODAS), a2 = armarVistas(m2, TODAS);
+      if (!armarPuente(m2, a2.A).cuadraTodo) { reclas.ok = false; reclas.motivo = 'con estos cambios el puente contra BBVA dejaría de cuadrar al centavo'; }
+      else {
+        reclas.efecto_uo = { A: a2.A.tot.UO.acum - a0.A.tot.UO.acum, B: a2.B.tot.UO.acum - a0.B.tot.UO.acum, C: a2.C.tot.UO.acum - a0.C.tot.UO.acum };
+        reclas.efecto_uop = { A: a2.A.tot.UOP.acum - a0.A.tot.UOP.acum, B: a2.B.tot.UOP.acum - a0.B.tot.UOP.acum, C: a2.C.tot.UOP.acum - a0.C.tot.UOP.acum };
+        ins = ins2;
+      }
+    }
+    if (!reclas.ok) { reclas.filas = []; reclas.reglas = []; }
+  }
   const m = motor(ins, TODAS);
   const { MESES, MV, cobertura, items, ventas, facturado, P } = m;
   const vistas = armarVistas(m, TODAS);
@@ -834,7 +1160,7 @@ function calcular(insumos, opciones) {
     parametros: P, insumos: { banco: (ins.banco || []).length, estados: (ins.estados || []).length, reglas: (ins.reglas || []).length,
       odoo: Object.fromEntries(Object.keys(ins.odoo || {}).sort().map(k => [k, (ins.odoo[k] || []).length])) },
   };
-  const out = { version: VERSION, huella, huella_insumos: huellaInsumos, resumen, candidatas_partida: m.candidatasPartida };
+  const out = { version: VERSION, huella, huella_insumos: huellaInsumos, resumen, candidatas_partida: m.candidatasPartida, reclas };
   Object.assign(out, { decision: decidir(out, opciones) });
   if (opciones.sin_archivos) return Object.assign(out, { _interno: { m, A, B, C, pz, cambios } });
 
@@ -847,11 +1173,45 @@ function calcular(insumos, opciones) {
     const lista = items.filter(i => enVistaD(i) && i.periodo === p);
     const ult10 = ordenar(lista, 'fecha', 'renglon', 'mov_id').reverse().slice(0, 10).map(i => i.mov_id);
     const top10 = ordenar(lista, 'bruto', 'mov_id').reverse().slice(0, 10).map(i => i.mov_id);
-    for (const i of lista) if (ult10.includes(i.mov_id) || top10.includes(i.mov_id)) vd.movs.push({ id: i.mov_id, mes: p, fecha: i.fecha, renglon: i.renglon, cuenta: i.cuenta + ' ' + i.mask,
+    for (const i of lista) if (ult10.includes(i.mov_id) || top10.includes(i.mov_id)) vd.movs.push({ id: i.mov, mes: p, fecha: i.fecha, renglon: i.renglon, cuenta: i.cuenta + ' ' + i.mask,
       concepto: enmascarar(i.concepto), contraparte: i.proveedor || '', bruto: i.bruto, destino: i.destino, renglon_er: renglonDe(i.destino), conmet: i.conmet,
       origen: (i.archivo || '') + ' · p. ' + (i.pagina || ''), ult: ult10.includes(i.mov_id), top: top10.includes(i.mov_id) });
   }
   for (const [k, V] of [['A', A], ['B', B], ['C', C]]) { const b = {}; for (const p of MESES) b[p] = V.tot.UOP[p]; b.acum = V.tot.UOP.acum; vd.base[k] = b; }
+
+  // ═══ Vista E: todos los movimientos (incluidos los excluidos), catálogo y renglones base (fuera de la huella) ═══
+  const secc = c => c.indexOf('ventas_') === 0 ? 'venta' : c.indexOf('costo_') === 0 ? 'costo' : c.indexOf('ga_') === 0 ? 'ga' : c === 'otros_ingresos' ? 'oi' : c === 'partidas' ? 'pi' : null;
+  const soloMeses = v => { const o = {}; for (const p of MESES) o[p] = v[p] || 0; o.acum = v.acum || 0; return o; };
+  const ve = { meses: MESES, huella, columnas: CSV_RECLAS_COLUMNAS, cat: Object.values(leerCatalogo(ins.destinos)).map(c => ({ clave: c.clave, tipo: c.tipo, seccion: c.seccion, etiqueta: c.etiqueta, renglon: c.renglon || null, entra: !!c.entra })),
+    lineas: {}, ventas: {}, nom: {}, movs: [], catLabels: {},
+    proyectos: ordenar((ins.odoo && ins.odoo.analiticas || []).filter(a => (a.active === true || a.active === 't') && PLANES_PROYECTO.includes(m2o(a.root_plan_id).id || m2o(a.plan_id).id)).map(a => ({ id: a.id, n: String(a.name || '') })), 'n').map(a => [a.id, a.n]) };
+  for (const [k, V] of [['A', A], ['B', B], ['C', C]]) {
+    ve.lineas[k] = V.lineas.filter(l => l.nivel === 2 && secc(l.clave)).map(l => ({ c: l.clave, e: l.etiqueta, s: secc(l.clave), v: soloMeses(l.vals) }));
+    ve.ventas[k] = soloMeses(V.tot.V);
+  }
+  for (const p of MESES) { const r = m.repartoNomina && m.repartoNomina[p]; ve.nom[p] = r && r.N ? { p: r.costo / r.N, c: r.comun / r.N, s: r.sin / r.N } : { p: 1, c: 0, s: 0 }; }
+  const etiquetaRenglon = {}; for (const l of A.lineas) etiquetaRenglon[l.clave] = l.etiqueta;
+  const ETQ = { excl_cubierto_fondeo_nomina: 'Excluido · dispersión de la cuenta Nómina (contada en los fondeos)', excl_traspaso: 'Excluido · traspaso entre cuentas propias', excl_fondeo_payana: 'Excluido · fondeo a Payana',
+    excl_fondeo_jeeves: 'Excluido · fondeo a Jeeves', excl_financiamiento: 'Excluido · financiamiento / préstamo', excl_devolucion: 'Excluido · cargo devuelto por el banco', activo_fijo: 'Excluido · activo fijo',
+    excl_devolucion_aportacion: 'Excluido · devolución de aportación', excl_anticipo_proveedor: 'Excluido · anticipo a proveedor', excl_sin_clasificar: 'Excluido · sin clasificar',
+    impuestos_sat: 'Informativo · SAT', impuestos_imss_infonavit: 'Informativo · IMSS / INFONAVIT', impuestos_isn: 'Informativo · ISN', impuestos_reclasificado: 'Informativo · impuestos (reclasificado)',
+    nomina_fondeo: 'Nómina · fondeo General → Nómina (repartida R1)', nomina_directa: 'Nómina · pago directo (repartida R1)', nomina_fondeo_lado_nomina: 'Nómina · fondeo leído en Nómina (repartida R1)',
+    info_abono_sin_clasificar: 'Abono sin renglón (informativo)', info_entrada_financiamiento: 'Abono · financiamiento recibido', info_devolucion_recibida: 'Abono · devolución recibida', info_anticipo_conmet_cobrado: 'Abono · cobro de Conmet',
+    info_fondeo_jeeves_odoo: 'Jeeves · fondeo registrado', info_payana_entrada: 'Payana · entrada', info_cobro_cliente: 'Abono · cobro de cliente', info_anticipo_cliente: 'Abono · anticipo de cliente',
+    info_aportacion_socio: 'Abono · aportación de socio', info_traspaso_recibido: 'Abono · traspaso propio', otros_ingresos: 'Otros ingresos' };
+  const grupos = {}, ordenK = [];
+  for (const i of items) { if (!i.mov) continue; if (!grupos[i.mov]) { grupos[i.mov] = []; ordenK.push(i.mov); } grupos[i.mov].push(i); }
+  for (const k of ordenK) {
+    const g = grupos[k], i0 = g[0], mayor = g.slice().sort((a, b) => Math.abs(b.bruto) - Math.abs(a.bruto))[0];
+    const pz = g.map(i => [renglonPieza(i.destino), i.neto]);
+    const ca = mayor.destino;
+    if (!ve.catLabels[ca]) ve.catLabels[ca] = ETQ[ca] || etiquetaRenglon[renglonPieza(ca) || ''] || ca.replace(/_/g, ' ');
+    ve.movs.push({ k, f: i0.fuente === 'banco' ? 'banco' : (i0.cuenta.indexOf('Jeeves') === 0 ? 'jeeves' : 'payana'), fe: i0.fecha, m: i0.periodo, cu: i0.cuenta + (i0.mask ? ' ' + i0.mask : ''), co: enmascarar(i0.concepto),
+      cp: String(i0.contraparte || i0.proveedor || ''), t: i0.tipo_mov, b: g.reduce((a, i) => a + i.bruto, 0), n: g.reduce((a, i) => a + i.neto, 0), cf: g.some(i => !!i.cfdi), cx: g.some(i => i.conmet),
+      ca, cat: ve.catLabels[ca] + (g.length > 1 ? ' (partido en ' + g.length + ')' : ''), rg: String(mayor.regla || ''), o: i0.fuente === 'banco' ? (i0.archivo || '') + ' · p. ' + (i0.pagina || '') : String(i0.id).replace(/#.*$/, ''),
+      pz, ex: pz.every(x => !x[0]), pi: g.some(i => i.destino.indexOf('partida_') === 0),
+      rc: i0.reclas ? (i0.reclas.fuente === 'movimiento' ? 'archivo ' + i0.reclas.archivo + ' · ' + i0.reclas.aplicada_en + ' · Esteban' : 'regla de Esteban ' + i0.reclas.regla_id) : '' });
+  }
 
   // ═══ archivos privados ═══
   const nv = out.decision.version || (opciones.ultima_version && opciones.ultima_version.version) || 1;
@@ -879,7 +1239,7 @@ function calcular(insumos, opciones) {
     .concat(...['jeeves', 'payana', 'nomina'].map(k => MESES.map(p => { const x = CQ[k][p]; const f = v => v == null ? '' : (v / 100).toFixed(2);
       return [k, p, f(x.fondeos), f(x.consumos), f(x.var_saldo), f(x.dif_mes), f(x.acumulado), f(x.pendiente_fondear), f(x.diferencia)]; }))));
   const html = armarHTML({ A, B, C, pz, items, ventas, facturado, cobertura, supuestos, decisiones, partidas, conteos, baseC, sinC, huella, huellaInsumos,
-    opciones, COLS, MESES, MV, incompletos, cambios, vd, m, jeev, jSin, nv, etq, decision: out.decision });
+    opciones, COLS, MESES, MV, incompletos, cambios, vd, ve, m, jeev, jSin, nv, etq, decision: out.decision });
   const cab = 'Estado de resultados ' + ANIO + ' ' + etq + ' (versión ' + nv + ') · Servicios FTS SA de CV · sin IVA · pesos · huella ' + huella.slice(0, 16) + '\n';
   const base = [
     ['vista_A.csv', csvVista(A)], ['vista_B_sin_Conmet.csv', csvVista(B)], ['vista_C_facturado.csv', csvVista(C)],
@@ -912,8 +1272,11 @@ function calcular(insumos, opciones) {
 
 // ═══ JavaScript de la Vista D (corre en el navegador, sin conexión) ═════════
 function vistaDCliente() {
-  var D = window.__VD, core = window.__escenarioCore;
-  var st = { base: 'C', criterio: 'ult', pct: 0, sel: {} };
+  var D = window.__VD, core = window.__escenarioCore, RET = window.__RET || (window.__RET = { sel: {}, pct: 0 });
+  var st = { base: 'C', criterio: 'ult', pct: RET.pct, sel: RET.sel };
+  var VE = window.__VE, todos = VE ? VE.movs.filter(function (m) { return m.t === 'cargo'; }).map(function (m) { return { id: m.k, mes: m.m, bruto: m.b, conmet: m.cx, renglon_er: (m.pz[0] || [])[0] }; }) : D.movs;
+  var baseDe = function (b) { return b === 'E' ? (window.__veUOP ? window.__veUOP() : D.base.C) : D.base[b]; };
+  var avisarE = function () { RET.sel = st.sel; RET.pct = st.pct; if (window.__vePintar) window.__vePintar(); };
   var $ = function (id) { return document.getElementById(id); };
   var money = function (c) { var n = Math.round(c), neg = n < 0; n = Math.abs(n); var e = Math.floor(n / 100), d = n % 100;
     return (neg ? '-' : '') + String(e).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + (d < 10 ? '0' : '') + d; };
@@ -921,8 +1284,8 @@ function vistaDCliente() {
   var mesN = function (p) { return p === 'acum' ? 'Acumulado' : nm[p.slice(5)] + ' ' + p.slice(2, 4); };
   var escH = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
   var seleccion = function () { return Object.keys(st.sel).filter(function (k) { return st.sel[k]; }); };
-  function movsBase() { return D.movs.filter(function (m) { return !(st.base !== 'A' && m.conmet); }); }
-  function calc() { return core(D.base[st.base], movsBase(), seleccion(), st.pct); }
+  function movsBase() { return todos.filter(function (m) { return !(st.base !== 'A' && st.base !== 'E' && m.conmet); }); }
+  function calc() { return core(baseDe(st.base), movsBase(), seleccion(), st.pct); }
   function pintarListas() {
     var h = '';
     D.meses.forEach(function (p) {
@@ -930,7 +1293,7 @@ function vistaDCliente() {
       lista.sort(st.criterio === 'ult' ? function (a, b) { return a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : b.renglon - a.renglon; } : function (a, b) { return b.bruto - a.bruto; });
       h += '<h4>' + mesN(p) + '</h4><div class="scroll"><table class="det vd"><tr><th></th><th>fecha</th><th>cuenta</th><th>concepto</th><th>contraparte</th><th class="n">monto bruto</th><th class="n">subtotal (÷1.16)</th><th>renglón</th><th>origen</th></tr>';
       lista.forEach(function (m) {
-        var off = st.base !== 'A' && m.conmet;
+        var off = st.base !== 'A' && st.base !== 'E' && m.conmet;
         h += '<tr' + (st.sel[m.id] ? ' class="marcado"' : '') + '><td><input type="checkbox" data-id="' + m.id + '"' + (st.sel[m.id] ? ' checked' : '') + (off ? ' disabled title="Conmet no está en esta vista"' : '') + '></td><td>' + escH(m.fecha) +
           '</td><td>' + escH(m.cuenta) + '</td><td>' + escH(m.concepto) + '</td><td>' + escH(m.contraparte) + '</td><td class="n">' + money(m.bruto) + '</td><td class="n">' + money(m.bruto * 100 / 116) +
           '</td><td>' + escH(m.renglon_er) + '</td><td class="mut">' + escH(m.origen) + '</td></tr>';
@@ -940,7 +1303,7 @@ function vistaDCliente() {
     });
     $('vd-listas').innerHTML = h;
     Array.prototype.forEach.call(document.querySelectorAll('#vd-listas input[type=checkbox]'), function (c) {
-      c.addEventListener('change', function () { st.sel[c.getAttribute('data-id')] = c.checked; pintar(); });
+      c.addEventListener('change', function () { if (c.checked) st.sel[c.getAttribute('data-id')] = true; else delete st.sel[c.getAttribute('data-id')]; pintar(); avisarE(); });
     });
   }
   function pintarBloque() {
@@ -954,7 +1317,8 @@ function vistaDCliente() {
       '; ' + money(a.subtotal) + ' − ' + money(a.costo) + ' = utilidad retenida neta ' + money(a.neto) + '.</p>';
     $('vd-bloque').innerHTML = h;
     // resaltar el renglón de origen de lo seleccionado, sin restarlo
-    var cuenta = {}; seleccion().forEach(function (id) { var m = D.movs.filter(function (x) { return String(x.id) === String(id); })[0]; if (m) cuenta[m.renglon_er] = (cuenta[m.renglon_er] || 0) + 1; });
+    var porId = {}; todos.forEach(function (x) { porId[x.id] = x; }); D.movs.forEach(function (x) { porId[x.id] = x; });
+    var cuenta = {}; seleccion().forEach(function (id) { var m = porId[id]; if (m) cuenta[m.renglon_er] = (cuenta[m.renglon_er] || 0) + 1; });
     Array.prototype.forEach.call(document.querySelectorAll('tr[data-clave]'), function (tr) {
       var n = cuenta[tr.getAttribute('data-clave')] || 0, b = tr.querySelector('.vdbadge');
       if (b) b.textContent = n ? '● ' + n + ' en Vista D' : ''; tr.classList.toggle('vdsel', n > 0);
@@ -976,7 +1340,7 @@ function vistaDCliente() {
     if (elegidos.length > 3) { alert('Máximo 3 escenarios.'); this.checked = false; return comparar(); }
     var h = '<div class="scroll"><table class="er"><tr><th>Escenario</th><th>Vista</th><th class="n">% costo fin.</th><th class="n">Movs.</th><th class="n">Bruto</th><th class="n">Subtotal</th><th class="n">Costo financiero</th><th class="n">Utilidad base</th><th class="n">Utilidad hipotética</th></tr>';
     elegidos.forEach(function (n) {
-      var s = e[n]; var r = core(D.base[s.base], D.movs.filter(function (m) { return !(s.base !== 'A' && m.conmet); }), s.sel, s.pct).acum;
+      var s = e[n]; var r = core(baseDe(s.base), todos.filter(function (m) { return !(s.base !== 'A' && s.base !== 'E' && m.conmet); }), s.sel, s.pct).acum;
       h += '<tr><td>' + escH(n) + '</td><td>' + s.base + '</td><td class="n">' + s.pct + '</td><td class="n">' + r.n + '</td><td class="n">' + money(r.bruto) + '</td><td class="n">' + money(r.subtotal) +
         '</td><td class="n">' + money(r.costo) + '</td><td class="n">' + money(r.base) + '</td><td class="n">' + money(r.hipotetica) + '</td></tr>';
     });
@@ -984,37 +1348,304 @@ function vistaDCliente() {
   }
   $('vd-base').addEventListener('change', function () { st.base = this.value; pintar(); });
   $('vd-criterio').addEventListener('change', function () { st.criterio = this.checked ? 'top' : 'ult'; pintarListas(); });
-  $('vd-pct').addEventListener('input', function () { var v = parseFloat(String(this.value).replace(',', '.')); st.pct = isNaN(v) ? 0 : Math.min(100, Math.max(0, v)); pintarBloque(); });
-  $('vd-limpiar').addEventListener('click', function () { st.sel = {}; pintar(); });
+  $('vd-pct').addEventListener('input', function () { var v = parseFloat(String(this.value).replace(',', '.')); st.pct = isNaN(v) ? 0 : Math.min(100, Math.max(0, v)); pintarBloque(); avisarE(); });
+  $('vd-limpiar').addEventListener('click', function () { Object.keys(st.sel).forEach(function (k) { delete st.sel[k]; }); pintar(); avisarE(); });
   $('vd-guardar').addEventListener('click', function () {
     var n = String($('vd-nombre').value || '').trim() || ('Escenario ' + new Date().toISOString().slice(0, 16).replace('T', ' '));
     var e = leerEsc(); e[n] = { base: st.base, pct: st.pct, sel: seleccion(), guardado: new Date().toISOString() };
     $('vd-msg').textContent = guardarEsc(e) ? 'Guardado: ' + n : 'El navegador no permite guardar (modo privado). Usa Exportar.'; pintarEsc();
   });
-  $('vd-cargar').addEventListener('change', function () { var e = leerEsc()[this.value]; if (!e) return; st.base = e.base; st.pct = e.pct; st.sel = {}; e.sel.forEach(function (i) { st.sel[i] = true; });
-    $('vd-base').value = st.base; $('vd-pct').value = st.pct; pintar(); });
+  $('vd-cargar').addEventListener('change', function () { var e = leerEsc()[this.value]; if (!e) return; st.base = e.base; st.pct = e.pct; Object.keys(st.sel).forEach(function (k) { delete st.sel[k]; }); e.sel.forEach(function (i) { st.sel[i] = true; });
+    $('vd-base').value = st.base; $('vd-pct').value = st.pct; pintar(); avisarE(); });
   $('vd-exportar').addEventListener('click', function () {
     var r = calc(), sel = {}; seleccion().forEach(function (i) { sel[i] = true; });
     var q = function (s) { s = String(s == null ? '' : s); return /[",\n;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
     var L = [['vista_base', 'mes', 'fecha', 'cuenta', 'concepto', 'contraparte', 'renglon', 'bruto', 'subtotal', 'pct_costo_financiero', 'costo_financiero', 'utilidad_retenida_neta']];
-    movsBase().filter(function (m) { return sel[m.id]; }).forEach(function (m) { var sub = m.bruto * 100 / 116, cf = sub * st.pct / 100;
-      L.push([st.base, m.mes, m.fecha, m.cuenta, m.concepto, m.contraparte, m.renglon_er, (m.bruto / 100).toFixed(2), (sub / 100).toFixed(2), st.pct, (cf / 100).toFixed(2), ((sub - cf) / 100).toFixed(2)]); });
+    var info = {}; D.movs.forEach(function (x) { info[x.id] = x; }); if (VE) VE.movs.forEach(function (x) { if (!info[x.k]) info[x.k] = { fecha: x.fe, cuenta: x.cu, concepto: x.co, contraparte: x.cp, renglon_er: (x.pz[0] || [])[0] }; });
+    movsBase().filter(function (m) { return sel[m.id]; }).forEach(function (m) { var sub = m.bruto * 100 / 116, cf = sub * st.pct / 100, x = info[m.id] || {};
+      L.push([st.base, m.mes, x.fecha, x.cuenta, x.concepto, x.contraparte, x.renglon_er, (m.bruto / 100).toFixed(2), (sub / 100).toFixed(2), st.pct, (cf / 100).toFixed(2), ((sub - cf) / 100).toFixed(2)]); });
     L.push([]); L.push(['total', '', '', '', '', '', '', (r.acum.bruto / 100).toFixed(2), (r.acum.subtotal / 100).toFixed(2), st.pct, (r.acum.costo / 100).toFixed(2), (r.acum.neto / 100).toFixed(2)]);
     L.push(['utilidad_base', '', '', '', '', '', '', '', '', '', '', (r.acum.base / 100).toFixed(2)]); L.push(['utilidad_hipotetica', '', '', '', '', '', '', '', '', '', '', (r.acum.hipotetica / 100).toFixed(2)]);
     var blob = new Blob(['﻿' + L.map(function (f) { return f.map(q).join(','); }).join('\n')], { type: 'text/csv;charset=utf-8' });
     var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'escenario_vista_' + st.base + '.csv'; document.body.appendChild(a); a.click(); a.remove();
   });
-  window.__vdEstado = st; window.__vdPintar = pintar;
+  window.__vdEstado = st; window.__vdPintar = function () { st.sel = RET.sel; st.pct = RET.pct; $('vd-pct').value = st.pct; pintar(); };
+  pintarEsc(); pintar();
+}
+
+// ═══ JavaScript de la Vista E (corre en el navegador, sin conexión) ═════════
+function vistaECliente() {
+  var D = window.__VE, core = window.__personalizadoCore, esCore = window.__escenarioCore, sha = window.__sha256;
+  if (!D) return;
+  var RET = window.__RET || (window.__RET = { sel: {}, pct: 0 });
+  var $ = function (id) { return document.getElementById(id); };
+  var money = function (c) { if (c == null || isNaN(c)) return '—'; var n = Math.round(c), neg = n < 0; n = Math.abs(n); var e = Math.floor(n / 100), d = n % 100;
+    return (neg ? '-' : '') + String(e).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + (d < 10 ? '0' : '') + d; };
+  var escH = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var nm = { '01': 'ene', '02': 'feb', '03': 'mar', '04': 'abr', '05': 'may', '06': 'jun', '07': 'jul', '08': 'ago', '09': 'sep', '10': 'oct', '11': 'nov', '12': 'dic' };
+  var mesN = function (p) { return p === 'acum' ? 'Acumulado' : nm[p.slice(5)] + ' ' + p.slice(2, 4); };
+  var pctTxt = function (x) { return x == null ? '—' : (Math.round(x * 1000) / 10).toFixed(1) + '%'; };
+  var cat = {}; D.cat.forEach(function (c) { cat[c.clave] = c; });
+  var movMap = {}; D.movs.forEach(function (m) { movMap[m.k] = m; });
+  var S0 = function () { return { modo: 'reclasificacion', base: 'C', cambios: {}, reglas: [], ajMov: {}, ajRen: {} }; };
+  var S = S0(), hist = [], fut = [], ui = { sel: {}, limite: 100, abierto: {}, partir: null };
+  var LSB = 'fts_er_ve_borrador_v1', LSE = 'fts_er_ve_escenarios_v1';
+  var ls = { get: function (k, d) { try { var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } },
+    set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } } };
+  function snap() { return JSON.stringify({ S: S, ret: RET.sel, pct: RET.pct }); }
+  function cambiar(fn) { hist.push(snap()); if (hist.length > 200) hist.shift(); fut = []; fn(); ls.set(LSB, JSON.parse(snap())); pintar(); if (window.__vdPintar) window.__vdPintar(); }
+  function restaurar(txt) { var o = JSON.parse(txt); S = o.S; RET.sel = o.ret || {}; RET.pct = o.pct || 0; if (window.__vdEstado) { window.__vdEstado.sel = RET.sel; } }
+  var opcionesDestino = function (tipo, sel) { return '<option value="">(sin cambio)</option>' + D.cat.filter(function (c) { return (tipo === 'abono') === (c.tipo === 'ingreso'); })
+    .map(function (c) { return '<option value="' + c.clave + '"' + (c.clave === sel ? ' selected' : '') + '>' + escH(c.etiqueta) + '</option>'; }).join(''); };
+  var opcionesProy = function (sel) { return '<option value="">(sin proyecto)</option>' + D.proyectos.map(function (p) { return '<option value="' + escH(p[0]) + '"' + (String(p[0]) === String(sel) ? ' selected' : '') + '>' + escH(p[1]) + '</option>'; }).join(''); };
+  function calc() { return core(D, S); }
+  function uopMap(r) { var o = {}; D.meses.concat(['acum']).forEach(function (p) { o[p] = r.tot.UOP[p]; }); return o; }
+  window.__veUOP = function () { return uopMap(calc()); };
+  // ── filtros ──
+  function filtrados() {
+    var f = { mes: $('ve-f-mes').value, cu: $('ve-f-cuenta').value, ca: $('ve-f-cat').value, ex: $('ve-f-excl').checked, pi: $('ve-f-pi').checked,
+      min: parseFloat($('ve-f-min').value), max: parseFloat($('ve-f-max').value), tx: String($('ve-f-texto').value || '').toUpperCase().trim() };
+    return D.movs.filter(function (m) {
+      if (f.mes && m.m !== f.mes) return false; if (f.cu && m.cu !== f.cu) return false; if (f.ca && m.ca !== f.ca) return false;
+      if (f.ex && !m.ex) return false; if (f.pi && !m.pi) return false;
+      var a = Math.abs(m.b) / 100; if (!isNaN(f.min) && a < f.min) return false; if (!isNaN(f.max) && a > f.max) return false;
+      if (f.tx && String(m.co + ' ' + m.cp).toUpperCase().indexOf(f.tx) < 0) return false;
+      return true;
+    });
+  }
+  // ── tabla de movimientos ──
+  function pintarTabla(r) {
+    var xs = filtrados(), esc = S.modo === 'escenario', h = '';
+    h += '<p class="mut">' + xs.length + ' movimientos con los filtros (de ' + D.movs.length + '). Seleccionados: ' + Object.keys(ui.sel).filter(function (k) { return ui.sel[k]; }).length + '.</p>';
+    h += '<div class="scroll"><table class="det ve"><tr><th><input type="checkbox" id="ve-todos"></th><th>id</th><th>fecha</th><th>cuenta</th><th>concepto</th><th>contraparte</th><th>tipo</th><th class="n">bruto</th><th class="n">subtotal usado</th><th>categoría actual</th><th>por qué</th><th>Mandar a…</th><th>proyecto</th><th>nota</th>' +
+      (esc ? '<th>% ajuste</th><th>retener</th>' : '') + '<th>origen</th></tr>';
+    xs.slice(0, ui.limite).forEach(function (m) {
+      var ch = r.cambios[m.k], exp = S.cambios[m.k], parte1 = exp && exp.partes && exp.partes[0];
+      var err = r.errores.filter(function (e) { return e.k === m.k; })[0];
+      var dest = exp && exp.partes && exp.partes.length === 1 ? parte1.dest : '';
+      h += '<tr class="' + (ch ? 'vecambio' : '') + (err ? ' bad' : '') + (RET.sel[m.k] ? ' marcado' : '') + '" data-k="' + escH(m.k) + '"><td><input type="checkbox" class="ve-sel"' + (ui.sel[m.k] ? ' checked' : '') + '></td>' +
+        '<td class="mut">' + escH(m.k.slice(0, 14)) + '</td><td>' + escH(m.fe) + '</td><td>' + escH(m.cu) + '</td><td>' + escH(m.co) + '</td><td>' + escH(m.cp) + '</td><td>' + m.t + '</td>' +
+        '<td class="n">' + money(m.b) + '</td><td class="n">' + money(m.n) + '</td><td>' + escH(m.cat) + (m.rc ? '<br><span class="tag2" title="' + escH(m.rc) + '">reclasificación vigente</span>' : '') + '</td>' +
+        '<td class="mut">' + escH(m.rg) + '</td><td>' + (exp && exp.partes && exp.partes.length > 1 ? '<b>partido en ' + exp.partes.length + '</b> ' : '<select class="ve-dest">' + opcionesDestino(m.t, dest) + '</select> ') +
+        '<button class="ve-partir" title="Partir entre varios destinos">Partir</button>' + (ch && !exp ? '<br><span class="tag2">por regla propuesta</span>' : '') + (err ? '<br><span class="bad">' + escH(err.motivo) + '</span>' : '') + '</td>' +
+        '<td><select class="ve-proy">' + opcionesProy(parte1 ? parte1.proy : '') + '</select></td><td><input class="ve-nota" value="' + escH(exp && exp.nota || '') + '" style="width:9em"></td>' +
+        (esc ? '<td><input type="number" class="ve-aj" min="-100" max="500" step="0.01" value="' + (S.ajMov[m.k] == null ? '' : S.ajMov[m.k]) + '" style="width:5.5em"></td><td>' + (m.t === 'cargo' ? '<input type="checkbox" class="ve-ret"' + (RET.sel[m.k] ? ' checked' : '') + '>' : '') + '</td>' : '') +
+        '<td class="mut">' + escH(m.o) + '</td></tr>';
+      if (ui.partir === m.k) h += '<tr class="dt"><td colspan="' + (esc ? 17 : 15) + '">' + editorPartir(m) + '</td></tr>';
+    });
+    h += '</table></div>' + (xs.length > ui.limite ? '<button id="ve-mas">Mostrar ' + Math.min(100, xs.length - ui.limite) + ' más</button>' : '');
+    $('ve-tabla').innerHTML = h;
+  }
+  function editorPartir(m) {
+    var exp = S.cambios[m.k], ps = (ui.partirPartes || (exp && exp.partes) || [{ dest: '', pct: 100, proy: '' }]).slice(0, 5);
+    ui.partirPartes = ps;
+    var suma = ps.reduce(function (a, x) { return a + (Number(x.pct) || 0); }, 0), ok = Math.abs(suma - 100) < 1e-9;
+    var h = '<div class="vepartir"><b>Partir</b> ' + escH(m.co) + ' · bruto ' + money(m.b) + ' · subtotal ' + money(m.n) + '<div class="scroll"><table class="det"><tr><th>#</th><th>destino</th><th class="n">%</th><th class="n">bruto × %</th><th class="n">subtotal × %</th><th>proyecto</th><th></th></tr>';
+    ps.forEach(function (x, i) {
+      h += '<tr><td>' + (i + 1) + '</td><td><select data-i="' + i + '" class="vp-dest">' + opcionesDestino(m.t, x.dest) + '</select></td><td><input data-i="' + i + '" class="vp-pct" type="number" step="0.0001" min="0" max="100" value="' + x.pct + '" style="width:6em"></td>' +
+        '<td class="n">' + money(m.b * (Number(x.pct) || 0) / 100) + '</td><td class="n">' + money(m.n * (Number(x.pct) || 0) / 100) + '</td><td><select data-i="' + i + '" class="vp-proy">' + opcionesProy(x.proy) + '</select></td><td>' + (ps.length > 1 ? '<button data-i="' + i + '" class="vp-quitar">quitar</button>' : '') + '</td></tr>';
+    });
+    h += '</table></div><span class="' + (ok ? 'ok' : 'bad') + '">Suma: ' + (Math.round(suma * 10000) / 10000) + ' %' + (ok ? '' : ' · debe ser exactamente 100 %') + '</span> ' +
+      (ps.length < 5 ? '<button class="vp-agregar">+ parte</button> ' : '') + '<button class="vp-aplicar"' + (ok && ps.every(function (x) { return x.dest; }) ? '' : ' disabled') + '>Aplicar partición</button> <button class="vp-cancelar">Cancelar</button></div>';
+    return h;
+  }
+  // ── estado personalizado ──
+  function pintarEstado(r) {
+    var cols = D.meses.concat(['acum']), T = r.tot, T0 = r.tot0, h = '';
+    h += '<div class="scroll"><table class="er"><thead><tr><th>Estado personalizado · base Vista ' + r.base + (r.modo === 'escenario' ? ' · ESCENARIO' : '') + '</th>' + D.meses.map(function (p) { return '<th class="n">' + mesN(p) + '</th>'; }).join('') +
+      '<th class="n acum">Acum. base</th><th class="n acum">Acum. personalizado</th><th class="n acum">Diferencia</th></tr></thead><tbody>';
+    var fila = function (et, vals, v0, cls, clave) {
+      var dif = vals.acum - v0.acum;
+      return '<tr class="' + (cls || 'lv2') + '"><td>' + et + (clave ? ' <button class="ve-dsale" data-c="' + escH(clave) + '">¿de dónde sale?</button>' : '') + '</td>' + D.meses.map(function (p) { var d = vals[p] - v0[p]; return '<td class="n">' + money(vals[p]) + (Math.abs(d) >= 0.5 ? '<br><span class="vedif">' + (d > 0 ? '+' : '') + money(d) + '</span>' : '') + '</td>'; }).join('') +
+        '<td class="n acum">' + money(v0.acum) + '</td><td class="n acum">' + money(vals.acum) + '</td><td class="n acum' + (Math.abs(dif) >= 0.5 ? ' vedifc' : '') + '">' + (Math.abs(dif) >= 0.5 ? (dif > 0 ? '+' : '') + money(dif) : '') + '</td></tr>';
+    };
+    var sec = function (s) { return r.lineas.filter(function (l) { return l.s === s; }); };
+    var detalle = function (l) {
+      if (!ui.abierto[l.c]) return '';
+      var d = '<tr class="dt"><td colspan="' + (D.meses.length + 4) + '"><div class="vedet"><b>¿De dónde sale «' + escH(l.e) + '»?</b><br>1) Base v1 (con las reclasificaciones oficiales vigentes): ' + money(l.base.acum);
+      var ent = l.det.filter(function (x) { return x.tipo === 'entra'; }), sal = l.det.filter(function (x) { return x.tipo === 'sale'; });
+      var am = l.det.filter(function (x) { return x.tipo === 'ajuste_movimiento'; }), ar = l.det.filter(function (x) { return x.tipo === 'ajuste_renglon'; });
+      var lst = function (xs) { return xs.slice(0, 40).map(function (x) { var m = movMap[x.k]; return '<li>' + escH(m ? m.fe + ' · ' + m.co : x.k) + ': ' + (x.monto > 0 ? '+' : '') + money(x.monto) + (x.pct != null && x.tipo !== 'entra' ? ' (' + x.pct + ' % sobre ' + money(x.sobre) + ')' : x.pct != null && x.pct !== 100 ? ' (' + x.pct + ' % del movimiento)' : '') + '</li>'; }).join('') + (xs.length > 40 ? '<li>… ' + (xs.length - 40) + ' más</li>' : ''); };
+      var sum = function (xs) { return xs.reduce(function (a, x) { return a + x.monto; }, 0); };
+      d += '<br>3) Reclasificado hacia aquí: +' + money(sum(ent)) + '<ul>' + lst(ent) + '</ul>3) Reclasificado fuera de aquí: ' + money(sum(sal)) + '<ul>' + lst(sal) + '</ul>';
+      if (r.modo === 'escenario') {
+        d += '4) Ajustes de % por movimiento: ' + money(sum(am)) + '<ul>' + lst(am) + '</ul>5) Ajuste de % del renglón: ' + money(sum(ar)) + '<ul>' +
+          ar.map(function (x) { return '<li>' + mesN(x.mes) + ': ' + x.pct + ' % × ' + money(x.sobre) + ' = ' + money(x.monto) + '</li>'; }).join('') + '</ul>';
+      }
+      return d + '= ' + money(l.v.acum) + '</div></td></tr>';
+    };
+    var bloque = function (s) { return sec(s).map(function (l) { return fila(escH(l.e) + (l.nueva ? ' <span class="tag2">nuevo</span>' : ''), l.v, l.base, 'lv2', l.c) + detalle(l); }).join(''); };
+    h += bloque('venta') + fila('Ventas', T.V, T0.V, 'lv1') + bloque('costo') + fila('Costo de ventas', T.C, T0.C, 'lv1') + fila('Utilidad bruta', T.UB, T0.UB, 'lv1');
+    h += '<tr class="lv3"><td>Margen bruto</td>' + D.meses.map(function (p) { return '<td class="n">' + pctTxt(T.MB[p]) + '</td>'; }).join('') + '<td class="n acum">' + pctTxt(T0.MB.acum) + '</td><td class="n acum">' + pctTxt(T.MB.acum) + '</td><td class="n acum"></td></tr>';
+    h += bloque('ga') + fila('Gastos administrativos', T.GA, T0.GA, 'lv1') + bloque('oi') + fila('Utilidad de operación', T.UO, T0.UO, 'lv1');
+    h += '<tr class="lv3"><td>Margen de operación</td>' + D.meses.map(function (p) { return '<td class="n">' + pctTxt(T.MO[p]) + '</td>'; }).join('') + '<td class="n acum">' + pctTxt(T0.MO.acum) + '</td><td class="n acum">' + pctTxt(T.MO.acum) + '</td><td class="n acum"></td></tr>';
+    h += bloque('pi') + fila('Utilidad de operación después de partidas', T.UOP, T0.UOP, 'lv1') + '</tbody></table></div>';
+    $('ve-estado').innerHTML = h;
+    // puente y diferencia contra el banco
+    var p = '';
+    if (r.modo === 'reclasificacion') p = r.puente.cuadra ? '<p class="ok">Puente en verde: el total de cargos del banco no cambia; sólo cambia a qué renglón va cada peso (' + r.aplicados.length + ' movimientos reclasificados).</p>'
+      : '<p class="bad"><b>El puente NO cuadra: no se puede exportar.</b> ' + r.errores.map(function (e) { var m = movMap[e.k]; return escH((m ? m.fe + ' · ' + m.co : e.k).slice(0, 80) + ': ' + e.motivo); }).join(' · ') + '</p>';
+    else {
+      p = '<p class="bad">Escenario: difiere del banco en ' + money(r.difBanco) + ' por los ajustes de %.</p>' + (r.ajustes.length ? '<details><summary>Desglose (' + r.ajustes.length + ' ajustes)</summary><div class="scroll"><table class="det"><tr><th>tipo</th><th>qué</th><th>mes</th><th class="n">%</th><th class="n">sobre</th><th class="n">efecto</th></tr>' +
+        r.ajustes.map(function (a) { var m = movMap[a.k]; return '<tr><td>' + a.tipo + '</td><td>' + escH(a.tipo === 'movimiento' ? (m ? m.fe + ' · ' + m.co : a.k) : a.c) + '</td><td>' + mesN(a.mes) + '</td><td class="n">' + a.pct + '</td><td class="n">' + money(a.sobre) + '</td><td class="n">' + money(a.monto) + '</td></tr>'; }).join('') + '</table></div></details>' : '');
+      if (r.errores.length) p += '<p class="bad">Particiones inválidas (no se aplican): ' + r.errores.map(function (e) { return escH(e.motivo); }).join(' · ') + '</p>';
+    }
+    $('ve-puente').innerHTML = p;
+    $('ve-exp-reclas').disabled = !(r.modo === 'reclasificacion' && r.puente.cuadra && (Object.keys(S.cambios).length || S.reglas.length));
+    // mayores efectos
+    $('ve-efectos').innerHTML = r.efectos.length ? '<div class="scroll"><table class="det"><tr><th>#</th><th>cambio</th><th>qué</th><th class="n">efecto en utilidad de operación</th><th class="n">después de partidas</th></tr>' +
+      r.efectos.map(function (e, i) { return '<tr><td>' + (i + 1) + '</td><td>' + e.tipo + '</td><td>' + escH(e.mov) + '</td><td class="n">' + money(e.uo) + '</td><td class="n">' + money(e.uop) + '</td></tr>'; }).join('') + '</table></div>' : '<p class="mut">Sin cambios todavía.</p>';
+    // utilidad retenida (misma regla y misma selección que la Vista D)
+    if (r.modo === 'escenario') {
+      var movs = D.movs.filter(function (m) { return m.t === 'cargo' && (r.base === 'A' || !m.cx); }).map(function (m) { return { id: m.k, mes: m.m, bruto: m.b }; });
+      var sel = Object.keys(RET.sel).filter(function (k) { return RET.sel[k]; }), q = esCore(uopMap(r), movs, sel, RET.pct), a = q.acum;
+      $('ve-ret').innerHTML = '<p><b>6) Utilidad retenida hipotética</b> (no se resta arriba) · % de costo financiero <input type="number" id="ve-pct" min="0" max="100" step="0.01" value="' + RET.pct + '" style="width:6em"></p><div class="scroll"><table class="er"><tr><th></th>' + cols.map(function (p) { return '<th class="n">' + mesN(p) + '</th>'; }).join('') + '</tr>' +
+        [['Utilidad después de partidas (estado resultante)', 'base'], ['+ Utilidad retenida hipotética (Σ subtotales)', 'subtotal'], ['− Costo financiero', 'costo'], ['= Utilidad hipotética', 'hipotetica'], ['Movimientos retenidos', 'n']]
+          .map(function (x) { return '<tr><td>' + x[0] + '</td>' + cols.map(function (p) { return '<td class="n">' + (x[1] === 'n' ? q[p].n : money(q[p][x[1]])) + '</td>'; }).join('') + '</tr>'; }).join('') + '</table></div>' +
+        '<p class="mut">Bruto retenido ' + money(a.bruto) + ' ÷ 1.16 = subtotal ' + money(a.subtotal) + '; ' + money(a.subtotal) + ' × ' + RET.pct + ' % = costo financiero ' + money(a.costo) + '; ' + money(a.subtotal) + ' − ' + money(a.costo) + ' = utilidad retenida neta ' + money(a.neto) + '.</p>';
+    } else $('ve-ret').innerHTML = '';
+    // panel de renglones (escenario)
+    if (r.modo === 'escenario') {
+      var rs = r.lineas.filter(function (l) { return l.s === 'costo' || l.s === 'ga' || l.s === 'pi'; });
+      $('ve-renglones').innerHTML = '<b>Ajuste de % por renglón</b> (se aplica después de las reclasificaciones y de los ajustes por movimiento)<div class="scroll"><table class="det"><tr><th>renglón</th><th>% (−100 a 500)</th><th>meses (ninguno marcado = todos)</th></tr>' +
+        rs.map(function (l) { var a = S.ajRen[l.c] || {}; return '<tr data-c="' + escH(l.c) + '"><td>' + escH(l.e) + '</td><td><input type="number" class="vr-pct" min="-100" max="500" step="0.01" value="' + (a.pct == null ? '' : a.pct) + '" style="width:5.5em"></td><td>' +
+          D.meses.map(function (p) { return '<label class="vrm"><input type="checkbox" class="vr-mes" value="' + p + '"' + ((a.meses || []).indexOf(p) >= 0 ? ' checked' : '') + '>' + mesN(p) + '</label>'; }).join(' ') + '</td></tr>'; }).join('') + '</table></div>';
+    } else $('ve-renglones').innerHTML = '';
+  }
+  function pintarEsc() {
+    var e = ls.get(LSE, {}), ns = Object.keys(e).sort();
+    $('ve-cargar').innerHTML = '<option value="">(escenarios guardados)</option>' + ns.map(function (n) { return '<option>' + escH(n) + '</option>'; }).join('');
+    $('ve-comparar').innerHTML = ns.map(function (n) { return '<label><input type="checkbox" class="vecmp" value="' + escH(n) + '"> ' + escH(n) + '</label> '; }).join('') || '<span class="mut">Sin escenarios guardados en este navegador.</span>';
+  }
+  function comparar() {
+    var e = ls.get(LSE, {}), el = Array.prototype.filter.call(document.querySelectorAll('.vecmp'), function (c) { return c.checked; }).map(function (c) { return c.value; });
+    if (el.length > 3) { $('ve-msg').textContent = 'Máximo 3 escenarios a la vez.'; el = el.slice(0, 3); }
+    var filas = el.map(function (n) { var s = e[n]; var r = core(D, s.S); return { n: n, s: s, r: r }; });
+    $('ve-tabla-cmp').innerHTML = filas.length ? '<div class="scroll"><table class="er"><tr><th>Escenario</th><th>modo · vista</th><th class="n">Ventas</th><th class="n">Costo</th><th class="n">Utilidad bruta</th><th class="n">Margen</th><th class="n">Gastos adm.</th><th class="n">Utilidad de operación</th><th class="n">Después de partidas</th></tr>' +
+      filas.map(function (x) { var T = x.r.tot; return '<tr><td>' + escH(x.n) + '</td><td>' + x.r.modo + ' · ' + x.r.base + '</td><td class="n">' + money(T.V.acum) + '</td><td class="n">' + money(T.C.acum) + '</td><td class="n">' + money(T.UB.acum) + '</td><td class="n">' + pctTxt(T.MB.acum) +
+        '</td><td class="n">' + money(T.GA.acum) + '</td><td class="n">' + money(T.UO.acum) + '</td><td class="n">' + money(T.UOP.acum) + '</td></tr>'; }).join('') + '</table></div>' : '';
+    window.__veComparados = filas.map(function (x) { return { n: x.n, uo: x.r.tot.UO.acum, uop: x.r.tot.UOP.acum }; });
+  }
+  function pintar() {
+    var r = calc();
+    document.querySelector('#vE').classList.toggle('escenario', S.modo === 'escenario');
+    $('ve-modo-r').checked = S.modo !== 'escenario'; $('ve-modo-e').checked = S.modo === 'escenario'; $('ve-base').value = S.base;
+    Array.prototype.forEach.call(document.querySelectorAll('.ve-solo-esc'), function (x) { x.style.display = S.modo === 'escenario' ? '' : 'none'; });
+    pintarEstado(r); pintarTabla(r);
+    $('ve-reglas').innerHTML = S.reglas.length ? '<b>Reglas propuestas:</b> ' + S.reglas.map(function (x, i) { return escH(x.campo + ' contiene «' + x.texto + '» → ' + (cat[x.dest] || {}).etiqueta) + ' <button class="ve-qregla" data-i="' + i + '">quitar</button>'; }).join(' · ') : '';
+    window.__veUltimo = r;
+  }
+  // ── exportar ──
+  var q = function (s) { s = String(s == null ? '' : s); return /[",\n;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  function descargar(nombre, filas) {
+    var blob = new Blob(['﻿' + filas.map(function (f) { return f.map(q).join(','); }).join('\n') + '\n'], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre; document.body.appendChild(a); a.click(); a.remove();
+  }
+  var sello = function () { var d = new Date(), z = function (n) { return (n < 10 ? '0' : '') + n; }; return d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + '_' + z(d.getHours()) + z(d.getMinutes()); };
+  function filasReclas() {
+    var cab = D.columnas.slice(0, -1), rows = [];
+    Object.keys(S.cambios).sort().forEach(function (k) {
+      var m = movMap[k], c = S.cambios[k], ps = c.partes || [];
+      ps.forEach(function (x, i) { rows.push([k, String(i + 1), String(ps.length), String(Number(x.pct)), m ? m.ca || m.cat : '', x.dest, String(x.proy || '').trim(), String(c.nota || '').trim(), 'movimiento', '', '', D.huella]); });
+    });
+    S.reglas.forEach(function (x) { rows.push(['', '1', '1', '100', '', x.dest, '', String(x.nota || '').trim(), 'regla', x.campo, String(x.texto).trim(), D.huella]); });
+    var todo = [cab].concat(rows), h = sha(todo.map(function (f) { return f.map(q).join(','); }).join('\n'));
+    return [D.columnas].concat(rows.map(function (f) { return f.concat([h]); }));
+  }
+  window.__veFilasReclas = filasReclas;
+  // ── eventos ──
+  var tabla = $('ve-tabla');
+  tabla.addEventListener('change', function (ev) {
+    var t = ev.target, tr = t.closest('tr[data-k]'), k = tr && tr.getAttribute('data-k'), m = k && movMap[k];
+    if (t.id === 've-todos') { filtrados().slice(0, ui.limite).forEach(function (x) { ui.sel[x.k] = t.checked; }); return pintar(); }
+    if (t.classList.contains('vp-dest') || t.classList.contains('vp-pct') || t.classList.contains('vp-proy')) {
+      var i = +t.getAttribute('data-i'), ps = ui.partirPartes; ps[i][t.classList.contains('vp-dest') ? 'dest' : t.classList.contains('vp-pct') ? 'pct' : 'proy'] = t.classList.contains('vp-pct') ? (parseFloat(String(t.value).replace(',', '.')) || 0) : t.value; return pintar();
+    }
+    if (!m) return;
+    if (t.classList.contains('ve-sel')) { ui.sel[k] = t.checked; return; }
+    if (t.classList.contains('ve-dest')) cambiar(function () { if (t.value) S.cambios[k] = { partes: [{ dest: t.value, pct: 100, proy: (S.cambios[k] && S.cambios[k].partes[0] || {}).proy || '' }], nota: (S.cambios[k] || {}).nota || '' }; else delete S.cambios[k]; });
+    else if (t.classList.contains('ve-proy')) cambiar(function () { var c = S.cambios[k]; if (c) c.partes.forEach(function (x) { x.proy = t.value; }); else if (t.value) $('ve-msg').textContent = 'Elige primero un destino para poder etiquetar el proyecto.'; });
+    else if (t.classList.contains('ve-nota')) cambiar(function () { if (S.cambios[k]) S.cambios[k].nota = t.value; });
+    else if (t.classList.contains('ve-aj')) cambiar(function () { var v = parseFloat(String(t.value).replace(',', '.')); if (isNaN(v) || !v) delete S.ajMov[k]; else S.ajMov[k] = Math.min(500, Math.max(-100, v)); });
+    else if (t.classList.contains('ve-ret')) cambiar(function () { RET.sel[k] = t.checked; if (!t.checked) delete RET.sel[k]; });
+  });
+  tabla.addEventListener('click', function (ev) {
+    var t = ev.target, tr = t.closest('tr[data-k]') || (t.closest('tr') && t.closest('tr').previousElementSibling), k = ui.partir || (tr && tr.getAttribute('data-k'));
+    if (t.id === 've-mas') { ui.limite += 100; return pintar(); }
+    if (t.classList.contains('ve-partir')) { var kk = t.closest('tr[data-k]').getAttribute('data-k'); ui.partir = ui.partir === kk ? null : kk; ui.partirPartes = S.cambios[kk] ? JSON.parse(JSON.stringify(S.cambios[kk].partes)) : [{ dest: '', pct: 100, proy: '' }]; return pintar(); }
+    if (t.classList.contains('vp-agregar')) { ui.partirPartes.push({ dest: '', pct: 0, proy: '' }); return pintar(); }
+    if (t.classList.contains('vp-quitar')) { ui.partirPartes.splice(+t.getAttribute('data-i'), 1); return pintar(); }
+    if (t.classList.contains('vp-cancelar')) { ui.partir = null; ui.partirPartes = null; return pintar(); }
+    if (t.classList.contains('vp-aplicar')) { var ps = ui.partirPartes; cambiar(function () { S.cambios[ui.partir] = { partes: ps.map(function (x) { return { dest: x.dest, pct: Number(x.pct), proy: x.proy || '' }; }), nota: (S.cambios[ui.partir] || {}).nota || '' }; ui.partir = null; ui.partirPartes = null; }); }
+  });
+  $('ve-estado').addEventListener('click', function (ev) { var t = ev.target; if (t.classList.contains('ve-dsale')) { var c = t.getAttribute('data-c'); ui.abierto[c] = !ui.abierto[c]; pintar(); } });
+  $('ve-renglones').addEventListener('change', function (ev) {
+    var t = ev.target, tr = t.closest('tr[data-c]'); if (!tr) return; var c = tr.getAttribute('data-c');
+    cambiar(function () { var a = S.ajRen[c] || { pct: 0, meses: [] };
+      if (t.classList.contains('vr-pct')) { var v = parseFloat(String(t.value).replace(',', '.')); a.pct = isNaN(v) ? 0 : Math.min(500, Math.max(-100, v)); }
+      else a.meses = Array.prototype.filter.call(tr.querySelectorAll('.vr-mes'), function (x) { return x.checked; }).map(function (x) { return x.value; });
+      if (!a.pct && !a.meses.length) delete S.ajRen[c]; else S.ajRen[c] = a; });
+  });
+  $('ve-ret').addEventListener('input', function (ev) { if (ev.target.id === 've-pct') { var v = parseFloat(String(ev.target.value).replace(',', '.')); RET.pct = isNaN(v) ? 0 : Math.min(100, Math.max(0, v)); if (window.__vdEstado) window.__vdEstado.pct = RET.pct; var r = window.__veUltimo; clearTimeout(ui.t); ui.t = setTimeout(function () { pintar(); if (window.__vdPintar) window.__vdPintar(); }, 250); } });
+  ['ve-f-mes', 've-f-cuenta', 've-f-cat', 've-f-excl', 've-f-pi', 've-f-min', 've-f-max', 've-f-texto'].forEach(function (id) { $(id).addEventListener(id === 've-f-texto' || id === 've-f-min' || id === 've-f-max' ? 'input' : 'change', function () { ui.limite = 100; clearTimeout(ui.tf); ui.tf = setTimeout(pintar, 200); }); });
+  $('ve-modo-r').addEventListener('change', function () { cambiar(function () { S.modo = 'reclasificacion'; }); });
+  $('ve-modo-e').addEventListener('change', function () { cambiar(function () { S.modo = 'escenario'; }); });
+  $('ve-base').addEventListener('change', function () { var v = this.value; cambiar(function () { S.base = v; }); });
+  var seleccion = function () { return Object.keys(ui.sel).filter(function (k) { return ui.sel[k]; }); };
+  $('ve-masivo').addEventListener('click', function () { var d = $('ve-masivo-dest').value; if (!d) return; var ks = seleccion().filter(function (k) { return (movMap[k].t === 'abono') === (cat[d].tipo === 'ingreso'); });
+    cambiar(function () { ks.forEach(function (k) { S.cambios[k] = { partes: [{ dest: d, pct: 100, proy: '' }], nota: (S.cambios[k] || {}).nota || '' }; }); }); $('ve-msg').textContent = ks.length + ' movimientos enviados a «' + cat[d].etiqueta + '».'; });
+  $('ve-regla-cp').addEventListener('click', function () { var d = $('ve-masivo-dest').value, k = seleccion()[0]; if (!d || !k) { $('ve-msg').textContent = 'Selecciona un movimiento y un destino.'; return; }
+    var cp = movMap[k].cp; if (!cp || cp.length < 3) { $('ve-msg').textContent = 'Ese movimiento no tiene contraparte.'; return; }
+    cambiar(function () { S.reglas.push({ campo: 'contraparte', texto: cp, dest: d }); }); });
+  $('ve-regla-tx').addEventListener('click', function () { var d = $('ve-masivo-dest').value, tx = String($('ve-f-texto').value || '').trim(); if (!d || tx.length < 3) { $('ve-msg').textContent = 'Escribe al menos 3 letras en el filtro de texto y elige un destino.'; return; }
+    cambiar(function () { S.reglas.push({ campo: 'descripcion', texto: tx, dest: d }); }); });
+  $('ve-reglas').addEventListener('click', function (ev) { if (ev.target.classList.contains('ve-qregla')) { var i = +ev.target.getAttribute('data-i'); cambiar(function () { S.reglas.splice(i, 1); }); } });
+  var ajMasivo = function (ks) { var v = parseFloat(String($('ve-aj-masivo').value).replace(',', '.')); if (isNaN(v)) return; v = Math.min(500, Math.max(-100, v)); cambiar(function () { ks.forEach(function (k) { if (v) S.ajMov[k] = v; else delete S.ajMov[k]; }); }); };
+  $('ve-aj-sel').addEventListener('click', function () { ajMasivo(seleccion()); });
+  $('ve-aj-cp').addEventListener('click', function () { var k = seleccion()[0]; if (!k) return; var cp = movMap[k].cp; ajMasivo(D.movs.filter(function (m) { return m.cp && m.cp === cp; }).map(function (m) { return m.k; })); });
+  $('ve-aj-filtro').addEventListener('click', function () { ajMasivo(filtrados().map(function (m) { return m.k; })); });
+  $('ve-deshacer').addEventListener('click', function () { if (!hist.length) return; fut.push(snap()); restaurar(hist.pop()); pintar(); if (window.__vdPintar) window.__vdPintar(); });
+  $('ve-rehacer').addEventListener('click', function () { if (!fut.length) return; hist.push(snap()); restaurar(fut.pop()); pintar(); if (window.__vdPintar) window.__vdPintar(); });
+  $('ve-limpiar-aj').addEventListener('click', function () { cambiar(function () { S.ajMov = {}; S.ajRen = {}; }); });
+  $('ve-limpiar').addEventListener('click', function () { cambiar(function () { var m = S.modo, b = S.base; S = S0(); S.modo = m; S.base = b; RET.sel = {}; if (window.__vdEstado) window.__vdEstado.sel = RET.sel; }); });
+  $('ve-guardar').addEventListener('click', function () {
+    var e = ls.get(LSE, {}), n = String($('ve-nombre').value || '').trim() || ('Escenario ' + sello());
+    if (!e[n] && Object.keys(e).length >= 5) { $('ve-msg').textContent = 'Ya hay 5 escenarios guardados: borra uno (cárgalo y guarda con el mismo nombre) o usa un nombre existente.'; return; }
+    e[n] = { S: JSON.parse(JSON.stringify(S)), ret: RET.sel, pct: RET.pct, guardado: new Date().toISOString() };
+    $('ve-msg').textContent = ls.set(LSE, e) ? 'Guardado: ' + n : 'El navegador no deja guardar (modo privado): exporta el escenario.'; pintarEsc();
+  });
+  $('ve-cargar').addEventListener('change', function () { var e = ls.get(LSE, {})[this.value]; if (!e) return; cambiar(function () { S = JSON.parse(JSON.stringify(e.S)); RET.sel = e.ret || {}; RET.pct = e.pct || 0; if (window.__vdEstado) { window.__vdEstado.sel = RET.sel; window.__vdEstado.pct = RET.pct; } }); });
+  $('ve-comparar').addEventListener('change', comparar);
+  $('ve-exp-reclas').addEventListener('click', function () { var r = calc(); if (!(r.modo === 'reclasificacion' && r.puente.cuadra)) return; descargar('reclasificaciones_' + sello() + '.csv', filasReclas()); });
+  $('ve-exp-esc').addEventListener('click', function () {
+    var r = calc(), f = [['tipo', 'id_movimiento', 'destino', 'porcentaje_parte', 'ajuste_pct', 'renglon', 'meses', 'retener', 'bruto', 'subtotal', 'nota']];
+    Object.keys(S.cambios).forEach(function (k) { var m = movMap[k]; S.cambios[k].partes.forEach(function (x) { f.push(['reclasificacion', k, x.dest, x.pct, '', '', '', '', (m.b / 100).toFixed(2), (m.n / 100).toFixed(2), S.cambios[k].nota || '']); }); });
+    S.reglas.forEach(function (x) { f.push(['regla', x.campo + ' contiene ' + x.texto, x.dest, 100, '', '', '', '', '', '', '']); });
+    Object.keys(S.ajMov).forEach(function (k) { var m = movMap[k]; f.push(['ajuste_movimiento', k, '', '', S.ajMov[k], '', '', '', (m.b / 100).toFixed(2), (m.n / 100).toFixed(2), '']); });
+    Object.keys(S.ajRen).forEach(function (c) { f.push(['ajuste_renglon', '', '', '', S.ajRen[c].pct, c, (S.ajRen[c].meses || []).join(' '), '', '', '', '']); });
+    Object.keys(RET.sel).filter(function (k) { return RET.sel[k]; }).forEach(function (k) { var m = movMap[k]; if (m) f.push(['retener', k, '', '', '', '', '', RET.pct, (m.b / 100).toFixed(2), (m.b / 1.16 / 100).toFixed(2), '']); });
+    f.push([]); f.push(['resultado', 'vista ' + r.base, r.modo, '', '', '', '', '', '', '', '']);
+    [['Utilidad de operación', 'UO'], ['Después de partidas', 'UOP']].forEach(function (x) { f.push([x[0], 'base ' + (r.tot0[x[1]].acum / 100).toFixed(2), 'resultante ' + (r.tot[x[1]].acum / 100).toFixed(2), '', '', '', '', '', '', '', '']); });
+    f.push(['diferencia contra el banco por ajustes de %', (r.difBanco / 100).toFixed(2), '', '', '', '', '', '', '', '', '']);
+    descargar('escenario_' + sello() + '.csv', f);
+  });
+  var b = ls.get(LSB, null); if (b && b.S) { S = Object.assign(S0(), b.S); RET.sel = b.ret || RET.sel; RET.pct = b.pct || RET.pct; }
+  var opt = function (xs) { return '<option value="">(todos)</option>' + xs.map(function (x) { return '<option value="' + escH(x[0]) + '">' + escH(x[1]) + '</option>'; }).join(''); };
+  $('ve-f-mes').innerHTML = opt(D.meses.map(function (p) { return [p, mesN(p)]; }));
+  $('ve-f-cuenta').innerHTML = opt(Array.from(new Set(D.movs.map(function (m) { return m.cu; }))).sort().map(function (x) { return [x, x]; }));
+  $('ve-f-cat').innerHTML = opt(Array.from(new Set(D.movs.map(function (m) { return m.ca; }))).sort().map(function (x) { return [x, (D.catLabels[x] || x)]; }));
+  $('ve-masivo-dest').innerHTML = '<option value="">(destino)</option>' + D.cat.map(function (c) { return '<option value="' + c.clave + '">' + escH(c.etiqueta) + '</option>'; }).join('');
+  window.__vePintar = pintar; window.__veEstado = function () { return S; }; window.__veSet = function (s) { cambiar(function () { S = Object.assign(S0(), s); }); };
   pintarEsc(); pintar();
 }
 
 // ═══ HTML privado, autocontenido ═══════════════════════════════════════════
 function armarHTML(z) {
-  const { A, B, C, pz, items, ventas, facturado, cobertura, supuestos, decisiones, partidas, COLS, MESES, MV, cambios, vd, m, jeev, jSin, nv, etq } = z;
+  const { A, B, C, pz, items, ventas, facturado, cobertura, supuestos, decisiones, partidas, COLS, MESES, MV, cambios, vd, ve, m, jeev, jSin, nv, etq } = z;
   const cols = COLS.concat(['acum']);
   const celda = (l, p) => l.es_pct ? (l.vals[p] === null ? '—' : (l.vals[p] / 100).toFixed(1) + '%') : fmt(l.vals[p]);
   const detalleItems = lista => '<div class="scroll"><table class="det"><tr><th>fecha</th><th>cuenta</th><th>concepto</th><th>proveedor / CFDI</th><th class="n">bruto</th><th class="n">sin IVA</th><th>origen</th></tr>' +
-    lista.map(i => '<tr' + (i.mov_id ? ' data-mov="' + i.mov_id + '"' : '') + '><td>' + esc(i.fecha) + '</td><td>' + esc(i.cuenta + (i.mask ? ' ' + i.mask : '')) + (i.moneda === 'USD' ? ' (USD ' + fmt(i.monto_nat) + ' × ' + i.tc + ')' : '') + '</td><td>' + esc(i.concepto) +
+    lista.map(i => '<tr' + (i.mov ? ' data-mov="' + esc(i.mov) + '"' : '') + '><td>' + esc(i.fecha) + '</td><td>' + esc(i.cuenta + (i.mask ? ' ' + i.mask : '')) + (i.moneda === 'USD' ? ' (USD ' + fmt(i.monto_nat) + ' × ' + i.tc + ')' : '') + '</td><td>' + esc(i.concepto) +
       (i.iva_estimado ? ' <span class="tag2">IVA estimado</span>' : '') + '</td><td>' + esc(i.proveedor || '') + (i.cfdi ? '<br><span class="mut">' + esc(i.cfdi.ref) + '</span>' : '') + '</td><td class="n">' + fmt(i.bruto) + '</td><td class="n">' + fmt(i.neto) + '</td><td class="mut">' +
       (i.fuente === 'banco' ? esc(i.archivo) + ' · p. ' + esc(i.pagina) + '<br>sha256 ' + esc(String(i.sha256 || '').slice(0, 16)) + '… · ' + esc(i.id) : esc(i.id)) + '</td></tr>').join('') + '</table></div>';
   const detalleVentas = (lista, esFact) => '<div class="scroll"><table class="det"><tr><th>documento</th><th>fecha</th><th>cliente</th><th class="n">subtotal</th><th class="n">pesos</th><th>origen</th></tr>' +
@@ -1084,13 +1715,33 @@ function armarHTML(z) {
   const vdHtml = '<h2 id="vD">Vista D · escenarios hipotéticos de utilidad retenida</h2>' +
     '<p class="leyenda">Escenario hipotético. No es un registro contable ni cambia el estado de resultados. El subtotal se calcula dividiendo el monto bruto entre 1.16 para todo movimiento seleccionado.</p>' +
     '<p class="mut">Si el visor de OneDrive no ejecuta esta sección, descarga el archivo y ábrelo en el navegador; funciona sin conexión.</p>' +
-    '<div class="vdctl"><label>Vista base <select id="vd-base"><option value="A">A</option><option value="B">B</option><option value="C" selected>C</option></select></label> ' +
+    '<div class="vdctl"><label>Vista base <select id="vd-base"><option value="A">A</option><option value="B">B</option><option value="C" selected>C</option><option value="E">E (estado personalizado)</option></select></label> ' +
     '<label><input type="checkbox" id="vd-criterio"> Mostrar los 10 más grandes del mes (en vez de los últimos 10)</label> ' +
     '<label>% de costo financiero <input type="number" id="vd-pct" value="0" min="0" max="100" step="0.01" style="width:6em"></label> ' +
     '<button id="vd-limpiar">Limpiar selección</button> <input id="vd-nombre" placeholder="nombre del escenario"> <button id="vd-guardar">Guardar escenario</button> ' +
     '<select id="vd-cargar"></select> <button id="vd-exportar">Exportar escenario</button> <span id="vd-msg" class="mut"></span></div>' +
     '<div id="vd-bloque"></div><p><b>Comparar escenarios guardados</b> (máximo 3): <span id="vd-comparar"></span></p><div id="vd-tabla-cmp"></div><div id="vd-listas"></div>' +
     '<noscript><p class="alerta">Este visor no ejecuta JavaScript: descarga el archivo y ábrelo en el navegador para usar la Vista D.</p></noscript>';
+  const veHtml = '<h2 id="vE">Vista E · reclasificación personalizada y escenarios</h2>' +
+    '<p class="leyenda">Los cambios en esta vista son una propuesta hasta que exportes y subas el archivo a la carpeta de Reclasificaciones.</p>' +
+    '<p class="alerta ve-solo-esc" style="display:none">Modo escenario. Estos números no son contables ni cambian el estado de resultados oficial.</p>' +
+    '<p class="mut">Si el visor de OneDrive no ejecuta esta sección, descarga el archivo y ábrelo en el navegador; funciona sin conexión. Orden de cálculo: 1) clasificación del v1 (reglas y tablas editables) · 2) reclasificaciones oficiales vigentes · 3) reclasificaciones y particiones de este escenario · 4) ajustes de % por movimiento · 5) ajustes de % por renglón · 6) utilidad retenida hipotética y su costo financiero.</p>' +
+    '<div class="vdctl"><b>Modo</b> <label><input type="radio" name="ve-modo" id="ve-modo-r" checked> Reclasificación (puede volverse oficial)</label> <label><input type="radio" name="ve-modo" id="ve-modo-e"> Escenario (sólo hipotético)</label> ' +
+    '<label>Vista base <select id="ve-base"><option>A</option><option>B</option><option selected>C</option></select></label></div>' +
+    '<div class="vdctl"><button id="ve-deshacer">Deshacer</button> <button id="ve-rehacer">Rehacer</button> <button id="ve-limpiar-aj" class="ve-solo-esc" style="display:none">Limpiar ajustes de %</button> <button id="ve-limpiar">Limpiar todo</button> ' +
+    '<input id="ve-nombre" placeholder="nombre del escenario"> <button id="ve-guardar">Guardar escenario</button> <select id="ve-cargar"></select> ' +
+    '<button id="ve-exp-reclas" disabled>Exportar reclasificaciones</button> <button id="ve-exp-esc">Exportar escenario</button> <span id="ve-msg" class="mut"></span></div>' +
+    '<p class="mut">El borrador se guarda solo en este navegador. «Exportar reclasificaciones» descarga reclasificaciones_AAAAMMDD_HHMM.csv (sólo en modo reclasificación y con el puente en verde); súbelo a Estados de resultados/Reclasificaciones y el recálculo de cada 30 minutos lo aplica o lo rechaza completo, con correo. «Exportar escenario» es sólo informativo: si se sube a la carpeta, se rechaza.</p>' +
+    '<div id="ve-estado"></div><div id="ve-puente"></div><div id="ve-ret" class="ve-solo-esc"></div><div id="ve-renglones" class="ve-solo-esc"></div>' +
+    '<h4>Mayores efectos del escenario</h4><div id="ve-efectos"></div><p><b>Comparar escenarios guardados</b> (hasta 5 guardados, máximo 3 a la vez): <span id="ve-comparar"></span></p><div id="ve-tabla-cmp"></div>' +
+    '<h4>Movimientos</h4><div class="vdctl"><label>Mes <select id="ve-f-mes"></select></label> <label>Cuenta <select id="ve-f-cuenta"></select></label> <label>Categoría actual <select id="ve-f-cat"></select></label> ' +
+    '<label><input type="checkbox" id="ve-f-excl"> sólo excluidos</label> <label><input type="checkbox" id="ve-f-pi"> sólo partidas por identificar</label> ' +
+    '<label>Monto de <input id="ve-f-min" type="number" style="width:7em"> a <input id="ve-f-max" type="number" style="width:7em"></label> <label>Texto en concepto o contraparte <input id="ve-f-texto" style="width:12em"></label></div>' +
+    '<div class="vdctl"><select id="ve-masivo-dest"></select> <button id="ve-masivo">Mandar seleccionados a…</button> <button id="ve-regla-cp" title="Propuesta de REGLA: todos los de la contraparte del primer seleccionado">Aplicar a todos los de esta contraparte</button> ' +
+    '<button id="ve-regla-tx" title="Propuesta de REGLA: todos los que contengan el texto del filtro">…a todos los que contengan este texto</button> ' +
+    '<span class="ve-solo-esc" style="display:none">% de ajuste <input id="ve-aj-masivo" type="number" min="-100" max="500" step="0.01" style="width:6em"> <button id="ve-aj-sel">a los seleccionados</button> <button id="ve-aj-cp">a toda la contraparte</button> <button id="ve-aj-filtro">a todos los del filtro</button></span></div>' +
+    '<div id="ve-reglas" class="mut"></div><div id="ve-tabla"></div>' +
+    '<noscript><p class="alerta">Este visor no ejecuta JavaScript: descarga el archivo y ábrelo en el navegador para usar la Vista E.</p></noscript>';
   const css = ':root{--bg:#fff;--fg:#1a1a1a;--mut:#666;--line:#e3e3e3;--head:#f5f5f3;--acc:#0f5132;--bad:#b42318;--ok:#1e7b34;--sep:#fff7e0;--sel:#fff3bf}' +
     '@media (prefers-color-scheme:dark){:root{--bg:#161616;--fg:#eee;--mut:#9a9a9a;--line:#333;--head:#222;--acc:#7dd3a8;--bad:#ff8a80;--ok:#7dd3a8;--sep:#2b2616;--sel:#3a3314}}' +
     'body{background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,Segoe UI,Arial,sans-serif;margin:0;padding:24px 16px;max-width:1600px;overflow-wrap:anywhere}' +
@@ -1101,17 +1752,19 @@ function armarHTML(z) {
     'tr.lv1 td{font-weight:700}tr.lv3 td{color:var(--mut);font-style:italic}tr.lv4 td{color:var(--mut)}tr.dt td{padding:0 8px 6px;border:0}.neg{color:var(--bad)}.tag{font-size:10px;font-weight:600;color:var(--bad)}.tag2{font-size:10px;color:var(--mut);border:1px solid var(--line);padding:0 4px;border-radius:3px}' +
     '.ok{color:var(--ok)}.bad{color:var(--bad)}.alerta{color:var(--bad);font-weight:700;border:1px solid var(--bad);padding:8px 10px;border-radius:4px}.leyenda{border-left:4px solid var(--acc);padding:6px 10px;background:var(--head)}' +
     'table.det{font-size:12px;margin:6px 0 10px}summary{cursor:pointer;color:var(--acc);font-size:12px}nav a{margin-right:14px;color:var(--acc);white-space:nowrap;display:inline-block;overflow-wrap:normal}tr.vdsel td,tr.marcado td{background:var(--sel)}.vdbadge{font-size:11px;color:var(--acc);font-weight:600}' +
-    '.vdctl{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:8px 0}.vdctl input,.vdctl select,.vdctl button{font:inherit}';
-  const datos = JSON.stringify(vd).replace(/</g, '\\u003c');
+    '.vdctl{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:8px 0}.vdctl input,.vdctl select,.vdctl button{font:inherit}' +
+    'tr.vecambio td{background:var(--sel)}.vedif{font-size:11px;color:var(--acc)}.vedifc{color:var(--acc)}.vedet{font-size:12px;padding:6px 0}.vedet ul{margin:2px 0 6px 18px;padding:0}.vepartir{border:1px solid var(--line);padding:8px;margin:4px 0}' +
+    '.vdctl select{max-width:100%}.vdctl label{max-width:100%}#ve-f-cat,#ve-masivo-dest{max-width:min(22em,90vw)}table.ve select{max-width:15em}table.ve td{font-size:12px}.vrm{white-space:nowrap;margin-right:6px}#vE.escenario .leyenda{border-left-color:var(--bad)}button.ve-dsale{font-size:10px;padding:0 4px}';
+  const datos = JSON.stringify(vd).replace(/</g, '\\u003c'), datosE = JSON.stringify(ve).replace(/</g, '\\u003c');
   return '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Estado de resultados ' + ANIO + ' ' + esc(etq) + '</title><style>' + css + '</style></head><body>' +
     '<h1>Estado de resultados ' + ANIO + ' ' + esc(etq) + ' · preliminar</h1><div class="mut">Servicios FTS SA de CV · ' + esc(nombreMes(MESES[0])) + ' a ' + esc(nombreMes(MESES[MESES.length - 1])) + ' con banco' + (MV ? ', ' + esc(nombreMes(MV)) + ' sólo ventas' : '') + ' · pesos · <b>sin IVA</b> · privado<br>' +
     'Huella de resultados ' + esc(z.huella) + ' · huella de insumos ' + esc(z.huellaInsumos.slice(0, 16)) + '… · calcular.js ' + esc(VERSION) + (z.opciones.sha ? ' @ ' + esc(String(z.opciones.sha).slice(0, 7)) : '') + (z.opciones.generado_at ? ' · generado ' + esc(z.opciones.generado_at) + ' UTC' : '') + '</div>' +
-    '<nav style="margin:12px 0"><a href="#vA">Vista A</a><a href="#vB">Vista B</a><a href="#vC">Vista C</a><a href="#vD">Vista D</a><a href="#puente">Puente</a><a href="#bbva">Conciliación BBVA</a><a href="#nomina">Reparto de nómina</a><a href="#cambios">Qué cambió</a><a href="#conmet">Conmet</a><a href="#cob">Meses</a><a href="#sup">Supuestos</a><a href="#pi">Partidas</a><a href="#tablas">Tablas editables</a></nav>' +
+    '<nav style="margin:12px 0"><a href="#vA">Vista A</a><a href="#vB">Vista B</a><a href="#vC">Vista C</a><a href="#vD">Vista D</a><a href="#vE">Vista E</a><a href="#puente">Puente</a><a href="#bbva">Conciliación BBVA</a><a href="#nomina">Reparto de nómina</a><a href="#cambios">Qué cambió</a><a href="#conmet">Conmet</a><a href="#cob">Meses</a><a href="#sup">Supuestos</a><a href="#pi">Partidas</a><a href="#tablas">Tablas editables</a></nav>' +
     alertaNomina + '<p>Costo sin CFDI ligado: <b>' + pct(z.sinC, z.baseC) + '</b> del costo sin nómina (' + pct(z.sinC, A.tot.C.acum) + ' del costo total). Jeeves sin clasificar: <b>' + jSin.length + '</b> consumos, ' + pct(jSin.reduce((s, i) => s + i.bruto, 0), jeev.reduce((s, i) => s + i.bruto, 0)) + ' del monto de Jeeves.</p>' +
     tablaVista(A, 'Vista A · ventas confirmadas, Conmet por avance de obra', 'vA', true) +
     tablaVista(B, 'Vista B · igual que A, sin Conmet (ni su venta ni sus costos)', 'vB', false, 'El detalle de cada renglón es el de la Vista A sin los movimientos de Conmet.') +
     tablaVista(C, 'Vista C · ventas = facturado en ' + ANIO + ', sin Conmet («lo ejecutado»)', 'vC', true, 'Mismos costos que la Vista B; cambia la venta.') +
-    vdHtml + hp + hConc + hNomina + hCambios + hConmet +
+    vdHtml + veHtml + hp + hConc + hNomina + hCambios + hConmet +
     '<h2 id="cob">Meses y cobertura bancaria</h2>' + cob +
     '<h2 id="sup">Supuestos</h2><div class="scroll"><table class="det">' + supuestos.map(s => '<tr><td>' + esc(s[0]) + '</td><td><b>' + esc(s[1]) + '</b></td><td>' + esc(s[2]) + '</td></tr>').join('') + '</table></div>' +
     '<h2 id="pi">Partidas por identificar (pendientes de Esteban)</h2><p>' + partidas.length + ' partidas, ' + fmt(partidas.reduce((s, i) => s + i.bruto, 0)) + '. Se deciden en bancos.partidas_identificadas.</p>' + detalleItems(partidas) +
@@ -1124,7 +1777,8 @@ function armarHTML(z) {
     '<p class="mut">Cualquier cambio en estas tablas dispara el recálculo en los siguientes 30 minutos (7:00 a 21:00) y un correo a Esteban.</p>' +
     '<h2>Pendientes para Esteban</h2><ol>' + decisiones.map(d => '<li>' + esc(d) + '</li>').join('') + '</ol>' +
     '<p class="mut">Fuentes: base bancaria (vistas v_movimientos_validados, v_estados_validados, v_saldos_mensuales, rol bancos_er/bancos_lector) y Odoo en solo lectura. Issue #348.</p>' +
-    '<script>window.__VD=' + datos + ';window.__escenarioCore=' + escenarioCore.toString() + ';(' + vistaDCliente.toString() + ')();</script></body></html>';
+    '<script>window.__VD=' + datos + ';window.__VE=' + datosE + ';window.__RET={sel:{},pct:0};window.__escenarioCore=' + escenarioCore.toString() + ';window.__personalizadoCore=' + personalizadoCore.toString() +
+    ';window.__sha256=' + sha256.toString() + ';(' + vistaECliente.toString() + ')();(' + vistaDCliente.toString() + ')();</script></body></html>';
 }
 
-module.exports = { calcular, motor, armarVistas, escenarioCore, decidir, sha256, canon, VERSION };
+module.exports = { calcular, motor, armarVistas, escenarioCore, personalizadoCore, decidir, sha256, canon, VERSION, validarReclasificaciones, huellaReclas, parseCsv, CSV_RECLAS_COLUMNAS, leerCatalogo };
