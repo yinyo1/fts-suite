@@ -99,20 +99,41 @@ async def procesar(req: Request):
     except Exception:
         raise HTTPException(400, "contenido_b64 inválido")
     nombre = str(b.get("nombre") or "sin_nombre")[:250]
-    meta = b.get("meta") or {}
+    return _procesar(contenido, nombre, b.get("meta") or {}, b.get("corrida_id"))
+
+
+@app.post("/procesar-raw")
+async def procesar_raw(req: Request, nombre: str, corrida_id: int | None = None, graph_item_id: str | None = None,
+                       graph_drive_id: str | None = None, ruta: str | None = None, subido_por: str | None = None,
+                       subido_at: str | None = None, origen: str = "buzon"):
+    """Mismo contrato que /procesar, pero el cuerpo son los bytes del archivo (n8n manda el binario tal cual)."""
+    contenido = await req.body()
+    if not contenido:
+        raise HTTPException(400, "cuerpo vacío")
+    meta = {"origen": origen, "graph_item_id": graph_item_id, "graph_drive_id": graph_drive_id, "ruta": ruta,
+            "subido_por": subido_por, "subido_at": subido_at}
+    return _procesar(contenido, nombre[:250], meta, corrida_id)
+
+
+def _procesar(contenido: bytes, nombre: str, meta: dict, corrida_id):
     with conexion() as con:
         cat = pipeline.catalogo_db(con)
         reglas = pipeline.reglas_db(con)
-        items = pipeline.procesar_archivo(con, contenido, nombre, meta, b.get("corrida_id"), cat, reglas)
+        items = pipeline.procesar_archivo(con, contenido, nombre, meta, corrida_id, cat, reglas)
     out = [i.dict() for i in items]
     problemas = [i for i in out if i["estado"] in ("rechazado", "no_cuadra", "sospechoso", "formato_no_soportado")
                  or i["avisos"]]
     raiz = out[0] if out else None
     rechazo_total = raiz is not None and raiz["accion"] == "rechazados"
     log.info("procesado %s → %s", enmascarar_texto(nombre), [(i["estado"], i["periodo"]) for i in out])
-    return {"ok": True, "sha256": sha256_bytes(contenido), "items": out,
-            "mover_original_a": "Rechazados" if rechazo_total else "Procesados",
-            "requiere_correo": bool(problemas), "problemas": problemas}
+    subir = [i for i in out if i["accion"] in ("copiar", "otras") and i["carpeta_destino"] and i["nombre_destino"]]
+    rechazar = [i for i in out if i["accion"] == "rechazados" and i["es_pieza_de_zip"]]
+    return json.loads(json.dumps({"ok": True, "sha256": sha256_bytes(contenido), "items": out, "subir": subir,
+                                  "rechazar_piezas": rechazar,
+                                  "mover_original_a": "Rechazados" if rechazo_total else "Procesados",
+                                  "motivo_original": raiz["motivo"] if rechazo_total else None,
+                                  "instruccion_original": raiz["instruccion"] if rechazo_total else None,
+                                  "requiere_correo": bool(problemas), "problemas": problemas}, default=str))
 
 
 @app.get("/blob/{sha}")

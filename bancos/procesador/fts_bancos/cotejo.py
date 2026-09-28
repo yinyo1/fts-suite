@@ -87,9 +87,13 @@ def cotejar(con, corrida_id: int, lineas_odoo: list[dict], desde: str, hasta: st
                 cur.execute("""INSERT INTO bancos.cotejo_odoo (corrida_id, movimiento_id, journal_id, estado)
                                VALUES (%s,%s,%s,'sin_match')""", (corrida_id, m["id"], m["journal_odoo"]))
             filas.append({**m, "neto": neto, "estado": est, "odoo": asignado.get(m["id"])})
-        sobran = []
+        sobran, fuera = [], 0
+        cubiertos = {(m["journal_odoo"], m["periodo"]) for m in movs}
         for j, ls in por_journal.items():
             for l in ls:
+                if not l["_usada"] and (j, l["_fecha"].strftime("%Y-%m")) not in cubiertos:
+                    fuera += 1          # journal/mes sin estado de cuenta cargado: no se puede afirmar nada
+                    continue
                 if not l["_usada"]:
                     sobran.append(l)
                     cur.execute("""INSERT INTO bancos.cotejo_odoo (corrida_id, journal_id, odoo_line_id, odoo_move_id, odoo_payment_id,
@@ -97,7 +101,9 @@ def cotejar(con, corrida_id: int, lineas_odoo: list[dict], desde: str, hasta: st
                                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'odoo_sin_banco',%s)""",
                                 (corrida_id, j, l.get("line_id"), l.get("move_id"), l.get("payment_id"), l["_fecha"], l["_monto"],
                                  (l.get("ref") or l.get("name") or "")[:200], json.dumps({"move_name": l.get("move_name")})))
-    return resumir(filas, sobran, cuentas, desde, hasta)
+    r = resumir(filas, sobran, cuentas, desde, hasta)
+    r["odoo_sin_estado_de_cuenta_cargado"] = fuera
+    return r
 
 
 def resumir(filas, sobran, cuentas, desde, hasta) -> dict:
