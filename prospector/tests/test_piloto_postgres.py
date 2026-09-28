@@ -213,3 +213,71 @@ def test_el_puntaje_que_entra_a_la_base_lo_CALCULA_el_codigo(base):
     assert filas
     for f in filas:
         assert abs(float(f["p"]) - lbase[f["k"]]) < 0.05, f["k"]
+
+
+# ============================  tarea 3 de #336 · la tarjeta que nace vencida
+def test_una_tarjeta_muerta_abierta_BLOQUEA_el_reciclaje(base):
+    """El argumento que decide el diseno de `metodo/tarjeta-que-nace-vencida.md`.
+
+    No es un problema de presentacion: una tarjeta vencida que sigue `abierta`
+    ocupa el unico lugar que la cuenta tiene, y cuando llegue una senal nueva el
+    destino 2 NO PUEDE reabrir -- el indice unico parcial lo rechaza--. O sea que una
+    tarjeta muerta rompe el mecanismo que el motor 3 existe para sostener.
+
+    Si esta prueba fallara, la recomendacion del diseno cambiaria: el estado propio
+    solo serviria para limpiar el tablero, y eso no justificaria tocar el esquema.
+    """
+    import cargar_piloto as cp
+    r = cp.cargar(base)
+    vencidas = r["tarjetas_vencidas_al_cargar"]
+    assert vencidas, "ninguna nacio vencida; el caso no se puede probar"
+    # La cuenta de la tarjeta vencida.
+    llave = vencidas[0]["llave"]
+    cuenta_id = base.correr(
+        "SELECT id FROM motor3.cuenta WHERE llave_de_corrida = "
+        f"$m3q${llave}$m3q$;").strip()
+    assert cuenta_id
+    # Llega una senal NUEVA de esa misma cuenta y se intenta reabrir.
+    base.correr(
+        f"INSERT INTO motor3.senal (cuenta_id, fuente, tipo, fecha_senal, "
+        f"evaluada) VALUES ({cuenta_id}, 'correo_propio', 'necesidad_declarada', "
+        f"current_date, false);")
+    nueva = base.correr("SELECT max(id) FROM motor3.senal;").strip()
+    try:
+        base.correr(f"INSERT INTO motor3.tarjeta (cuenta_id, senal_id) "
+                    f"VALUES ({cuenta_id}, {nueva});")
+        reabrio = True
+        detalle = ""
+    except SinPostgres as e:
+        reabrio, detalle = False, str(e)
+    assert not reabrio, (
+        "la tarjeta muerta NO bloqueo el reciclaje: revisa la recomendacion de "
+        "metodo/tarjeta-que-nace-vencida.md antes de aplicarla")
+    assert "tarjeta_una_abierta_por_cuenta" in detalle
+
+
+def test_el_estado_propio_dejaria_libre_el_lugar(base):
+    """La otra mitad del argumento: con la vencida FUERA de `abierta`, el reciclaje
+    si puede reabrir. Se prueba con el estado que ya existe (`cerrada`) porque
+    `vencida_sin_trabajar` todavia NO esta en el esquema -- el diseno espera OK--.
+
+    Lo que esta prueba sostiene es que el indice es PARCIAL y por eso la solucion
+    propuesta funciona, no que el estado nuevo exista.
+    """
+    import cargar_piloto as cp
+    r = cp.cargar(base)
+    llave = r["tarjetas_vencidas_al_cargar"][0]["llave"]
+    cuenta_id = base.correr(
+        "SELECT id FROM motor3.cuenta WHERE llave_de_corrida = "
+        f"$m3q${llave}$m3q$;").strip()
+    base.correr(f"UPDATE motor3.tarjeta SET estado = 'cerrada', "
+                f"cerrada = now() WHERE cuenta_id = {cuenta_id};")
+    base.correr(f"INSERT INTO motor3.senal (cuenta_id, fuente, evaluada) "
+                f"VALUES ({cuenta_id}, 'correo_propio', false);")
+    nueva = base.correr("SELECT max(id) FROM motor3.senal;").strip()
+    base.correr(f"INSERT INTO motor3.tarjeta (cuenta_id, senal_id) "
+                f"VALUES ({cuenta_id}, {nueva});")
+    abiertas = base.correr(
+        f"SELECT count(*) FROM motor3.tarjeta WHERE cuenta_id = {cuenta_id} "
+        "AND estado = 'abierta';").strip()
+    assert abiertas == "1"
