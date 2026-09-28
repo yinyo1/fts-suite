@@ -151,3 +151,27 @@ def test_leeme_y_permisos(base_limpia):
                 raise AssertionError("DELETE debió fallar")
             except Exception as e:
                 assert "permission denied" in str(e)
+
+
+def test_copia_mal_nombrada_va_a_duplicados_y_conflicto_de_version(base_limpia):
+    E = escenario()
+    ago = pdf_estado(E["general_2026-08"])
+    z = zip_de({"JUL 26 FTS MX.pdf": ago, "AGO 26 FTS MX.pdf": ago})    # la mala primero en el ZIP
+    _, items, _ = correr({"General 2026.zip": z})
+    por = {i["nombre_original"]: i for i in items["General 2026.zip"]}
+    assert por["AGO 26 FTS MX.pdf"]["estado"] == "validado"             # se queda el bien nombrado
+    jul = por["JUL 26 FTS MX.pdf"]
+    assert jul["estado"] == "duplicado" and jul["accion"] == "duplicado" and jul["carpeta_destino"].endswith("/Duplicados")
+    assert "copia exacta" in jul["motivo"] and any("no julio" in a for a in jul["avisos"])
+    otro = E["general_2026-08"]
+    otro.movs[0].abono += 1
+    _, items2, _ = correr({"agosto otra version.pdf": pdf_estado(otro)})
+    x = items2["agosto otra version.pdf"][0]
+    assert x["estado"] == "rechazado" and "conflicto de versión" in x["motivo"] and x["accion"] == "rechazados"
+
+
+def test_mes_cerrado_se_pide_desde_el_dia_3():
+    from datetime import date
+    assert pipeline.periodo_limite(date(2026, 9, 29)) == "2026-08"
+    assert pipeline.periodo_limite(date(2026, 10, 2)) == "2026-08"
+    assert pipeline.periodo_limite(date(2026, 10, 3)) == "2026-09"

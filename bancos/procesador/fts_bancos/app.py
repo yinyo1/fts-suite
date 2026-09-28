@@ -132,14 +132,16 @@ def _procesar(contenido: bytes, nombre: str, meta: dict, corrida_id):
                  or i["avisos"]]
     raiz = out[0] if out else None
     rechazo_total = raiz is not None and raiz["accion"] == "rechazados"
+    duplicado_total = raiz is not None and raiz["accion"] == "duplicado" and not raiz["es_pieza_de_zip"]
     log.info("procesado %s → %s", enmascarar_texto(nombre), [(i["estado"], i["periodo"]) for i in out])
     subir = [i for i in out if i["accion"] in ("copiar", "otras") and i["carpeta_destino"] and i["nombre_destino"]]
     rechazar = [i for i in out if i["accion"] == "rechazados" and i["es_pieza_de_zip"]]
+    duplicados = [i for i in out if i["accion"] == "duplicado" and i["es_pieza_de_zip"]]
     entrada = {**meta, "nombre": nombre, "bytes": len(contenido)}
     return json.loads(json.dumps({"ok": True, "entrada": entrada, "sha256": sha256_bytes(contenido), "items": out, "subir": subir,
-                                  "rechazar_piezas": rechazar,
-                                  "mover_original_a": "Rechazados" if rechazo_total else "Procesados",
-                                  "motivo_original": raiz["motivo"] if rechazo_total else None,
+                                  "rechazar_piezas": rechazar, "duplicar_piezas": duplicados,
+                                  "mover_original_a": "Rechazados" if rechazo_total else ("Duplicados" if duplicado_total else "Procesados"),
+                                  "motivo_original": raiz["motivo"] if (rechazo_total or duplicado_total) else None,
                                   "instruccion_original": raiz["instruccion"] if rechazo_total else None,
                                   "requiere_correo": bool(problemas), "problemas": problemas}, default=str))
 
@@ -264,6 +266,12 @@ def base_xlsx():
     b = reportes.xlsx_bytes(filas)
     return Response(b, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     headers={"x-sha256": sha256_bytes(b), "x-filas": str(len(filas))})
+
+
+@app.get("/reporte-estados.html")
+def reporte_estados():
+    with conexion() as con:
+        return Response(reportes.html_estados(con, _hoy()), media_type="text/html; charset=utf-8")
 
 
 @app.get("/diccionario.md")

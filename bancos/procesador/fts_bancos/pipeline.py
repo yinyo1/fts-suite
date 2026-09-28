@@ -151,14 +151,24 @@ def _marcar(con, archivo_id, **campos):
         cur.execute(f"UPDATE bancos.archivos SET {cols} WHERE id=%s", (*campos.values(), archivo_id))
 
 
+def _aviso_nombre(nombre: str, periodo: str | None) -> list[str]:
+    pista = entrada.periodo_en_nombre(nombre)
+    if not (pista and periodo and pista != periodo):
+        return []
+    return [f"el archivo '{nombre}' es {NOMBRE_MES[int(periodo[5:7])]} {periodo[:4]}, no "
+            f"{NOMBRE_MES[int(pista[5:7])]} {pista[:4]}: el periodo sale de la pág. 1 ('Periodo DEL … AL …'), no del nombre"]
+
+
 def _item_desde_archivo_existente(con, fila, nombre, ruta_en_zip, catalogo: Catalogo) -> Item:
     """El mismo contenido ya se había recibido (duplicado exacto por sha256)."""
     cuenta = next((c for c in catalogo.cuentas if c.id == fila["cuenta_id"]), None)
+    de = fila["nombre_canonico"] or fila["nombre_original"]
     return Item(sha256=fila["sha256"], nombre_original=nombre, ruta_en_zip=ruta_en_zip, tipo=fila["tipo_detectado"] or "?",
-                estado="duplicado", accion="ninguna", periodo=fila["periodo"],
-                cuenta=_cuenta_dict(cuenta), archivo_id=fila["id"],
-                motivo=f"duplicado exacto (mismo sha256) de '{fila['nombre_canonico'] or fila['nombre_original']}', recibido {fila['recibido_at']:%Y-%m-%d}",
-                detalle={"estado_previo": fila["estado"]})
+                estado="duplicado", accion="duplicado", periodo=fila["periodo"],
+                carpeta_destino=f"{BUZON}/Duplicados", nombre_destino=nombre,
+                cuenta=_cuenta_dict(cuenta), archivo_id=fila["id"], avisos=_aviso_nombre(nombre, fila["periodo"]),
+                motivo=f"copia exacta (mismo sha256) de '{de}', recibido {fila['recibido_at']:%Y-%m-%d}",
+                detalle={"estado_previo": fila["estado"], "copia_de": de})
 
 
 def _cuenta_dict(c: Cuenta | None):
@@ -232,15 +242,31 @@ def _procesar(con, contenido, nombre, meta, corrida_id, catalogo, reglas, items,
             items.append(Item(sha, r["nombre"], r["nombre"], "desconocido", "rechazado", "ninguna", archivo_id=fila["id"],
                               motivo=f"pieza del ZIP '{nombre}' apartada: {r['motivo']}", es_pieza_de_zip=True,
                               instruccion="Extraigan ese archivo y súbanlo suelto; si no es un estado de cuenta, ignórenlo."))
-        for p in res.piezas:
-            if entrada.es_zip(p.contenido):
-                continue  # las piezas del ZIP interno ya vienen aplanadas en res.piezas
+        piezas = [p for p in res.piezas if not entrada.es_zip(p.contenido)]  # las de ZIPs internos ya vienen aplanadas
+        piezas.sort(key=lambda p: (_orden_pieza(p), p.ruta))
+        for p in piezas:
             _procesar(con, p.contenido, p.nombre, meta, corrida_id, catalogo, reglas, items, fila["id"], p.ruta)
         return
     item = _procesar_documento(con, fila, contenido, nombre, meta, corrida_id, catalogo, reglas)
     item.ruta_en_zip = ruta_en_zip
     item.es_pieza_de_zip = zip_origen_id is not None
     items.append(item)
+
+
+def _orden_pieza(p) -> int:
+    """0 si el nombre del archivo coincide con el periodo impreso, 1 si no o no se sabe.
+    Así, cuando un mismo mes viene dos veces en un ZIP, el que se queda como original es
+    el que está bien nombrado y la copia mal nombrada queda como duplicado."""
+    if not entrada.es_pdf(p.contenido):
+        return 1
+    pista = entrada.periodo_en_nombre(p.nombre)
+    if not pista:
+        return 1
+    try:
+        m = bbva.RE_PERIODO.search("\n".join(bbva.texto_paginas(p.contenido, max_paginas=1)))
+    except Exception:
+        return 1
+    return 0 if m and f"{int(m.group(6)):04d}-{int(m.group(5)):02d}" == pista else 1
 
 
 def _rechazo(con, fila, nombre, tipo, estado, motivo, instruccion, corrida_id, codigo, accion="rechazados", **extra):
@@ -311,12 +337,7 @@ def _procesar_documento(con, fila, contenido, nombre, meta, corrida_id, catalogo
                         corrida_id, e.codigo)
     cuenta = catalogo.identificar(est.texto_encabezado)
     periodo = est.periodo
-    pista = entrada.periodo_en_nombre(nombre)
-    avisos = list(est.avisos)
-    if pista and pista != periodo:
-        pa, pm = int(pista[:4]), int(pista[5:7])
-        avisos.append(f"el archivo '{nombre}' es {NOMBRE_MES[est.periodo_fin.month]} {est.periodo_fin.year}, no "
-                      f"{NOMBRE_MES[pm]} {pa}: el periodo sale de la pág. 1 ('Periodo DEL … AL …'), no del nombre")
+    avisos = list(est.avisos) + _aviso_nombre(nombre, periodo)
     if cuenta is None:
         rfc_ok = bool(rfc_fts()) and (est.rfc or "").upper() == rfc_fts()
         motivo = ("estado de una cuenta de FTS que no está registrada" if rfc_ok
@@ -384,13 +405,17 @@ def _procesar_documento(con, fila, contenido, nombre, meta, corrida_id, catalogo
                         "paginas": est.num_paginas, "huella": huella}}
     if previo:
         mismo = previo["huella"] == huella
-        motivo = (f"duplicado lógico: ya existe {cuenta.banco} {cuenta.alias} {cuenta.mask} {periodo} "
-                  f"('{previo['nombre_canonico']}'), " + ("mismo contenido" if mismo else "CON CONTENIDO DISTINTO"))
-        _marcar(con, fila["id"], estado="duplicado" if mismo else "sospechoso", tipo_detectado="bbva_estado",
+        if mismo:
+            motivo = f"copia del mismo estado que '{previo['nombre_canonico']}' (mismos movimientos, otro archivo)"
+        else:
+            motivo = (f"conflicto de versión: ya existe {cuenta.banco} {cuenta.alias} {cuenta.mask} {periodo} "
+                      f"('{previo['nombre_canonico']}') con movimientos distintos; no se sobrescribió")
+        _marcar(con, fila["id"], estado="duplicado" if mismo else "rechazado", tipo_detectado="bbva_estado",
                 cuenta_id=cuenta.id, periodo=periodo, motivo=motivo)
-        evento(con, corrida_id, "aviso" if mismo else "rechazo", "DUPLICADO_LOGICO", motivo, fila["sha256"])
-        return Item(fila["sha256"], nombre, None, "bbva_estado", "duplicado" if mismo else "sospechoso",
-                    "ninguna" if mismo else "rechazados", motivo=motivo,
+        evento(con, corrida_id, "aviso" if mismo else "rechazo", "DUPLICADO_LOGICO" if mismo else "CONFLICTO_VERSION", motivo, fila["sha256"])
+        return Item(fila["sha256"], nombre, None, "bbva_estado", "duplicado" if mismo else "rechazado",
+                    "duplicado" if mismo else "rechazados", motivo=motivo,
+                    carpeta_destino=f"{BUZON}/Duplicados" if mismo else None, nombre_destino=nombre if mismo else None,
                     instruccion=None if mismo else "Hay dos estados distintos para el mismo mes y cuenta. Confirmen con el banco cuál es el bueno.",
                     **base)
     if not (ok1 and ok2):
@@ -449,8 +474,11 @@ def emparejar_db(con, corrida_id, catalogo: Catalogo) -> int:
 
 
 def periodo_limite(hoy: date | None = None) -> str:
+    """Último mes que ya se puede exigir: el mes que cerró, pero sólo a partir del día 3
+    (antes del 3 el banco puede no haber emitido el estado)."""
     hoy = hoy or date.today()
-    return periodo_anterior(f"{hoy.year:04d}-{hoy.month:02d}")
+    ultimo = periodo_anterior(f"{hoy.year:04d}-{hoy.month:02d}")
+    return ultimo if hoy.day >= 3 else periodo_anterior(ultimo)
 
 
 def v3_y_huecos(con, corrida_id, catalogo: Catalogo, hoy: date | None = None) -> dict:

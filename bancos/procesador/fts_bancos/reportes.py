@@ -238,3 +238,70 @@ def leeme_md(con, generado: str) -> str:
 
 def huella_csv(filas: list[dict]) -> str:
     return sha256_bytes(csv_bytes(filas))
+
+
+def html_estados(con, generado: str) -> str:
+    """Reporte PRIVADO (OneDrive): totales por cuenta y mes con archivo y página de origen
+    de cada número, estado de V1/V2/V3, faltantes y traspasos. Nunca se publica en el repo."""
+    import html as H
+    e = H.escape
+    with con.cursor() as cur:
+        cur.execute("""SELECT c.banco, c.alias, c.moneda, c.numero_mask, x.periodo, x.saldo_inicial, x.saldo_final, x.total_cargos,
+                              x.num_cargos, x.total_abonos, x.num_abonos, x.comisiones, x.num_movimientos, x.num_saldos_impresos,
+                              x.v1_ok, x.v2_ok, x.paginas, a.nombre_canonico,
+                              (SELECT resultado FROM bancos.validaciones_v3 v WHERE v.estado_id=x.id ORDER BY v.id DESC LIMIT 1) AS v3,
+                              (SELECT diferencia FROM bancos.validaciones_v3 v WHERE v.estado_id=x.id ORDER BY v.id DESC LIMIT 1) AS v3_dif
+                       FROM bancos.estados x JOIN bancos.archivos a ON a.id=x.archivo_id JOIN bancos.cuentas c ON c.id=x.cuenta_id
+                       WHERE a.estado='validado' ORDER BY c.id, x.periodo""")
+        ests = cur.fetchall()
+        cur.execute("""SELECT c.banco, c.alias, c.numero_mask, h.periodo, h.motivo, h.monto_diferencia, h.detalle
+                       FROM bancos.huecos h JOIN bancos.cuentas c ON c.id=h.cuenta_id WHERE h.resuelto_en IS NULL ORDER BY c.id, h.periodo""")
+        huecos = cur.fetchall()
+        cur.execute("""SELECT c.alias AS origen, m.fecha_operacion, m.cargo, cv.subcategoria, cv.par_traspaso_id IS NOT NULL AS con_pareja,
+                              a.nombre_canonico, m.pagina
+                       FROM bancos.movimientos m JOIN bancos.clasificacion_vigente cv ON cv.movimiento_id=m.id
+                       JOIN bancos.cuentas c ON c.id=m.cuenta_id JOIN bancos.estados x ON x.id=m.estado_id JOIN bancos.archivos a ON a.id=x.archivo_id
+                       WHERE cv.es_traspaso_interno AND m.cargo>0 AND a.estado='validado' ORDER BY m.fecha_operacion""")
+        trasp = cur.fetchall()
+    css = """body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:24px;color:#1b1f23;background:#fff}h1{font-size:20px}h2{font-size:16px;margin-top:26px}
+table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #d0d7de;padding:4px 6px;text-align:left}td.n{text-align:right;font-variant-numeric:tabular-nums}
+th{background:#f3f4f6}.src{color:#57606a;font-size:11px}.ok{color:#1a7f37}.bad{color:#cf222e}.warn{color:#9a6700}
+@media (prefers-color-scheme:dark){body{background:#0d1117;color:#e6edf3}th{background:#161b22}th,td{border-color:#30363d}.src{color:#8b949e}}"""
+    def pg(p, k):
+        v = (p or {}).get(k)
+        return f"p. {v}" if v else ""
+    out = [f"<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+           f"<title>Estados de cuenta validados</title><style>{css}</style></head><body>",
+           f"<h1>Estados de cuenta validados · totales por cuenta y mes</h1><p class='src'>Generado {e(generado)} por fts-bancos. "
+           "Documento privado. Cada cifra indica el archivo y la página del PDF de donde sale.</p>",
+           "<table><tr><th>cuenta</th><th>mes</th><th>saldo inicial</th><th>cargos</th><th>abonos</th><th>saldo final</th><th>comisiones</th>"
+           "<th>mov.</th><th>saldos impresos</th><th>V1</th><th>V2</th><th>V3</th><th>archivo</th></tr>"]
+    for r in ests:
+        p = r["paginas"] or {}
+        v3 = r["v3"] or "?"
+        v3t = {"ok": "<span class='ok'>ok</span>", "primero": "<span class='ok'>primero</span>",
+               "hueco": "<span class='warn'>no aplica, hueco registrado</span>", "sin_anterior": "<span class='warn'>no aplica, hueco registrado</span>",
+               "descuadre": f"<span class='bad'>descuadre {fmt(r['v3_dif'])}</span>"}.get(v3, e(v3))
+        out.append(f"<tr><td>{e(r['banco'])} {e(r['alias'])} {e(r['moneda'])} {e(r['numero_mask'])}</td><td>{r['periodo']}</td>"
+                   f"<td class='n'>{fmt(r['saldo_inicial'])} <span class='src'>{pg(p,'saldo_inicial')}</span></td>"
+                   f"<td class='n'>{r['num_cargos']} · {fmt(r['total_cargos'])} <span class='src'>{pg(p,'resumen')}</span></td>"
+                   f"<td class='n'>{r['num_abonos']} · {fmt(r['total_abonos'])} <span class='src'>{pg(p,'resumen')}</span></td>"
+                   f"<td class='n'>{fmt(r['saldo_final'])} <span class='src'>{pg(p,'saldo_final')}</span></td>"
+                   f"<td class='n'>{fmt(r['comisiones'])}</td><td class='n'>{r['num_movimientos']}</td><td class='n'>{r['num_saldos_impresos']}</td>"
+                   f"<td>{'<span class=ok>ok</span>' if r['v1_ok'] else '<span class=bad>X</span>'}</td>"
+                   f"<td>{'<span class=ok>ok</span>' if r['v2_ok'] else '<span class=bad>X</span>'}</td><td>{v3t}</td>"
+                   f"<td class='src'>{e(r['nombre_canonico'] or '')}</td></tr>")
+    out.append("</table><h2>Faltantes abiertos</h2><table><tr><th>cuenta</th><th>mes</th><th>motivo</th><th>diferencia sin explicar</th></tr>")
+    for h in huecos:
+        out.append(f"<tr><td>{e(h['banco'])} {e(h['alias'])} {e(h['numero_mask'])}</td><td>{h['periodo']}</td><td>{e(h['motivo'])}</td>"
+                   f"<td class='n'>{fmt(h['monto_diferencia']) if h['monto_diferencia'] is not None else ''}</td></tr>")
+    tot_con = sum((t["cargo"] for t in trasp if t["con_pareja"]), 0)
+    tot_sin = sum((t["cargo"] for t in trasp if not t["con_pareja"]), 0)
+    out.append(f"</table><h2>Traspasos internos (salidas)</h2><p>Con pareja: {sum(1 for t in trasp if t['con_pareja'])} por {fmt(tot_con)} · "
+               f"sin pareja: {sum(1 for t in trasp if not t['con_pareja'])} por {fmt(tot_sin)}</p>"
+               "<table><tr><th>fecha</th><th>de</th><th>tipo</th><th>monto</th><th>pareja</th><th>archivo · página</th></tr>")
+    for t in trasp:
+        out.append(f"<tr><td>{t['fecha_operacion']}</td><td>{e(t['origen'])}</td><td>{e(t['subcategoria'] or '')}</td><td class='n'>{fmt(t['cargo'])}</td>"
+                   f"<td>{'sí' if t['con_pareja'] else '<span class=warn>no</span>'}</td><td class='src'>{e(t['nombre_canonico'] or '')} · p. {t['pagina']}</td></tr>")
+    out.append("</table></body></html>")
+    return "\n".join(out)
