@@ -351,6 +351,25 @@ conPg('anti-replay: el mismo nonce dos veces es REPLAY', () => {
   } finally { B.fin(); }
 });
 
+conPg('panel: RH ve la hoja subida y la consulta queda en la bitácora', () => {
+  const B = base();
+  try {
+    const folio = ingestar(B, tres(1)).casos_nuevos[0];
+    const b64 = Buffer.from('%PDF-1.4 demo ' + 'x'.repeat(2000)).toString('base64');
+    const sub = { accion: 'subir_hoja', actor: 'rh.demo', rol: 'editor', nonce: 'nonce_demo_ev_0000001', folio,
+                  nombre: 'hoja-demo.pdf', mime: 'application/pdf', contenido_b64: b64 };
+    assert.equal(B.j('SELECT retardos.panel_seguro(' + lit(sub) + ')').ok, true);
+    const caso = B.j('SELECT retardos.panel_seguro(' + lit({ accion: 'caso', actor: 'rh.demo', rol: 'lector', nonce: 'nonce_demo_ev_0000002', folio }) + ')');
+    const ev = caso.evidencias[0];
+    const r = B.j('SELECT retardos.panel_seguro(' + lit({ accion: 'evidencia', actor: 'rh.demo', rol: 'lector', nonce: 'nonce_demo_ev_0000003', folio, id: ev.id }) + ')');
+    assert.equal(r.ok, true);
+    assert.equal(r.contenido_b64.replace(/[^A-Za-z0-9+/=]/g, ''), b64);
+    const otro = B.j('SELECT retardos.panel_seguro(' + lit({ accion: 'evidencia', actor: 'rh.demo', rol: 'lector', nonce: 'nonce_demo_ev_0000004', folio, id: ev.id + 999 }) + ')');
+    assert.equal(otro.error, 'EVIDENCIA_INEXISTENTE');
+    assert.equal(B.q("SELECT count(*) FROM retardos.bitacora WHERE evento = 'evidencia_vista'"), '1');
+  } finally { B.fin(); }
+});
+
 conPg('Odoo caído o sin datos: la corrida lee 0 y el latido lo reporta', () => {
   const B = base();
   try {
