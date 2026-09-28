@@ -335,7 +335,24 @@ export const servidor = Bun.serve({
   },
 });
 
-console.log(`[arranque] ${VERSION} puerto=${PORT} config_faltante=${JSON.stringify(configOk())} token_evolution_len=${tokenEvolution().length}`);
+// Huellas cortas de los secretos (sha256, 8 hex): sirven para comprobar que un
+// secreto NO cambió entre despliegues sin revelar nada de él.
+const fp = (s: string) => sha256(s).slice(0, 8);
+console.log(`[arranque] ${VERSION} puerto=${PORT} config_faltante=${JSON.stringify(configOk())} token_evolution_len=${tokenEvolution().length} fp_hmac=${fp(SECRETO)} fp_pimienta=${fp(PIMIENTA)} fp_pw=${fp(env.MEMORIA_CAPTURA_PASSWORD || "")}`);
+
+// Verificador SCRAM-SHA-256 de la contraseña de memoria_captura (N5 en DECISIONES-NOCHE.md).
+// Es lo que Postgres guarda en pg_authid: un hash salado e iterado. Con él se
+// puede ejecutar ALTER ROLE … PASSWORD '<verificador>' sin que la contraseña
+// salga jamás de las variables de Railway. Sólo se imprime si se pide.
+if (env.MOSTRAR_VERIFICADOR === "1" && env.MEMORIA_CAPTURA_PASSWORD) {
+  const { pbkdf2Sync, randomBytes } = await import("node:crypto");
+  const sal = randomBytes(16), it = 4096;
+  const salted = pbkdf2Sync(env.MEMORIA_CAPTURA_PASSWORD.normalize("NFKC"), sal, it, 32, "sha256");
+  const clientKey = createHmac("sha256", salted).update("Client Key").digest();
+  const storedKey = createHash("sha256").update(clientKey).digest();
+  const serverKey = createHmac("sha256", salted).update("Server Key").digest();
+  console.log(`[verificador] memoria_captura SCRAM-SHA-256$${it}:${sal.toString("base64")}$${storedKey.toString("base64")}:${serverKey.toString("base64")}`);
+}
 
 if (env.AUTOPRUEBA === "1") {
   const { autoprueba } = await import("./autoprueba.ts");
