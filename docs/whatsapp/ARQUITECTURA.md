@@ -1153,3 +1153,23 @@ supuestos de 10.1 y se recalcula 10.2 antes de abrir todos los grupos.
 | **D9** | Carpeta de migraciones | `db/migrations/memoria/` (fuera de las carpetas de este frente) | Autorizar su creación |
 | **D10** | Transcripción / visión | Proveedor para audio y modelo para describir imágenes | Decidir con el costo medido en el piloto |
 | **D11** | Visibilidad "publicable" | Sólo por propuesta+decisión (como está) · marca directa por un usuario con `memoria:admin` | Propuesta+decisión (queda el rastro de quién aprobó) |
+
+---
+
+## 12. Cómo quedó construido (sesión nocturna del 28-sep) — diferencias contra este documento
+
+Lo de arriba sigue siendo el diseño; esto es lo que se construyó y en qué difiere.
+
+| tema | diseño (arriba) | construido |
+|---|---|---|
+| Migraciones | `010_memoria_*` con numeración global | **`memoria_0001..0005`, numeración por módulo** (D9) con runner propio `memoria/db-migrate` (`POVXN65rpqCUuotM`) que además rechaza `$`+dígito |
+| Roles | captura, motor, app, lector, mantenimiento | **captura, motor, admin, lector, pasarela** (`memoria_admin` = app + mantenimiento; `memoria_pasarela` = dueño de la base de Evolution en el esquema `memoria_pasarela`) |
+| Acceso de los workflows | credencial por rol | credencial `fts_admin` + **funciones `SECURITY DEFINER` cuyo dueño es el rol mínimo** (`memoria.api_*` → `memoria_admin`, `memoria.correr_motor` → `memoria_motor`), N12 |
+| Receptor | servicio pequeño | **Railway Function** (Bun) que es un **cargador**: baja `whatsapp/receptor/dist/receptor.js` por commit y verifica su sha256 (N6) |
+| Webhook de Evolution | HMAC | Evolution no firma → **token derivado del secreto en la ruta + sólo red privada** (N4). Lo demás entra por `/v1/evento` con HMAC (#123) |
+| Autor | `whatsapp:<hash del teléfono>` | `whatsapp:<HMAC(pimienta, jid)[0:32]>` — con **pimienta secreta**, porque un sha256 del teléfono se revierte por fuerza bruta (10 dígitos) |
+| Video | caliente comprimido | original a `frio/` desde el día uno + miniatura de WhatsApp a `caliente/`; **la versión comprimida queda pendiente** (requiere ffmpeg, N9) |
+| Respaldo | cron `memoria-respaldo` | `memoria-mantenimiento` (mismo servicio hace contraseñas, particiones, `pg_dump`, prueba de restauración e instancia de la pasarela). Preparado, sin aplicar (N5) |
+| Motores | workflows con lógica | **lógica en funciones SQL** (`memoria.motor_*_simulado`, `motor_resumen_so`), workflow = una llamada (N13). Modo `simulado`; `real` bloqueado hasta D10 |
+| Pruebas | — | `memoria.prueba_motores()`: batería **en vivo que se revierte sola** (sub-transacción) y deja sólo el resultado en `memoria.prueba_corrida` |
+| `v_evento_publicable` | `payload @> {evento_seqs:[seq]}` | igual, leyendo `coalesce(payload_final, payload)` para respetar la corrección humana |

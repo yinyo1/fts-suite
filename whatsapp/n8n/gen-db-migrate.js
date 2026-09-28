@@ -10,6 +10,10 @@ const ent = $('Code - Validar entrada').first().json;
 const contenido = String($('HTTP - Bajar .sql del repo').first().json.data || '');
 if (contenido.length < 20) return [{ json: { aplicar: false, error: 'ARCHIVO_VACIO', mensaje: 'El .sql llegó vacío. ¿SHA y ruta correctos?' } }];
 const sha256 = sha256Hex(contenido);
+// El nodo Postgres de n8n lee '$' + dígito como parámetro aunque no haya parámetros
+// (ejecución 116353: 'Variable $1 out of range'). Se rechaza antes de tocar la base.
+const dolar = contenido.match(/[$][0-9]/);
+if (dolar) return [{ json: { aplicar: false, error: 'DOLAR_DIGITO', version: ent.version, mensaje: 'El .sql trae ' + dolar[0] + ' literal: el nodo Postgres lo toma como parametro. Escribelo como x24 dentro de un literal E o reescribe el texto.' } }];
 if (ent.sha256_esperado && ent.sha256_esperado !== sha256) return [{ json: { aplicar: false, error: 'SHA256_NO_CUADRA', sha256, esperado: ent.sha256_esperado } }];
 const filas = $('Postgres - Estado bitacora').all().map(i => i.json).filter(f => f && f.version);
 const ya = filas.find(f => String(f.version) === ent.version);

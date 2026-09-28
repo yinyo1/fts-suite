@@ -291,3 +291,29 @@ entrada en `shared/modules-registry.js` + tarjeta en `index.html` + scope en `su
    capturado por este frente toca el repo.
 9. **Numeración de migraciones en disputa** (prospector 010–014 fuera de `main`): el número se
    asigna al aplicar.
+
+---
+
+## 8. Addenda de la sesión nocturna (28-sep-2026, 01:10–02:30 CST) — ahora CON acceso a n8n y Railway
+
+**[MEDIDO]** en vivo con los MCP de n8n y de Railway.
+
+### 8.1 n8n
+| workflow | id | estado | hallazgo |
+|---|---|---|---|
+| `comercial/db-migrate` | `4hyzXjkr31h8DPPS` | inactivo, `availableInMCP:true` | Aplica por SHA fijo y desde cualquier commit (incluso de una rama): el `.sql` se baja de `api.github.com/…/contents/db/migrations/<archivo>?ref=<sha>`. **Pero** exige versión de 3 dígitos (`NOMBRE_INVALIDO` para `memoria_0001`) y el archivo/SHA viven en un nodo `Set` (hay que editar el workflow para cada corrida). Su config quedó apuntando a `prospeccion/010_prospeccion.sql` del repo `fts-mcp-odoo`, `dry_run:true`. **No se tocó**: se creó `memoria/db-migrate` (N1) |
+| `auth/verificar-scope` | `QokDKd6rCqSNsP4u` | inactivo | Sub-workflow `passthrough` que recibe `{token, scope}` y devuelve `{ok, error, clase, actor, …}`; falla cerrado; el secreto vive en un solo `Set`. Se reutiliza desde `memoria/canales` sin tocarlo. Probado: token inválido → `FIRMA_INVALIDA` → 401 (ejecución `116370`) |
+| `ops/alerta-errores (B1 #269)` | `Ogo64mR0v8CP1JnM` | **sin publicar** | Workflow de errores (se dispara cuando otro falla). La memoria se conectaría como `errorWorkflow` de un `memoria/senales` que falla a propósito cuando hay alertas (CONTRATOS §2.2); requiere que B1 se publique |
+| workflows que tocan `fts-suite-db` | — | — | Todos usan la credencial `fts-suite-db · fts_admin` (`Zu4Y9UuzGwCBN8lH`) o `· comercial_app` (`1bfO8GLZoWdMHIf5`). No hay credenciales por rol de `memoria` (N12) |
+
+🔎 **Hallazgo nuevo:** el nodo Postgres de n8n interpreta `$1`, `$2`… **dentro del texto del SQL aunque no haya parámetros** (ejecución `116353`: `Variable $1 out of range. Parameters array length: 0`, provocado por `$1,234.50` dentro de una cadena). Es una causa **medida** en el mismo tramo donde CLAUDE.md §20 #10 dejó la del `$$` «sin identificar». `memoria/db-migrate` ya rechaza cualquier `$` + dígito antes de tocar la base.
+
+### 8.2 Railway
+| pieza | estado medido |
+|---|---|
+| `fts-suite-db` | igual que en §1; sin cambios de config. Ahora con esquemas `memoria` y `memoria_pasarela` (migraciones `memoria_0001..0005`) |
+| `Primary` (n8n) | memoria 7 días: promedio 0.77 GB, máx. 1.21 GB de 8 GB |
+| `Worker` | sigue sin desplegar. **Le faltan variables que `Primary` sí tiene** (`SUITE_JWT_SECRET`, `ODOO_*`, `FINANZAS_*`, `N8N_RUNNERS_DISABLED`, `N8N_BLOCK_ENV_ACCESS_IN_NODE`…): encender el modo cola hoy rompería todo workflow que lea `$env` (CAPACIDAD-N8N §1.1) |
+| Base de n8n | 3.61 GB / 5 GB, +0.15 GB en 7 días |
+| Nuevos esta noche | buckets `memoria-archivos` y `memoria-respaldos` (ams); Function `memoria-receptor` (sin dominio). **Preparados sin aplicar**: `memoria-pasarela` y `memoria-mantenimiento` (N5) |
+| Buckets de Railway | sólo red pública (documentado por Railway), sin versionado, sin object lock, sin lifecycle — el ciclo de vida lo hace el job de retención (§5 de ARQUITECTURA) |
