@@ -11,7 +11,7 @@
  * ═══════════════════════════════════════════════════════════════════════════ */
 'use strict';
 
-const VERSION = 'er-2026-v0.1';
+const VERSION = 'er-2026-v0.2';
 const MESES = ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08'];
 const MES_VENTAS_SIN_BANCO = '2026-09';
 const NOMBRE_MES = { '01': 'ene', '02': 'feb', '03': 'mar', '04': 'abr', '05': 'may', '06': 'jun', '07': 'jul', '08': 'ago', '09': 'sep' };
@@ -195,9 +195,12 @@ function calcular(insumos, opciones) {
 
   // devoluciones SPEI: un abono "DEVUELTO" regresa un cargo del mismo monto en los 5 días previos
   const devueltos = new Set(), abonoDevolucion = new Set();
+  const tokDev = t => { const x = norm(t).match(/SPEI (?:ENVIADO|DEVUELTO)\s*([A-Z]+)[^0-9]*(\d{7})/); return x ? x[1] + '|' + x[2] : null; };
   for (const a of banco.filter(x => x.abono_nat > 0 && (/DEVUELTO/i.test(x.descripcion) || x.codigo === 'T22'))) {
     const c = banco.filter(x => x.alias === a.alias && x.cargo_nat === a.abono_nat && !devueltos.has(x.id) && diasEntre(a.fecha, x.fecha) >= 0 && diasEntre(a.fecha, x.fecha) <= VENTANA_DEVOLUCION_DIAS);
-    if (c.length) { const x = ordenar(c.map(v => ({ v, dd: diasEntre(a.fecha, v.fecha), id: v.id })), 'dd', 'id')[0].v; devueltos.add(x.id); abonoDevolucion.add(a.id); }
+    // prefiere el cargo con el mismo banco destino y la misma referencia de 7 dígitos (el reenvío posterior no la comparte)
+    const ta = tokDev(a.descripcion);
+    if (c.length) { const x = ordenar(c.map(v => ({ v, tok: ta && tokDev(v.descripcion) === ta ? 0 : 1, dd: diasEntre(a.fecha, v.fecha), id: v.id })), 'tok', 'dd', 'id')[0].v; devueltos.add(x.id); abonoDevolucion.add(a.id); }
   }
 
   const items = [];           // todo lo que entra o se excluye, con su destino y rastreo
@@ -443,21 +446,21 @@ function armarHTML(z) {
   const { A, B, puente, cuadre, items, ventas, cobertura, supuestos, decisiones, porClasificar, revisar, COLS, nombreMes } = z;
   const cols = COLS.concat(['acum']);
   const celda = (l, p) => l.es_pct ? (l.vals[p] === null ? '—' : (l.vals[p] / 100).toFixed(1) + '%') : fmt(l.vals[p]);
-  const detalleItems = lista => '<table class="det"><tr><th>fecha</th><th>cuenta</th><th>concepto</th><th>proveedor / CFDI</th><th class="n">bruto</th><th class="n">sin IVA</th><th>origen</th></tr>' +
+  const detalleItems = lista => '<div class="scroll"><table class="det"><tr><th>fecha</th><th>cuenta</th><th>concepto</th><th>proveedor / CFDI</th><th class="n">bruto</th><th class="n">sin IVA</th><th>origen</th></tr>' +
     lista.map(i => '<tr><td>' + esc(i.fecha) + '</td><td>' + esc(i.cuenta) + (i.moneda === 'USD' ? ' (USD ' + fmt(i.monto_nat) + ' × ' + i.tc + ')' : '') + '</td><td>' + esc(i.concepto) + '</td><td>' +
       esc(i.proveedor || '') + (i.cfdi ? '<br><span class="mut">' + esc(i.cfdi.ref) + '</span>' : '') + '</td><td class="n">' + fmt(i.bruto) + '</td><td class="n">' + fmt(i.neto) + '</td><td class="mut">' +
-      (i.fuente === 'banco' ? esc(i.archivo) + ' · p. ' + esc(i.pagina) + '<br>sha256 ' + esc(String(i.sha256 || '').slice(0, 16)) + '… · ' + esc(i.id) : esc(i.id)) + '</td></tr>').join('') + '</table>';
-  const detalleVentas = lista => '<table class="det"><tr><th>orden</th><th>fecha</th><th>cliente</th><th class="n">subtotal</th><th class="n">pesos</th><th>origen</th></tr>' +
+      (i.fuente === 'banco' ? esc(i.archivo) + ' · p. ' + esc(i.pagina) + '<br>sha256 ' + esc(String(i.sha256 || '').slice(0, 16)) + '… · ' + esc(i.id) : esc(i.id)) + '</td></tr>').join('') + '</table></div>';
+  const detalleVentas = lista => '<div class="scroll"><table class="det"><tr><th>orden</th><th>fecha</th><th>cliente</th><th class="n">subtotal</th><th class="n">pesos</th><th>origen</th></tr>' +
     lista.map(v => '<tr><td>' + esc(v.name) + '</td><td>' + esc(v.fecha) + '</td><td>' + esc(v.cliente) + '</td><td class="n">' + esc(v.moneda) + ' ' + fmt(v.monto_nat) + (v.tc ? ' × ' + v.tc : '') +
-      '</td><td class="n">' + fmt(v.mxn) + '</td><td class="mut">sale.order ' + esc(v.id) + '</td></tr>').join('') + '</table>';
-  const tablaVista = (V, titulo, id) => {
+      '</td><td class="n">' + fmt(v.mxn) + '</td><td class="mut">sale.order ' + esc(v.id) + '</td></tr>').join('') + '</table></div>';
+  const tablaVista = (V, titulo, id, conDetalle) => {
     let h = '<h2 id="' + id + '">' + esc(titulo) + '</h2><div class="scroll"><table class="er"><thead><tr><th>Concepto</th>' + cols.map(p => '<th class="n' + (p === 'acum' ? ' acum' : '') + (p === '2026-09' ? ' sep' : '') + (cobertura[p] && cobertura[p].estado === 'INCOMPLETO' ? ' inc' : '') + '">' + esc(nombreMes(p)) +
       (cobertura[p] && cobertura[p].estado === 'INCOMPLETO' ? '<br><span class="tag">INCOMPLETO</span>' : '') + (p === '2026-09' ? '<br><span class="tag">sin banco hasta el 1-oct</span>' : '') + '</th>').join('') + '</tr></thead><tbody>';
     for (const l of V.lineas) {
       h += '<tr class="lv' + l.nivel + '"><td>' + esc(l.etiqueta) + (l.fuente ? '<div class="src">' + esc(l.fuente) + ' · ' + l.n + ' mov.</div>' : '') + '</td>' + cols.map(p => '<td class="n' + (p === 'acum' ? ' acum' : '') + (l.vals[p] < 0 && !l.es_pct ? ' neg' : '') + '">' + celda(l, p) + '</td>').join('') + '</tr>';
-      if (l.pred || l.ventas) {
+      if (conDetalle && (l.pred || l.ventas)) {
         const lista = l.pred ? ordenar(items.filter(l.pred), 'fecha', 'id') : ventas.filter(l.ventas);
-        if (lista.length) h += '<tr class="dt"><td colspan="' + (cols.length + 1) + '"><details><summary>Ver ' + lista.length + ' ' + (l.pred ? 'movimientos' : 'órdenes') + '</summary>' + (l.pred ? detalleItems(lista) : detalleVentas(lista)) + '</details></td></tr>';
+        if (lista.length) h += '<tr class="dt"><td colspan="' + (cols.length + 1) + '"><details><summary>Ver detalle (' + lista.length + ' ' + (l.pred ? 'mov.' : 'órdenes') + ')</summary>' + (l.pred ? detalleItems(lista) : detalleVentas(lista)) + '</details></td></tr>';
       }
     }
     return h + '</tbody></table></div>';
@@ -468,16 +471,16 @@ function armarHTML(z) {
   hp += '<tr class="lv1 ' + (z.cuadraTodo ? 'ok' : 'bad') + '"><td>Diferencia contra costo + gastos del estado</td>' + mesesP.map(p => '<td class="n">' + fmt(cuadre[p]) + '</td>').join('') + '</tr></tbody></table></div>' +
     '<p class="' + (z.cuadraTodo ? 'ok' : 'bad') + '">' + (z.cuadraTodo ? 'El puente cuadra al centavo en todos los meses y en el acumulado.' : 'El puente NO cuadra; ver diferencias.') + ' ' +
     (z.resumenCuadra ? 'Los cargos de cada estado leído suman exactamente el total de cargos del resumen del PDF (V1).' : 'Hay cuentas cuyo total de cargos no coincide con el resumen del PDF.') + '</p>';
-  const cob = '<table class="det"><tr><th>mes</th><th>estado</th><th>nota</th></tr>' + Object.keys(cobertura).map(p => '<tr><td>' + esc(nombreMes(p)) + '</td><td class="' + (cobertura[p].estado === 'INCOMPLETO' ? 'bad' : 'ok') + '">' + esc(cobertura[p].estado) + '</td><td>' + esc(cobertura[p].nota || 'General, Nómina y USD validados') + '</td></tr>').join('') + '</table>';
+  const cob = '<div class="scroll"><table class="det"><tr><th>mes</th><th>estado</th><th>nota</th></tr>' + Object.keys(cobertura).map(p => '<tr><td>' + esc(nombreMes(p)) + '</td><td class="' + (cobertura[p].estado === 'INCOMPLETO' ? 'bad' : 'ok') + '">' + esc(cobertura[p].estado) + '</td><td>' + esc(cobertura[p].nota || 'General, Nómina y USD validados') + '</td></tr>').join('') + '</table></div>';
   const excl = ['excl_cubierto_fondeo_nomina', 'excl_traspaso', 'excl_fondeo_payana', 'excl_fondeo_jeeves', 'excl_financiamiento', 'excl_devolucion', 'info_entrada_financiamiento', 'info_devolucion_recibida', 'info_fondeo_jeeves_odoo'];
   const hExcl = excl.map(d => { const l = ordenar(items.filter(i => i.destino === d), 'fecha', 'id'); return '<details><summary>' + esc(d) + ' · ' + l.length + ' mov. · ' + fmt(l.reduce((s, i) => s + i.bruto, 0)) + '</summary>' + detalleItems(l) + '</details>'; }).join('');
   const hPc = '<p>' + porClasificar.length + ' pagos de Payana por clasificar, ' + fmt(porClasificar.reduce((s, i) => s + i.neto, 0)) + ' (dentro de costo).</p>' + detalleItems(porClasificar);
   const hRev = '<p>Los 40 egresos más grandes que quedaron en costo sin CFDI ligado (incluye Monex, vehículos y seguros).</p>' + detalleItems(revisar);
   const css = ':root{--bg:#fff;--fg:#1a1a1a;--mut:#666;--line:#e3e3e3;--head:#f5f5f3;--acc:#0f5132;--bad:#b42318;--ok:#1e7b34;--sep:#fff7e0}' +
     '@media (prefers-color-scheme:dark){:root{--bg:#161616;--fg:#eee;--mut:#9a9a9a;--line:#333;--head:#222;--acc:#7dd3a8;--bad:#ff8a80;--ok:#7dd3a8;--sep:#2b2616}}' +
-    'body{background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,Segoe UI,Arial,sans-serif;margin:0;padding:24px 16px;max-width:1600px}' +
+    'body{background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,Segoe UI,Arial,sans-serif;margin:0;padding:24px 16px;max-width:1600px;overflow-wrap:anywhere}' +
     'h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}.mut,.src{color:var(--mut);font-size:12px}' +
-    '.scroll{overflow-x:auto}table{border-collapse:collapse}table.er{min-width:100%;font-variant-numeric:tabular-nums}th,td{border-bottom:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}' +
+    '.scroll{overflow-x:auto;max-width:100%}table.er tr:not(.dt) td:first-child,table.er th:first-child{position:sticky;left:0;background:var(--bg);z-index:1;min-width:190px;max-width:260px}table.er th:first-child{background:var(--head);z-index:2}table.det td,table.det th{overflow-wrap:normal}table{border-collapse:collapse}table.er{min-width:100%;font-variant-numeric:tabular-nums}th,td{border-bottom:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}' +
     'th{background:var(--head);font-weight:600;position:sticky;top:0}.n{text-align:right;white-space:nowrap}.acum{font-weight:600;background:var(--head)}.sep{background:var(--sep)}' +
     'tr.lv1 td{font-weight:700}tr.lv3 td{color:var(--mut);font-style:italic}tr.dt td{padding:0 8px 6px;border:0}.neg{color:var(--bad)}.tag{font-size:10px;font-weight:600;color:var(--bad)}' +
     '.ok{color:var(--ok)}.bad{color:var(--bad)}table.det{font-size:12px;margin:6px 0 10px}summary{cursor:pointer;color:var(--acc);font-size:12px}nav a{margin-right:14px;color:var(--acc)}';
@@ -486,9 +489,9 @@ function armarHTML(z) {
     'Huella de resultados ' + esc(z.huella) + ' · huella de insumos ' + esc(z.huellaInsumos.slice(0, 16)) + '… · calcular.js ' + esc(VERSION) + (z.opciones.sha ? ' @ ' + esc(String(z.opciones.sha).slice(0, 7)) : '') + (z.opciones.generado_at ? ' · generado ' + esc(z.opciones.generado_at) + ' UTC' : '') + '</div>' +
     '<nav style="margin:12px 0"><a href="#vA">Vista A</a><a href="#vB">Vista B</a><a href="#puente">Puente</a><a href="#cob">Meses</a><a href="#sup">Supuestos</a><a href="#pc">Por clasificar</a><a href="#excl">Excluido</a><a href="#dec">Decisiones</a></nav>' +
     '<p>Costo sin CFDI ligado: <b>' + pct(z.sinC, z.base) + '</b> del costo sin nómina (' + pct(z.sinC, z.costoTotalA) + ' del costo total).</p>' +
-    tablaVista(A, 'Vista A · reglas de Esteban con ajustes A a F', 'vA') + tablaVista(B, 'Vista B · la misma, sin Conmet (ni su venta ni sus pagos)', 'vB') + hp +
+    tablaVista(A, 'Vista A · reglas de Esteban con ajustes A a F', 'vA', true) + tablaVista(B, 'Vista B · la misma, sin Conmet (ni su venta ni sus pagos)', 'vB', false) + '<p class="mut">El detalle de cada renglón de la Vista B es el mismo de la Vista A sin los movimientos de Conmet.</p>' + hp +
     '<h2 id="cob">Meses y cobertura bancaria</h2>' + cob +
-    '<h2 id="sup">Supuestos</h2><table class="det">' + supuestos.map(s => '<tr><td>' + esc(s[0]) + '</td><td><b>' + esc(s[1]) + '</b></td><td>' + esc(s[2]) + '</td></tr>').join('') + '</table>' +
+    '<h2 id="sup">Supuestos</h2><div class="scroll"><table class="det">' + supuestos.map(s => '<tr><td>' + esc(s[0]) + '</td><td><b>' + esc(s[1]) + '</b></td><td>' + esc(s[2]) + '</td></tr>').join('') + '</table></div>' +
     '<h2 id="pc">Por clasificar</h2>' + hPc + '<h2>Revisar (costo sin CFDI)</h2>' + hRev +
     '<h2 id="excl">Excluido del resultado (renglones informativos)</h2>' + hExcl +
     '<h2 id="dec">Decisiones pendientes para Esteban</h2><ol>' + decisiones.map(d => '<li>' + esc(d) + '</li>').join('') + '</ol>' +
