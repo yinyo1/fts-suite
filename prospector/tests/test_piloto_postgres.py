@@ -113,11 +113,18 @@ def _cluster(puerto="5441", d="/tmp/pgm3-piloto-test"):
                              f"-p {puerto}\" -l {d}/log -w start"],
                       capture_output=True).returncode:
         return None
-    return Base(socket=f"{d}/run", puerto=puerto)
+    b = Base(socket=f"{d}/run", puerto=puerto)
+    # SE COMPRUEBA QUE CONTESTE, no solo que `pg_ctl` haya devuelto cero.
+    # Hizo falta: el cluster arrancaba, cuatro pruebas pasaban y la quinta fallaba
+    # con "No such file or directory" en el socket. En un contenedor un Postgres
+    # desechable se puede reapear a media corrida, y una prueba que falla por eso
+    # es una prueba FLOJA -- y una floja en esta suite es peor que ninguna, porque
+    # entrena a ignorar el rojo--.
+    return b if b.vive() else None
 
 
 @pytest.fixture(scope="module")
-def base():
+def _cluster_del_modulo():
     b = _cluster()
     if b is None:
         pytest.skip("no hay un Postgres que se pueda levantar en este entorno")
@@ -125,6 +132,19 @@ def base():
     subprocess.run(["su", "postgres", "-c",
                     "pg_ctl -D /tmp/pgm3-piloto-test/data stop"],
                    capture_output=True)
+
+
+@pytest.fixture
+def base(_cluster_del_modulo):
+    """El cluster, comprobando que siga vivo ANTES de cada prueba.
+
+    Si se murio a media corrida la prueba se SALTA, no falla: lo que estas pruebas
+    verifican son las reglas del esquema, y un cluster reapeado no dice nada sobre
+    ellas. Fallar ahi seria rojo que no significa nada.
+    """
+    if not _cluster_del_modulo.vive():
+        pytest.skip("el Postgres de prueba dejo de contestar a media corrida")
+    return _cluster_del_modulo
 
 
 def test_el_piloto_carga_y_sus_reglas_rechazan(base):

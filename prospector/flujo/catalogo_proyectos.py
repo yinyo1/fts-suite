@@ -245,16 +245,48 @@ NO_ES_PROYECTO = (
 # Magnitudes: lo que dice QUE TAMANO fue el proyecto. Es la tercera capa del
 # match del evaluador, y la que corta por ARRIBA: una senal de 1,500 TR no es
 # mejor que una de 200, es de otro tamano de empresa y otro competidor.
+# D6 de #335: el DINERO y los MW tambien son magnitudes, y no se leian.
+#
+# Medido en #330: de las nueve cuentas con senal documentada, SEIS traen su monto
+# escrito -- 60 MDD, 205 MDD, 633 MDP, 2000 MDD, 500 MDP-- y `magnitudes()` devolvia
+# lista vacia en las seis. El factor `capacidad` valia 0.0 en las nueve. El radar
+# estaba ciego al tamano de la inversion, que es lo UNICO que un anuncio de prensa
+# dice con precision.
+#
+# Y `MW` faltaba tambien, que es peor de lo que parece: el propio
+# `modulos-de-contactos.md` usa "cogeneracion de 19.2 MW" como el ejemplo de la
+# senal que produce el titulo *jefe de calderas*. La unidad que ilustra el modulo
+# no se podia leer.
+#
+# EL LIMITE DE 5 DIGITOS SE SUBE A 7 para el dinero. "2000 MDD" cabia, pero un
+# monto escrito sin abreviar -- "1,200,000,000 de pesos"-- no, y ese es el mismo
+# error de fronteras que #300 arreglo en los puestos.
 _MAGNITUD = re.compile(
-    r"(\d{1,5}(?:[.,]\d{1,2})?)\s*"
-    r"(tr\b|ton(?:elada)?s?\s+de\s+refrigeracion|hp\b|kw\b|kva\b|"
-    r"m3\s*/\s*h|m3\b|gpm\b|lpm\b|bhp\b|kg\s*/\s*h|lb\s*/\s*h)", re.I)
+    r"(\d{1,7}(?:[.,]\d{1,2})?)\s*"
+    r"(tr\b|ton(?:elada)?s?\s+de\s+refrigeracion|hp\b|kva\b|"
+    r"m3\s*/\s*h|m3\b|gpm\b|lpm\b|bhp\b|kg\s*/\s*h|lb\s*/\s*h|"
+    # dinero. El orden importa: `mdd` antes de `mdp` no, pero `musd` antes de `mw`
+    # si -- si no, "MUSD" pegaria como "M" y sobraria "USD"--. Y `mw` va DESPUES de
+    # `kw` por la misma razon de fronteras.
+    r"musd\b|mdd\b|mdp\b|"
+    r"millones\s+de\s+dolares\b|millones\s+de\s+pesos\b|mmusd\b|"
+    r"kw\b|mw\b)", re.I)
 
 _UNIDAD_CANONICA = {
-    "tr": "TR", "hp": "HP", "kw": "kW", "kva": "kVA",
+    "tr": "TR", "hp": "HP", "kw": "kW", "kva": "kVA", "mw": "MW",
     "m3/h": "m3/h", "m3": "m3", "gpm": "GPM", "lpm": "LPM", "bhp": "BHP",
     "kg/h": "kg/h", "lb/h": "lb/h",
+    # DINERO. Se canoniza a dos unidades y no a una: convertir a una sola aqui
+    # exigiria un tipo de cambio, y este modulo no es donde vive esa decision.
+    # Quien compare las dos monedas lo hace donde el tipo de cambio este declarado.
+    "mdd": "MDD", "musd": "MDD", "mmusd": "MDD",
+    "millonesdedolares": "MDD",
+    "mdp": "MDP", "millonesdepesos": "MDP",
 }
+
+#: Las unidades que son DINERO. El evaluador las trata distinto de una capacidad:
+#: un monto de inversion es el capex DEL CLIENTE, no el ticket de FTS.
+UNIDADES_DE_DINERO = ("MDD", "MDP")
 
 
 def _canon(u: str) -> str:

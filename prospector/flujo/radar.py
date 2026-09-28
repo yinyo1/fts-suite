@@ -29,7 +29,8 @@ import json
 import os
 from datetime import date, datetime
 
-from .catalogo_proyectos import plano, proceso_de, magnitudes
+from .catalogo_proyectos import (UNIDADES_DE_DINERO, magnitudes, plano,
+                                 proceso_de)
 
 RUTA_CATALOGO = os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "datos", "catalogo-de-proyectos-fts.json")
@@ -436,6 +437,108 @@ def puntos_de_proceso(texto: str, catalogo: dict) -> tuple[float, str]:
             f"proceso '{proc}' con {n} proyecto(s) en el catalogo ({tipos})")
 
 
+# ===================================================== D6 · el tamano del dinero
+# APROBADA en #335 con la escala derivada del catalogo y corte por arriba.
+#
+# QUE SE PUEDE DERIVAR Y QUE NO, y la distincion es la mitad de esta decision.
+#
+# SE DERIVA del catalogo: el ticket de FTS. Los 154 proyectos reales de
+# `catalogo-de-proyectos-fts.json` traen `monto`, y su distribucion es un hecho
+# medido: minimo ~192 mil, mediana ~408 mil, p90 ~2.1 millones, maximo ~13.5
+# millones. Eso es lo que FTS factura por proyecto.
+#
+# NO SE PUEDE DERIVAR de ningun archivo de este repo: **que fraccion del capex de
+# un cliente acaba siendo un proyecto de FTS.** Un anuncio de "205 MDD" es la
+# inversion DEL CLIENTE, no el ticket de FTS, y la razon entre las dos no esta
+# registrada en ninguna parte. Comparar 205 MDD contra la distribucion de tickets
+# de FTS seria un error de categoria: son dos cosas distintas medidas en la misma
+# unidad.
+#
+# Por eso la banda tiene DOS ANCLAJES DECLARADOS POR ESTEBAN en la propia D6, y
+# quedan escritos como declarados y no como derivados:
+#
+#   * **60 MDD de Coficab Durango es "exactamente lo que FTS si toma".**
+#   * **2,000 MDD de Bimbo "es un programa nacional de varios anos".**
+#   * y el corte: **arriba de ~500 MDD, programa corporativo.**
+#
+# EL PISO SI SE DERIVA, y es la unica frontera que sale del catalogo sin
+# suposiciones: un capex mas chico que el proyecto MAS CHICO que FTS ha vendido no
+# puede contener un proyecto de FTS. Es una cota dura, no una estimacion.
+#
+# QUE HACE EL CORTE POR ARRIBA. Lo mismo que ya hacia con los TR y por la misma
+# razon escrita en `puntos_de_capacidad`: "una senal de 1,500 TR no es mejor que
+# una de 200, es de otro tamano de empresa y otro competidor". Con inversion el
+# argumento es mas fuerte todavia: un programa de 2,000 MDD se reparte en anos, en
+# varias plantas y con contratistas de otro tamano, mientras 60 MDD es una obra que
+# FTS puede tomar completa.
+CORTE_PROGRAMA_CORPORATIVO_MDD = 500.0
+
+# El unico numero DECLARADO y no derivado de todo este bloque, y se declara como
+# tal: hace falta para poder comparar un monto en pesos contra un corte en dolares.
+# Un tipo de cambio escrito en el codigo se queda viejo -- es justo la clase de dato
+# que este proyecto saca de los documentos-- asi que aqui va con su fecha, su
+# alcance y la razon por la que su imprecision no cambia ningun veredicto de hoy:
+#
+#   ALCANCE: solo decide si un monto EN PESOS cae arriba o abajo del corte de
+#   programa corporativo. No entra en ningun otro calculo.
+#   POR QUE NO MUERDE: el monto en pesos mas grande documentado es 633 MDP, que a
+#   cualquier tipo de cambio entre 15 y 25 queda entre 25 y 42 MDD -- lejisimos del
+#   corte de 500--. Habria que equivocarse por un factor de 12 para mover un
+#   veredicto.
+#   CUANDO REVISARLO: cuando aparezca un anuncio en pesos de mas de 7,500 MDP.
+PESOS_POR_DOLAR_DECLARADO = 18.5
+FECHA_DEL_TIPO_DE_CAMBIO = "2026-09"
+
+
+def _a_mdd(valor: float, unidad: str) -> float:
+    """El monto en millones de dolares, para poder compararlo con el corte."""
+    if unidad == "MDP":
+        return valor / PESOS_POR_DOLAR_DECLARADO
+    return valor
+
+
+def piso_de_inversion(catalogo: dict) -> tuple[float, str]:
+    """El proyecto MAS CHICO que FTS ha vendido, del catalogo. Cota dura.
+
+    Un capex mas chico que esto no puede contener un proyecto de FTS. Es lo unico
+    de la banda que sale del catalogo sin ninguna suposicion.
+
+    La moneda de los montos del catalogo **no esta declarada** (`moneda: null` en
+    las 154 entradas, y Odoo es multi-moneda -- medido--). Eso no muerde por la
+    misma razon que el tipo de cambio: el piso sale en ~0.19 millones y el anuncio
+    mas chico documentado es de 200 MDD, tres ordenes de magnitud arriba. Si algun
+    dia aparece un anuncio de menos de 5 millones, hay que declarar la moneda antes
+    de confiar en esta frontera.
+    """
+    montos = [e.get("monto") for e in (catalogo.get("entradas") or [])]
+    montos = sorted(m for m in montos if isinstance(m, (int, float)) and m > 0)
+    if not montos:
+        return (0.0, "el catalogo no trae montos: el piso no se puede derivar")
+    piso = montos[0] / 1_000_000.0
+    return (piso, f"el proyecto mas chico de los {len(montos)} del catalogo "
+                  f"({montos[0]:,.0f} en la moneda del catalogo, sin declarar)")
+
+
+def puntos_de_inversion(valor: float, unidad: str,
+                        catalogo: dict) -> tuple[float, str]:
+    """Cuanto vale un MONTO DE INVERSION anunciado. D6 de #335."""
+    en_mdd = _a_mdd(valor, unidad)
+    piso, por_que_piso = piso_de_inversion(catalogo)
+    if en_mdd > CORTE_PROGRAMA_CORPORATIVO_MDD:
+        return (MAX_CAPACIDAD / 4,
+                f"{valor:g} {unidad} (~{en_mdd:.0f} MDD) pasa el corte de "
+                f"{CORTE_PROGRAMA_CORPORATIVO_MDD:g} MDD: es un PROGRAMA "
+                "CORPORATIVO, no una obra. Se reparte en anos, en varias plantas y "
+                "con contratistas de otro tamano. Cuenta, y cuenta poco")
+    if en_mdd * 1_000_000 < piso * 1_000_000:
+        return (MAX_CAPACIDAD / 4,
+                f"{valor:g} {unidad} queda POR DEBAJO del piso: {por_que_piso}")
+    return (MAX_CAPACIDAD,
+            f"{valor:g} {unidad} (~{en_mdd:.0f} MDD) cae en el rango donde FTS "
+            f"puede tomar la obra completa: arriba del piso derivado del catalogo "
+            f"y abajo del corte de {CORTE_PROGRAMA_CORPORATIVO_MDD:g} MDD")
+
+
 def puntos_de_capacidad(texto: str, catalogo: dict) -> tuple[float, str]:
     """La magnitud de la senal contra el rango donde FTS SI ha vendido.
 
@@ -445,7 +548,26 @@ def puntos_de_capacidad(texto: str, catalogo: dict) -> tuple[float, str]:
     mags = magnitudes(texto)
     if not mags:
         return (0.0, "sin magnitud declarada")
+    # EL DINERO SE ATIENDE PRIMERO, y el orden es una decision: si un texto trae
+    # "planta nueva de 60 MDD con chiller de 200 TR", el monto habla del tamano de
+    # LA OBRA y los TR del tamano de UNA MAQUINA. Para decidir si vale la pena
+    # gastar 60 consultas manda la obra.
+    for m in mags:
+        if m["unidad"] in UNIDADES_DE_DINERO:
+            return puntos_de_inversion(m["valor"], m["unidad"], catalogo)
     cap = catalogo.get("capacidad_por_tipo") or {}
+    # DEFECTO B4 de #335: `capacidad_por_tipo` viene VACIO en el catalogo
+    # construido -- las 154 entradas traen `magnitudes: []`, porque sus
+    # descripciones no dicen la capacidad en una forma que el regex lea--. O sea
+    # que la rama de abajo, la del corte por arriba en TR, NUNCA ha corrido: toda
+    # magnitud de capacidad cae al respaldo de "sin rango comparable". Queda dicho
+    # en el `por_que` en vez de aparentar una comparacion que no hubo.
+    if not cap:
+        return (MAX_CAPACIDAD / 2,
+                f"magnitud declarada ({mags[0]['valor']:g} {mags[0]['unidad']}) y "
+                "el catalogo NO trae rangos de capacidad por tipo: no hay contra "
+                "que compararla, asi que cuenta la mitad. No es que quede fuera de "
+                "rango -- es que el rango no existe--")
     for m in mags:
         for tipo, d in cap.items():
             if "min_TR" not in d or m["unidad"] != "TR":

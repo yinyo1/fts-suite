@@ -15,7 +15,7 @@ from flujo import radar
 import linea_base_radar as lb
 
 
-def test_el_contexto_sin_d3_deja_el_estado_como_estaba():
+def test_el_contexto_de_etapas_deja_el_estado_como_estaba():
     """Una medicion que ensucia el estado del proceso no se puede correr dos veces.
 
     Y seria peor que inutil: la segunda corrida de la suite mediria contra un
@@ -24,7 +24,7 @@ def test_el_contexto_sin_d3_deja_el_estado_como_estaba():
     """
     terminos_antes = dict(radar.TERMINOS_DE_TIPO)
     procesos_antes = cp.PROCESOS_DEL_CLIENTE
-    with lb.SinD3():
+    with lb.SinMejoras("d3", "b", "d6"):
         assert "planta nueva" not in radar.TERMINOS_DE_TIPO
     assert radar.TERMINOS_DE_TIPO == terminos_antes
     assert cp.PROCESOS_DEL_CLIENTE is procesos_antes
@@ -34,7 +34,10 @@ def test_el_antes_se_RECALCULA_no_se_guarda_a_mano():
     # Dentro del contexto, el vocabulario de D3 no existe y "prensa" vuelve a ser
     # un proceso. Asi el "antes" es lo que el evaluador de verdad decia, no lo que
     # alguien recuerda que decia.
-    with lb.SinD3():
+    # Los defectos se apagan con el interruptor `b`, que es el que los agrupa:
+    # B1 -- el falso positivo de "prensa"--, B2 -- la falta de "cable"-- y B3 -- el
+    # giro--. D3 y D6 tienen los suyos.
+    with lb.SinMejoras("b"):
         assert cp.proceso_de("prensa reporta")["proceso"] == "metalmecanica"
         assert cp.proceso_de("cables automotrices")["proceso"] is None
     assert cp.proceso_de("prensa reporta")["proceso"] is None
