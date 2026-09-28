@@ -20,7 +20,7 @@ la red privada de Railway (`http://fts-bancos.railway.internal:8080`), sin domin
 3. **Buzón vacío:** cierra la corrida con `graph_ok=true` (sirve de prueba de vida para A).
 4. Por archivo (lotes de 1, máx. 25 por corrida, 60 MB): descarga → `/procesar-raw` → manifiesto.
 5. Cierre: pares de traspasos, V3, huecos. Acciones: copia canónica (`conflictBehavior=fail`: nunca sobrescribe), pieza rechazada + `.motivo.txt` en `Rechazados`, **mueve** el original a `Procesados`/`Rechazados` (nunca borra).
-6. Si algo se rechazó, no cuadró o traía un aviso (p. ej. nombre de mes equivocado): **un** correo a Gerardo con CC a Erick y Esteban, con archivo, qué pasó y qué hacer. Si todo cuadra, no hay correo.
+6. Si algo se rechazó, no cuadró o traía un aviso (p. ej. nombre de mes equivocado) **y** `avisar_problemas=true` en `Set - Config`: **un** correo a Gerardo con CC a Erick y Esteban, con archivo, qué pasó y qué hacer. Si todo cuadra, no hay correo.
 7. Regenera LEEME, base maestra XLSX/CSV y diccionario. El LEEME escrito a mano se respalda una sola vez como `… (version manual original).md` y **sólo** se sobrescribe si ese respaldo existe.
 
 ## A · fts_bancos_solicitud
@@ -30,9 +30,13 @@ Lee `GET /huecos`. Sólo escribe a Gerardo si hubo una lectura completa del buz�
 Si hay estados validados, lee de Odoo (nodo Odoo, credencial `Odoo FTS`, **solo lectura**) los apuntes de banco (`asset_cash`, posted, company 1) de los journals 8, 96, 75, 74, 61 desde 2024; USD en `amount_currency`. `POST /cotejo` → HTML a `02 Base maestra de transacciones/Reportes/` (vigente + copia fechada).
 
 ## D · fts_bancos_inventario (Fase 3)
+`FASE` en `Code - Fuentes`: **`originales`** recorre `01 Estados de cuenta originales` con `solo_estados=0` y `reprocesar=1` (registra y revalida lo ya acomodado, no copia); **`viejos`** recorre las carpetas de abajo.
 Fuentes: OneDrive de Esteban (`1.- Finanzas/…/Estados de cuenta Servicios FTS SA de CV`, `Documents/Downloads`), sitio FinanzasFTS (`BBVA2019`) y sitio MKT_FTS (`2026/Des/Compu/Antes de 2026`). Recorre hasta 6 niveles con paginación, manda PDF/ZIP/CSV/XLSX ≤ 40 MB al procesador con `solo_estados=1` (lo que no es estado de cuenta no se guarda) y **copia** lo válido a su carpeta canónica. El original no se toca.
 
 ## Pendientes de Esteban
-- Dar `Files.ReadWrite.All` y `Sites.Read.All` (aplicación) + consentimiento a la app n8n-mail-sender.
+- ~~Dar `Files.ReadWrite.All` y `Sites.Read.All`~~ (hecho 28-sep; ver la propuesta de acotarlos en #331).
+
+## E · fts_bancos_compartir
+Una sola vez: lectura en `FTS Finanzas - Bancos` y edición en el buzón para Gerardo y Erick, `sendInvitation=false` (sin correo de Microsoft; la liga va en la solicitud).
 - "Available in MCP": los seis quedaron con `availableInMCP: true` al crearse por MCP; si se quiere quitar, es en la tarjeta del workflow.
 - Crear `BANCOS_HMAC_SECRET` en Railway (servicio `fts-bancos`) si se quiere firma además de la red privada.

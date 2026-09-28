@@ -62,7 +62,15 @@ Un estado queda **validado** sólo si pasa las tres, al centavo, sin tolerancias
 
 `GET /salud` · `POST /corridas` · `POST /procesar` · `GET /blob/{sha}` · `POST /corridas/{id}/cerrar` ·
 `GET /huecos` · `POST /huecos/solicitados` · `GET /base-maestra.csv|.xlsx` · `GET /diccionario.md` ·
-`GET /leeme.md` · `POST /cotejo` · `POST /verificar/idempotencia` · `GET /resumen` · `GET /aceptacion`
+`GET /leeme.md` · `POST /cotejo` · `POST /verificar/idempotencia` · `GET /resumen` · `GET /aceptacion` ·
+`POST /procesar-raw` (`solo_estados=1` para carpetas revueltas, `reprocesar=1` sólo para el árbol de originales) ·
+`GET /reporte-estados.html` (privado: totales por cuenta y mes con archivo y página) · `GET /archivos` ·
+`GET /diag/estructura/{sha}` (acomodo de un PDF con **todos los dígitos cambiados por 9**, para calibrar sin ver cifras)
+
+**Reproceso.** Un estado se guarda por `(archivo, parser_version)`. Si el parser cambia, el inventario de
+originales (`reprocesar=1`) crea un estado nuevo y el viejo se queda como historia. **Todo lo que se lee pasa
+por la vista `bancos.estados_vigentes`** (migración `bancos_0002`): el último estado de cada archivo. El buzón
+nunca reprocesa: un archivo repetido es un duplicado.
 
 ## Pruebas
 
@@ -75,5 +83,8 @@ Necesitan un Postgres local (cada prueba crea y tira su base aplicando la migrac
 
 ## Formatos
 
-- **BBVA** (General MXN, Nómina MXN, USD): parser `bbva-1.0.0`, por coordenadas. Etiquetas por alias; si falta un marcador falla con nombre (`MARCADOR_AUSENTE`, `SIN_ENCABEZADO_COLUMNAS`), nunca con vacío.
+- **BBVA** (General MXN, Nómina MXN, USD): parser `bbva-1.2.0`, por coordenadas, calibrado contra los PDF reales de 2024 y 2026:
+  identifica la cuenta por el "No. de Cuenta" del encabezado (la pág. 1 puede mencionar otra cuenta en un traspaso);
+  salta hojas sin texto antes del estado; acepta un mes sin movimientos sólo si el resumen dice cero; una descripción
+  puede seguir en la página siguiente, bajo el encabezado repetido. Etiquetas por alias; si falta un marcador falla con nombre (`MARCADOR_AUSENTE`, `SIN_ENCABEZADO_COLUMNAS`), nunca con vacío.
 - **Jeeves, Payana**: enchufables. Hoy se guardan como `formato_no_soportado` en su carpeta y se avisa; el parser se escribe con el primer archivo real de muestra.
