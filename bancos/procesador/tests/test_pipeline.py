@@ -216,3 +216,13 @@ def test_reproceso_con_parser_nuevo_deja_historia_y_un_solo_vigente(base_limpia,
         it2 = [i.dict() for i in pipeline.procesar_archivo(con, pdf, "nom03.pdf", {"origen": "fixture", "reprocesar": True},
                                                            None, cat, reglas)]
     assert it2[0]["estado"] == "duplicado"
+
+
+def test_avisos_e_instrucciones_quedan_en_corrida_eventos(base_limpia):
+    cid, items, _ = correr(lote())
+    with conexion() as con, con.cursor() as cur:
+        cur.execute("SELECT codigo, datos FROM bancos.corrida_eventos WHERE corrida_id=%s AND codigo IN ('NOMBRE_OTRO_PERIODO','INSTRUCCION')", (cid,))
+        ev = cur.fetchall()
+    otros = [e for e in ev if e["codigo"] == "NOMBRE_OTRO_PERIODO"]
+    assert {e["datos"]["nombre"] for e in otros} >= {"JUL 26 FTS MX.pdf", "JUN 26 FTS NOM.pdf"}
+    assert any(e["codigo"] == "INSTRUCCION" for e in ev)

@@ -218,6 +218,7 @@ def _procesar(con, contenido, nombre, meta, corrida_id, catalogo, reglas, items,
         it = _item_desde_archivo_existente(con, fila, nombre, ruta_en_zip, catalogo)
         it.es_pieza_de_zip = zip_origen_id is not None
         items.append(it)
+        _guardar_avisos(con, corrida_id, it)
         if fila["tipo_detectado"] == "zip":
             # el ZIP ya se abrió antes: sus piezas también son duplicados, no se re-procesan
             pass
@@ -251,6 +252,19 @@ def _procesar(con, contenido, nombre, meta, corrida_id, catalogo, reglas, items,
     item.ruta_en_zip = ruta_en_zip
     item.es_pieza_de_zip = zip_origen_id is not None
     items.append(item)
+    _guardar_avisos(con, corrida_id, item)
+
+
+def _guardar_avisos(con, corrida_id, item: Item) -> None:
+    """Lo que sólo vivía en el manifiesto (avisos y la instrucción de un rechazo) queda también
+    en corrida_eventos, para que el acuse y los reportes lo citen textual."""
+    base = {"nombre": item.nombre_original, "periodo": item.periodo, "estado": item.estado,
+            "cuenta": (item.cuenta or {}).get("mask")}
+    for a in item.avisos or []:
+        codigo = "NOMBRE_OTRO_PERIODO" if "el periodo sale de la pág. 1" in a else "AVISO"
+        evento(con, corrida_id, "aviso", codigo, a, item.sha256, base)
+    if item.instruccion:
+        evento(con, corrida_id, "info", "INSTRUCCION", item.instruccion, item.sha256, {**base, "motivo": item.motivo})
 
 
 def _toca_reprocesar(con, fila, meta) -> bool:
