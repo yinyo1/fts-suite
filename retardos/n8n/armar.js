@@ -13,6 +13,7 @@
 const fs = require('fs'), path = require('path');
 const R = __dirname, LIB = path.join(R, '..', 'lib');
 const PIEZAS = {
+  'db-migrate': { __DECIDIR__: 'db-migrate-decidir.js' },
   detectar: { __LEER__: 'detectar-leer.js' },
   enviar: { __PREPARAR__: 'enviar-preparar.js', __RESULTADO__: 'enviar-resultado.js' },
   verificar: { __NOMINA__: 'verificar-nomina.js' },

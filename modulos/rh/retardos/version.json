@@ -1,0 +1,14 @@
+{
+  "version": "V1.00",
+  "fecha": "2026-09-28",
+  "modulo": "rh/retardos",
+  "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Contador propio de este modulo.",
+  "historial": [
+    {
+      "version": "V1.00",
+      "fecha": "2026-09-28",
+      "titulo": "Primera version del panel de Retardos v2 (#334)",
+      "nota": "Casos por estado, detalle con la hoja firmada, validar o pedir otra vez, negativa con dos testigos, impugnacion, suspension de 1 a 8 dias y dias que no cuentan. Habla con el webhook retardos/panel firmado con el token del Suite + HMAC + nonce (#123). Modo de practica con datos inventados."
+    }
+  ]
+}

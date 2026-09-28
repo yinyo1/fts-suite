@@ -1,0 +1,53 @@
+Piezas del prototipo que no viven en el módulo: estilos y la explicación del ciclo.
+<!--CSS-->
+.proto{max-width:1180px;margin:0 auto;padding-block:18px 4px;padding-inline:16px;display:grid;gap:14px}
+.proto h1{margin:0;font-size:24px;text-wrap:balance}
+.proto p{margin:0;max-width:70ch;color:var(--muted2)}
+.pasos{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;counter-reset:p}
+@media (max-width:860px){.pasos{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.pasos{grid-template-columns:minmax(0,1fr)}}
+.pasos li{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:grid;gap:4px;align-content:start;counter-increment:p;font-size:14px}
+.pasos li::before{content:counter(p);font-weight:700;color:var(--green-d);font-variant-numeric:tabular-nums}
+.pasos b{font-size:14px}
+.pasos span{color:var(--muted2);font-size:13px}
+.correo{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;font-size:14px}
+.correo .enc{padding:10px 14px;border-bottom:1px solid var(--border);display:grid;gap:2px;background:var(--card2)}
+.correo .enc span{color:var(--muted2);font-size:13px}
+.correo .cuerpo{padding:12px 14px;display:grid;gap:8px;max-width:72ch}
+.correo .banda{background:var(--violet-l);color:var(--text);border:1px solid var(--violet);border-radius:8px;padding:8px 10px;font-size:13px}
+.correo .adj{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:13px;justify-self:start}
+.dos{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:860px){.dos{grid-template-columns:minmax(0,1fr)}}
+<!--CSS-->
+<section class="proto" aria-label="Cómo funciona">
+  <h1>Retardos v2: el ciclo completo</h1>
+  <p>Prototipo con datos inventados. Abajo está el panel de RH funcionando en modo de ejemplo: abre un caso, mira la hoja, valídala o regístrala como negativa.</p>
+  <ol class="pasos">
+    <li><b>Detecta</b><span>Dos veces al día lee las checadas de Odoo. Primera entrada del día contra la hora de entrada más 20 minutos. Permisos, festivos, disputas y olvidos no cuentan.</span></li>
+    <li><b>Abre el caso</b><span>Según cuántos retardos lleva en el mes: aviso, carta compromiso, acta o suspensión. Cada caso lleva un folio RET-AAAA-NNNN.</span></li>
+    <li><b>Avisa</b><span>Correo desde sales@fts.mx con el PDF de la hoja. Sin correo válido, la hoja le llega al supervisor para entregarla en papel.</span></li>
+    <li><b>Recibe la hoja</b><span>La persona responde el mismo correo con la hoja firmada. El folio del asunto la une a su caso y RH recibe aviso.</span></li>
+    <li><b>RH valida</b><span>RH mira la hoja y la valida o la pide otra vez. Negativa a firmar: dos testigos. Impugnación: queda su versión.</span></li>
+    <li><b>Verifica</b><span>Cada mañana revisa plazos, recuerda, escala con copia a Dirección y comprueba que una suspensión se aplicó y está en Nómina.</span></li>
+  </ol>
+  <div class="dos">
+    <div class="correo" aria-label="Correo de ejemplo">
+      <div class="enc"><b>[SOMBRA] [RET-2026-0041] Carta compromiso por retardos</b><span>De: sales@fts.mx · Para: Dirección y RH (modo sombra)</span></div>
+      <div class="cuerpo">
+        <div class="banda">Modo sombra. Destinatario real: laura.demo@example.com. Este correo no le llegó a la persona.</div>
+        <div>Hola Laura:</div>
+        <div>En el periodo 2026-09 acumulaste 3 retardos. Te adjuntamos una carta compromiso. Imprímela, fírmala y responde a este mismo correo con la hoja firmada a más tardar el 01/10/2026. No cambies el asunto: el folio nos ayuda a encontrar tu caso.</div>
+        <div>Si no estás de acuerdo con algún retardo, responde explicando el motivo: tienes derecho a ser escuchado.</div>
+        <span class="adj">PDF · RET-2026-0041-carta_compromiso.pdf</span>
+      </div>
+    </div>
+    <div class="correo" aria-label="Qué vigila el sistema">
+      <div class="enc"><b>Qué vigila el propio sistema</b><span>Para que no vuelva a morir en silencio</span></div>
+      <div class="cuerpo">
+        <div>Si la detección no corre, lee cero checadas, falla un paso o un correo lleva horas sin salir, llega una alerta a Dirección desde sales@fts.mx.</div>
+        <div>Si pasan cinco días hábiles sin un solo retardo, también avisa: históricamente hay varios cada día.</div>
+        <div>Cada paso queda en una bitácora que no se puede editar ni borrar.</div>
+      </div>
+    </div>
+  </div>
+</section>
