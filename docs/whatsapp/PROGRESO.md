@@ -24,6 +24,8 @@ Inicio: 2026-09-28 07:08 UTC (01:08 CST). Límite: 06:00 CST.
 | F16 watchdog | **hecho** | `v_senales_watchdog`, `api_senales`; CONTRATOS §2 |
 | F17 capacidad n8n | **documento** | CAPACIDAD-N8N.md (hallazgo: variables que le faltan al Worker) |
 | F18 prototipo | **hecho** | docs/whatsapp/prototipo/index.html, revisado a 380/760/900/1280 |
+| Revisión adversarial | **hecho, en vivo** | 14 hallazgos. `memoria_0006` aplicada (ejecución 116404); batería **19/19** en vivo (116405), residuos 0; receptor `receptor-2026.09.28-2` desplegado; mantenimiento corregido (preparado). N20/N21 |
+| Cierre | **hecho** | comentario final en #328; PR #327 sin mergear |
 
 ## Para retomar si se reinicia el contexto
 - Leer esta tabla, `DECISIONES-NOCHE.md` y el último comentario de #328.

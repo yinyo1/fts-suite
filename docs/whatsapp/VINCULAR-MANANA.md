@@ -123,6 +123,7 @@ La pasarela **no tiene dominio público**, y está bien así. Para escanear el Q
 
 Manda un mensaje de texto y una foto en el grupo de proyecto. En n8n, corre **`memoria/pruebas`**:
 
+- La batería de motores debe dar **19/19** (desde `memoria_0006` ya no la ensucian los datos reales ni los de la autoprueba).
 - `eventos_total` debe subir.
 - `senales` debe marcar `respaldo_ultimo: ok`.
 
