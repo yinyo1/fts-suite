@@ -15,6 +15,7 @@ const R = __dirname, LIB = path.join(R, '..', 'lib');
 const PIEZAS = {
   'db-migrate': { __DECIDIR__: 'db-migrate-decidir.js' },
   detectar: { __LEER__: 'detectar-leer.js' },
+  jornada: { __LEER__: 'detectar-leer.js', __NOMINA__: 'jornada-nomina.js' },
   enviar: { __PREPARAR__: 'enviar-preparar.js', __RESULTADO__: 'enviar-resultado.js' },
   verificar: { __NOMINA__: 'verificar-nomina.js' },
   'resumen-semanal': {},

@@ -14,8 +14,11 @@ try {
   if (KEY.length < 8) return [{ json: { ok: false, error: 'SIN_LLAVE_ODOO' } }];
   var cfg = $('Postgres - Config').first().json || {};
   var empresas = cfg.empresas || [1];
-  var dias = 7;
+  var dias = 7, wfNombre = 'retardos/detectar';
   try { if ($('Manual (pasada 92 dias)').isExecuted) dias = 92; } catch (e) { dias = 7; }
+  // retardos/jornada reusa este mismo lector con su propia ventana y su propio nombre de corrida
+  // (así su lectura no se confunde con la de detectar en el latido).
+  try { var vv = $('Set - Ventana').first().json; if (vv && vv.dias) { dias = Number(vv.dias); wfNombre = String(vv.workflow || wfNombre); } } catch (e) {}
   var hh = null;
   try { if (typeof $helpers !== 'undefined' && $helpers && $helpers.httpRequest) hh = $helpers; } catch (e) {}
   if (!hh) { try { if (this && this.helpers && this.helpers.httpRequest) hh = this.helpers; } catch (e) {} }
@@ -47,7 +50,10 @@ try {
   var emp = await kw('hr.employee', 'search_read', [[['company_id', 'in', empresas], ['active', 'in', [true, false]]]],
     { fields: N.CAMPOS['hr.employee'], limit: 2000 });
   if (emp.err) return [{ json: { ok: false, error: 'CONTRATO_ROTO:hr.employee', detalle: emp.err } }];
-  var cal = await kw('resource.calendar.attendance', 'search_read', [[['calendar_id.company_id', 'in', empresas.concat([false])]]],
+  // Los renglones de los calendarios que de verdad usan las personas (aunque el calendario sea de otra empresa).
+  var calIds = [];
+  (emp.val || []).forEach(function (e) { var c = N.m2oId(e.resource_calendar_id); if (c != null && calIds.indexOf(c) < 0) calIds.push(c); });
+  var cal = await kw('resource.calendar.attendance', 'search_read', [[['calendar_id', 'in', calIds]]],
     { fields: N.CAMPOS['resource.calendar.attendance'], limit: 2000 });
   if (cal.err) return [{ json: { ok: false, error: 'CONTRATO_ROTO:resource.calendar.attendance', detalle: cal.err } }];
 
@@ -60,7 +66,7 @@ try {
 
   var p;
   try {
-    p = N.normalizar({ att: att.val || [], emp: emp.val || [], cal: cal.val || [], incidencias: incid, desde: desde, hasta: hasta, workflow: 'retardos/detectar' });
+    p = N.normalizar({ att: att.val || [], emp: emp.val || [], cal: cal.val || [], incidencias: incid, desde: desde, hasta: hasta, workflow: wfNombre });
   } catch (e) {
     return [{ json: { ok: false, error: String(e && e.message ? e.message : e).slice(0, 200) } }];
   }

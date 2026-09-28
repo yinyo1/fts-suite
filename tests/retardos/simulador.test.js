@@ -1268,3 +1268,12 @@ conPg('plantillas: aviso de retardo con tolerancia, conteo y umbral de carta; to
     for (const t of B.j("SELECT jsonb_agg(asunto || cuerpo_html) FROM retardos.plantilla")) assert.equal(t.indexOf(String.fromCharCode(8212)), -1);
   } finally { B.fin(); }
 });
+
+conPg('calendario que el lector no alcanzó (campos null): la ingesta no truena y la persona queda sin calendario', () => {
+  const B = base();
+  try {
+    const r = ingestar(B, tres(1), [EMP(1, { calendario: { id: 9, nombre: 'Otro', horas_semana: null, dias: null, tiene_comida: null } }), SUP]);
+    assert.ok(r.corrida_id);
+    assert.equal(B.q("SELECT calendario_id || '|' || coalesce(cal_horas_semana::text, 'null') || '|' || coalesce(cal_dias::text, 'null') FROM retardos.empleado WHERE employee_id = 1"), '9|null|null');
+  } finally { B.fin(); }
+});
