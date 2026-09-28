@@ -543,6 +543,7 @@ def v3_y_huecos(con, corrida_id, catalogo: Catalogo, hoy: date | None = None) ->
             esperados = rango_periodos(inicio, limite)
             faltan = [p for p in esperados if p not in ests]
             # V3 por estado
+            descuadres = set()
             for p, e in sorted(ests.items()):
                 ant = ests.get(periodo_anterior(p))
                 if ant is None:
@@ -572,6 +573,7 @@ def v3_y_huecos(con, corrida_id, catalogo: Catalogo, hoy: date | None = None) ->
                 else:                      # hueco / sin_anterior: no aplica, el hueco queda registrado
                     resumen["v3_no_aplica"] += 1
                 if res == "descuadre":
+                    descuadres.add(p)
                     _hueco(cur, c.id, p, "continuidad", dif, {"texto": f"el saldo inicial de {p} no es el final de {periodo_anterior(p)}"})
             # huecos por mes faltante, con el monto que falta explicar
             for p in faltan:
@@ -585,9 +587,12 @@ def v3_y_huecos(con, corrida_id, catalogo: Catalogo, hoy: date | None = None) ->
             # resolver huecos cubiertos
             cur.execute("""SELECT id, periodo, motivo FROM bancos.huecos WHERE cuenta_id=%s AND resuelto_en IS NULL""", (c.id,))
             for h in cur.fetchall():
-                if h["motivo"] == "faltante" and h["periodo"] in ests:
+                cubierto = h["motivo"] == "faltante" and h["periodo"] in ests
+                # un descuadre que ya no existe (p. ej. el mes anterior era de otra cuenta y se reidentificó)
+                ya_cuadra = h["motivo"] == "continuidad" and h["periodo"] not in descuadres
+                if cubierto or ya_cuadra:
                     cur.execute("UPDATE bancos.huecos SET resuelto_en=now(), resuelto_por_estado_id=%s WHERE id=%s",
-                                (ests[h["periodo"]]["id"], h["id"]))
+                                (ests[h["periodo"]]["id"] if h["periodo"] in ests else None, h["id"]))
             cur.execute("SELECT count(*) AS n FROM bancos.huecos WHERE cuenta_id=%s AND resuelto_en IS NULL", (c.id,))
             n = cur.fetchone()["n"]
             resumen["cuentas"][c.clave] = {"alias": c.alias, "mask": c.mask, "estados": len(ests), "faltantes": faltan, "huecos_abiertos": n}

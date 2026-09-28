@@ -226,3 +226,15 @@ def test_avisos_e_instrucciones_quedan_en_corrida_eventos(base_limpia):
     otros = [e for e in ev if e["codigo"] == "NOMBRE_OTRO_PERIODO"]
     assert {e["datos"]["nombre"] for e in otros} >= {"JUL 26 FTS MX.pdf", "JUN 26 FTS NOM.pdf"}
     assert any(e["codigo"] == "INSTRUCCION" for e in ev)
+
+
+def test_hueco_de_continuidad_que_ya_no_descuadra_se_resuelve(base_limpia):
+    correr(lote())
+    with conexion() as con, con.cursor() as cur:
+        cur.execute("SELECT id FROM bancos.cuentas WHERE alias=%s", (CUENTAS[0]['alias'],))
+        cid = cur.fetchone()["id"]
+        cur.execute("INSERT INTO bancos.huecos (cuenta_id, periodo, motivo, monto_diferencia) VALUES (%s,'2026-03','continuidad',1)", (cid,))
+    correr({})
+    with conexion() as con, con.cursor() as cur:
+        cur.execute("SELECT resuelto_en FROM bancos.huecos WHERE motivo='continuidad'")
+        assert all(r["resuelto_en"] is not None for r in cur.fetchall())
