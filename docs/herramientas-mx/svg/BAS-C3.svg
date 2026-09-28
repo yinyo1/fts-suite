@@ -9,30 +9,30 @@
 <line x1="26" y1="46" x2="38" y2="46" stroke="#333"/><line x1="26" y1="364" x2="38" y2="364" stroke="#333"/>
 <text x="28" y="205.0" font-size="11" text-anchor="middle" transform="rotate(-90 28 205.0)">318 mm</text>
 <text x="253.0" y="378" font-size="10" text-anchor="middle" fill="#555">FRENTE DEL CAJON</text>
-<rect x="52" y="52" width="80" height="237" rx="4" fill="#BFE6C8" stroke="#111" stroke-width="1.2"/>
-<text x="92.0" y="169.3" font-size="6.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C3-01 R</text>
-<text x="92.0" y="176.5" font-size="5.1" text-anchor="middle">Vernier digital 6 in Trupe</text>
-<text x="54" y="287" font-size="5.0" fill="#333">237x80x20</text>
-<rect x="144" y="52" width="80" height="150" rx="4" fill="#D8C8F0" stroke="#111" stroke-width="1.2"/>
-<text x="184.0" y="125.8" font-size="6.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C3-02 R</text>
-<text x="184.0" y="133.0" font-size="5.1" text-anchor="middle">Juego 15 brocas HSS 1/16-1</text>
-<text x="146" y="200" font-size="5.0" fill="#333">150x80x20</text>
-<rect x="236" y="52" width="178" height="58" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
-<text x="325.0" y="78.8" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C3-03</text>
-<text x="325.0" y="92.0" font-size="9.3" text-anchor="middle">Pinza diagonal 7 in Husky 903465</text>
-<text x="238" y="108" font-size="7.7" fill="#333">178x58x17</text>
-<rect x="236" y="122" width="205" height="56" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
-<text x="338.5" y="147.8" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C3-04</text>
-<text x="338.5" y="161.0" font-size="9.3" text-anchor="middle">Llave ajustable 8 in Husky 17016</text>
-<text x="238" y="176" font-size="7.7" fill="#333">205x56x15</text>
-<rect x="236" y="190" width="203" height="50" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
-<text x="337.5" y="212.8" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C3-05</text>
-<text x="337.5" y="226.0" font-size="9.3" text-anchor="middle">Pinza de chofer 8 in Truper 17301</text>
-<text x="238" y="238" font-size="7.7" fill="#333">203x50x15</text>
-<rect x="52" y="301" width="250" height="50" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
-<text x="177.0" y="323.8" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C3-06</text>
-<text x="177.0" y="337.0" font-size="9.3" text-anchor="middle">Pinza de electricista 9 in Husky 709195</text>
-<text x="54" y="349" font-size="7.7" fill="#333">250x50x15</text>
+<rect x="52" y="58" width="237.0" height="80.0" rx="4" fill="#BFE6C8" stroke="#111" stroke-width="1.2"/>
+<text x="170.5" y="95.8" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C3-01</text>
+<text x="170.5" y="109.0" font-size="9.3" text-anchor="middle">Vernier digital 6 in Truper CALDI-6MP</text>
+<text x="54" y="136.0" font-size="7.7" fill="#333">237x80x20</text>
+<rect x="301.0" y="58" width="150.0" height="80.0" rx="4" fill="#D8C8F0" stroke="#111" stroke-width="1.2"/>
+<text x="376.0" y="95.85714285714286" font-size="10.7" text-anchor="middle" font-weight="bold">FTS-BAS-01-C3-02</text>
+<text x="376.0" y="108.71428571428571" font-size="9.1" text-anchor="middle">Juego 15 brocas HSS 1/16-1/2</text>
+<text x="303.0" y="136.0" font-size="7.5" fill="#333">150x80x20</text>
+<rect x="269.0" y="212.0" width="178.0" height="58.0" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
+<text x="358.0" y="238.8" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C3-03</text>
+<text x="358.0" y="252.0" font-size="9.3" text-anchor="middle">Pinza diagonal 7 in Husky 903465</text>
+<text x="271.0" y="268.0" font-size="7.7" fill="#333">178x58x17</text>
+<rect x="52" y="212.0" width="205.0" height="56.0" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
+<text x="154.5" y="237.8" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C3-04</text>
+<text x="154.5" y="251.0" font-size="9.3" text-anchor="middle">Llave ajustable 8 in Husky 17016</text>
+<text x="54" y="266.0" font-size="7.7" fill="#333">205x56x15</text>
+<rect x="52" y="280.0" width="203.0" height="50.0" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
+<text x="153.5" y="302.8" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C3-05</text>
+<text x="153.5" y="316.0" font-size="9.3" text-anchor="middle">Pinza de chofer 8 in Truper 17301</text>
+<text x="54" y="328.0" font-size="7.7" fill="#333">203x50x15</text>
+<rect x="52" y="150.0" width="250.0" height="50.0" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
+<text x="177.0" y="172.8" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C3-06</text>
+<text x="177.0" y="186.0" font-size="9.3" text-anchor="middle">Pinza de electricista 9 in Husky 709195</text>
+<text x="54" y="198.0" font-size="7.7" fill="#333">250x50x15</text>
 <text x="46" y="396" font-size="11" fill="#000">Modulo BASE · caja 48-22-8443 · cajon C3 · alto interior 76 mm, util 66 mm</text>
 <text x="46" y="410" font-size="11" fill="#000">Ocupacion en planta 57.3 % · peso 1.92 kg de 11 kg</text>
 <text x="46" y="424" font-size="11" fill="#000">Medidas no validadas: confirmar con vernier antes de imprimir</text>

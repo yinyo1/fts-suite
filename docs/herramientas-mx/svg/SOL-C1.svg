@@ -9,21 +9,22 @@
 <line x1="26" y1="46" x2="38" y2="46" stroke="#333"/><line x1="26" y1="364" x2="38" y2="364" stroke="#333"/>
 <text x="28" y="205.0" font-size="11" text-anchor="middle" transform="rotate(-90 28 205.0)">318 mm</text>
 <text x="253.0" y="378" font-size="10" text-anchor="middle" fill="#555">FRENTE DEL CAJON</text>
-<rect x="52" y="52" width="160" height="300" rx="4" fill="#F6C2A8" stroke="#111" stroke-width="1.2"/>
-<text x="132.0" y="199.8" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-SOL-01-C1-01 R</text>
-<text x="132.0" y="213.0" font-size="9.3" text-anchor="middle">Extractor de quijadas 6 t Urr</text>
-<text x="54" y="350" font-size="7.7" fill="#333">300x160x50</text>
-<rect x="224" y="52" width="66" height="254" rx="4" fill="#F6C2A8" stroke="#111" stroke-width="1.2"/>
-<text x="257.0" y="177.8" font-size="6.0" text-anchor="middle" font-weight="bold">FTS-SOL-01-C1-02 R</text>
-<text x="257.0" y="185.0" font-size="5.1" text-anchor="middle">Pinza de presion 10 in</text>
-<text x="226" y="304" font-size="5.0" fill="#333">254x66x26</text>
-<rect x="302" y="52" width="110" height="279" rx="4" fill="#F6C2A8" stroke="#111" stroke-width="1.2"/>
-<text x="357.0" y="189.92857142857142" font-size="7.9" text-anchor="middle" font-weight="bold">FTS-SOL-01-C1-03 R</text>
-<text x="357.0" y="199.35714285714286" font-size="6.7" text-anchor="middle">Pinza de presion C 11 in (2a</text>
-<text x="304" y="329" font-size="5.5" fill="#333">279x110x25</text>
-<rect x="224" y="343" width="70" height="15" rx="4" fill="#F6C2A8" stroke="#111" stroke-width="1.2"/>
-<text x="259.0" y="349.3" font-size="6.0" text-anchor="middle" font-weight="bold">FTS-SOL-01-C1-04</text>
-<text x="259.0" y="356.5" font-size="5.1" text-anchor="middle">Fresa de carburo SF-5</text>
+<rect x="58" y="52" width="160.0" height="300.0" rx="4" fill="#F6C2A8" stroke="#111" stroke-width="1.2"/>
+<text x="138.0" y="199.8" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-SOL-01-C1-01 R</text>
+<text x="138.0" y="213.0" font-size="9.3" text-anchor="middle">Extractor de quijadas 6 t Urr</text>
+<text x="60" y="350.0" font-size="7.7" fill="#333">300x160x50</text>
+<rect x="352.0" y="52" width="66.0" height="254.0" rx="4" fill="#F6C2A8" stroke="#111" stroke-width="1.2"/>
+<text x="385.0" y="177.8" font-size="6.0" text-anchor="middle" font-weight="bold">FTS-SOL-01-C1-02 R</text>
+<text x="385.0" y="185.0" font-size="5.1" text-anchor="middle">Pinza de presion 10 in</text>
+<text x="354.0" y="304.0" font-size="5.0" fill="#333">254x66x26</text>
+<rect x="230.0" y="52" width="110.0" height="279.0" rx="4" fill="#F6C2A8" stroke="#111" stroke-width="1.2"/>
+<text x="285.0" y="189.92857142857142" font-size="7.9" text-anchor="middle" font-weight="bold">FTS-SOL-01-C1-03 R</text>
+<text x="285.0" y="199.35714285714286" font-size="6.7" text-anchor="middle">Pinza de presion C 11 in (2a</text>
+<text x="232.0" y="329.0" font-size="5.5" fill="#333">279x110x25</text>
+<rect x="430.0" y="52" width="15.0" height="70.0" rx="4" fill="#F6C2A8" stroke="#111" stroke-width="1.2"/>
+<text x="437.5" y="85.8" font-size="6.0" text-anchor="middle" font-weight="bold">FTS-SOL-01-C1-04 R</text>
+<text x="437.5" y="93.0" font-size="5.1" text-anchor="middle">Fresa de</text>
+<text x="432.0" y="120.0" font-size="5.0" fill="#333">70x15x15</text>
 <text x="46" y="396" font-size="11" fill="#000">Modulo SOL · caja 48-22-8447 · cajon C1 · alto interior 63 mm, util 53 mm</text>
 <text x="46" y="410" font-size="11" fill="#000">Ocupacion en planta 73.3 % · peso 5.17 kg de 11 kg</text>
 <text x="46" y="424" font-size="11" fill="#000">Medidas no validadas: confirmar con vernier antes de imprimir</text>

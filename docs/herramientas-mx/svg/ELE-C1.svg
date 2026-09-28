@@ -29,10 +29,10 @@
 <text x="319.0" y="298.8" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-ELE-01-C1-05</text>
 <text x="319.0" y="312.0" font-size="9.3" text-anchor="middle">3 desarmadores Husky 1/4, 3/16</text>
 <text x="196" y="349" font-size="7.7" fill="#333">250x100x32</text>
-<rect x="52" y="264" width="130" height="90" rx="4" fill="#FFE08A" stroke="#111" stroke-width="1.2"/>
-<text x="117.0" y="307.14285714285717" font-size="9.3" text-anchor="middle" font-weight="bold">FTS-ELE-01-C1-06</text>
-<text x="117.0" y="318.2857142857143" font-size="7.9" text-anchor="middle">3 sacabocados Dogo 7, 13 y </text>
-<text x="54" y="352" font-size="6.5" fill="#333">130x90x40</text>
+<rect x="52" y="262.5" width="130" height="90" rx="4" fill="#FFE08A" stroke="#111" stroke-width="1.2"/>
+<text x="117.0" y="305.64285714285717" font-size="9.3" text-anchor="middle" font-weight="bold">FTS-ELE-01-C1-06</text>
+<text x="117.0" y="316.7857142857143" font-size="7.9" text-anchor="middle">3 sacabocados Dogo 7, 13 y </text>
+<text x="54" y="350.5" font-size="6.5" fill="#333">130x90x40</text>
 <text x="46" y="396" font-size="11" fill="#000">Modulo ELE · caja 48-22-8444 · cajon C1 · alto interior 58 mm, util 48 mm</text>
 <text x="46" y="410" font-size="11" fill="#000">Ocupacion en planta 72.2 % · peso 1.79 kg de 11 kg</text>
 <text x="46" y="424" font-size="11" fill="#000">Medidas no validadas: confirmar con vernier antes de imprimir</text>
