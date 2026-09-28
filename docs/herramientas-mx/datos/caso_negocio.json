@@ -1,0 +1,302 @@
+{
+ "anual": {
+  "A. Reposicion con detalle (base)": {
+   "serie_total": 38841.05,
+   "anual_serie": 19514.02,
+   "ult_12m": 34676.25
+  },
+  "B. A + fondeo sin detalle + compras duplicadas": {
+   "serie_total": 46565.04,
+   "anual_serie": 23394.61,
+   "ult_12m": 40872.8
+  }
+ },
+ "anios_serie": 1.99,
+ "familias": {
+  "Llaves ajustables": {
+   "piezas": 1.0,
+   "importe": 308.0,
+   "lineas": 1,
+   "ult12": 0.0
+  },
+  "Compra duplicada el mismo dia": {
+   "piezas": 4.0,
+   "importe": 1527.44,
+   "lineas": 2,
+   "ult12": 0.0
+  },
+  "Cabezales de tarraja 12R": {
+   "piezas": 2.0,
+   "importe": 4533.94,
+   "lineas": 2,
+   "ult12": 2256.92
+  },
+  "Esmeriladora 4-1/2": {
+   "piezas": 4.0,
+   "importe": 6223.46,
+   "lineas": 4,
+   "ult12": 4643.68
+  },
+  "Desarmadores de precision": {
+   "piezas": 5.0,
+   "importe": 2952.85,
+   "lineas": 3,
+   "ult12": 2952.85
+  },
+  "Pinzas de mano y juegos aislados": {
+   "piezas": 8.0,
+   "importe": 4463.39,
+   "lineas": 4,
+   "ult12": 4463.39
+  },
+  "Reposicion agregada de packouts D,E,H,I,J (sin detalle)": {
+   "piezas": 1.0,
+   "importe": 16766.59,
+   "lineas": 1,
+   "ult12": 16766.59
+  },
+  "Fondeo para compra de herramientas (sin detalle, qty_recibida 0)": {
+   "piezas": 1.0,
+   "importe": 6196.55,
+   "lineas": 1,
+   "ult12": 6196.55
+  },
+  "Pinzas de presion": {
+   "piezas": 7.0,
+   "importe": 3592.82,
+   "lineas": 2,
+   "ult12": 3592.82
+  }
+ },
+ "piloto": {
+  "herr": 6407.12,
+  "cont": 13197.0,
+  "ctrl": 813.55,
+  "petg": 6767.31,
+  "total": 27184.98,
+  "sin_precio": 0,
+  "n_cont": 4,
+  "kg": 10.69,
+  "h_std": 538.1,
+  "cajas": {
+   "48-22-8443": 2,
+   "48-22-8444": 1,
+   "48-22-8420": 1
+  }
+ },
+ "piloto_todo_nuevo": {
+  "herr": 52796.13,
+  "cont": 16811.0,
+  "ctrl": 813.55,
+  "petg": 6767.31,
+  "total": 77187.99,
+  "sin_precio": 1,
+  "n_cont": 4,
+  "kg": 10.69,
+  "h_std": 538.1,
+  "cajas": {
+   "48-22-8443": 2,
+   "48-22-8444": 1,
+   "48-22-8420": 1
+  }
+ },
+ "piloto_det": [
+  [
+   "48-59-1812",
+   1,
+   1799.0
+  ],
+  [
+   "797UR",
+   1,
+   2351.2
+  ],
+  [
+   "cab34",
+   1,
+   2256.92
+  ]
+ ],
+ "plan_actual": {
+  "herr": 166422.1,
+  "cont": 107838.0,
+  "ctrl": 5357.3,
+  "petg": 43591.78,
+  "total": 323209.18,
+  "sin_precio": 5,
+  "n_cont": 28,
+  "kg": 68.87,
+  "h_std": 3466.1,
+  "cajas": {
+   "48-22-8443": 7,
+   "48-22-8444": 8,
+   "48-22-8420": 6,
+   "48-22-8447": 4,
+   "48-22-8442": 3
+  }
+ },
+ "sensibilidad": [
+  {
+   "bases": 4,
+   "modulos": "compartidos",
+   "herr": 136007.11,
+   "cont": 94826.0,
+   "ctrl": 4662.75,
+   "petg": 37804.81,
+   "total": 273300.67,
+   "sin_precio": 5,
+   "n_cont": 25,
+   "kg": 59.72,
+   "h_std": 3006.0
+  },
+  {
+   "bases": 4,
+   "modulos": "dedicados",
+   "herr": 247461.51,
+   "cont": 171047.0,
+   "ctrl": 7936.4,
+   "petg": 58347.03,
+   "total": 484791.94,
+   "sin_precio": 6,
+   "n_cont": 44,
+   "kg": 92.18,
+   "h_std": 4639.6
+  },
+  {
+   "bases": 5,
+   "modulos": "compartidos",
+   "herr": 166422.1,
+   "cont": 107838.0,
+   "ctrl": 5357.3,
+   "petg": 43591.78,
+   "total": 323209.18,
+   "sin_precio": 5,
+   "n_cont": 28,
+   "kg": 68.87,
+   "h_std": 3466.1
+  },
+  {
+   "bases": 5,
+   "modulos": "dedicados",
+   "herr": 326772.83,
+   "cont": 215587.0,
+   "ctrl": 9920.5,
+   "petg": 72933.79,
+   "total": 625214.12,
+   "sin_precio": 6,
+   "n_cont": 55,
+   "kg": 115.22,
+   "h_std": 5799.5
+  },
+  {
+   "bases": 6,
+   "modulos": "compartidos",
+   "herr": 196837.09,
+   "cont": 120850.0,
+   "ctrl": 6051.85,
+   "petg": 49378.76,
+   "total": 373117.7,
+   "sin_precio": 5,
+   "n_cont": 31,
+   "kg": 78.01,
+   "h_std": 3926.3
+  },
+  {
+   "bases": 6,
+   "modulos": "dedicados",
+   "herr": 406084.15,
+   "cont": 260127.0,
+   "ctrl": 11904.6,
+   "petg": 87520.55,
+   "total": 765636.3,
+   "sin_precio": 6,
+   "n_cont": 66,
+   "kg": 138.26,
+   "h_std": 6959.4
+  }
+ ],
+ "factor_petg": [
+  2.279,
+  2.513
+ ],
+ "inversiones": {
+  "Piloto (1 base + 1 modulo TUB, con inventario existente)": 27184.98,
+  "Plan completo (5 bases, modulos compartidos), sin RFID": 323209.18,
+  "Plan completo + RFID (asignacion_y_compra.xlsx, total conservador)": 316214.8,
+  "Solo el control (contenedores, candados, cables, PETG, RFID), sin herramienta": 176863.18
+ },
+ "huerfanos": [
+  {
+   "id": 212,
+   "so": "SO10337 Cortinas de seguridad",
+   "ult": "2026-08-07",
+   "clas": "HUERFANO: tuvo gente y ya no; si dejaron herramienta, esta sin dueno"
+  },
+  {
+   "id": 506,
+   "so": "SO11492 Instalacion de ductos",
+   "ult": "2026-07-07",
+   "clas": "HUERFANO: tuvo gente y ya no; si dejaron herramienta, esta sin dueno"
+  },
+  {
+   "id": 2358,
+   "so": "SO11233 Rigging compresor",
+   "ult": null,
+   "clas": "SIN ASISTENCIA NUNCA: subcontratado, sin kiosko o stage mal puesto; revisar"
+  },
+  {
+   "id": 2359,
+   "so": "SO11771 Subestacion PI Aurora",
+   "ult": null,
+   "clas": "SIN ASISTENCIA NUNCA: subcontratado, sin kiosko o stage mal puesto; revisar"
+  },
+  {
+   "id": 2382,
+   "so": "SO11855 Adicional FTS Topo Chico",
+   "ult": null,
+   "clas": "RECIEN ARRANCADO (inicio hace menos de una semana, sin asistencia aun)"
+  },
+  {
+   "id": 343,
+   "so": "SO11261 Suministro e instalacion",
+   "ult": null,
+   "clas": "NO HA ARRANCADO (inicio futuro)"
+  },
+  {
+   "id": 2368,
+   "so": "SO11861 Cubierta acero inoxidable",
+   "ult": null,
+   "clas": "NO HA ARRANCADO (inicio futuro)"
+  },
+  {
+   "id": 2369,
+   "so": "SO11862 Cubierta acero inoxidable",
+   "ult": null,
+   "clas": "NO HA ARRANCADO (inicio futuro)"
+  },
+  {
+   "id": 2302,
+   "so": "SO11547 Desinstalacion y adecuacion (Topo Chico)",
+   "ult": "2026-09-25",
+   "clas": "ACTIVO (con asistencia en la ventana)"
+  },
+  {
+   "id": 121,
+   "so": "SO9428 Instalacion de suministro (Topo Chico)",
+   "ult": "2026-09-25",
+   "clas": "ACTIVO (con asistencia en la ventana)"
+  },
+  {
+   "id": 2352,
+   "so": "SO11699 Instalacion mecanica y electrica",
+   "ult": "2026-09-24",
+   "clas": "ACTIVO (con asistencia en la ventana)"
+  },
+  {
+   "id": 2375,
+   "so": "SO11498 Ingenieria conceptual",
+   "ult": "2026-09-25",
+   "clas": "ACTIVO (con asistencia en la ventana)"
+  }
+ ]
+}
