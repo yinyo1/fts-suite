@@ -1,0 +1,153 @@
+/* ═══ El sistema visual de Odoo 19, como VARIABLES ═══════════════════════════
+ *
+ * Las pantallas de la suite que tocan órdenes y cotizaciones deben verse como
+ * Odoo 19, no parecidas: el equipo ya sabe usar esa pantalla, y cada diferencia
+ * es algo que tiene que reaprender.
+ *
+ * ── DE DÓNDE SALEN ESTOS NÚMEROS ────────────────────────────────────────────
+ * Del CÓDIGO FUENTE de Odoo 19, leído el 28-sep-2026 de
+ * `raw.githubusercontent.com/odoo/odoo/19.0/addons/web/static/src/…`:
+ * `scss/primary_variables.scss`, `scss/secondary_variables.scss`, `scss/ui.scss`,
+ * `views/list/list_renderer.scss` y `core/notebook/notebook.scss`. Los cinco con
+ * HTTP 200. El documento con la medición está en `docs/comercial/ODOO19-UI.md`.
+ *
+ * ⚠️ NO se pudo medir la INSTANCIA de FTS: `serviciosfts.odoo.com` no se alcanza
+ * desde el contenedor (`CONNECT tunnel failed, response 403`, la misma política
+ * de red que bloquea Pages). Lo que hay es la fuente de la versión, que es la
+ * mejor fuente disponible y NO es lo mismo. Dos valores quedan por confirmar
+ * mirando la pantalla real — van marcados 🔎 abajo.
+ *
+ * ── POR QUÉ VARIABLES Y NO ESTILOS PEGADOS ──────────────────────────────────
+ * Porque el día que se confirme el morado hay que cambiarlo en UN sitio. Un
+ * color pegado en catorce reglas se corrige en trece.
+ *
+ * ── ALCANCE ─────────────────────────────────────────────────────────────────
+ * SÓLO órdenes y cotizaciones. El resto de la suite no cambia de aspecto. Este
+ * archivo define variables y NO impone ninguna regla por su cuenta: lo que las
+ * usa lo hace a propósito.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+
+  /* ── Tipografía ───────────────────────────────────────────────────────────
+   * Odoo NO carga una tipografía de fuera para el backend: usa la del sistema.
+   * Conviene copiarlo tal cual — cero peticiones a un CDN, cero salto al
+   * cargar, y se ve nativa en cada máquina. */
+  --o19-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+              "Helvetica Neue", Ubuntu, "Noto Sans", Arial, sans-serif,
+              "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --o19-font-mono: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+                   "Courier New", monospace;
+
+  --o19-fs-base: 14px;      /* $o-font-size-base */
+  --o19-fs-touch: 16px;     /* $o-font-size-base-touch */
+  --o19-fs-sm: 13px;        /* $o-font-size-base-small */
+  --o19-fs-xs: 12px;        /* $o-font-size-base-smaller */
+  /* La etiqueta de campo es 14 × 0.8. Es chiquita a propósito: el dato manda,
+   * la etiqueta acompaña. Es de las cosas que más hacen que algo «se sienta
+   * Odoo» y casi nadie la copia. */
+  --o19-fs-label: 11.2px;   /* $o-label-font-size-factor: 0.8 */
+
+  --o19-lh: 1.5;            /* $o-line-height-base */
+  --o19-lh-sm: 1.25;
+  --o19-fw-normal: 400;
+  --o19-fw-medium: 500;
+  --o19-fw-bold: 700;
+
+  /* ── Grises · son los de Bootstrap 5, sin tocar ──────────────────────────── */
+  --o19-gray-100: #f8f9fa;
+  --o19-gray-200: #e9ecef;
+  --o19-gray-300: #dee2e6;
+  --o19-gray-400: #ced4da;
+  --o19-gray-500: #adb5bd;
+  --o19-gray-600: #6c757d;
+  --o19-gray-700: #495057;
+  --o19-gray-800: #343a40;
+  --o19-gray-900: #212529;
+
+  /* ── Marca · 🔎 EL ÚNICO VALOR QUE HAY QUE CONFIRMAR MIRANDO ──────────────
+   * El código define DOS morados y no son el mismo:
+   *     $o-community-color  #71639e   ← el que la FUENTE pone como primario
+   *     $o-enterprise-color #714B67
+   * FTS corre Odoo 19 SaaS **Enterprise**, y el módulo `web_enterprise` —que es
+   * privado y no se pudo leer— reasigna el primario al color Enterprise. Así
+   * que lo más probable es que el morado vivo sea el de abajo, pero eso es una
+   * DEDUCCIÓN, no una medición.
+   *
+   * Se resuelve en diez segundos: abrir una orden en Odoo, sacar el color del
+   * botón primario con el cuentagotas, y cambiarlo AQUÍ. Está en una sola
+   * variable justamente para eso. */
+  --o19-brand: #714B67;             /* 🔎 Enterprise · sin confirmar contra la pantalla */
+  --o19-brand-community: #71639e;   /*    el de Community, para comparar */
+  --o19-brand-secondary: #8f8f8f;
+
+  /* ── Semánticos ───────────────────────────────────────────────────────────
+   * ⚠️ El aviso de Odoo es #ffac00, un ámbar MÁS SATURADO que el #ffc107 de
+   * Bootstrap. Usar el de Bootstrap por inercia es de las diferencias que se
+   * notan sin saber por qué. */
+  --o19-success: #28a745;
+  --o19-info: #17a2b8;
+  --o19-warning: #ffac00;
+  --o19-danger: #dc3545;
+
+  /* ── Texto y fondos ──────────────────────────────────────────────────────── */
+  --o19-text: var(--o19-gray-900);
+  --o19-text-muted: rgba(73, 80, 87, .76);   /* gris 700 al 76% · $o-opacity-muted */
+  --o19-headings: #000;
+  --o19-bg-view: #fff;                        /* el fondo de la vista es BLANCO */
+  --o19-bg-app: var(--o19-gray-100);          /* el del cliente web, gris 100 */
+  --o19-border: var(--o19-gray-300);
+  --o19-opacity-disabled: .5;
+  --o19-opacity-muted: .76;
+
+  /* ── El campo ─────────────────────────────────────────────────────────────
+   * ⚠️ Dos cosas de aquí NO se aplican hoy en la suite, y está decidido a
+   * propósito (ver `docs/comercial/ODOO19-UI.md` §6):
+   *
+   *  · `--o19-input-bg: transparent` — en Odoo el campo no tiene caja hasta que
+   *    lo tocas, y un formulario en reposo parece un documento. Es bonito para
+   *    LEER y peor para CAPTURAR, y el bloque de la confirmación es de captura
+   *    activa. Aplica cuando la cotización nazca en la suite (fase 2).
+   *
+   *  · `--o19-input-border-required` — Odoo marca lo OBLIGATORIO con el morado
+   *    de marca y reserva el rojo para lo que está MAL. Son dos estados
+   *    distintos y distinguirlos por color es correcto. La suite usa rojo para
+   *    los dos; cambiarlo toca los mensajes de los candados que se acaban de
+   *    probar, así que queda apuntado y no se movió esta noche. */
+  --o19-input-pad-y: 2px;
+  --o19-input-pad-x: 4px;
+  --o19-input-bg: transparent;
+  --o19-input-invalid-bg: #fdeaec;            /* danger al 10% sobre blanco */
+  --o19-input-border-required: var(--o19-brand);
+
+  /* ── Radios y espaciados ──────────────────────────────────────────────────── */
+  --o19-radius: 4px;
+  --o19-radius-sm: 3px;
+  --o19-radius-lg: 6px;
+  --o19-spacer: 16px;          /* = 1rem */
+  --o19-form-unit: 5px;        /* la unidad con la que Odoo separa un formulario */
+  --o19-pad-h: 16px;
+
+  /* ── Alturas que hay que respetar para que «se sienta» igual ─────────────── */
+  --o19-statusbar-h: 33px;
+  --o19-statbutton-h: 44px;
+  --o19-dropdown-pad-x: 20px;
+  --o19-dropdown-pad-y: 3px;
+  --o19-dropdown-max-h: 70vh;
+  --o19-modal-lg: 980px;
+  --o19-modal-md: 650px;
+
+  /* ⚠️ `$o-form-sheet-min-width: 990px` es la confesión de que Odoo de
+   * escritorio NO está pensado para un teléfono. No se copia: en la suite, a
+   * 380 px manda lo que se lea. Se deja escrito para que nadie lo «arregle»
+   * poniéndolo. */
+  --o19-sheet-min-w: 990px;
+
+  /* ── La rejilla de renglones ──────────────────────────────────────────────
+   * Odoo usa una tabla DENSA: cabe mucho renglón en poca pantalla, que es justo
+   * lo que una orden necesita. */
+  --o19-cell-pad-y: 3px;
+  --o19-cell-pad-x: 8px;
+  --o19-cell-control-max-h: 30px;
+  --o19-badge-h: 17px;
+}
