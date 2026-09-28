@@ -105,13 +105,19 @@ async def procesar(req: Request):
 @app.post("/procesar-raw")
 async def procesar_raw(req: Request, nombre: str, corrida_id: int | None = None, graph_item_id: str | None = None,
                        graph_drive_id: str | None = None, ruta: str | None = None, subido_por: str | None = None,
-                       subido_at: str | None = None, origen: str = "buzon"):
+                       subido_at: str | None = None, origen: str = "buzon", solo_estados: int = 0):
     """Mismo contrato que /procesar, pero el cuerpo son los bytes del archivo (n8n manda el binario tal cual)."""
     contenido = await req.body()
     if not contenido:
         raise HTTPException(400, "cuerpo vacío")
     meta = {"origen": origen, "graph_item_id": graph_item_id, "graph_drive_id": graph_drive_id, "ruta": ruta,
             "subido_por": subido_por, "subido_at": subido_at}
+    if solo_estados:
+        with conexion() as con:
+            cat = pipeline.catalogo_db(con)
+        if not pipeline.es_candidato(contenido, cat):
+            return {"ok": True, "ignorado": True, "entrada": {**meta, "nombre": nombre[:250], "bytes": len(contenido)},
+                    "items": [], "subir": [], "rechazar_piezas": [], "problemas": [], "requiere_correo": False}
     return _procesar(contenido, nombre[:250], meta, corrida_id)
 
 

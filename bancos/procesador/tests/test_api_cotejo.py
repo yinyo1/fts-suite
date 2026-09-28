@@ -56,3 +56,27 @@ def test_api_procesar_y_cotejo(base_limpia):
     assert c.get("/base-maestra.csv").headers["x-filas"] == str(len(movs))
     idem = c.post("/verificar/idempotencia").json()
     assert idem["iguales"] and idem["csv_estable"]
+
+
+def test_solo_estados_ignora_lo_que_no_es_estado(base_limpia):
+    from fixtures import pdf_texto, zip_de
+    from fts_bancos.app import app
+    c = TestClient(app)
+    fac = c.post("/procesar-raw?nombre=factura.pdf&solo_estados=1&origen=sharepoint", content=pdf_texto(["FACTURA", "CFDI"])).json()
+    assert fac["ignorado"] is True
+    z = zip_de({"a.pdf": pdf_texto(["SIPARE"]), "b.pdf": pdf_estado(escenario()["usd_2026-02"])})
+    r = c.post("/procesar-raw?nombre=mezcla.zip&solo_estados=1&origen=sharepoint", content=z).json()
+    assert not r.get("ignorado") and any(i["estado"] == "validado" for i in r["items"])
+    with conexion() as con, con.cursor() as cur:
+        cur.execute("SELECT count(*) AS n FROM bancos.archivos WHERE nombre_original='factura.pdf'")
+        assert cur.fetchone()["n"] == 0
+
+
+def test_corrida_sin_graph_no_toca_huecos(base_limpia):
+    from fts_bancos.app import app
+    c = TestClient(app)
+    cid = c.post("/corridas", json={"origen": "cron"}).json()["corrida_id"]
+    c.post(f"/corridas/{cid}/cerrar", json={"graph_ok": False})
+    with conexion() as con, con.cursor() as cur:
+        cur.execute("SELECT count(*) AS n FROM bancos.huecos")
+        assert cur.fetchone()["n"] == 0

@@ -168,6 +168,26 @@ def _cuenta_dict(c: Cuenta | None):
             "journal_odoo": c.journal_odoo}
 
 
+def es_candidato(contenido: bytes, catalogo: Catalogo) -> bool:
+    """¿Vale la pena guardar este archivo? Para el inventario de carpetas revueltas
+    (facturas, CEPs, SIPARE…): sólo PDFs con pinta de estado de cuenta, o ZIPs que los traigan.
+    No escribe nada."""
+    if entrada.es_zip(contenido):
+        res = entrada.expandir_zip(contenido, "inventario.zip")
+        return any(es_candidato(p.contenido, catalogo) for p in res.piezas if not entrada.es_zip(p.contenido))
+    if not entrada.es_pdf(contenido):
+        return False
+    try:
+        t = "\n".join(bbva.texto_paginas(contenido, max_paginas=1))
+    except Exception:
+        return b"/Encrypt" in contenido   # protegido: se guarda para avisar
+    if not t.strip():
+        return False
+    if re.search(r"ESTADO\s+DE\s+CUENTA", t, re.I) and (RFC_FTS in t.replace(" ", "") or catalogo.identificar(t)):
+        return True
+    return bool(bbva.RE_PERIODO.search(t) and catalogo.identificar(t))
+
+
 def procesar_archivo(con, contenido: bytes, nombre: str, meta: dict, corrida_id: int | None,
                      catalogo: Catalogo, reglas: list[Regla]) -> list[Item]:
     """Procesa un archivo (o ZIP) y devuelve los items del manifiesto."""
@@ -512,8 +532,12 @@ def _hueco(cur, cuenta_id, periodo, motivo, dif, detalle):
 
 def cerrar_corrida(con, corrida_id: int, catalogo: Catalogo, graph_ok: bool | None = None, extra: dict | None = None,
                    hoy: date | None = None) -> dict:
-    pares = emparejar_db(con, corrida_id, catalogo)
-    v3 = v3_y_huecos(con, corrida_id, catalogo, hoy)
+    if graph_ok is False:
+        # Sin lectura del buzón no se sabe qué falta: no se tocan pares, V3 ni huecos.
+        pares, v3 = 0, {"omitido": "graph_no_disponible"}
+    else:
+        pares = emparejar_db(con, corrida_id, catalogo)
+        v3 = v3_y_huecos(con, corrida_id, catalogo, hoy)
     with con.cursor() as cur:
         cur.execute("""SELECT
               count(*) FILTER (WHERE a.corrida_id=%(c)s) AS leidos,
