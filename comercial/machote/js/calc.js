@@ -18,7 +18,7 @@
    * que no es el que espera. Se bumpea junto con `const VERSION_ARCHIVO` de
    * `app.js`, el `?v=` de `index.html` y `version.json` — hay una prueba que
    * falla si los cuatro se separan. */
-  const VERSION = 'V1.43';
+  const VERSION = 'V1.44';
 
   const num = (v) => (typeof v === 'number' && isFinite(v)) ? v : 0;
   const vacio = (v) => v === null || v === undefined || v === '';
@@ -254,9 +254,29 @@
    * CUADRADO a propósito: si naciera con el reparto vacío, la regla dura de
    * "las comisiones no suman 100%" saltaría desde el primer segundo, y una
    * alerta que sale siempre deja de leerse. */
+  /* ── V1.44 · la plantilla ya no nombra a nadie ──────────────────────────
+   * Hasta la V1.43 esto decía `ALDO`, `ANGEL`, `DIEGO`, `MONTY`: los cuatro
+   * nombres de una hoja de Excel de hace años. Medido contra el padrón de
+   * empleados de Odoo la noche del 27-sep: **tres de los cuatro ya no están en
+   * la empresa**, y dos personas activas que sí tienen cuenta de comisión
+   * propia no aparecían en ninguna plantilla.
+   *
+   * El problema no era que estuvieran viejos. Era que una cotización NUEVA
+   * nacía con cuatro personas ya puestas y un cuarto de la bolsa cada una, sin
+   * que nadie lo hubiera decidido — y lo que nace escrito se queda escrito. El
+   * reparto 73/27 de `REPARTO_PLANTILLA` es lo mismo: plantilla, no decisión.
+   *
+   * Ahora nacen cuatro RANURAS sin nombre. Siguen siendo cuatro y siguen
+   * sumando 1 para que la regla `reparto-descuadrado` no salte en un machote
+   * recién creado, y el nombre se elige del catálogo de Odoo con el selector de
+   * beneficiarios (V1.44), que guarda la CUENTA del plan 20 y no un texto.
+   *
+   * ⚠️ Esto NO toca los 19 machotes que ya existen: su documento está
+   * congelado y sigue diciendo lo que decía. La regla blanda de comisiones sin
+   * ligar es la que los va a ir señalando cuando alguien los abra. */
   const EQUIPO_VENTA_PLANTILLA = () => ([
-    { nombre: 'ALDO',  pct: 0.25 }, { nombre: 'ANGEL', pct: 0.25 },
-    { nombre: 'DIEGO', pct: 0.25 }, { nombre: 'MONTY', pct: 0.25 }
+    { nombre: '', pct: 0.25 }, { nombre: '', pct: 0.25 },
+    { nombre: '', pct: 0.25 }, { nombre: '', pct: 0.25 }
   ]);
   const EQUIPO_OPS_PLANTILLA = () => ([
     { nombre: 'SUPERVISOR FTS', pct: 0.25 }, { nombre: 'SEGURIDAD', pct: 0.25 },

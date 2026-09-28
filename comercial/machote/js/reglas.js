@@ -193,14 +193,96 @@
                      '. SUPUESTO: el tope está inventado.' }
         : null
     },
+    /* ── V1.44 · la oportunidad de CRM ────────────────────────────────────
+     * Decisión de Esteban (respuesta 3 del #294): **obligatoria, con salida**.
+     * Obligatoria para CONFIRMAR, sugerida mientras se captura — y por eso es
+     * una regla DURA y no un candado del navegador: la pantalla la pide con
+     * una franja que no estorba, y lo que bloquea es esto.
+     *
+     * La pregunta no se contesta aquí: la contesta `Oportunidades.falta`, que
+     * es el único que sabe que la liga puede venir del documento o de la
+     * columna del servidor. Si este archivo la volviera a contestar por su
+     * cuenta habría dos definiciones, y el día que cambie una se arregla la
+     * otra en un mes (CLAUDE.md §20 #13).
+     *
+     * Sin el módulo cargado la regla NO dispara: una regla dura que salta por
+     * un `<script>` que no llegó bloquearía todas las cotizaciones del sistema
+     * por un fallo de red. */
     {
-      destino: () => ({ tab: 'com' }),
-      id: 'comision-sin-nombre', severidad: 'blanda', area: 'Comisiones',
-      titulo: 'Hay comisión de cliente sin nadie a quién pagarle',
-      evaluar: (m, c) => (c.pctCli > 0 && !(m.equipo_cliente || []).filter(x => x && x.nombre).length)
-        ? { detalle: 'Se está cobrando ' + pct(c.pctCli) + ' de comisión de cliente y no hay contacto nombrado que la reciba.' }
+      destino: () => ({ tab: 'datos' }),
+      id: 'sin-oportunidad', severidad: 'dura', area: 'Trazabilidad',
+      titulo: 'Sin oportunidad de CRM',
+      evaluar: (m) => (G.Oportunidades && G.Oportunidades.falta(m))
+        ? { detalle: 'Esta cotización no está ligada a ninguna tarjeta de CRM, así que el día ' +
+                     'que cobre no habrá camino de vuelta a la conversación que la originó. ' +
+                     'Se elige arriba, en la franja de la cotización: hay candidatas por ' +
+                     'cliente y, si de verdad no existe, se crea ahí mismo.' }
         : null
     },
+    /* ── V1.44 · las dos reglas del beneficiario de comisión ───────────────
+     * Son DOS y no una, porque son dos problemas con dos respuestas distintas:
+     *
+     *   · SUELTO (blanda) — el renglón tiene porcentaje y un nombre escrito a
+     *     mano, sin cuenta del plan 20. Se puede cotizar así, y de hecho los 19
+     *     machotes que existen están todos así. Lo que no se puede es saber a
+     *     qué cuenta analítica va ese dinero, y por eso se advierte.
+     *
+     *   · PENDIENTE DE AUTORIZAR (dura) — el beneficiario existe y su cuenta
+     *     está creada, pero nadie la ha autorizado. Decisión de Esteban
+     *     (respuesta 7): **deja seguir armando el machote y BLOQUEA confirmar
+     *     la orden**. Exactamente eso: dura, no blanda.
+     *
+     * Las dos preguntan a `Beneficiarios`, que es el único que sabe leer el
+     * estado de un renglón. Sin el módulo cargado no disparan. */
+    {
+      destino: () => ({ tab: 'com' }),
+      id: 'comision-sin-ligar', severidad: 'blanda', area: 'Comisiones',
+      titulo: 'Comisiones sin beneficiario ligado',
+      evaluar: (m) => {
+        const B = G.Beneficiarios;
+        if (!B) return null;
+        const s = B.sueltos(m);
+        return s.length ? {
+          /* El texto cubre los DOS casos que el estado junta, porque los dos
+           * tienen la misma consecuencia: un nombre escrito a mano, y una
+           * ranura de la plantilla que reparte dinero sin nombre. Decir sólo
+           * «nombre escrito a mano» dejaría a la segunda sin explicación. */
+          detalle: s.length + ' renglón(es) de comisión reparten dinero sin una cuenta de ' +
+                   'comisión de Odoo detrás —o con el nombre escrito a mano—, así que no se ' +
+                   'sabe a qué cuenta analítica va. Se eligen en DESGLOSE, dando clic en el ' +
+                   'nombre. Un machote recién creado sale así: la plantilla reparte la bolsa ' +
+                   'en cuatro partes y no nombra a nadie, a propósito.',
+          items: s.map(r => ({ seccion: r.grupo.etiqueta,
+                               desc: (r.it.nombre || '(sin nombre)') + ' · ' + pct(Number(r.it.pct || 0)) }))
+        } : null;
+      }
+    },
+    {
+      destino: () => ({ tab: 'com' }),
+      id: 'beneficiario-sin-aprobar', severidad: 'dura', area: 'Comisiones',
+      titulo: 'Beneficiario de comisión pendiente de autorizar',
+      evaluar: (m) => {
+        const B = G.Beneficiarios;
+        if (!B) return null;
+        const p = B.pendientes(m);
+        return p.length ? {
+          detalle: p.length + ' beneficiario(s) de comisión están pendientes de autorizar. ' +
+                   'La cotización se puede seguir armando y se puede guardar; lo que no se ' +
+                   'puede es confirmar la orden, porque eso reserva dinero para alguien que ' +
+                   'todavía no se aprobó. Lo autoriza Erick por correo.',
+          items: p.map(r => ({ seccion: r.grupo.etiqueta,
+                               desc: (B.nombreDe(r.it) || '(sin nombre)') + ' · pendiente de autorizar' }))
+        } : null;
+      }
+    },
+    /* ── `comision-sin-nombre` se retiró en la V1.44 ───────────────────────
+     * Decía «hay comisión de cliente sin nadie a quién pagarle» mirando si
+     * `equipo_cliente` tenía algún renglón con nombre. `comision-sin-ligar`
+     * cubre eso y más: mira los TRES grupos, y no se conforma con un nombre
+     * —pide la cuenta del plan 20, que es lo que hace falta para que el dinero
+     * llegue a algún lado—. Dejar las dos sería tener dos definiciones de la
+     * misma pregunta, que es cómo empiezan a divergir (§20 #4). */
+
 
     // ── Huecos de captura ──────────────────────────────────────────────────
     {

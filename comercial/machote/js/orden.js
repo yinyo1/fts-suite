@@ -787,7 +787,16 @@
        * orden de Odoo: es lo que el servidor escribe en `sequence`. */
       bloques: bloques,
       compromisos: CP ? CP.paraOrden(_st.machote) : {},
-      lead_id: _st.machote.lead_id || null
+      /* ── V1.44 · la oportunidad, leída de donde de verdad vive ────────────
+       * Aquí decía `_st.machote.lead_id`, y esa propiedad **no la escribía
+       * nadie**: el campo del servidor se llama `odoo_lead_id` y la pantalla no
+       * tenía dónde elegirla. O sea que este contrato enseñaba `null` siempre,
+       * y la orden se creaba sin oportunidad sin que nada avisara. Ahora sale
+       * de `Oportunidades.idDe`, que sabe mirar el documento y la libreta.
+       *
+       * El nombre de la LLAVE se queda como `lead_id`: es lo que espera
+       * `comercial/orden-crear-v2`, que está activo y no se toca. */
+      lead_id: (G.Oportunidades ? G.Oportunidades.idDe(_st.machote) : null)
     };
     caja.innerHTML =
       '<div class="contrato">' +
@@ -950,7 +959,11 @@
     _a.crearOrden(_st.machote.id,
                   D && _st.doc ? D.paraOdoo(_st.doc.bloques) : [],
                   CP ? CP.paraOrden(_st.machote) : {},
-                  _st.machote.lead_id || null)
+                  /* V1.44 · lo mismo que en el contrato de arriba: el campo se
+                   * lee de `Oportunidades`, no de una propiedad que nunca se
+                   * escribió. Los dos sitios tienen que leer LO MISMO o el
+                   * contrato que se enseña no es el que se manda. */
+                  (G.Oportunidades ? G.Oportunidades.idDe(_st.machote) : null))
       .then(function (r) {
         b.disabled = false;
         b.textContent = texto;

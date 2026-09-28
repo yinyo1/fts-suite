@@ -625,5 +625,171 @@ es(tieneDura(vj, 'foranea-sin-viaje'), false, 'viejos · pero no los trata como 
   es(ultima.valores.O1, 6, 'hoja · la columna O se evalúa, no sólo existe');
 })();
 
+/* ═══ V1.44 · la oportunidad de CRM y el beneficiario de comisión ══════════
+ *
+ * Los dos módulos nuevos son JS puro en la parte que importa —quién está
+ * ligado, quién está pendiente, de dónde sale el id— así que se ejercitan aquí
+ * y no en el navegador. Lo que sí necesita navegador (que la celda sea un
+ * botón, que el diálogo abra) vive en la suite de pantalla.
+ *
+ * ⚠️ Los nombres de estas pruebas son INVENTADOS a propósito. Este repositorio
+ * es público: ni un empleado, ni un cliente, ni un contacto real entra aquí
+ * (CLAUDE.md §20 #7).
+ */
+(function () {
+  require(require('path').resolve(__dirname, '..', 'js', 'oportunidades.js'));
+  require(require('path').resolve(__dirname, '..', 'js', 'beneficiarios.js'));
+  const OP = window.Oportunidades, B = window.Beneficiarios;
+
+  // ── A · la oportunidad ───────────────────────────────────────────────────
+  const m1 = C.machoteNuevo({ nombre: 'sin oportunidad' });
+  es(OP.falta(m1), true, 'oportunidad · un machote nuevo NACE sin ella');
+  es(OP.idDe(m1), null, 'oportunidad · sin liga el id es null, no undefined');
+
+  OP.marcar(m1, { id: 777, nombre: 'Cambio de bomba en planta piloto' });
+  es(OP.falta(m1), false, 'oportunidad · al marcarla deja de faltar');
+  es(OP.idDe(m1), 777, 'oportunidad · el id se lee del documento');
+  es(OP.nombre(m1), 'Cambio de bomba en planta piloto',
+     'oportunidad · el nombre se guarda para poder pintarlo sin catálogo');
+  es(OP.origenDe(m1), 'documento', 'oportunidad · marcada aquí, el origen es el documento');
+
+  /* La mitad que faltaba y que nadie había leído nunca: el campo del servidor
+   * se llama `odoo_lead_id`. Se ejercita con la libreta de verdad —no con un
+   * doble— para que la prueba falle si alguien vuelve a escribir `lead_id`. */
+  const A2 = window.MachoteAlmacen;
+  if (A2 && A2.escribirLocal) {
+    const m2 = C.machoteNuevo({ nombre: 'ligada en el servidor' });
+    m2.id = 'M-PRUEBA-1744';
+    let leido = null;
+    /* Se sustituye SÓLO el lector de la libreta: la prueba es sobre de dónde
+     * sale el id, no sobre localStorage. */
+    const antes = A2.leadServidor;
+    A2.leadServidor = function (idLocal) { leido = idLocal; return 4242; };
+    es(OP.idDe(m2), 4242, 'oportunidad · sin nada en el documento, el id sale de la libreta');
+    es(leido, 'M-PRUEBA-1744', 'oportunidad · a la libreta se le pregunta por el id LOCAL');
+    es(OP.origenDe(m2), 'servidor', 'oportunidad · la que ya venía ligada se marca como del servidor');
+    es(OP.falta(m2), false, 'oportunidad · la del servidor TAMBIÉN cuenta como ligada');
+    /* Y el documento MANDA sobre la libreta: si alguien acaba de elegir otra y
+     * todavía no sube, la pantalla tiene que enseñar la que eligió. */
+    OP.marcar(m2, { id: 99, nombre: 'la recién elegida' });
+    es(OP.idDe(m2), 99, 'oportunidad · lo elegido en el documento gana sobre la libreta');
+    A2.leadServidor = antes;
+  }
+
+  /* Lo AJENO trae el id encima, porque la libreta va por id_local y lo ajeno
+   * se abre por uuid. */
+  const m3 = C.machoteNuevo({ nombre: 'ajena' });
+  m3._ajeno = true; m3._odoo_lead_id = 555;
+  es(OP.idDe(m3), 555, 'oportunidad · lo ajeno la trae encima, no en la libreta');
+
+  // ── B · el beneficiario de comisión ──────────────────────────────────────
+  const m4 = C.machoteNuevo({ nombre: 'comisiones' });
+  /* LA PLANTILLA YA NO NOMBRA A NADIE. Tres de los cuatro nombres que traía
+   * hasta la V1.43 ya no están en la empresa, y una cotización nueva los
+   * reservaba sin que nadie lo decidiera. */
+  es((m4.equipo_venta || []).length, 4, 'plantilla · siguen siendo cuatro ranuras');
+  es((m4.equipo_venta || []).every(x => !x.nombre), true,
+     'plantilla · NINGUNA ranura nace con nombre de persona');
+  es((m4.equipo_venta || []).reduce((a, x) => a + Number(x.pct || 0), 0), 1,
+     'plantilla · las cuatro siguen sumando 1, para que el reparto no salte solo');
+
+  /* Una ranura vacía NO es un pendiente: regañar por una ranura en blanco es
+   * el error de la regla que se retiró en la V1.43. */
+  /* VACÍO es el renglón que no dice nada: sin nombre, sin cuenta y sin
+   * porcentaje. Se construye a mano porque la plantilla NO nace así. */
+  es(B.estadoDe({ nombre: '', pct: 0 }), 'vacio',
+     'beneficiario · sin nombre, sin cuenta y sin porcentaje está VACÍO');
+  es(B.estadoDe(null), 'vacio', 'beneficiario · un renglón que no existe no truena');
+
+  /* ⚠️ Y ésta es la que puso la línea donde está, y salió al escribirla: un
+   * machote RECIÉN CREADO tiene los nueve renglones de la plantilla repartiendo
+   * la bolsa (4 de venta + 4 de operaciones + 1 de cliente) y **ninguno dice a
+   * quién**. La comisión de FTS de la plantilla no es cero, así que ese reparto
+   * es dinero de verdad apuntando a nadie. Se advierte, blando. */
+  es(B.sueltos(m4).length, 9,
+     'beneficiario · un machote NUEVO reparte la bolsa entre nueve nadies, y se cuenta');
+  es(B.pendientes(m4).length, 0, 'beneficiario · pero ninguno está pendiente de autorizar');
+
+  /* Un nombre escrito a mano: también SUELTO, y es el estado de los 19
+   * machotes que ya existen. */
+  m4.equipo_venta[0].nombre = 'Quien Sea';
+  es(B.estadoDe(m4.equipo_venta[0]), 'suelto', 'beneficiario · con nombre y sin cuenta está SUELTO');
+  es(B.ligado(m4.equipo_venta[0]), false, 'beneficiario · un nombre NO es una liga');
+
+  /* Ligado a una cuenta, sin catálogo cargado: se dice DESCONOCIDO y no
+   * VIGENTE. Son dos cosas distintas y confundirlas es afirmar algo que no se
+   * midió (CLAUDE.md §8). */
+  B.marcar(m4.equipo_venta[0], { nombre: 'Quien Sea', tipo: 'interno', empleado_id: 1, cuenta_id: 1156 });
+  es(B.ligado(m4.equipo_venta[0]), true, 'beneficiario · al marcar queda ligado a la cuenta');
+  es(m4.equipo_venta[0].beneficiario.cuenta_id, 1156, 'beneficiario · lo que se guarda es el ID de la cuenta');
+  es(B.estadoDe(m4.equipo_venta[0]), 'vigente',
+     'beneficiario · sin catálogo se cree lo que dice el documento');
+  es(B.sueltos(m4).length, 8, 'beneficiario · ligar uno baja el conteo de sueltos en uno');
+
+  /* PENDIENTE DE AUTORIZAR: se puede capturar, y es lo que bloquea confirmar. */
+  B.marcar(m4.equipo_cliente[0], { nombre: 'Contacto Inventado', tipo: 'externo',
+                                   cuenta_id: 9001, pendiente: true });
+  es(m4.equipo_cliente[0].beneficiario.estado, 'pendiente',
+     'beneficiario · uno recién creado nace PENDIENTE de autorizar');
+  es(B.pendientes(m4).length, 1, 'beneficiario · y se cuenta como pendiente');
+
+  /* Desligar devuelve el renglón a texto libre sin tirar el porcentaje: sin
+   * esto, corregir una liga equivocada costaría borrar el renglón entero. */
+  const pctAntes = m4.equipo_cliente[0].pct;
+  B.soltar(m4.equipo_cliente[0]);
+  es(B.ligado(m4.equipo_cliente[0]), false, 'beneficiario · desligar quita la cuenta');
+  es(m4.equipo_cliente[0].pct, pctAntes, 'beneficiario · y NO se lleva el porcentaje');
+  es(m4.equipo_cliente[0].nombre, 'Contacto Inventado', 'beneficiario · ni el nombre');
+
+  /* Los tres grupos, y en el orden en que se pintan. */
+  const r = B.renglones(m4);
+  es(r.length, (m4.equipo_venta.length + m4.equipo_operaciones.length + m4.equipo_cliente.length),
+     'beneficiario · se recorren los TRES grupos');
+  es(r[0].grupo.rep, 'venta', 'beneficiario · el primero es el equipo de venta');
+
+  // ── Las reglas, ejercitadas de verdad ────────────────────────────────────
+  require(require('path').resolve(__dirname, '..', 'js', 'geo.js'));
+  require(require('path').resolve(__dirname, '..', 'js', 'demo.js'));
+  require(require('path').resolve(__dirname, '..', 'js', 'reglas.js'));
+  const R = window.REGLAS;
+
+  const m5 = C.machoteNuevo({ nombre: 'para reglas' });
+  const dura = (rev, id) => rev.duras.some(h => h.id === id);
+  const blanda = (rev, id) => rev.blandas.some(h => h.id === id);
+
+  let rev = R.revisar(m5);
+  es(dura(rev, 'sin-oportunidad'), true, 'regla · sin oportunidad BLOQUEA');
+  OP.marcar(m5, { id: 321, nombre: 'la que sea' });
+  rev = R.revisar(m5);
+  es(dura(rev, 'sin-oportunidad'), false, 'regla · con oportunidad ligada deja de bloquear');
+
+  /* La dura del beneficiario pendiente, y la blanda del suelto. Se ejercitan
+   * las dos sobre el mismo machote para que se vea que NO se confunden. */
+  es(dura(rev, 'beneficiario-sin-aprobar'), false, 'regla · sin pendientes no bloquea');
+  es(blanda(rev, 'comision-sin-ligar'), true,
+     'regla · la plantilla sin nombres se ADVIERTE desde el primer render');
+  es(dura(rev, 'comision-sin-ligar'), false, 'regla · pero NO bloquea: así están los 19 que existen');
+
+  /* Ligar TODOS los renglones apaga la advertencia. Se hace con los nueve y no
+   * con uno: con uno, la regla seguiría saltando por los otros ocho y la prueba
+   * no probaría nada. */
+  B.renglones(m5).forEach((r2, i2) => B.marcar(r2.it, {
+    nombre: 'Beneficiario ' + i2, tipo: 'externo', cuenta_id: 9100 + i2
+  }));
+  rev = R.revisar(m5);
+  es(blanda(rev, 'comision-sin-ligar'), false, 'regla · con los nueve ligados deja de advertir');
+  es(dura(rev, 'beneficiario-sin-aprobar'), false, 'regla · y ninguno está pendiente');
+
+  B.marcar(m5.equipo_venta[0], { nombre: 'Alguien Nuevo', tipo: 'externo',
+                                 cuenta_id: 9002, pendiente: true });
+  /* Hay que volver a revisar: `rev` es de ANTES de marcarlo. Sin esta línea la
+   * prueba miraba el resultado viejo y salía en rojo — la escribió así el
+   * primer intento, y la prueba se cazó a sí misma. */
+  rev = R.revisar(m5);
+  es(dura(rev, 'beneficiario-sin-aprobar'), true,
+     'regla · pendiente de autorizar BLOQUEA la confirmación');
+  es(rev.puedeConfirmar, false, 'regla · y por eso no se puede confirmar');
+})();
+
 console.log('\n' + ok + ' pasaron, ' + mal + ' fallaron.');
 process.exit(mal ? 1 : 0);
