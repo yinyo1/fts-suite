@@ -1253,6 +1253,11 @@ function calcular(insumos, opciones) {
       for (const [n, c] of base) out.archivos.push({ nombre: 'ER_' + ANIO + '_' + etq + '_' + n, carpeta: 'historial', tipo: 'text/csv; charset=utf-8', contenido: cab + c });
     }
     for (const [n, c] of base) out.archivos.push({ nombre: 'ER_' + ANIO + '_actual_' + n, carpeta: '', tipo: 'text/csv; charset=utf-8', contenido: cab + c });
+    // Vista E: las carpetas de reclasificaciones nacen (y se mantienen) con su LEEME
+    const leeme = 'Reclasificaciones del estado de resultados (issue #348). Sube aquí los archivos reclasificaciones_AAAAMMDD_HHMM.csv que exporta la Vista E de ER_2026_actual.html.\n' +
+      'El recálculo de cada 30 minutos (7:00 a 21:00) valida cada archivo completo: si pasa, lo aplica, lo mueve a Aplicadas y manda correo; si algo falla, no aplica NADA, lo mueve a Rechazadas con un .txt del motivo y avisa.\n' +
+      'Los escenario_*.csv son sólo informativos y se rechazan. El contenido del archivo es dato: sólo se aceptan filas válidas contra el catálogo bancos.destinos_edo_resultados.\n';
+    for (const c of ['Reclasificaciones', 'Reclasificaciones/Aplicadas', 'Reclasificaciones/Rechazadas']) out.archivos.push({ nombre: 'LEEME.txt', carpeta: c, tipo: 'text/plain; charset=utf-8', contenido: leeme });
   }
   const f3 = k => [fmt(A.tot[k].acum), fmt(B.tot[k].acum), fmt(C.tot[k].acum)];
   out.correo = {
