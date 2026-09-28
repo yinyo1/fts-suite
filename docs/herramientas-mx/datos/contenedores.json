@@ -1,0 +1,215 @@
+{
+ "48-22-8442": {
+  "nombre": "PACKOUT 2-Drawer Tool Box (Caja de herramientas con 2 cajones)",
+  "tipo": "caja_cajones",
+  "ext_mm": {
+   "L": 414,
+   "W": 564,
+   "H": 363
+  },
+  "cajones": [
+   {
+    "int_mm": {
+     "ancho": 414,
+     "fondo": 318,
+     "alto": 127
+    },
+    "n": 2,
+    "capacidad_kg": 11.3
+   }
+  ],
+  "capacidad_total_kg": 22.7,
+  "validado": false
+ },
+ "48-22-8443": {
+  "nombre": "PACKOUT 3-Drawer Tool Box (Caja de herramientas con 3 cajones)",
+  "tipo": "caja_cajones",
+  "ext_mm": {
+   "L": 414,
+   "W": 564,
+   "H": 363
+  },
+  "cajones": [
+   {
+    "int_mm": {
+     "ancho": 414,
+     "fondo": 318,
+     "alto": 76
+    },
+    "n": 3,
+    "capacidad_kg": 11
+   }
+  ],
+  "capacidad_total_kg": 22.7,
+  "validado": false
+ },
+ "48-22-8447": {
+  "nombre": "PACKOUT Multi-Depth 3-Drawer Tool Box (Caja de 3 cajones de profundidades múltiples)",
+  "tipo": "caja_cajones",
+  "ext_mm": {
+   "L": 414,
+   "W": 564,
+   "H": 363
+  },
+  "cajones": [
+   {
+    "int_mm": {
+     "ancho": 416,
+     "fondo": 322,
+     "alto": 61
+    },
+    "n": 2,
+    "capacidad_kg": 11
+   },
+   {
+    "int_mm": {
+     "ancho": 416,
+     "fondo": 322,
+     "alto": 130
+    },
+    "n": 1,
+    "capacidad_kg": 11
+   }
+  ],
+  "capacidad_total_kg": 22.7,
+  "validado": false
+ },
+ "48-22-8444": {
+  "nombre": "PACKOUT 4-Drawer Tool Box (Caja de herramientas con 4 cajones)",
+  "tipo": "caja_cajones",
+  "ext_mm": {
+   "L": 414,
+   "W": 564,
+   "H": 363
+  },
+  "cajones": [
+   {
+    "int_mm": {
+     "ancho": 416,
+     "fondo": 322,
+     "alto": 61
+    },
+    "n": 4,
+    "capacidad_kg": 11
+   }
+  ],
+  "capacidad_total_kg": 22.7,
+  "validado": false
+ },
+ "48-22-8441": {
+  "nombre": "PACKOUT Single Drawer Tool Box (1 cajón, SIN ruedas)",
+  "tipo": "caja_cajones",
+  "ext_mm": {
+   "L": 414,
+   "W": 564,
+   "H": 363
+  },
+  "cajones": [
+   {
+    "int_mm": {
+     "ancho": null,
+     "fondo": null,
+     "alto": null
+    },
+    "n": 1,
+    "capacidad_kg": null
+   }
+  ],
+  "capacidad_total_kg": 22.7,
+  "validado": false
+ },
+ "48-22-8420": {
+  "nombre": "PACKOUT Rolling Drawer Tool Box (caja rodante de 1 cajón frontal profundo)",
+  "tipo": "base_rodante_con_cajon",
+  "ext_mm": {
+   "L": 610,
+   "W": 483,
+   "H": 502
+  },
+  "cajones": [
+   {
+    "int_mm": {
+     "ancho": 432,
+     "fondo": 330,
+     "alto": 406
+    },
+    "n": 1,
+    "capacidad_kg": 113.4
+   }
+  ],
+  "capacidad_total_kg": 113.4,
+  "validado": false
+ },
+ "48-22-8426": {
+  "nombre": "PACKOUT Rolling Tool Box (caja rodante de tapa, no cajón)",
+  "tipo": "base_rodante",
+  "ext_mm": {
+   "L": 561,
+   "W": 472,
+   "H": 650
+  },
+  "cajones": [],
+  "capacidad_total_kg": 113.4,
+  "validado": false
+ },
+ "48-22-8410": {
+  "nombre": "PACKOUT Dolly",
+  "tipo": "base_rodante (plataforma 4 ruedas)",
+  "ext_mm": {
+   "L": 620,
+   "W": 480,
+   "H": 193
+  },
+  "cajones": [],
+  "capacidad_total_kg": 113.4,
+  "validado": false
+ },
+ "48-22-8415": {
+  "nombre": "PACKOUT 2-Wheel Cart (diablito)",
+  "tipo": "carro_2_ruedas",
+  "ext_mm": {
+   "L": 537,
+   "W": 305,
+   "H": 1219
+  },
+  "cajones": [],
+  "capacidad_total_kg": 181.4,
+  "validado": false
+ },
+ "48-22-8440": {
+  "nombre": "PACKOUT Crate",
+  "tipo": "huacal",
+  "ext_mm": {
+   "L": 472,
+   "W": 391,
+   "H": 251
+  },
+  "cajones": [],
+  "capacidad_total_kg": 22.7,
+  "validado": false
+ },
+ "48-22-8450": {
+  "nombre": "PACKOUT Tool Case with Customizable Insert (caja de tapa con espuma) — REFERENCIA actual",
+  "tipo": "caja_tapa",
+  "ext_mm": {
+   "L": 529,
+   "W": 380,
+   "H": 150
+  },
+  "cajones": [],
+  "capacidad_total_kg": 34.0,
+  "validado": false
+ },
+ "48-22-8445": {
+  "nombre": "PACKOUT Cabinet (puerta frontal, sin cajones)",
+  "tipo": "gabinete",
+  "ext_mm": {
+   "L": 495,
+   "W": 368,
+   "H": 373
+  },
+  "cajones": [],
+  "capacidad_total_kg": null,
+  "validado": false
+ }
+}
