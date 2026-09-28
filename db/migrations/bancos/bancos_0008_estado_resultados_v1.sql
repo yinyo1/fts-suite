@@ -33,7 +33,7 @@ INSERT INTO bancos.reglas_edo_resultados (prioridad, destino, campo, patron, sub
   (79, 'administrativo', 'proveedor_odoo', 'CONTAB|FISCAL|AUDITOR', 'contabilidad_legal', 'despacho contable'),
   (80, 'administrativo', 'proveedor_odoo', 'NOTARI|ABOGAD|JURIDIC', 'contabilidad_legal', 'legal'),
   (81, 'administrativo', 'proveedor_odoo', 'RENTA|ARRENDAMIENTO|BIENES RAICES', 'renta_oficina', NULL),
-  (82, 'administrativo', 'plan_analitico', '^2$', 'payana_indirecto', 'Payana: factura con analítica plan 2 (indirecto) y sin proyecto'),
+  (82, 'administrativo', 'plan_analitico', '^2(?![0-9])', 'payana_indirecto', 'Payana: factura con analítica plan 2 (indirecto) y sin proyecto'),
   -- activo fijo (D6): compras de vehículos
   (55, 'activo_fijo', 'proveedor_odoo', 'TOYOTA|NISSAN|FORD MOTOR|CHEVROLET|GENERAL MOTORS|VOLKSWAGEN|HONDA|MAZDA|HYUNDAI|AUTOMOTRIZ', 'vehiculos', 'depreciación 25 % anual'),
   (56, 'activo_fijo', 'descripcion', 'HILUX|UNITEDAUTO|AGENCIA AUTOMOTRIZ', 'vehiculos', 'depreciación 25 % anual'),
@@ -59,7 +59,7 @@ ON CONFLICT (destino, campo, patron) DO NOTHING;
 CREATE TABLE IF NOT EXISTS bancos.nomina_oficina (
   id             serial      PRIMARY KEY,
   beneficiario   text,                          -- nombre tal como aparece en el concepto del banco
-  cuenta_mask    text        CHECK (cuenta_mask IS NULL OR cuenta_mask ~ '^[0-9]{4}$'),  -- últimos 4 dígitos de la cuenta o CLABE
+  cuenta_mask    text        CHECK (cuenta_mask IS NULL OR (cuenta_mask ~ '^[0-9]{4}' AND length(cuenta_mask) = 4)),  -- últimos 4 dígitos de la cuenta o CLABE
   vigente_desde  date        NOT NULL DEFAULT DATE '2026-01-01',
   vigente_hasta  date,
   nota           text,
