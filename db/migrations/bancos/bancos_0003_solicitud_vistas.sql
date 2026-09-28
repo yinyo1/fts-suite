@@ -15,7 +15,8 @@
 --   8. vistas v_* de sólo lectura y el rol bancos_lector (acceso sólo a ellas)
 --
 -- Reglas: nada se borra (sin DELETE para los roles), etiquetas de dólar con
--- nombre, sin datos bancarios en el archivo (repo público).
+-- nombre, sin datos bancarios en el archivo (repo público). Ningún signo de pesos
+-- seguido de comilla, acento grave, ampersand, dígito o '<' (patrones de reemplazo, §20 #10).
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- ── 1. calendario bancario ──
@@ -87,7 +88,8 @@ CREATE TABLE IF NOT EXISTS bancos.plantillas_correo (
 );
 INSERT INTO bancos.plantillas_correo (clave, cuerpo_html, descripcion) VALUES
 ('instrucciones',
-$tpl$<h3 style="margin:18px 0 6px">Cómo descargarlos y subirlos</h3>
+$tpl$
+<h3 style="margin:18px 0 6px">Cómo descargarlos y subirlos</h3>
 <p style="margin:0 0 6px"><b>BBVA (General, Nómina y USD)</b></p>
 <ol style="margin:0 0 10px">
 <li>Entrar a BBVA Net Cash.</li>
@@ -117,7 +119,8 @@ $tpl$<h3 style="margin:18px 0 6px">Cómo descargarlos y subirlos</h3>
 <p style="margin:0 0 10px;color:#555">Si algún paso no coincide con lo que ves en el portal, responde este correo con cómo se hace y lo actualizamos.</p>$tpl$,
  'Sección "Cómo descargarlos y subirlos" de cada solicitud. Los menús de Net Cash, Payana y Jeeves no están verificados: los pasos son genéricos a propósito. Se edita con una migración bancos_NNNN de UPDATE (sube version).'),
 ('pie',
-$tpl$<p style="color:#555;font-size:12px;margin-top:16px">Este correo lo genera el sistema de bancos de FTS desde la base; nadie lo escribe a mano. Las cuentas se muestran sólo con sus últimos 4 dígitos.</p>$tpl$,
+$tpl$
+<p style="color:#555;font-size:12px;margin-top:16px">Este correo lo genera el sistema de bancos de FTS desde la base; nadie lo escribe a mano. Las cuentas se muestran sólo con sus últimos 4 dígitos.</p>$tpl$,
  'Pie común de solicitudes y acuses.')
 ON CONFLICT (clave) DO NOTHING;
 
@@ -129,7 +132,8 @@ CREATE TABLE IF NOT EXISTS bancos.fuentes_solicitud (
   tipo           text        NOT NULL CHECK (tipo IN ('bbva','payana','jeeves')),
   journal_odoo   integer     NOT NULL,
   tipo_archivo   text,                       -- archivos.tipo_detectado para fuentes sin parser
-  periodo_inicio char(7)     NOT NULL CHECK (periodo_inicio ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'),
+  -- sin el ancla de fin de cadena: un signo de pesos seguido de comilla se corrompe en el camino a Postgres (§20 #10)
+  periodo_inicio char(7)     NOT NULL CHECK (length(periodo_inicio) = 7 AND periodo_inicio ~ '^[0-9][0-9][0-9][0-9]-(0[1-9]|1[0-2])'),
   orden          integer     NOT NULL,
   activa         boolean     NOT NULL DEFAULT true
 );
