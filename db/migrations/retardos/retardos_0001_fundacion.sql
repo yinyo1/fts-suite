@@ -22,6 +22,12 @@
 --      expresión cualquier par de llaves dentro del query, aunque venga de un
 --      dato. Medido el 28-sep-2026 al aplicar esta migración: los marcadores
 --      de plantilla con llaves rompieron el SQL. Por eso los marcadores son [[x]].
+--   8. NUNCA un signo de dólar seguido de comilla, &, acento grave, dígito u
+--      otro dólar: el nodo Postgres mete el .sql con String.replace y esos son
+--      patrones de reemplazo de JavaScript (CLAUDE.md §20 #10). Medido aquí: el
+--      ancla de fin de regex seguida de comilla mutó el SQL y Postgres dio un
+--      error de sintaxis lejos del lugar real. Las regex anclan con char_length
+--      o con clases negadas, nunca con el ancla de fin.
 -- ═══════════════════════════════════════════════════════════════════════════
 
 CREATE SCHEMA IF NOT EXISTS retardos;
@@ -157,7 +163,7 @@ CREATE TABLE IF NOT EXISTS retardos.folio_seq (
 
 CREATE TABLE IF NOT EXISTS retardos.caso (
   id               bigserial   PRIMARY KEY,
-  folio            text        NOT NULL UNIQUE CHECK (folio ~ '^RET-[0-9]{4}-[0-9]{4}$'),
+  folio            text        NOT NULL UNIQUE CHECK (char_length(folio) = 13 AND folio ~ '^RET-[0-9]{4}-[0-9]{4}'),
   employee_id      integer     NOT NULL,
   periodo          text        NOT NULL,
   nivel            smallint    NOT NULL REFERENCES retardos.escalera(nivel),
@@ -228,7 +234,7 @@ CREATE TRIGGER bitacora_no_truncate BEFORE TRUNCATE ON retardos.bitacora
 CREATE TABLE IF NOT EXISTS retardos.evidencia (
   id            bigserial   PRIMARY KEY,
   caso_id       bigint      NOT NULL REFERENCES retardos.caso(id),
-  sha256        text        NOT NULL CHECK (sha256 ~ '^[0-9a-f]{64}$'),
+  sha256        text        NOT NULL CHECK (char_length(sha256) = 64 AND sha256 !~ '[^0-9a-f]'),
   nombre        text        NOT NULL,
   mime          text        NOT NULL,
   bytes         integer     NOT NULL,
@@ -282,7 +288,7 @@ CREATE INDEX IF NOT EXISTS envio_pend ON retardos.envio (estado, creado_at) WHER
 
 -- ══ ANTI-REPLAY del webhook del panel (#123) ═════════════════════════════
 CREATE TABLE IF NOT EXISTS retardos.nonce (
-  nonce     text        PRIMARY KEY CHECK (nonce ~ '^[A-Za-z0-9_-]{16,64}$'),
+  nonce     text        PRIMARY KEY CHECK (char_length(nonce) BETWEEN 16 AND 64 AND nonce !~ '[^A-Za-z0-9_-]'),
   actor     text        NOT NULL,
   accion    text,
   creado_at timestamptz NOT NULL DEFAULT now()

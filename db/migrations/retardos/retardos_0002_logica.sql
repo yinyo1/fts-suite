@@ -23,8 +23,13 @@ $fn$;
 
 CREATE OR REPLACE FUNCTION retardos.email_valido(p text) RETURNS boolean
 LANGUAGE sql IMMUTABLE AS $fn$
+  -- Sin ancla de fin de regex a propósito (retardos_0001 regla 8): el final se
+  -- comprueba al revés, con el ancla de inicio sobre reverse().
   SELECT p IS NOT NULL
-     AND p ~* '^[a-z0-9._%+-]+@[a-z0-9.-]+[.][a-z]{2,}$'
+     AND p !~* '[^a-z0-9._%+@-]'
+     AND length(p) - length(replace(p, '@', '')) = 1
+     AND p ~* '^[a-z0-9._%+-]+@[a-z0-9-]+([.][a-z0-9-]+)*[.][a-z]'
+     AND reverse(p) ~* '^[a-z]{2,}[.]'
      AND lower(split_part(p, '@', 2)) NOT IN ('gmai.com','gmial.com','hotmial.com','outlok.com','gmail.co','hotmail.co')
 $fn$;
 
@@ -496,7 +501,7 @@ BEGIN
       EXCEPTION WHEN others THEN v_bytes := NULL;
       END;
       IF v_bytes IS NULL OR length(v_bytes) < 1024
-         OR lower(coalesce(a->>'mime', '')) !~ '^(application/pdf|image/(jpeg|png|heic|heif|webp))$' THEN
+         OR lower(coalesce(a->>'mime', '')) NOT IN ('application/pdf','image/jpeg','image/png','image/heic','image/heif','image/webp') THEN
         CONTINUE;                                       -- ilegible o de tipo no aceptado
       END IF;
       v_sha := encode(sha256(v_bytes), 'hex');

@@ -441,3 +441,13 @@ test('ningún fuente que se embebe en n8n lleva diagonales invertidas', () => {
     assert.equal(s.indexOf(String.fromCharCode(92)), -1, f + ' trae una diagonal invertida');
   }
 });
+
+test('las migraciones sobreviven el camino de n8n: sin llaves dobles ni patrones de reemplazo de JS', () => {
+  // El nodo Postgres evalúa llaves dobles y mete el .sql con String.replace:
+  // un dólar seguido de comilla, &, acento grave, dígito u otro dólar muta el SQL.
+  for (const f of fs.readdirSync(MIG).filter((x) => x.endsWith('.sql'))) {
+    const s = fs.readFileSync(path.join(MIG, f), 'utf8');
+    assert.equal(s.indexOf('{' + '{'), -1, f + ' trae llaves dobles');
+    assert.equal(/[$]['&`0-9$]/.test(s), false, f + ' trae un patrón de reemplazo de JS');
+  }
+});
