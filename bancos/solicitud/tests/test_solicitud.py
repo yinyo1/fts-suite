@@ -128,6 +128,16 @@ def test_escenario_1_primer_dia_habil(base):
     assert not re.search(r"\d{8,}", c["html"])   # nada con forma de cuenta completa
 
 
+def test_rechazos_solo_del_buzon_y_enmascarados(base):
+    from fixtures import pdf_estado, escenario
+    correr({"viejo protegido.pdf": pdf_estado(escenario()["general_2026-01"], encriptar="x")}, origen="inventario")
+    d = uno("SELECT bancos.f_solicitud('2026-10-01','prueba')")
+    assert d["rechazos"] == []                       # lo del inventario de carpetas viejas no se le pide a Gerardo
+    c = render("acuse", {**uno("SELECT bancos.f_acuse(0, '2026-10-01', 'prueba')"),
+                         "rechazados": [{"archivo": "0999" + "123456_201807_E.pdf", "estado": "rechazado", "codigo": "PDF_PROTEGIDO"}]})
+    assert "…3456_201807_E.pdf" in c["html"] and "0999" + "123456" not in c["html"]
+
+
 def test_escenario_2_dia_intermedio_y_una_vez_al_dia(base):
     correr(lote(), origen="fixture")      # una corrida que no es lectura del buzón
     d = uno("SELECT bancos.f_solicitud('2026-10-02','prueba')")

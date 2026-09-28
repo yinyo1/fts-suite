@@ -18,8 +18,10 @@ const MES = ['', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio',
 const REMITENTE = 'sales@fts.mx';
 
 function limpiar(t) { return String(t == null ? '' : t).replace(/[—–]/g, ','); }
+// Todo lo que se imprime pasa por aquí: escapa HTML y enmascara cualquier corrida de 8+ dígitos
+// (un nombre canónico o de archivo puede traer el número de cuenta completo).
 function esc(t) {
-  return limpiar(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return limpiar(t).replace(/\d{8,}/g, m => '…' + m.slice(-4)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 function mes(p) { return p ? MES[parseInt(String(p).slice(5, 7), 10)] + ' ' + String(p).slice(0, 4) : ''; }
 function mesCorto(p) { return MES[parseInt(String(p).slice(5, 7), 10)]; }
