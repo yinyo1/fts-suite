@@ -96,15 +96,33 @@ def test_el_registro_reemplaza_la_subida_anterior_del_mismo_archivo(tmp_path):
     assert guardado[0]["url"] == "https://e/v2"
 
 
-def test_las_tres_entregas_de_la_noche_quedaron_registradas():
+#: Los entregables VIGENTES al cierre de #340. Los de #335 siguen en el registro,
+#: marcados como superados: un registro que borra lo anterior no deja rastro de que
+#: la version vieja existio, y en OneDrive existe -- renombrada a OBSOLETO--.
+VIGENTES = {
+    "crm-lead-etapa1-2-tarjetas-REVISAR-y-subir.csv",
+    "crm-lead-etapa1-2-tarjetas-VENCIDAS-decidir.csv",
+    "crm-lead-etapa1-6-tarjetas-archiva-NO-subir.csv",
+    "tarjeta-1-hershey-escobedo.json",
+}
+SUPERADOS = {
+    "crm-lead-etapa1-4-tarjetas-REVISAR-y-subir.csv",
+    "crm-lead-etapa1-5-tarjetas-archiva-NO-subir.csv",
+}
+
+
+def test_las_entregas_de_la_noche_quedaron_registradas():
     ruta = os.path.join(RAIZ, "datos", "entregas-fuera-de-corrida.json")
     d = json.load(open(ruta, encoding="utf-8"))
     por_nombre = {e["archivo"]: e for e in d["entregas"]}
-    assert set(por_nombre) == {
-        "crm-lead-etapa1-4-tarjetas-REVISAR-y-subir.csv",
-        "crm-lead-etapa1-5-tarjetas-archiva-NO-subir.csv",
-        "tarjeta-1-hershey-escobedo.json",
-    }
+    assert set(por_nombre) == VIGENTES | SUPERADOS
+    # Los superados lo DICEN, y dicen que se renombraron en vez de borrarse.
+    for nombre in SUPERADOS:
+        nota = por_nombre[nombre].get("SUPERADO_2026_09_28") or ""
+        assert "OBSOLETO" in nota, nombre
+        assert "no se borraron" in nota.lower(), nombre
+    for nombre in VIGENTES:
+        assert not por_nombre[nombre].get("SUPERADO_2026_09_28"), nombre
     for nombre, e in por_nombre.items():
         assert e["url"].startswith("https://"), nombre
         assert e["verificacion_aceptable"], nombre

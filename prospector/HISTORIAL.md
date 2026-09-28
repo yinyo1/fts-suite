@@ -1459,3 +1459,151 @@ Cero escrituras a Odoo · cero consultas a Odoo · cero Lusha · purga no ejecut
 solo para subir los tres entregables finales a OneDrive**, nada más. Los tres
 puntos `[ ? ]` de `listo` quedan sin sondear **porque sondearlos rompería las reglas
 duras**, no por descuido.
+
+---
+
+# #340 · Turno de madrugada: la opción C, B4 cerrado, y una palanca que iba al revés
+
+Continuación de #335. **975 pruebas**, versión **0.15.0**.
+
+## Lo que más vale saber de esta noche
+
+> **La conclusión de la noche anterior estaba equivocada en su dirección.** El turno
+> de #335 cerró diciendo: *«lo que hunde la línea base es que seis de nueve señales
+> no traen fecha; anotarla es la mejora con más palanca»*. Se buscaron las fechas.
+> Tres se encontraron. **Y las tres bajaron el puntaje dos puntos.**
+
+| cuenta | fecha hallada | cita textual | días al 28-sep |
+|---|---|---|---:|
+| LEGO | nov-2023 | *«Anunciada nov-2023, entrega 2025»* | ~1,050 |
+| Ragasa | mar-2025 | *«arranque de obra marzo-2025»* | ~576 |
+| Bimbo | 17-jul-2025 | *«anuncio 17-jul-2025, Plan México»* | 438 |
+
+Las tres pasan de 365 días → **0 de frescura**, mientras `FRESCURA_SIN_FECHA` vale 2.
+
+> **El radar no estaba ciego por falta de fecha: estaba siendo generoso.** El respaldo
+> le regalaba dos puntos a una señal de hace tres años, y la columna «techo» prometía
+> un ascenso que esas tres nunca van a tener — su señal no va a volverse fresca.
+>
+> **Lo que la lista de 13 necesita no es mejor puntuación de señales viejas. Es señal
+> nueva.**
+
+Ragasa igual subió (28 → 32.6) y **no fue por la fecha**: su ficha dice que la señal
+es una **cogeneración propia de 19.2 MW con recuperación de vapor**, no «inversión
+anunciada de 633 MDP». Medido separando causas: **+6.6 por el texto, −2 por la
+fecha**. La mejora vino de leer bien la señal.
+
+## La línea base final
+
+| cuenta | original | con D3+B | con D6 | veredicto | ¿fecha? |
+|---|---:|---:|---:|---|---|
+| Hershey/Escobedo | 83 | 83 | 83 | **pasa** | sí |
+| Coficab/Durango | 12 | 66.4 | **76.4** | **pasa** | sí |
+| Coficab/Pesquería | 22.7 | 64.9 | 64.9 | **pasa** | NO |
+| Bimbo | 16 | 41 | 43.5 | guarda | sí |
+| Cuprum | 18 | 28 | 38 | archiva | NO |
+| Ragasa | 22.6 | 22.6 | 32.6 | archiva | sí |
+| Amazon | 10 | 20.5 | 30.5 | archiva | NO |
+| International | 20 | 20 | 30 | archiva | NO |
+| LEGO | 8 | 18 | 28 | archiva | sí |
+| Nemak/García | 18 | 28 | 28 | archiva | NO |
+| **PASAN** | **1** | **3** | **3** | **de 10** | 5 de 10 fechadas |
+
+**International dejó de ser hueco, y el error vale nombrarlo.** Sus 120 MDD para el
+área de pintura de cabinas llevaban documentados desde el 18-sep, en la misma línea
+que los otros cinco montos. El barrido los perdió porque buscó **«International»** y
+el repo la nombra **«Navistar»**.
+
+> **Una cuenta con dos nombres se pierde en una búsqueda de texto.** Ésa es la
+> lección, no el descuido.
+
+## Opción C, aplicada y medida contra la base real
+
+`vencida_sin_trabajar` como estado propio, `caducidad_original` exigida por dos
+`CHECK`, y la vista que las cuenta. La prueba que exigía que la tarjeta muerta
+**bloqueara** el reciclaje quedó invertida: ahora el reciclaje funciona y la cuenta
+queda con dos tarjetas, una abierta y la vencida — sin borrar nada.
+
+Y al poner las fechas, **nacen cuatro vencidas y no una**. El propio diseño lo había
+anticipado: *«cuando se regeneren las que tienen hueco, probablemente nazcan más»*.
+
+## B4: no era una capa, eran tres
+
+El defecto no estaba en los datos. `magnitudes()` leía la unidad del **proceso del
+cliente** —TR, kVA, HP— y el catálogo habla en la unidad del **equipo que FTS
+instala**. En las 154 líneas reales **no hay ni una TR**: hay 4,000 A de electroducto,
+36 y 35 kV, 4000 y 2000 W de clima de gabinete, 480 V, 127 V, 130 m, 240 mm², 400 MCM.
+
+| capa | estaba | ahora |
+|---|---|---|
+| el lector de magnitudes | no conocía esas unidades | 14 de 154 líneas con magnitud |
+| el constructor de rangos | sólo armaba rango en TR | 6 tipos con rango, por unidad |
+| el corte por arriba | sólo comparaba `min_TR` | corre, y **une** los tipos |
+
+Y las **comas de miles** valían cualquier cosa: `4,000 A` daba 0.0 y `1,500 TR` daba
+1.5 — que es literalmente el ejemplo que el docstring del corte usa para explicarse.
+
+> **Una magnitud que no se puede comparar con nada dejó de dar puntos**, y lo cazó una
+> prueba vieja: *«se renta nave industrial de 4000 m²»* pasó de `archiva` a `guarda`
+> en cuanto el lector aprendió a leer m². Media calificación por una comparación que
+> no se hizo es inventarla.
+
+## B5: el reloj que arrancaba en hoy sin decirlo
+
+`razon_de_caducidad` sólo leía `AAAA-MM-DD`. Una fecha con precisión de **mes** —que
+es como la prensa la da— caía al `except` y el reloj arrancaba en HOY: **una señal de
+nov-2023 salía caducando en enero de 2027**, tres años y dos meses de ventana
+inventada. Misma familia que #302, donde no reconocer la fecha *escondía* la
+antigüedad.
+
+Hoy se leen las tres precisiones, **siempre desde el día 1 del mes** —del lado que
+cierra la ventana antes, nunca del que la regala— y una fecha ilegible **se rechaza**:
+es peor que no tener fecha.
+
+## La regla que evita que se repita
+
+`senal` exige fecha o declarar su ausencia **con razón**. «No la busqué» y «la nota no
+la trae» son dos cosas distintas, y la segunda es un dato: por eso la corrida de
+Pesquería hoy se puede defender —escribió *«nota de prensa sobre inversión, sin fecha
+en el registro»*—.
+
+Y la ficha lo dice **en la capa limpia**, en lenguaje de persona: *«Esta señal no
+tiene fecha. No sabemos si es de este mes o de hace un año, y eso cambia cómo se
+menciona»*. Hay prueba que rechaza «frescura», «techo», «puntaje», «evaluador»,
+«caducidad», «radar» y «umbral» en ese texto.
+
+## La etapa 1 también mira el reloj
+
+El filtro de D9 miraba **sólo el veredicto**, y con las fechas puestas dejaba a
+Coficab/Durango (`pasa`, 76.4) y a Bimbo (`guarda`) en el archivo de SUBIR con su
+`date_deadline` ya vencido. Subir eso crea dos leads que nacen atrasados.
+
+> Si en Postgres una tarjeta vencida no entra a los lazos ni ocupa el lugar de la
+> cuenta, **en el CSV tampoco puede entrar como trabajo vivo.** Tres archivos: 2 que
+> se suben, 2 vencidas que piden decidir, 6 archiva.
+
+## Los docs, y que sea la última vez
+
+Cuatro mentiras encontradas —la fórmula del §3c decía `match_catalogo(0-50)` y sumaba
+100 cuando el máximo real es **137.4** y `padron` ni aparecía; los respaldos de 30 y
+45 días corrían sin estar escritos— y un hueco que no era un número: **D8 vivía sólo
+en el código**. Ninguno de los nueve documentos explicaba el escalonamiento.
+
+> **Una regla invisible se rompe sin querer.** Ahora tiene su §2b, con la razón
+> escrita: *«desde la planta eso no se ve como cadencia, se ve como enjambre»*.
+
+El acuerdo de que sea la última vez no se sostiene con disciplina: se sostiene con
+`tests/test_docs_contra_codigo_340.py`, que lleva el inventario de cada número que un
+doc afirma junto a la constante que lo produce, y falla por las dos razones.
+
+Y un defecto en mi propia herramienta de barrido: el `_plano()` que quita las marcas
+de cita se comía el mayor-que de `` `>= 60` ``. Una prueba floja disfrazada de
+estricta.
+
+## Restricciones del turno
+
+Cero escrituras a Odoo · cero consultas a Odoo · cero Lusha · purga no ejecutada ·
+`fts-mcp-odoo` intacto · sin datos personales en ningún archivo · **Microsoft 365 sólo
+para los entregables**: tres subidas y **dos renombres** —los dos CSV de #335 quedaron
+`OBSOLETO-no-usar-…` en vez de borrados, porque el de subir llevaba dos leads con
+fecha límite en el pasado y a las 8 de la mañana nadie mira la fecha del archivo—.

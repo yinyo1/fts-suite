@@ -111,6 +111,24 @@ def _paquete(c: dict, hoy: date) -> dict:
 # hubiera convertido, eso es justo lo que el evaluador tiene que aprender.
 VEREDICTOS_QUE_SE_SUBEN = (radar.PASA, radar.GUARDA)
 
+# Y EL VEREDICTO NO ALCANZA: TAMBIEN HAY QUE MIRAR EL RELOJ (#340).
+#
+# Salio al regenerar los CSV con las fechas puestas. El filtro de D9 mira solo el
+# veredicto, asi que Coficab/Durango -- `pasa`, 76.4, el segundo mejor puntaje-- y
+# Bimbo -- `guarda`-- caian en el archivo de SUBIR con su `date_deadline` YA VENCIDO:
+# 7-abr-2026 y 14-nov-2025. Subir eso a Odoo es crear dos leads que nacen atrasados,
+# y la actividad que se les programe va a salir en rojo el primer dia.
+#
+# Es el MISMO caso que la opcion C resolvio en la base -- `vencida_sin_trabajar`-- y
+# la coherencia importa: si en Postgres una tarjeta vencida no entra a los lazos ni
+# ocupa el lugar de la cuenta, en el CSV tampoco puede entrar como trabajo vivo.
+#
+# NO SE TIRAN, y esto es lo importante: Durango es una senal buena con la ventana
+# cerrada. Van a un TERCER archivo cuyo nombre dice que hay que decidir, porque
+# reabrirla es una decision de persona y lleva la caducidad recalculada desde hoy.
+def ya_vencida(caduca: str, hoy: date) -> bool:
+    return str(caduca)[:10] < hoy.isoformat()
+
 
 def exportar(destino: str, hoy: date | None = None) -> dict:
     hoy = hoy or date.today()
@@ -123,12 +141,18 @@ def exportar(destino: str, hoy: date | None = None) -> dict:
     paquetes.sort(key=lambda t: -(t[0]["puntaje_del_evaluador"] or 0))
 
     os.makedirs(destino, exist_ok=True)
-    filas_suben, filas_archiva, detalle = [], [], []
+    filas_suben, filas_archiva, filas_vencidas, detalle = [], [], [], []
     for pq, c in paquetes:
         fila = io.lineas(pq, hoy)[0]
         veredicto = pq["senal_origen"]["veredicto"]
-        (filas_suben if veredicto in VEREDICTOS_QUE_SE_SUBEN
-         else filas_archiva).append(fila)
+        caduca_, por_que_ = io.razon_de_caducidad(pq, hoy)
+        vencida = ya_vencida(caduca_, hoy)
+        if veredicto not in VEREDICTOS_QUE_SE_SUBEN:
+            filas_archiva.append(fila)
+        elif vencida:
+            filas_vencidas.append(fila)
+        else:
+            filas_suben.append(fila)
         contactos = pq["contactos_de_valor"]
         retenidos = [x for x in contactos
                      if x.get("correo") and x.get("nivel_confianza") == CANDIDATO]
@@ -145,7 +169,14 @@ def exportar(destino: str, hoy: date | None = None) -> dict:
             "en_revision_no_creados": sum(1 for x in contactos
                                           if x.get("revision_humana")),
             "phone_vacio": fila["phone"] == "",
-            "se_sube": veredicto in VEREDICTOS_QUE_SE_SUBEN,
+            "ya_vencida": vencida,
+            "se_sube": (veredicto in VEREDICTOS_QUE_SE_SUBEN and not vencida),
+            "por_que_no_se_sube": (
+                "" if veredicto in VEREDICTOS_QUE_SE_SUBEN and not vencida
+                else f"veredicto `{veredicto}`" if not vencida
+                else f"su senal YA CADUCO el {caduca_}: subirla crearia un lead "
+                     "que nace atrasado. Decidir si se reabre, con la caducidad "
+                     "recalculada desde hoy"),
         })
 
     # DOS archivos, y el nombre de cada uno dice lo que hay que hacer con el. Un
@@ -168,6 +199,12 @@ def exportar(destino: str, hoy: date | None = None) -> dict:
             (filas_suben,
              f"crm-lead-etapa1-{len(filas_suben)}-tarjetas-REVISAR-y-subir.csv",
              "pasa + guarda: estas si se suben, despues de revisarlas"),
+            (filas_vencidas,
+             f"crm-lead-etapa1-{len(filas_vencidas)}-tarjetas-VENCIDAS-decidir.csv",
+             "pasa + guarda pero su senal YA CADUCO. NO se suben tal cual: su "
+             "`date_deadline` esta en el pasado y naceria un lead atrasado. Lo que "
+             "hay que decidir es si se reabren, y entonces la caducidad se "
+             "recalcula desde hoy y queda escrito que se reabrio vencida"),
             (filas_archiva,
              f"crm-lead-etapa1-{len(filas_archiva)}-tarjetas-archiva-NO-subir.csv",
              "archiva: referencia, NO se suben. Son material del lazo 1 -- si una "
@@ -184,16 +221,22 @@ def exportar(destino: str, hoy: date | None = None) -> dict:
 
     return {
         "archivos": archivos,
-        "tarjetas_totales": len(filas_suben) + len(filas_archiva),
+        "tarjetas_totales": (len(filas_suben) + len(filas_vencidas)
+                             + len(filas_archiva)),
         "se_suben": len(filas_suben),
-        "no_se_suben": len(filas_archiva),
+        "vencidas": len(filas_vencidas),
+        "no_se_suben": len(filas_archiva) + len(filas_vencidas),
         "filtro": (f"D9: solo {' y '.join(VEREDICTOS_QUE_SE_SUBEN)} se suben a "
-                   "Odoo. Las `archiva` van a un archivo marcado, no se tiran: son "
-                   "material del lazo 1"),
-        "por_que_no_son_diez": (
-            "solo hay nueve cuentas con senal documentada; las otras cuatro de las "
-            "trece son huecos, y una tarjeta sin expediente no tiene puntaje con el "
-            "que ordenarla. La decima habria que inventarsela."),
+                   "Odoo, Y SOLO si su senal no caduco todavia. Las `archiva` y las "
+                   "vencidas van a archivos marcados, no se tiran: las primeras son "
+                   "material del lazo 1 y las segundas son decisiones de persona"),
+        "cuantas_cuentas": (
+            "Diez cuentas con senal documentada de las trece, y tres huecos. Eran "
+            "nueve y cuatro hasta el 28-sep: International dejo de ser hueco porque "
+            "sus 120 MDD llevaban documentados desde el 18-sep y el barrido los "
+            "perdio buscando «International» donde el repo dice «Navistar». Una "
+            "tarjeta sin expediente no tiene puntaje con el que ordenarla, asi que "
+            "los tres huecos no salen: habria que inventarles la senal."),
         "escrituras_a_odoo": 0,
         "detalle": detalle,
     }
@@ -216,15 +259,17 @@ if __name__ == "__main__":
             print(f"   · {a_['nombre']}  ({a_['bytes']:,} bytes, "
                   f"{a_['tarjetas']} tarjeta(s))")
             print(f"       {a_['que_es']}")
-        print(f"\n  {r['por_que_no_son_diez']}\n")
+        print(f"\n  {r['cuantas_cuentas']}\n")
         print(f"  {'tarjeta':22} {'pts':>6} {'veredicto':>9} {'caduca':>12} "
-              f"{'cont':>5} {'sube?':>6}")
-        print("  " + "-" * 66)
+              f"{'cont':>5} {'sube?':>6}  por que no")
+        print("  " + "-" * 82)
         for x in r["detalle"]:
             print(f"  {x['llave']:22} {x['puntaje']:>6} {x['veredicto']:>9} "
                   f"{x['caduca']:>12} {x['contactos']:>5} "
-                  f"{('SI' if x['se_sube'] else 'no'):>6}")
-        print("  " + "-" * 66)
+                  f"{('SI' if x['se_sube'] else 'NO'):>6}  "
+                  + ("SU SENAL YA CADUCO" if x["ya_vencida"] and not x["se_sube"]
+                     else "" if x["se_sube"] else "veredicto `archiva`"))
+        print("  " + "-" * 82)
         ret = sum(x["correos_retenidos_por_candidato"] for x in r["detalle"])
         rev = sum(x["en_revision_no_creados"] for x in r["detalle"])
         print(f"  REGLA 1 · correos retenidos por ser candidato: {ret}")

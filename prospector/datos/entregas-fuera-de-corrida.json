@@ -23,7 +23,8 @@
         "Subido como BASE64 declarando la longitud exacta: el conector rechaza el envio si no decodifica a 6,125 bytes, asi que el transporte quedo comprobado del lado del servidor y el byte de mas de #306 no puede pasar por aqui. NO es una relectura: confirma la longitud de lo que llego, no su contenido. Para verificar contenido, `--sha256-releido`."
       ],
       "verificacion_aceptable": true,
-      "nota": "Etapa 1 con D6 y D9 aplicados: las 4 tarjetas pasa+guarda. Las sube una PERSONA."
+      "nota": "Etapa 1 con D6 y D9 aplicados: las 4 tarjetas pasa+guarda. Las sube una PERSONA.",
+      "SUPERADO_2026_09_28": "OBSOLETO. Los puntajes cambiaron al fechar las senales (#340) y el filtro de la etapa 1 gano el reloj, asi que estos dos archivos quedaron con los numeros viejos y -- el de subir-- con dos leads cuyo `date_deadline` ya paso. NO se borraron: se RENOMBRARON en OneDrive a `OBSOLETO-no-usar-...` para que nadie los importe por error, y siguen ahi por si hace falta comparar. El itemId no cambia con un renombre, asi que la liga de arriba sigue sirviendo."
     },
     {
       "archivo": "crm-lead-etapa1-5-tarjetas-archiva-NO-subir.csv",
@@ -43,7 +44,8 @@
         "Subido como BASE64 declarando la longitud exacta: el conector rechaza el envio si no decodifica a 5,752 bytes, asi que el transporte quedo comprobado del lado del servidor y el byte de mas de #306 no puede pasar por aqui. NO es una relectura: confirma la longitud de lo que llego, no su contenido. Para verificar contenido, `--sha256-releido`."
       ],
       "verificacion_aceptable": true,
-      "nota": "D9: las 5 tarjetas 'archiva'. REFERENCIA, NO SE SUBEN A ODOO."
+      "nota": "D9: las 5 tarjetas 'archiva'. REFERENCIA, NO SE SUBEN A ODOO.",
+      "SUPERADO_2026_09_28": "OBSOLETO. Los puntajes cambiaron al fechar las senales (#340) y el filtro de la etapa 1 gano el reloj, asi que estos dos archivos quedaron con los numeros viejos y -- el de subir-- con dos leads cuyo `date_deadline` ya paso. NO se borraron: se RENOMBRARON en OneDrive a `OBSOLETO-no-usar-...` para que nadie los importe por error, y siguen ahi por si hace falta comparar. El itemId no cambia con un renombre, asi que la liga de arriba sigue sirviendo."
     },
     {
       "archivo": "tarjeta-1-hershey-escobedo.json",
@@ -64,6 +66,66 @@
       ],
       "verificacion_aceptable": true,
       "nota": "Tarjeta 1 del piloto, regenerada con D8 (primeros toques escalonados). No la puede registrar 'prospector entregar': no la produce una corrida."
+    },
+    {
+      "archivo": "crm-lead-etapa1-2-tarjetas-REVISAR-y-subir.csv",
+      "ruta_local": "/tmp/claude-0/-home-user-fts-mcp-odoo/1546b028-bc52-5085-aa2e-d270de370c32/scratchpad/p3/etapa1/crm-lead-etapa1-2-tarjetas-REVISAR-y-subir.csv",
+      "url": "https://ftsmx0-my.sharepoint.com/personal/estebandelacruz_fts_mx/_layouts/15/Doc.aspx?sourcedoc=%7B1D1882E9-55D1-48D3-ACEE-1CDCE13692E7%7D&file=crm-lead-etapa1-2-tarjetas-REVISAR-y-subir.csv&action=default&mobileredirect=true",
+      "ts": "2026-09-28T09:44:36.107069+00:00",
+      "local": {
+        "sha256": "648cf24aaaefe5077e01d4e4ea987d273b64294c7a07b4e8e8297165ec748c83",
+        "bytes": 3805
+      },
+      "sha256_subido": "",
+      "bytes_subidos": 3805,
+      "hash_de_relectura": false,
+      "base64_con_longitud_confirmada": true,
+      "verificacion": "longitud_confirmada_en_base64",
+      "avisos_de_verificacion": [
+        "Subido como BASE64 declarando la longitud exacta: el conector rechaza el envio si no decodifica a 3,805 bytes, asi que el transporte quedo comprobado del lado del servidor y el byte de mas de #306 no puede pasar por aqui. NO es una relectura: confirma la longitud de lo que llego, no su contenido. Para verificar contenido, `--sha256-releido`."
+      ],
+      "verificacion_aceptable": true,
+      "nota": "D9 mas el reloj: solo Hershey y Coficab/Pesqueria. Durango y Bimbo salieron porque su senal ya caduco."
+    },
+    {
+      "archivo": "crm-lead-etapa1-2-tarjetas-VENCIDAS-decidir.csv",
+      "ruta_local": "/tmp/claude-0/-home-user-fts-mcp-odoo/1546b028-bc52-5085-aa2e-d270de370c32/scratchpad/p3/etapa1/crm-lead-etapa1-2-tarjetas-VENCIDAS-decidir.csv",
+      "url": "https://ftsmx0-my.sharepoint.com/personal/estebandelacruz_fts_mx/_layouts/15/Doc.aspx?sourcedoc=%7BF2AF89EF-714C-48E7-B929-5E5BC3CB9815%7D&file=crm-lead-etapa1-2-tarjetas-VENCIDAS-decidir.csv&action=default&mobileredirect=true",
+      "ts": "2026-09-28T09:44:36.176636+00:00",
+      "local": {
+        "sha256": "99e2c6b41494d032f98bde5b846e3a844b977a3197b1ab3e453f15db3a12427b",
+        "bytes": 2489
+      },
+      "sha256_subido": "",
+      "bytes_subidos": 2489,
+      "hash_de_relectura": false,
+      "base64_con_longitud_confirmada": true,
+      "verificacion": "longitud_confirmada_en_base64",
+      "avisos_de_verificacion": [
+        "Subido como BASE64 declarando la longitud exacta: el conector rechaza el envio si no decodifica a 2,489 bytes, asi que el transporte quedo comprobado del lado del servidor y el byte de mas de #306 no puede pasar por aqui. NO es una relectura: confirma la longitud de lo que llego, no su contenido. Para verificar contenido, `--sha256-releido`."
+      ],
+      "verificacion_aceptable": true,
+      "nota": "Coficab/Durango (76.4) y Bimbo (43.5): pasan el veredicto y su senal ya caduco. Decision de persona, con la caducidad recalculada desde hoy."
+    },
+    {
+      "archivo": "crm-lead-etapa1-6-tarjetas-archiva-NO-subir.csv",
+      "ruta_local": "/tmp/claude-0/-home-user-fts-mcp-odoo/1546b028-bc52-5085-aa2e-d270de370c32/scratchpad/p3/etapa1/crm-lead-etapa1-6-tarjetas-archiva-NO-subir.csv",
+      "url": "https://ftsmx0-my.sharepoint.com/personal/estebandelacruz_fts_mx/_layouts/15/Doc.aspx?sourcedoc=%7B418DBBA3-C171-4528-86DF-23551FBBFC90%7D&file=crm-lead-etapa1-6-tarjetas-archiva-NO-subir.csv&action=default&mobileredirect=true",
+      "ts": "2026-09-28T09:44:36.240685+00:00",
+      "local": {
+        "sha256": "b363886c9fd3c4284113003fa939fd1c8c1aecc2557db1e8174cfd12b28d3d08",
+        "bytes": 7363
+      },
+      "sha256_subido": "",
+      "bytes_subidos": 7363,
+      "hash_de_relectura": false,
+      "base64_con_longitud_confirmada": true,
+      "verificacion": "longitud_confirmada_en_base64",
+      "avisos_de_verificacion": [
+        "Subido como BASE64 declarando la longitud exacta: el conector rechaza el envio si no decodifica a 7,363 bytes, asi que el transporte quedo comprobado del lado del servidor y el byte de mas de #306 no puede pasar por aqui. NO es una relectura: confirma la longitud de lo que llego, no su contenido. Para verificar contenido, `--sha256-releido`."
+      ],
+      "verificacion_aceptable": true,
+      "nota": "Seis archiva, con International incluida. REFERENCIA, NO SE SUBEN."
     }
   ]
 }

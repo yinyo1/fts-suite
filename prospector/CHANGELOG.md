@@ -3,6 +3,86 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.15.0 — 2026-09-28
+
+Turno de madrugada (#340): la opcion C aplicada, B4 cerrado, las fechas de las
+senales buscadas, y la fecha vuelta obligatoria. **975 pruebas** (eran 899).
+
+### Opcion C · la tarjeta que nace vencida tiene estado propio
+
+`estado_de_tarjeta` gana `vencida_sin_trabajar`, `tarjeta` gana
+`reabierta_vencida` y `caducidad_original` -- con dos CHECK que la exigen-- y hay
+vista `vencidas_sin_trabajar`. `cerrada` significa "se trabajo y termino";
+`vencida_sin_trabajar` significa "nunca se trabajo", y el lazo 1 tiene que poder
+distinguirlas: **una cuenta que nadie toco dice algo del equipo, no de la fuente**.
+
+Medido contra la base real: cero cierres, cero filas en las tres vistas del
+aprendizaje, cero en el tablero, y **el reciclaje ya funciona** -- la prueba que
+exigia que la tarjeta muerta lo BLOQUEARA quedo invertida--.
+
+### B4 · el catalogo si trae magnitudes, y eran TRES capas rotas
+
+El defecto no estaba en los datos: estaba en el VOCABULARIO. `magnitudes()` leia la
+unidad del proceso del cliente -- TR, kVA, HP-- y el catalogo habla en la unidad del
+equipo que FTS instala. **En las 154 lineas reales no hay ni una TR:** hay 4,000 A de
+electroducto, 36 y 35 kV, 4000 y 2000 W de clima de gabinete, 480 V y 127 V, 130 m y
+11 m, 240 mm2, 400 MCM.
+
+Arregladas las tres capas -- el lector, el constructor de rangos y el corte-- mas una
+cuarta que salio de paso: el rango se UNE sobre los tipos en vez de tomar el primero
+que pegue. **14 de 154** lineas con magnitud, **6 tipos** con rango, **2 rangos** que
+comparan de verdad. Y las comas de miles valian cualquier cosa: "4,000 A" daba 0.0.
+
+Dos limites quedan dichos y no tapados: **un rango de un solo valor no es un rango**,
+y las descripciones vienen truncadas por el conector (51 caracteres la mas larga).
+
+**Y una magnitud que no se puede comparar dejo de dar puntos.** Antes valia la mitad,
+y eso regalaba 5 puntos por cualquier numero con unidad: la prueba de aceptacion de
+D3 lo cazo -- "se renta nave industrial de 4000 m2" paso de `archiva` a `guarda` en
+cuanto el lector aprendio a leer m2--.
+
+### Las fechas de las seis senales, y la palanca resulto ir al REVES
+
+Tres de seis se pudieron fechar, con cita textual: LEGO **nov-2023**, Ragasa
+**mar-2025**, Bimbo **17-jul-2025**. Estaban en las fichas de la corrida del 18-sep.
+
+**Fechar no subio el conteo: lo bajo dos puntos por cuenta.** Las tres pasan de 365
+dias, o sea 0 de frescura, y `FRESCURA_SIN_FECHA` vale 2. El radar no estaba ciego
+por falta de fecha -- estaba siendo generoso--. Lo que la lista de 13 necesita no es
+mejor puntuacion de senales viejas: es senal nueva.
+
+**DEFECTO B5:** `razon_de_caducidad` solo leia `AAAA-MM-DD`, asi que una fecha con
+precision de mes caia al `except` y el reloj arrancaba en HOY. Una senal de nov-2023
+salia caducando en **enero de 2027**. Se leen las tres precisiones, siempre desde el
+primer dia del mes, y una fecha ilegible ya no se confunde con no tener fecha.
+
+**CORRECCION:** International NO era un hueco. Sus 120 MDD llevaban documentados
+desde el 18-sep y el barrido los perdio buscando "International" donde el repo dice
+"Navistar". Son **10 cuentas con senal y 3 huecos**.
+
+### La fecha de la senal es obligatoria
+
+`senal` exige `--fecha-senal` o `--sin-fecha --razon-sin-fecha`. Tres precisiones
+validas, fecha ilegible rechazada, y la ficha lo dice **en la capa limpia**: *"Esta
+senal no tiene fecha. No sabemos si es de este mes o de hace un ano"*, sin una sola
+palabra de vocabulario interno.
+
+### La etapa 1 tambien mira el reloj
+
+El filtro de D9 miraba solo el veredicto, y con las fechas puestas dejaba a
+Coficab/Durango (`pasa`, 76.4) y a Bimbo (`guarda`) en el archivo de SUBIR con su
+`date_deadline` ya vencido. **Tres archivos ahora:** 2 que se suben, 2 vencidas que
+piden decidir, 6 archiva. Si en Postgres una tarjeta vencida no entra a los lazos, en
+el CSV tampoco puede entrar como trabajo vivo.
+
+### Los docs, segunda pasada, con prueba que la sostiene
+
+Cuatro mentiras: la formula del §3c decia `match_catalogo(0-50)` y sumaba 100 -- el
+maximo real es 137.4 y `padron` ni aparecia--, y los respaldos de 30 y 45 dias
+corrian sin estar escritos. Un hueco que no era un numero: **D8 vivia solo en el
+codigo**, y ahora tiene su §2b. `tests/test_docs_contra_codigo_340.py` lleva el
+inventario que ata cada numero del doc a su constante.
+
 ## 0.14.0 — 2026-09-28
 
 Turno nocturno (#335), tercera mitad: las cuatro decisiones D6-D9 aplicadas.

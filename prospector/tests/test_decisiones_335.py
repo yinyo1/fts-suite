@@ -314,10 +314,39 @@ def _exportado(tmp_path):
     return ee.exportar(str(tmp_path / "etapa1"), hoy=HOY)
 
 
-def test_d9_solo_pasa_y_guarda_se_suben(tmp_path):
+def test_d9_solo_pasa_y_guarda_se_suben_Y_SOLO_SI_NO_CADUCARON(tmp_path):
+    """D9 mas el reloj (#340). El filtro de D9 miraba SOLO el veredicto, y con las
+    fechas puestas eso dejaba a Coficab/Durango -- `pasa`, 76.4-- y a Bimbo
+    -- `guarda`-- en el archivo de SUBIR con su `date_deadline` ya vencido. Subir eso
+    crea dos leads que nacen atrasados.
+
+    Es el mismo caso que la opcion C resolvio en la base, y la coherencia importa: si
+    en Postgres una tarjeta vencida no entra a los lazos, en el CSV tampoco puede
+    entrar como trabajo vivo."""
     r = _exportado(tmp_path)
     for x in r["detalle"]:
-        assert x["se_sube"] == (x["veredicto"] in ("pasa", "guarda")), x["llave"]
+        esperado = (x["veredicto"] in ("pasa", "guarda")) and not x["ya_vencida"]
+        assert x["se_sube"] == esperado, x["llave"]
+        if not x["se_sube"]:
+            assert x["por_que_no_se_sube"], x["llave"]
+    # Y hay al menos una que el veredicto habria subido y el reloj detiene: si no,
+    # esta prueba no esta probando nada.
+    detenidas = [x for x in r["detalle"]
+                 if x["veredicto"] in ("pasa", "guarda") and x["ya_vencida"]]
+    assert detenidas, "ninguna tarjeta ejercita el filtro del reloj"
+    for x in detenidas:
+        assert "YA CADUCO" in x["por_que_no_se_sube"]
+
+
+def test_d9_las_vencidas_NO_se_tiran_van_a_un_archivo_que_pide_DECIDIR(tmp_path):
+    """Durango es el segundo mejor puntaje de las diez. Tirarla seria perder una
+    senal buena con la ventana cerrada; subirla seria crear un lead atrasado. Lo que
+    queda es una decision de persona, y el nombre del archivo lo dice."""
+    r = _exportado(tmp_path)
+    venc = next(a for a in r["archivos"] if "VENCIDAS-decidir" in a["nombre"])
+    assert venc["tarjetas"] == r["vencidas"] == 2
+    assert "recalcula desde hoy" in venc["que_es"]
+    assert "NO se suben tal cual" in venc["que_es"]
 
 
 def test_d9_las_archiva_NO_se_tiran_van_a_un_archivo_marcado(tmp_path):
@@ -326,11 +355,14 @@ def test_d9_las_archiva_NO_se_tiran_van_a_un_archivo_marcado(tmp_path):
     si una `archiva` hubiera convertido, eso es justo lo que el evaluador tiene que
     aprender."""
     r = _exportado(tmp_path)
-    assert len(r["archivos"]) == 2
+    assert len(r["archivos"]) == 3
     nombres = [a["nombre"] for a in r["archivos"]]
     assert any("REVISAR-y-subir" in n for n in nombres)
     assert any("archiva-NO-subir" in n for n in nombres)
+    assert any("VENCIDAS-decidir" in n for n in nombres)
+    # Ninguna tarjeta se pierde por el camino: las que suben mas las que no.
     assert r["se_suben"] + r["no_se_suben"] == r["tarjetas_totales"]
+    assert sum(a["tarjetas"] for a in r["archivos"]) == r["tarjetas_totales"]
 
 
 def test_d9_el_nombre_del_archivo_dice_que_hacer_con_el(tmp_path):
@@ -339,23 +371,39 @@ def test_d9_el_nombre_del_archivo_dice_que_hacer_con_el(tmp_path):
     """
     r = _exportado(tmp_path)
     for a in r["archivos"]:
-        assert "subir" in a["nombre"]
+        # Cada nombre dice QUE HACER: subir, no subir, o decidir.
+        assert ("subir" in a["nombre"] or "decidir" in a["nombre"]), a["nombre"]
         assert str(a["tarjetas"]) in a["nombre"]
         assert os.path.exists(a["archivo"])
 
 
-def test_d9_ninguna_archiva_esta_en_el_archivo_que_se_sube(tmp_path):
+def test_d9_nada_que_NO_deba_subirse_esta_en_el_archivo_que_se_sube(tmp_path):
+    """Se compara por NOMBRE EXACTO y no por prefijo de empresa.
+
+    Hizo falta: con el filtro del reloj (#340), Coficab/Pesqueria SI se sube y
+    Coficab/Durango NO, y las dos empiezan con "Coficab". Un prefijo habria dado
+    falso positivo -- y una prueba que falla por como se llama la cuenta en vez de
+    por lo que hace el filtro es una prueba que se va a desactivar--.
+    """
     import csv
     r = _exportado(tmp_path)
     suben = next(a for a in r["archivos"] if "REVISAR-y-subir" in a["nombre"])
     with open(suben["archivo"], encoding="utf-8-sig") as f:
         filas = list(csv.DictReader(f))
     assert len(filas) == r["se_suben"]
-    archiva = {x["llave"] for x in r["detalle"] if not x["se_sube"]}
-    nombres = {x["name"] for x in filas}
-    for llave in archiva:
-        empresa = llave.split("/")[0]
-        assert not any(n.startswith(empresa) for n in nombres), llave
+    en_el_archivo = {x["name"] for x in filas}
+
+    def _nombre(llave):
+        empresa, _, planta = llave.partition("/")
+        return f"{empresa} · {planta}" if planta and planta != "?" else empresa
+
+    for x in r["detalle"]:
+        nombre = _nombre(x["llave"])
+        if x["se_sube"]:
+            assert nombre in en_el_archivo, f"{nombre} deberia subirse y no esta"
+        else:
+            assert nombre not in en_el_archivo, (
+                f"{nombre} NO deberia subirse: {x['por_que_no_se_sube']}")
 
 
 def test_d9_las_tres_reglas_duras_siguen_en_los_dos_archivos(tmp_path):
