@@ -195,7 +195,7 @@ BEGIN
       (dia + time '15:10', now() - interval '1 hour', 'prueba','mensaje', ca, 'prueba:b', 'Faltan 3 interruptores y hubo un casi accidente, gente sin arnés (sintético)', NULL, repeat('2',64)),
       (dia + time '15:20', now() - interval '1 hour', 'prueba','mensaje', ca, 'prueba:a', 'El cliente pidió también una salida adicional que no estaba en la cotización; queda listo el viernes (sintético)', NULL, repeat('3',64)),
       (dia + time '15:30', now() - interval '1 hour', 'prueba','audio',   ca, 'prueba:a', NULL, repeat('a1',32), repeat('4',64)),
-      (dia + time '16:00', now() - interval '1 hour', 'prueba','imagen',  cb, 'prueba:c', 'Ticket proveedor: Home Depot por $1,234.50 USD (sintético)', repeat('b2',32), repeat('5',64)),
+      (dia + time '16:00', now() - interval '1 hour', 'prueba','imagen',  cb, 'prueba:c', E'Ticket proveedor: Home Depot por \x241,234.50 USD (sintético)', repeat('b2',32), repeat('5',64)),
       (dia + time '16:05', now() - interval '1 hour', 'prueba','imagen',  cb, 'prueba:c', 'foto sin monto (sintético)', repeat('c3',32), repeat('6',64)),
       (dia + 1 + time '09:00', now() - interval '1 hour', 'prueba','mensaje', cc, 'prueba:d', E'Urgente para hoy\n10 pzas de codo 3/4 galvanizado\n25 m de cable THW calibre 12', NULL, repeat('7',64));
 
