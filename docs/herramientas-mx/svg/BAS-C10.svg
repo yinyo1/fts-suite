@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 524 492" width="838" font-family="Arial, sans-serif">
+<rect x="0" y="0" width="524" height="492" fill="#ffffff"/>
+<text x="46" y="18" font-size="13" font-weight="bold">FTS · Modulo BAS · Cajon C10 · 48-22-8420 · vista superior (mm)</text>
+<rect x="46" y="46" width="432" height="330" fill="#2b2b2b" stroke="#000" stroke-width="3"/>
+<line x1="46" y1="32" x2="478" y2="32" stroke="#333" stroke-width="1"/>
+<line x1="46" y1="26" x2="46" y2="38" stroke="#333"/><line x1="478" y1="26" x2="478" y2="38" stroke="#333"/>
+<text x="262.0" y="28" font-size="11" text-anchor="middle">432 mm</text>
+<line x1="32" y1="46" x2="32" y2="376" stroke="#333"/>
+<line x1="26" y1="46" x2="38" y2="46" stroke="#333"/><line x1="26" y1="376" x2="38" y2="376" stroke="#333"/>
+<text x="28" y="211.0" font-size="11" text-anchor="middle" transform="rotate(-90 28 211.0)">330 mm</text>
+<text x="262.0" y="390" font-size="10" text-anchor="middle" fill="#555">FRENTE DEL CAJON</text>
+<rect x="52" y="52" width="100" height="150" rx="4" fill="#F4A6A6" stroke="#111" stroke-width="1.2"/>
+<text x="102.0" y="125.57142857142857" font-size="7.1" text-anchor="middle" font-weight="bold">FTS-BAS-01-C10-01 R</text>
+<text x="102.0" y="134.14285714285714" font-size="6.1" text-anchor="middle">Cargador sencillo M18/M12 48</text>
+<text x="54" y="200" font-size="5.0" fill="#333">150x100x70</text>
+<rect x="164" y="52" width="80" height="115" rx="4" fill="#F4A6A6" stroke="#111" stroke-width="1.2"/>
+<text x="204.0" y="108.3" font-size="6.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C10-02 R</text>
+<text x="204.0" y="115.5" font-size="5.1" text-anchor="middle">Bateria M18 CP2.0</text>
+<text x="166" y="165" font-size="5.0" fill="#333">115x80x60</text>
+<rect x="256" y="52" width="80" height="115" rx="4" fill="#F4A6A6" stroke="#111" stroke-width="1.2"/>
+<text x="296.0" y="108.3" font-size="6.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C10-03 R</text>
+<text x="296.0" y="115.5" font-size="5.1" text-anchor="middle">Bateria M18 CP2.0</text>
+<text x="258" y="165" font-size="5.0" fill="#333">115x80x60</text>
+<rect x="348" y="52" width="78" height="300" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
+<text x="387.0" y="200.8" font-size="6.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C10-04 R</text>
+<text x="387.0" y="208.0" font-size="5.1" text-anchor="middle">Llave ajustable 12 in Husk</text>
+<text x="350" y="350" font-size="5.0" fill="#333">300x78x20</text>
+<rect x="52" y="214" width="196" height="112" rx="4" fill="#F4A6A6" stroke="#111" stroke-width="1.2"/>
+<text x="150.0" y="267.8" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C10-05</text>
+<text x="150.0" y="281.0" font-size="9.3" text-anchor="middle">Atornillador de impacto M18 3650-20</text>
+<text x="54" y="324" font-size="7.7" fill="#333">196x112x60</text>
+<text x="46" y="408" font-size="11" fill="#000">Modulo BASE · caja 48-22-8420 · cajon C10 · alto interior 200 mm, util 190 mm</text>
+<text x="46" y="422" font-size="11" fill="#000">Ocupacion en planta 55.2 % · peso 2.63 kg de 25 kg</text>
+<text x="46" y="436" font-size="11" fill="#000">Medidas no validadas: confirmar con vernier antes de imprimir</text>
+</svg>

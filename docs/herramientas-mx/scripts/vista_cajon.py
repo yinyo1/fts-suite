@@ -30,7 +30,8 @@ def svg_cajon(caj, piezas, margen=6, titulo=''):
         fs = max(6, min(11, w / 14, h / 3.2))
         o.append(f'<text x="{x + w/2}" y="{y + h/2 - fs*0.2}" font-size="{fs:.1f}" text-anchor="middle" font-weight="bold">{e(p["activo"])}{" R" if p["rot"] else ""}</text>')
         o.append(f'<text x="{x + w/2}" y="{y + h/2 + fs}" font-size="{fs*0.85:.1f}" text-anchor="middle">{e(p["corto"][:max(8, int(w / (fs*0.5)))])}</text>')
-        o.append(f'<text x="{x + 2}" y="{y + h - 2}" font-size="{max(5, fs*0.7):.1f}" fill="#333">{p["L"]}x{p["A"]}x{p["H"]}</text>')
+        if h >= 40:
+            o.append(f'<text x="{x + 2}" y="{y + h - 2}" font-size="{max(5, fs*0.7):.1f}" fill="#333">{p["L"]}x{p["A"]}x{p["H"]}</text>')
     y0 = M + D + 32
     pie = caj.get('pie', [])
     for i, t in enumerate(pie):

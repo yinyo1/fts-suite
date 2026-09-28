@@ -187,8 +187,22 @@ def verificar_cajon(c):
     if c.peso > c.cap + 1e-9: err.append(f'peso {c.peso:.2f} > {c.cap}')
     # re-empaque por rejilla
     step = 5; W, H = c.ancho - 2 * G_PARED + G_PIEZAS, c.fondo - 2 * G_PARED + G_PIEZAS
-    occ = set(); ok = True
-    for q in sorted(c.piezas, key=lambda q: -(q['L'] * q['A'])):
+    ok = False; orden_ok = None
+    for nombre, clave in (('area', lambda q: -(q['L'] * q['A'])), ('largo', lambda q: -max(q['L'], q['A'])),
+                          ('ancho', lambda q: -min(q['L'], q['A'])), ('perimetro', lambda q: -(q['L'] + q['A']))):
+        if _rejilla(c, sorted(c.piezas, key=clave), W, H, step):
+            ok = True; orden_ok = nombre; break
+    area = sum(q['L'] * q['A'] for q in c.piezas)
+    area_infl = sum((q['L'] + G_PIEZAS) * (q['A'] + G_PIEZAS) for q in c.piezas)
+    return {'errores_geometria': err, 'rejilla_cabe': ok, 'orden_rejilla': orden_ok,
+            'cota_area_%': round(area_infl / (W * H) * 100, 1),
+            'ocupacion_maxrects_%': round(c.ocupacion() * 100, 1),
+            'ocupacion_recalculada_%': round(area / (c.ancho * c.fondo) * 100, 1),
+            'area_piezas_mm2': area, 'peso_kg': round(c.peso, 2)}
+
+def _rejilla(c, orden, W, H, step):
+    occ = set()
+    for q in orden:
         placed = False
         for rw, rh in ((q['L'] + G_PIEZAS, q['A'] + G_PIEZAS), (q['A'] + G_PIEZAS, q['L'] + G_PIEZAS)):
             cw, ch = -(-rw // step), -(-rh // step)
@@ -199,12 +213,8 @@ def verificar_cajon(c):
                         occ |= cells; placed = True; break
                 if placed: break
             if placed: break
-        if not placed: ok = False
-    area = sum(q['L'] * q['A'] for q in c.piezas)
-    return {'errores_geometria': err, 'rejilla_cabe': ok,
-            'ocupacion_maxrects_%': round(c.ocupacion() * 100, 1),
-            'ocupacion_recalculada_%': round(area / (c.ancho * c.fondo) * 100, 1),
-            'area_piezas_mm2': area, 'peso_kg': round(c.peso, 2)}
+        if not placed: return False
+    return True
 
 def correr():
     piezas = [p for p in json.load(open(os.path.join(D, 'piezas_carrito.json'), encoding='utf-8')) if not p.get('suelto')]
@@ -239,3 +249,92 @@ if __name__ == '__main__':
             for c in b['cajones']:
                 print(f'   {m} caja{bi} {b["modelo"]} cajon{c.idx} alto{c.alto} occ{c.ocupacion()*100:.0f}% {c.peso:.1f}kg', [q['id'] for q in c.piezas])
     json.dump({'ganadora': g, 'totales': tot}, open(os.path.join(D, 'acomodo_resumen.json'), 'w'), indent=1)
+
+# ------------------------------------------------------------------ salidas
+def exportar(res, g, sueltos, verificar=True):
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from openpyxl.utils import get_column_letter
+    sys.path.insert(0, os.path.dirname(__file__))
+    from vista_cajon import svg_cajon
+    svgdir = os.path.join(BASE, 'svg'); os.makedirs(svgdir, exist_ok=True)
+    for f in os.listdir(svgdir):
+        if f.endswith('.svg'): os.remove(os.path.join(svgdir, f))
+    filas, diseno, verif = [], {'ganadora': g, 'parametros': {'G_PIEZAS': G_PIEZAS, 'G_PARED': G_PARED, 'H_LIBRE': H_LIBRE},
+                                'modulos': {}, 'sueltos': sueltos}, []
+    for m, (pila, mt) in res[g].items():
+        code = MOD_CODE[m]; mod = {'metricas': mt, 'cajas': []}
+        n = 0
+        for b in reversed(ordenar(pila)):            # de arriba hacia abajo
+            caja = {'modelo': b['modelo'], 'cajones': []}
+            for c in b['cajones']:
+                n += 1
+                qs = sorted(c.piezas, key=lambda q: (q['y'], q['x']))
+                piezas = []
+                for k, q in enumerate(qs, 1):
+                    activo = f'FTS-{code}-01-C{n}-{k:02d}'
+                    piezas.append({'activo': activo, 'id': q['id'], 'ref': q['ref'], 'corto': q['desc'], 'familia': q['familia'],
+                                   'x': q['x'], 'y': q['y'], 'w': q['w'], 'h': q['h'], 'rot': q['rot'],
+                                   'L': q['L'], 'A': q['A'], 'H': q['H'], 'peso_kg': q['peso_kg'], 'frec': q['frec'], 'fuente_dim': q['fuente_dim']})
+                    filas.append([m, b['modelo'], f'C{n}', c.alto, c.alto_util, activo, q['id'], q['ref'], q['desc'], q['x'], q['y'],
+                                  'si' if q['rot'] else 'no', q['w'], q['h'], q['H'], q['peso_kg'], q['frec'], q['fuente_dim'],
+                                  round(c.ocupacion() * 100, 1), round(c.peso, 2), 'no validado'])
+                cj = {'n': n, 'alto': c.alto, 'alto_util': c.alto_util, 'ancho': c.ancho, 'fondo': c.fondo,
+                      'ocupacion': round(c.ocupacion() * 100, 1), 'peso_kg': round(c.peso, 2), 'cap_kg': c.cap, 'piezas': piezas}
+                cj['pie'] = [f'Modulo {m} · caja {b["modelo"]} · cajon C{n} · alto interior {c.alto} mm, util {c.alto_util} mm',
+                             f'Ocupacion en planta {cj["ocupacion"]} % · peso {cj["peso_kg"]} kg de {c.cap} kg',
+                             'Medidas no validadas: confirmar con vernier antes de imprimir']
+                if piezas:
+                    open(os.path.join(svgdir, f'{code}-C{n}.svg'), 'w', encoding='utf-8').write(
+                        svg_cajon(cj, piezas, titulo=f'FTS · Modulo {code} · Cajon C{n} · {b["modelo"]} · vista superior (mm)'))
+                if verificar and c.piezas:
+                    v = verificar_cajon(c)
+                    verif.append([m, f'C{n}', b['modelo'], len(c.piezas), v['ocupacion_maxrects_%'], v['ocupacion_recalculada_%'],
+                                  'si (' + v['orden_rejilla'] + ')' if v['rejilla_cabe'] else 'NO', v['cota_area_%'],
+                                  '; '.join(v['errores_geometria']) or 'sin errores', v['peso_kg'], c.cap])
+                caja['cajones'].append(cj)
+            mod['cajas'].append(caja)
+        diseno['modulos'][m] = mod
+    # comparacion de estrategias
+    comp = []
+    for est, mods in res.items():
+        for m, (pila, mt) in mods.items():
+            comp.append([est, m, mt['cajas'], mt['alto_mm'], mt['cajones_usados'], mt['cajones_totales'], mt['ocupacion_media'],
+                         mt['peso_kg'], mt['centro_gravedad_mm'], mt['penalizacion'], ' + '.join(mt['modelos'])])
+    wb = Workbook()
+    def hoja(ws, headers, rows):
+        ws.append(headers)
+        for c in ws[1]:
+            c.font = Font(bold=True, color='FFFFFF'); c.fill = PatternFill('solid', fgColor='B71C1C'); c.alignment = Alignment(wrap_text=True)
+        for r in rows: ws.append(r)
+        ws.freeze_panes = 'A2'
+        for i, h in enumerate(headers, 1): ws.column_dimensions[get_column_letter(i)].width = min(max(len(str(h)) + 2, 10), 50)
+    ws = wb.active; ws.title = 'Acomodo'
+    hoja(ws, ['modulo', 'caja', 'cajon', 'alto_int_mm', 'alto_util_mm', 'numero_activo', 'id', 'ref_catalogo', 'pieza', 'x_mm', 'y_mm',
+              'rotada', 'ancho_planta_mm', 'fondo_planta_mm', 'alto_mm', 'peso_kg', 'frecuencia', 'fuente_dim', 'ocupacion_cajon_%',
+              'peso_cajon_kg', 'validacion'], filas)
+    hoja(wb.create_sheet('Estrategias'), ['estrategia', 'modulo', 'cajas_de_cajones', 'alto_pila_mm', 'cajones_usados', 'cajones_totales',
+         'ocupacion_media_%', 'peso_kg', 'centro_gravedad_mm', 'penalizacion_uso', 'pila (abajo -> arriba)'], comp)
+    hoja(wb.create_sheet('Verificacion'), ['modulo', 'cajon', 'caja', 'piezas', 'ocup_maxrects_%', 'ocup_recalculada_%',
+         'rejilla_5mm_cabe (orden)', 'cota_area_inflada_%', 'errores_geometria', 'peso_kg', 'cap_kg'], verif)
+    hoja(wb.create_sheet('Sueltos'), ['id', 'ref', 'pieza', 'modulo', 'donde'], [[s['id'], s['ref'], s['desc'], s['modulo'], s['suelto']] for s in sueltos] +
+         [['ROSCA', 'TPC1', 'Roscadora M18 FUEL 2874-22HD', 'TUB', 'estuche original (668 mm de largo)'],
+          ['BANDA', 'TPC8', 'Sierra de banda M18 FUEL', 'SOL', 'estuche original (533 mm)'],
+          ['ASP', 'TPC3', 'Aspiradora M18 FUEL PACKOUT 0970-20', 'BASE', 'es modulo Packout: se engancha arriba de la pila'],
+          ['NIV24', 'TPC2', 'Nivel de 24 in Truper 17036', 'MED', 'soporte lateral (630 mm)'],
+          ['CORTAP', 'X-CORTAP', 'Cortaperno 30 in', 'CIV', 'soporte lateral (762 mm)'],
+          ['CARG6', 'TPC4', 'Cargador de 6 bahias 48-59-1806', 'taller', 'se queda en taller FTS']])
+    hoja(wb.create_sheet('Parametros'), ['parametro', 'valor', 'justificacion'], [
+         ['G_PIEZAS', G_PIEZAS, '2 paredes de silueta de 3 mm + 6 mm de agarre: la silueta lleva su propio rebaje de dedo, asi que entre piezas basta 12 mm'],
+         ['G_PARED', G_PARED, 'la pared del cajon ya es tope; 3 mm de pared de silueta + 3 mm de juego de impresion'],
+         ['H_LIBRE', H_LIBRE, '3 mm de base de silueta + 7 mm para que nada roce el cajon de arriba'],
+         ['cap cajon 8420', '15 kg bandeja / 25 kg fondo', 'SUPUESTO: Milwaukee solo publica 113 kg del conjunto'],
+         ['medidas de cajon', '416 x 322 (61/130), 414 x 318 (127/76)', 'fragmento de buscador; se usa la menor reportada (conservador)']])
+    wb.save(os.path.join(BASE, 'diseno_carrito.xlsx'))
+    json.dump(diseno, open(os.path.join(BASE, 'diseno_carrito.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    return diseno, verif
+
+if __name__ == '__main__' and True:
+    diseno, verif = exportar(res, g, sueltos, verificar=True)
+    print('cajones verificados', len(verif), 'geometria con error', sum(1 for v in verif if v[8] != 'sin errores'), 'rejilla no reproduce', sum(1 for v in verif if v[6] == 'NO'))
+    for v in verif: print(v)
