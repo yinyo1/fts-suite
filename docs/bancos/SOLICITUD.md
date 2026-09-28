@@ -3,10 +3,20 @@
 Dos workflows de n8n piden y acusan los estados de cuenta a Gerardo (CC Esteban y Erick), **siempre
 desde `sales@fts.mx`**, con el texto generado desde la base. Nadie escribe estos correos a mano.
 
-| workflow | qué hace | cuándo |
-|---|---|---|
-| `fts_bancos_solicitud_v2` | pide lo que falta | días hábiles 9:00 (America/Monterrey) mientras quede algo abierto |
-| `fts_bancos_acuse` | responde **en el mismo hilo** de la última solicitud después de cada tanda subida al buzón | cada 30 min de 7 a 20 h (min 12 y 42), un acuse por corrida con archivos |
+| workflow | id | qué hace | cuándo |
+|---|---|---|---|
+| `fts_bancos_solicitud_v2` | `Fs4FxIeK2La12DyS` | pide lo que falta | lunes a viernes 9:00 (America/Monterrey); la base decide si es hábil y si hay algo abierto |
+| `fts_bancos_acuse` | `XxkcMTQLOfByfGEz` | responde **en el mismo hilo** de la última solicitud después de cada tanda subida al buzón | cada 30 min de 7 a 20 h (min 12 y 42), un acuse por corrida con archivos |
+| `bancos/db-migrate_v2 (cron-solicitud)` | `leNhIRklDCy4V5Rh` | copia del runner de migraciones (el original lo usa la sesión de ingesta) | manual, `dry_run=true` |
+
+`fts_bancos_solicitud_v2` **reemplaza** a `fts_bancos_solicitud` (`ktKYVvYiaoR2ii7C`, regla vieja "lunes y día 3").
+Los dos nuevos nacen **desactivados**. Para encenderlos (en este orden, el mismo día):
+1. Desactivar `fts_bancos_solicitud` (no se borra).
+2. Publicar/activar `fts_bancos_solicitud_v2` y `fts_bancos_acuse`.
+3. Leer de vuelta `active` y `versionId == activeVersionId` en los dos (CLAUDE.md §17 2b).
+4. Opcional: apagar la rama de correo de problemas de `fts_bancos_procesa`; el acuse ya dice lo mismo, en el hilo.
+
+Si los dos de solicitud quedan activos a la vez, Gerardo recibe dos correos el mismo día.
 
 ## La regla
 
