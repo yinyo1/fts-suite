@@ -8,34 +8,63 @@
 
 ## La cifra
 
+**[calculado]** — todo lo de esta sección sale de
+`python3 herramientas/linea_base_radar.py`. Nada está escrito a mano, y por eso
+esta página se puede regenerar cuando el evaluador cambie. La convención de marcas
+es la de D7 (ver `motor1-radar-de-leads.md`).
+
 | | |
 |---|---|
 | Cuentas ya evaluadas | **13** |
 | Con señal documentada en el repo | **9** |
 | Huecos (nadie documentó su señal) | **4** |
-| **Pasan solas, con lo documentado** | **3 de 9** |
-| Pasarían si la señal estuviera fresca | **4 de 9** |
-| Subieron con D3 | **7 de 9** |
+| **Pasan solas, hoy** | **3 de 9** |
+| Pasaban antes de la noche del 28-sep | **1 de 9** |
+| Pasarían si la señal estuviera fresca | **5 de 9** |
+
+### La evolución de la noche, cuenta por cuenta
 
 ```
-cuenta                       antes  despues veredicto   techo  fecha?
-----------------------------------------------------------------------
-Coficab/Pesqueria             22.7     64.9      pasa    87.9      NO
-Coficab/Durango               12.0     66.4      pasa              si
-LEGO                          10.0     20.0   archiva    43.0      NO
-Ragasa                        18.0     18.0   archiva    41.0      NO
-Cuprum                        18.0     28.0   archiva    51.0      NO
-Bimbo                         18.0     43.0    guarda    66.0      NO
-Amazon                        10.0     20.5   archiva    43.5      NO
-Nemak/Garcia                  18.0     28.0   archiva    51.0      NO
-Hershey/Escobedo              83.0     83.0      pasa              si
-Coficab/Cd. Juarez               —        —     HUECO
-Coficab/Silao                    —        —     HUECO
-Metalsa                          —        —     HUECO
-International                    —        —     HUECO
-----------------------------------------------------------------------
-CONTROL · señal fresca documentada (procesadora de carne, 3-sep-2026): 58.0 → guarda
+  LA EVOLUCION DE LA NOCHE, cuenta por cuenta
+  cuenta                      original  con_d3_y_b      con_d6 veredicto  techo fecha?
+  ------------------------------------------------------------------------------------
+  Coficab/Pesqueria               22.7        64.9        64.9      pasa   87.9     NO
+  Coficab/Durango                   12        66.4        76.4      pasa            si
+  LEGO                              10          20          30   archiva     53     NO
+  Ragasa                            18          18          28   archiva     51     NO
+  Cuprum                            18          28          38   archiva     61     NO
+  Bimbo                             18          43        45.5    guarda   68.5     NO
+  Amazon                            10        20.5        30.5   archiva   53.5     NO
+  Nemak/Garcia                      18          28          28   archiva     51     NO
+  Hershey/Escobedo                  83          83          83      pasa            si
+  Coficab/Cd. Juarez                 —           —           —     HUECO
+  Coficab/Silao                      —           —           —     HUECO
+  Metalsa                            —           —           —     HUECO
+  International                      —           —           —     HUECO
+  ------------------------------------------------------------------------------------
+  PASAN                              1           3           3      de 9
+
+    original       antes de la noche del 28-sep: sin vocabulario de obra nueva, con el falso positivo de 'prensa', sin 'cable' en el catalogo, sin giro y sin dinero
+    con_d3_y_b     con D3 -- obra nueva integral-- y con B1/B2/B3 corregidos
+    con_d6         mas D6: el evaluador ya lee los montos de inversion
 ```
+
+Las tres etapas se **recalculan** apagando cada mejora en la raíz, dentro de un
+contexto que restaura el estado al salir. El «original» es lo que el evaluador de
+verdad decía, no lo que alguien recuerda que decía — y las etapas tienen que ser
+independientes, porque al aplicar D6 el «antes» también subía: **una columna que
+dice «antes» y se mueve cuando se agrega una mejora no es un antes, es otro
+después.**
+
+### Lo que D6 cambió, y lo que no
+
+D6 **no agregó ninguna `pasa` nueva** — y eso es informativo, no decepcionante.
+Subió a todas las que traen monto documentado, movió el techo de 4 a 5 cuentas, y
+sobre todo: **el control de señal fresca cruzó a `pasa`** (33 → 58 → **68**).
+
+> **Ése es el hallazgo de la noche.** El radar sí funciona sobre señal fresca. Lo
+> que lastra la línea base no es el evaluador: es que **seis de las nueve señales
+> no tienen fecha anotada**, y sin fecha la frescura vale 2 de 25.
 
 ## Cómo se lee esto, y las tres cosas que NO dice
 
@@ -88,7 +117,7 @@ puede leer.
 
 ---
 
-## 🔒 D6 · Que el evaluador lea la magnitud de la inversión — **PROPUESTO, NO APLICADO**
+## ✅ D6 · Que el evaluador lea la magnitud de la inversión — **APLICADO**
 
 **Lo que se propone.** Que `magnitudes()` reconozca `MDD`, `MDP`, `MUSD`, `mdd`,
 `mdp`, `millones de dólares`, `millones de pesos` y `MW`, y que
@@ -121,7 +150,7 @@ factor sigue valiendo 0 para todos — que es honesto: no lo sabe.**
 
 ---
 
-## 🔒 D7 · El ejemplo trabajado del §3d nunca fue reproducible — **REPORTADO**
+## ✅ D7 · El ejemplo trabajado del §3d nunca fue reproducible — **APLICADO**
 
 `metodo/motor1-radar-de-leads.md` §3d calcula a mano el puntaje de Coficab Durango
 y concluye **59, GUARDA**. Ese número **no lo produce el código**, ni antes ni
@@ -131,11 +160,11 @@ después de D3, y **los seis factores difieren**:
 |---|---|---|---|
 | proceso | 25 | 0 | 10.0 |
 | tipo de obra | 12 | 0 | 44.4 |
-| capacidad | 6 | 0 | 0 |
+| capacidad | 6 | 0 | 10 |
 | frescura | 4 | 4 | 4 |
 | fuerza de fuente | 12 | 8 | 8 |
 | padrón | — | 0 | 0 |
-| **total** | **59** | **12.0** | **66.4** |
+| **total** | **59** | **12.0** | **76.4** |
 
 Las causas, una por una:
 
@@ -162,11 +191,20 @@ Las causas, una por una:
 > #329. Un ejemplo trabajado a mano es una hipótesis, no una medición, y debería
 > decirlo.
 
-**Lo que propongo, y no apliqué:** que §3d cite el resultado de
-`herramientas/linea_base_radar.py` en vez de su cuenta a mano, y que los ejemplos
-trabajados de los documentos de método lleven la marca de si son **calculados por
-el código** o **razonados a mano**. Es documentación, pero cambia lo que un lector
-cree que está leyendo.
+**Aplicado el 28-sep.** §3d ya cita el resultado de
+`herramientas/linea_base_radar.py` en vez de su cuenta a mano, y los documentos de
+método llevan la convención `[calculado]` / `[razonado a mano]`. Una prueba
+verifica que los números del §3d coincidan con lo que la herramienta produce: si
+el evaluador cambia y el documento no, **la suite truena**.
+
+Y el barrido de D7 encontró dos cosas más en el mismo documento:
+
+* la tabla de rangos decía **«Tipo de obra 0–15»**, y después de D3
+  `obra_nueva_integral` vale **44.4**. El rango escrito era falso;
+* la misma tabla prometía leer **«MDD de inversión»** desde su primera versión, y
+  `magnitudes()` devolvía lista vacía para `60 MDD` hasta la noche del 28-sep.
+  **El documento prometía una capacidad que la cadena no transportaba** — que es
+  exactamente el patrón de los cinco hallazgos de #329.
 
 ---
 

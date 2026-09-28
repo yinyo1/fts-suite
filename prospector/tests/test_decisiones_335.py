@@ -276,3 +276,117 @@ def test_d9_con_d6_los_puntajes_del_csv_son_los_de_la_linea_base(tmp_path):
             for f in lb.linea_base(hoy=HOY)["filas"] if not f["hueco"]}
     for x in r["detalle"]:
         assert abs(x["puntaje"] - base[x["llave"]]) < 0.05, x["llave"]
+
+
+# ==================================================  D7 · los docs contra el codigo
+DOCS = os.path.join(RAIZ, "metodo")
+
+
+def _doc(nombre):
+    import pathlib
+    return pathlib.Path(os.path.join(DOCS, nombre)).read_text(encoding="utf-8")
+
+
+def _plano(t: str) -> str:
+    """El doc con los saltos de linea colapsados y sin marcas de blockquote.
+
+    Dos normalizaciones, y la segunda hizo falta: los .md van envueltos a 80
+    columnas, asi que una frase cruza renglones; y cuando la frase esta DENTRO de
+    un blockquote, cada renglon de continuacion empieza con `> `, que al colapsar
+    queda a media frase -- "el documento prometia una > capacidad que..."--. Las dos
+    son ruido de maquetado, no del texto.
+    """
+    sin_cita = "\n".join(re.sub(r"^\s*>\s?", "", l) for l in t.splitlines())
+    return " ".join(sin_cita.split())
+
+
+def test_d7_existe_la_convencion_de_marcas():
+    d = _doc("motor1-radar-de-leads.md")
+    assert "Convención de este documento" in d
+    assert "[calculado]" in d and "[razonado a mano]" in d
+    # Y dice por que existe: es la septima vez.
+    assert "séptima vez" in d
+
+
+def test_d7_el_ejemplo_del_3d_coincide_con_lo_que_LA_HERRAMIENTA_produce():
+    """El candado de D7. Si el evaluador cambia y el documento no, esto truena.
+
+    Es la unica forma de que un documento de diseno no se separe del codigo: que
+    separarse cueste rojo. La disciplina no alcanzo siete veces.
+    """
+    import linea_base_radar as lb
+    d = _doc("motor1-radar-de-leads.md")
+    f = next(x for x in lb.linea_base(hoy=HOY)["filas"]
+             if x["empresa"] == "Coficab" and x.get("planta") == "Durango")
+    plano = _plano(d)
+    for etapa, valor in f["por_etapa"].items():
+        # `12` y `12.0` son el mismo numero; lo que la prueba defiende es que el
+        # documento cite EL NUMERO que el codigo produce, no como lo formatea.
+        assert (f"**{valor:g}**" in plano or f"**{float(valor)}**" in plano), (
+            f"§3d no cita el puntaje de la etapa {etapa} ({valor:g}) que la "
+            "herramienta produce hoy")
+    # El desglose se cita en un bloque de codigo con los valores tal como el
+    # evaluador los emite, asi que se aceptan las dos formas -- `10` y `10.0`--:
+    # lo que la prueba defiende es el NUMERO, no como se formatea.
+    g = f["desglose"]
+    for llave in ("proceso", "tipo_de_obra", "capacidad"):
+        v = g[llave]
+        assert (f"{llave} {v:g}" in plano or f"{llave} {float(v)}" in plano), (
+            f"§3d no cita {llave}={v} del desglose que el codigo emite hoy")
+
+
+def test_d7_el_3d_cita_la_herramienta_y_no_una_cuenta_a_mano():
+    d = _doc("motor1-radar-de-leads.md")
+    seccion = _plano(d[d.index("## ¿Habría encontrado a Coficab Durango?"):
+                       d.index("## ¿Y Budenheim?")])
+    assert "linea_base_radar.py" in seccion
+    assert "[calculado]" in seccion
+    # Y el 59 viejo sigue ahi, pero MARCADO como razonado a mano: borrarlo
+    # esconderia la leccion.
+    assert "**59**" in seccion
+    assert "[razonado a mano]" in seccion
+
+
+def test_d7_la_tabla_de_rangos_ya_no_miente_sobre_el_tipo_de_obra():
+    """Decia "Tipo de obra 0-15" y despues de D3 `obra_nueva_integral` vale 44.4."""
+    d = _doc("motor1-radar-de-leads.md")
+    peso = radar.peso_de_tipo(radar.TIPO_INTEGRAL_OBRA_NUEVA, CAT)
+    assert f"**{peso:g}**" in _plano(d)
+    assert "por familia" in d
+
+
+def test_d7_el_doc_declara_que_prometia_MDD_sin_leerlo():
+    d = _doc("motor1-radar-de-leads.md")
+    assert "prometía una capacidad que la cadena no transportaba" in _plano(d)
+
+
+def test_d7_el_doc_de_la_linea_base_se_REGENERA_no_se_escribe():
+    d = _doc("linea-base-del-radar.md")
+    assert "[calculado]" in d
+    assert "linea_base_radar.py" in d
+    # La tabla pegada tiene que ser la que la herramienta imprime hoy.
+    import linea_base_radar as lb
+    r = lb.linea_base(hoy=HOY)
+    for f in r["filas"]:
+        if f["hueco"]:
+            continue
+        nombre = f"{f['empresa']}" + (f"/{f['planta']}" if f.get("planta") else "")
+        assert nombre in d, nombre
+
+
+def test_d7_ningun_doc_de_metodo_afirma_un_umbral_que_el_codigo_contradiga():
+    """Barrido: los umbrales y topes citados en los docs contra los del codigo."""
+    import pathlib
+    reales = {
+        "UMBRAL_PASA": radar.UMBRAL_PASA, "UMBRAL_GUARDA": radar.UMBRAL_GUARDA,
+        "PADRON_EMPATA": radar.PADRON_EMPATA, "MAX_PROCESO": radar.MAX_PROCESO,
+        "MAX_CAPACIDAD": radar.MAX_CAPACIDAD,
+    }
+    # Los docs citan estos numeros en prosa; lo que se verifica es que el numero
+    # que citan siga siendo el del codigo.
+    for f in sorted(pathlib.Path(DOCS).glob("*.md")):
+        t = f.read_text(encoding="utf-8")
+        if "UMBRAL_PASA" in t:
+            assert str(reales["UMBRAL_PASA"]) in t, f.name
+        if "PADRON_EMPATA" in t:
+            assert str(reales["PADRON_EMPATA"]) in t, f.name

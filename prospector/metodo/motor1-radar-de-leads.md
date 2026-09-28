@@ -239,21 +239,56 @@ que un correo del cliente.
 puntaje = match_catalogo(0-50) + frescura(0-25) + fuerza_de_fuente(0-25)
 ```
 
+> ## 🔖 Convención de este documento (D7 de #335)
+>
+> Todo ejemplo con números lleva una marca, y la marca dice de dónde salió:
+>
+> * **[calculado]** — lo produce el código hoy. Reproducible con el comando que
+>   se cita al lado. Si el código cambia, el número cambia.
+> * **[razonado a mano]** — es una **hipótesis** de diseño, no una medición.
+>   Puede no coincidir con lo que el código calcula, y cuando no coincide, manda
+>   el código.
+>
+> **Por qué existe esta convención.** Es la séptima vez en el proyecto que un
+> número escrito a mano en un documento de diseño no coincide con lo que el código
+> produce. El caso que la motivó está abajo, en §3d: esta misma sección calculaba
+> 59 puntos a mano para Coficab Durango, y el código nunca produjo ese número — los
+> **seis** factores diferían. Un ejemplo trabajado sin marca se lee como una
+> medición, y ahí empieza el problema.
+
 ### Factor 1 · Match contra el catálogo de proyectos (0–50)
 
 Esto es lo que hace que el radar sea **de FTS** y no un lector de noticias
 industriales. El catálogo de §3a dice qué ha hecho FTS de verdad, con qué
 industria y con qué proceso. El match se calcula en tres capas:
 
+**[calculado]** — los topes son `MAX_PROCESO`, `MAX_TIPO_DE_OBRA` y
+`MAX_CAPACIDAD` de `flujo/radar.py`, y los pesos por familia salen del catálogo.
+
 | Capa | Puntos | Qué compara |
 |---|---|---|
-| **Proceso** | 0–25 | El proceso del cliente que aparece en la señal contra los procesos que generaron proyectos reales. «funde cobre» → fundición → **está en el catálogo de chillers** |
-| **Tipo de obra** | 0–15 | Lo que la señal dice que va a pasar contra los tipos de proyecto de FTS (chiller, agua helada, circuito cerrado, torre, intercambiador, subestación, integración) |
-| **Capacidad** | 0–10 | Si la señal trae una magnitud (TR, m³/h, kW, MDD de inversión) y cae en el rango de los proyectos que FTS sí ha hecho |
+| **Proceso** | 0–25 | El proceso del cliente contra los procesos que generaron proyectos reales. Entra tanto del texto de la señal **como del giro de la cuenta** (B3 de #330: el giro no entraba, y se le estaba pidiendo al encabezado de una nota que dijera a qué se dedica la empresa) |
+| **Tipo de obra** | 0–15 **por familia**, y **44.4** para obra nueva integral | Lo que la señal dice que va a pasar contra los tipos de proyecto de FTS. El tope de 15 es **por familia**; `obra_nueva_integral` lo pasa a propósito (D3 de #329) porque una planta nueva no es un tipo de proyecto: es todos a la vez, y su peso es la suma de las participaciones de las seis familias |
+| **Capacidad** | 0–10 | Si la señal trae una magnitud y cae en el rango donde FTS sí ha vendido. Lee **TR, kVA, kW, m³/h, GPM… y desde D6 de #335 también MDD, MDP, MUSD y MW** |
+
+> **Este documento decía «MDD de inversión» desde su primera versión, y el código
+> no lo leía.** `magnitudes()` devolvía lista vacía para `60 MDD` hasta la noche
+> del 28-sep, así que el factor `capacidad` valía 0.0 en las nueve cuentas
+> documentadas. Es el mismo patrón que D7 nombra: el documento prometía una
+> capacidad que la cadena no transportaba.
 
 **Y la capa de capacidad corta por arriba, no solo por abajo.** Una señal de
 1,500 TR no es mejor que una de 200: es de otro tamaño de empresa y de otro
-competidor. El catálogo dice cuál es el rango donde FTS gana.
+competidor. Con **inversión** el argumento es más fuerte todavía: arriba de 500
+MDD es un programa corporativo que se reparte en años, en varias plantas y con
+contratistas de otro tamaño, así que cuenta `MAX_CAPACIDAD / 4` — 2,000 MDD de
+Bimbo no puede quedar arriba de 60 MDD de Coficab Durango.
+
+> ⚠️ **[calculado] y vale la pena saberlo:** `capacidad_por_tipo` viene **vacío**
+> en el catálogo construido —las 154 entradas traen `magnitudes: []`— así que la
+> rama del corte por arriba **en TR** nunca ha corrido. Toda magnitud de capacidad
+> que no sea dinero cae al respaldo de «sin rango comparable» y vale la mitad. El
+> `por_que` lo dice: *no es que quede fuera de rango, es que el rango no existe*.
 
 ### Factor 2 · Frescura (0–25)
 
@@ -309,6 +344,12 @@ Igual que todo lo demás en esta herramienta: **el puntaje se deriva y se
 escribe**, nunca se declara. Cada señal que pasa lleva su desglose, y ese
 desglose es el que viaja como `--angulo` al motor 2:
 
+**[razonado a mano]** — este JSON ilustra la FORMA del desglose, no un puntaje
+real de ninguna cuenta. El desglose que el código emite hoy tiene siete llaves
+(`match_catalogo`, `proceso`, `tipo_de_obra`, `capacidad`, `frescura`,
+`fuerza_de_fuente`, `padron`), no tres. Para un desglose real:
+`python3 herramientas/linea_base_radar.py --json`.
+
 ```json
 {
   "puntaje": 71,
@@ -331,42 +372,77 @@ motor 2 sin declararlo hace que el motor 2 elija en silencio.
 
 ## ¿Habría encontrado a Coficab Durango?
 
-**La señal, sí. El empate contra el padrón, NO — y ése es el hueco.**
+**Hoy sí. Antes del 28-sep-2026, no — y por seis razones distintas.**
 
-El puntaje, calculado con la fórmula de arriba sobre lo que #300 documenta:
+**[calculado]** — reproducible con `python3 herramientas/linea_base_radar.py`.
+La tabla sale de ahí, no de una cuenta a mano:
 
-| Factor | Puntos | De dónde |
+| Etapa | Puntaje | Veredicto |
 |---|---|---|
-| Match catálogo · proceso | 25 | «el piso superior **funde cobre** (OFC)» → fundición, que es proceso de chiller en el catálogo |
-| Match catálogo · tipo de obra | 12 | Nave nueva con carga de enfriamiento → agua helada / circuito cerrado |
-| Match catálogo · capacidad | 6 | 60 MDD y 500 → 2,000 empleos: tamaño de planta donde FTS ha vendido |
-| Frescura | 4 | Inauguración del 8–9 dic 2025, leída hoy: >280 días |
-| Fuerza de fuente | 12 | Boletín del cluster (CLID) + prensa industrial |
-| **Total** | **59** | **GUARDA, no PASA** |
+| **original** (antes de la noche del 28-sep) | **12.0** | `archiva` |
+| **con D3 + B1/B2/B3** | **66.4** | `pasa` |
+| **con D6** (el evaluador ya lee el dinero) | **76.4** | **`pasa`** |
 
-Dos cosas salen de ahí, y las dos son hallazgos:
+Desglose de la etapa final, tal como el código lo emite:
 
-**1. Con la señal fresca habría pasado holgado.** En diciembre de 2025 la
-frescura valía 25 y no 4: **80 puntos**. El radar la habría detonado la semana de
-la inauguración. Que hoy dé 59 es correcto: **la obra ya arrancó**.
+```
+match_catalogo 64.4  =  proceso 10.0 + tipo_de_obra 44.4 + capacidad 10
+frescura        4.0     (inauguración del 8-dic-2025, leída hoy: >280 días)
+fuerza_fuente   8.0     (prensa_industrial)
+padron          0       (no empata con el corte vigente del DENUE)
+TOTAL          76.4  ->  pasa
+```
 
-**2. El empate falla, y no por la señal.** Coficab **no está en el corte del
-DENUE 2026-05** — #300 lo midió: bandera `NO_EN_PADRON_PERO_EN_ALCANCE`. El
-empate por dominio (`coficab.com`) resuelve la identidad, pero el padrón no
-tiene la planta. Con la regla actual, la nota cae en «candidata a entrar al
-padrón» **y se queda ahí esperando un corte del DENUE que puede tardar meses**.
-
-> **LO QUE FALTA, y es el arreglo que este ejercicio destapa:** una señal de
-> puntaje alto cuya cuenta **no está en el padrón** tiene que poder **detonar el
-> motor 2 igual**, con la bandera puesta. Hoy el padrón es la llave de entrada; y
-> el padrón es un corte semestral, así que las plantas **nuevas** —que son las de
-> obra nueva, las de presupuesto abierto, las que más valen— son sistemáticamente
-> las que el radar no puede detonar. Es un sesgo contra el mejor prospecto que
-> existe.
+> ### 🔴 La versión anterior de esta sección calculaba **59** a mano, y el código
+> nunca produjo ese número
 >
-> Propuesta: el padrón deja de ser **requisito** y pasa a ser **un factor más**
-> (+8 si empata, 0 si no, nunca negativo), y la falta de empate viaja como
-> `ambiguedad: "no esta en el corte <fecha> del DENUE"`.
+> **[razonado a mano]**, aunque no lo decía — y de ahí viene la convención de
+> marcas de arriba. Los **seis** factores diferían:
+>
+> | Factor | El documento decía | El código, antes | El código, hoy |
+> |---|---|---|---|
+> | proceso | 25 | 0 | 10.0 |
+> | tipo de obra | 12 | 0 | 44.4 |
+> | capacidad | 6 | 0 | 10 |
+> | frescura | 4 | 4 | 4.0 |
+> | fuerza de fuente | 12 | 8 | 8.0 |
+> | padrón | — | 0 | 0 |
+> | **total** | **59** | **12.0** | **76.4** |
+>
+> Las causas, una por una, porque cada una es una lección distinta:
+>
+> * **proceso 25 vs 10** — el documento decía «fundición, que es proceso de chiller
+>   en el catálogo». `fundicion` **sí** se reconoce, pero el catálogo real no tiene
+>   proyectos bajo ese proceso, así que `puntos_de_proceso` da el escalón base y no
+>   el completo. **El documento describía un catálogo que la medición de #305 no
+>   confirmó.**
+> * **tipo de obra 12 vs 0** — razonó «nave nueva con carga de enfriamiento → agua
+>   helada». El código no tenía «nave nueva» hasta D3.
+> * **capacidad 6 vs 0** — los 60 MDD, que es D6: este mismo documento prometía
+>   leerlos.
+> * **fuerza de fuente 12 vs 8** — el documento sumó «boletín del cluster (CLID) +
+>   prensa industrial». El evaluador puntúa **una** fuente: `camara` vale 12 y
+>   `prensa_industrial` vale 8. El documento tomó la mejor de las dos; el código
+>   usa la declarada.
+>
+> **La conclusión de esta sección no cambia, y por la razón correcta:** Coficab no
+> está en el corte del DENUE 2026-05, y eso se midió aparte de cualquier puntaje.
+
+**Y las dos observaciones originales siguen en pie:**
+
+**1. Con la señal fresca pasa holgado.** En diciembre de 2025 la frescura valía 25
+y no 4: **97.4 puntos**. El radar la habría detonado la semana de la inauguración.
+Que hoy dé 76.4 y siga pasando es aún mejor que antes — la obra ya arrancó y la
+cuenta sigue valiendo.
+
+**2. El empate falla, y no por la señal.** Coficab **no está en el corte del DENUE
+2026-05** — #300 lo midió: bandera `NO_EN_PADRON_PERO_EN_ALCANCE`. El empate por
+dominio (`coficab.com`) resuelve la identidad, pero el padrón no tiene la planta.
+
+> **Lo que faltaba, y ya está hecho:** el padrón dejó de ser **requisito** y pasó a
+> ser **un factor más** (+8 si empata, 0 si no, nunca negativo), con la falta de
+> empate viajando como `ambiguedad`. Es la DECISIÓN 3 de #305, y `PADRON_EMPATA`
+> lo sostiene en código.
 
 ## ¿Y Budenheim? ¿Por qué señal?
 
