@@ -451,3 +451,12 @@ test('las migraciones sobreviven el camino de n8n: sin llaves dobles ni patrones
     assert.equal(/[$]['&`0-9$]/.test(s), false, f + ' trae un patrón de reemplazo de JS');
   }
 });
+
+conPg('buzón receptor vacío: el reply-to cae al remitente, nunca al texto null', () => {
+  const B = base();
+  try {
+    ingestar(B, tres(1));
+    const e = B.j('SELECT retardos.por_enviar(10)')[0];
+    assert.equal(e.responder_a, 'sales@fts.mx');
+  } finally { B.fin(); }
+});
