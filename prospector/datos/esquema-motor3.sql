@@ -79,7 +79,20 @@ CREATE TYPE resultado_de_toque AS ENUM (
 
 CREATE TYPE destino_de_tarjeta AS ENUM ('caduca', 'recicla', 'evoluciona');
 
-CREATE TYPE estado_de_tarjeta AS ENUM ('abierta', 'cerrada');
+-- OPCION C de #340. `cerrada` significa "se trabajo y termino";
+-- `vencida_sin_trabajar` significa "nunca se trabajo", y el lazo 1 TIENE que
+-- poder distinguirlas: una cuenta que no convirtio despues de tres toques dice
+-- algo de la FUENTE; una que nadie toco no dice nada de la fuente -- dice algo
+-- del EQUIPO--. Meterlas en el mismo cajon le ensenaria al radar que sus mejores
+-- fuentes no convierten, cuando lo que paso es que nadie llamo.
+--
+-- Y no es un caso raro: es el caso NORMAL al arrancar el piloto con cuentas ya
+-- evaluadas. Coficab Durango nace con la senal caducada seis meses antes.
+CREATE TYPE estado_de_tarjeta AS ENUM (
+    'abierta',
+    'cerrada',
+    'vencida_sin_trabajar'
+);
 
 CREATE TYPE veredicto_de_compuerta AS ENUM ('sin_datos', 'prematuro', 'alcanza');
 
@@ -149,7 +162,27 @@ CREATE TABLE senal (
     -- Mezclar los dos ejes es lo que dejo muerta la tabla de caducidad (H2).
     tipo              text,
     texto             text,                     -- [operativo] el hallazgo
-    fecha_senal       date,                     -- [operativo] la del evento
+    -- [operativo] CUANDO SE SUPO. Es lo que la curva de frescura mide, y no es lo
+    -- mismo que `fecha_del_evento`: una nota de hace un mes sobre un arranque del
+    -- ano pasado es senal fresca de un hecho viejo, y al reves tambien pasa.
+    --
+    -- LA PRECISION ES VARIABLE Y SE DECLARA (#340). De las tres senales que se
+    -- pudieron fechar, una trae dia -- «anuncio 17-jul-2025»-- y dos traen solo mes
+    -- -- «anunciada nov-2023», «arranque de obra marzo-2025»--. Una columna `date`
+    -- no puede guardar "2023-11", asi que el mes se normaliza al DIA 1 y la
+    -- precision queda escrita al lado.
+    --
+    -- Normalizar al dia 1 y no al 15 ni al ultimo es una decision: hace la senal
+    -- hasta 30 dias MAS VIEJA de lo que podria ser, nunca mas fresca. Para la curva
+    -- de frescura eso es el lado conservador -- nunca sobreestima la ventana-- y una
+    -- fecha que solo se sabe al mes no deberia poder ganarle puntos a una que se
+    -- sabe al dia.
+    fecha_senal       date,
+    fecha_senal_precision text NOT NULL DEFAULT 'dia'
+        CHECK (fecha_senal_precision IN ('dia', 'mes', 'anio')),
+    -- [operativo] La fecha TAL COMO LA DIJO LA FUENTE, sin normalizar. Es lo que
+    -- se cita cuando alguien pregunta de donde salio.
+    fecha_senal_declarada text,
     fecha_de_cierre   date,                     -- [operativo] convocatorias
     fecha_del_evento  date,                     -- [operativo] camaras y congresos
     -- [operativo] El veredicto del evaluador, completo.
@@ -217,13 +250,35 @@ CREATE TABLE tarjeta (
     -- reapertura sin respuesta la cuenta dice algo, y lo que dice es *el canal
     -- esta mal, no el momento*.
     reaperturas        integer NOT NULL DEFAULT 0,
+    -- [operativo] OPCION C de #340. Una tarjeta que nacio vencida y que el
+    -- operador decidio trabajar de todas formas se reabre con la caducidad
+    -- RECALCULADA DESDE HOY, no con la original: una senal de obra nueva de hace
+    -- diez meses no esta muerta como prospecto -- la planta sigue comprando--
+    -- pero su ventana de especificacion si cerro. Reabrirla con la caducidad
+    -- original la mata en el acto; reabrirla con su plazo desde hoy es honesto
+    -- sobre lo que se esta haciendo: tratar una senal vieja como punto de
+    -- partida, no como senal fresca.
+    --
+    -- Y queda ESCRITO, porque el lazo 1 lo necesita: si esa tarjeta convierte, la
+    -- curva de frescura tiene un contraejemplo medido, y un contraejemplo medido
+    -- vale mas que la curva.
+    reabierta_vencida  boolean NOT NULL DEFAULT false,
+    caducidad_original date,
     -- [operativo] El id del lead en Odoo, cuando exista. NULL en la etapa 1,
     -- donde el CSV lo sube una persona y nadie devuelve el id.
     odoo_lead_id       integer,
     abierta            timestamptz NOT NULL DEFAULT now(),
     cerrada            timestamptz,
     CONSTRAINT tarjeta_cerrada_tiene_fecha
-        CHECK ((estado = 'cerrada') = (cerrada IS NOT NULL))
+        CHECK ((estado = 'cerrada') = (cerrada IS NOT NULL)),
+    -- Una tarjeta que nace vencida SIN la caducidad que ya se le paso no se puede
+    -- auditar: nadie podria decir de cuando era la senal que la mato. Y una
+    -- reapertura de vencida sin ese dato es peor, porque borra justo el numero que
+    -- el lazo 1 necesita para el contraejemplo.
+    CONSTRAINT vencida_sin_trabajar_guarda_su_caducidad
+        CHECK (estado <> 'vencida_sin_trabajar' OR caducidad_original IS NOT NULL),
+    CONSTRAINT reabierta_vencida_guarda_su_caducidad
+        CHECK (NOT reabierta_vencida OR caducidad_original IS NOT NULL)
 );
 
 CREATE INDEX tarjeta_por_cuenta ON tarjeta (cuenta_id);
@@ -524,6 +579,28 @@ FROM cierre x
 JOIN senal s ON s.id = x.senal_id
 GROUP BY s.tipo
 ORDER BY s.tipo;
+
+-- LAS QUE NACIERON VENCIDAS Y NADIE TRABAJO. OPCION C de #340.
+--
+-- ESTO NO ES UNA METRICA DEL RADAR, ES UNA METRICA DEL PROCESO: mide cuanto tarda
+-- el equipo en trabajar lo que el radar detona. Si esta lista crece, el problema no
+-- es que el radar detecte mal -- es que lo que detecta se queda sin trabajar--.
+--
+-- Deliberadamente NO lleva a los lazos: no hay `cierre`, asi que
+-- `conversion_por_fuente`, `conversion_por_padron` y
+-- `dias_hasta_respuesta_por_tipo` no la ven. Eso es el punto entero de la opcion C.
+CREATE VIEW vencidas_sin_trabajar AS
+SELECT t.id AS tarjeta_id, c.empresa, c.planta, c.llave_de_corrida,
+       s.fuente, s.tipo, s.fecha_senal,
+       t.caducidad_original,
+       (CURRENT_DATE - t.caducidad_original) AS dias_vencida,
+       t.caduca_por_que,
+       t.reabierta_vencida
+FROM tarjeta t
+JOIN cuenta c ON c.id = t.cuenta_id
+LEFT JOIN senal s ON s.id = t.senal_id
+WHERE t.estado = 'vencida_sin_trabajar'
+ORDER BY t.caducidad_original;
 
 -- LAS CUENTAS QUE HAY QUE REGENERAR: cerraron sin expediente de senal, asi que
 -- no pueden ensenarle nada a los lazos 1 y 3.

@@ -652,6 +652,14 @@ def main(argv=None) -> int:
                                 "hasheandolo aqui. Verifica el ida y vuelta "
                                 "completo, no la copia remota por si sola; la "
                                 "corrida lo va a decir asi")
+            s.add_argument("--base64-confirmado", action="store_true",
+                           dest="base64_confirmado",
+                           help="el archivo se subio como BASE64 declarando su "
+                                "longitud exacta, y el conector la confirmo. Mas "
+                                "fuerte que el tamano -- el servidor rechaza lo que "
+                                "no decodifique a esa longitud-- y mas debil que "
+                                "una relectura: confirma la longitud, no el "
+                                "contenido")
             s.add_argument("--bytes", default=None, type=int, dest="bytes_",
                            help="el tamano que devolvio el conector. Sirve de "
                                 "consuelo si no da hash, pero NO verifica")
@@ -673,8 +681,17 @@ def main(argv=None) -> int:
                            help="el hallazgo tal cual. Si no se pasa se toma la "
                                 "primera senal registrada de la corrida")
             s.add_argument("--fecha-senal", default="", dest="fecha_senal",
-                           help="la fecha del EVENTO, no la de la consulta. El "
-                                "reloj de caducidad arranca aqui")
+                           help="CUANDO SE SUPO, no cuando se consulto. El reloj "
+                                "de caducidad arranca aqui y la frescura la mide. "
+                                "Se acepta AAAA-MM-DD, AAAA-MM o AAAA: la prensa "
+                                "fecha al mes y esa es una precision valida")
+            s.add_argument("--sin-fecha", action="store_true", dest="sin_fecha",
+                           help="declara que NO hay fecha. Exige --razon-sin-fecha. "
+                                "La ficha lo va a decir en voz alta y el techo de "
+                                "la cuenta queda marcado como NO alcanzable")
+            s.add_argument("--razon-sin-fecha", default="", dest="razon_sin_fecha",
+                           help="por que no hay fecha. «No la busque» y «la nota no "
+                                "la trae» son cosas distintas")
             s.add_argument("--fecha-de-cierre", default="", dest="fecha_de_cierre",
                            help="solo convocatorias: el plazo no lo decide FTS")
             s.add_argument("--fecha-del-evento", default="", dest="fecha_del_evento",
@@ -694,6 +711,11 @@ def main(argv=None) -> int:
             s.add_argument("--cierres", default="",
                            help="el JSON con los expedientes de cierre. Sin el, "
                                 "el reporte sale vacio y lo dice")
+            s.add_argument("--socket", default="",
+                           help="el socket de la base del motor 3. Con esto el "
+                                "reporte lee los cierres DE LA BASE en vez de un "
+                                "archivo")
+            s.add_argument("--puerto", default="5440")
         if nombre == "conectores":
             for k in CONECTORES:
                 s.add_argument(f"--{k}", default=None,
@@ -1038,13 +1060,40 @@ def main(argv=None) -> int:
 
         if a.cmd == "aprendizaje":
             from .aprendizaje import los_tres_lazos
-            cierres = []
-            if a.cierres:
+            cierres, de_donde = [], "nada"
+            if a.socket:
+                # De la BASE. `SinPostgres` NO se atrapa para devolver una lista
+                # vacia: un reporte que dice "cero cierres" cuando lo que pasa es
+                # que la base no contesta es indistinguible de uno correcto, y es
+                # justo la clase de silencio que este proyecto persigue.
+                from .base_motor3 import Base, cierres_para_el_aprendizaje
+                b = Base(socket=a.socket, puerto=a.puerto)
+                cierres = cierres_para_el_aprendizaje(b)
+                de_donde = f"la base ({a.socket})"
+                from .base_motor3 import resumen_del_piloto
+                res = resumen_del_piloto(b)
+                print(f"\n  BASE DEL MOTOR 3 — {res['cuentas']} cuenta(s), "
+                      f"{res['tarjetas_abiertas']} tarjeta(s) abierta(s), "
+                      f"{res['toques']} toque(s), {res['cierres']} cierre(s)")
+                if res.get("senales_incompletas"):
+                    print(f"     {res['senales_incompletas']} senal(es) "
+                          "incompleta(s): ver la vista `senal_incompleta`")
+            elif a.cierres:
                 with open(a.cierres, encoding="utf-8") as f:
                     cargado = json.load(f)
                 cierres = cargado if isinstance(cargado, list) else [cargado]
+                de_donde = a.cierres
             r = los_tres_lazos(cierres)
-            print(f"\n  LOS TRES LAZOS — {r['cierres_leidos']} cierre(s)")
+            print(f"\n  LOS TRES LAZOS — {r['cierres_leidos']} cierre(s) "
+                  f"leidos de {de_donde}")
+            if not cierres:
+                # La diferencia entre `sin_datos` y `prematuro` no es cosmetica:
+                # `prematuro` dice "hay datos y no alcanzan", `sin_datos` dice "no
+                # hay ni uno". En la semana 1 del piloto lo correcto es lo segundo.
+                print("     Ninguna tarjeta ha cerrado todavia, asi que las "
+                      "compuertas van a decir SIN_DATOS y no PREMATURO:")
+                print("     `prematuro` significa 'hay datos y no alcanzan'; "
+                      "`sin_datos` significa 'no hay ni uno'.")
             if r["cierres_sin_expediente_de_senal"]:
                 print(f"  De esos, {r['cierres_sin_expediente_de_senal']} SIN "
                       "expediente de senal: no cuentan para los lazos 1 y 3.")
@@ -1157,13 +1206,18 @@ def main(argv=None) -> int:
                     raise SystemExit(
                         "--reevaluar sin texto de senal: no hay que puntuar. "
                         "Pasa --texto, o registra la senal primero.")
+                # EL GIRO VIAJA. Defecto B3 de #330: el proceso del cliente es
+                # propiedad de la CUENTA y el evaluador solo veia el titular de
+                # la senal. `Corrida.giro` existe desde siempre.
                 ev = _evaluar({"texto": texto, "fuente": a.fuente,
-                               "fecha": a.fecha_senal or None})
+                               "fecha": a.fecha_senal or None,
+                               "giro": c.giro})
             sen = c.declarar_senal_origen(
                 a.fuente, texto=texto, tipo=a.tipo,
                 fecha_senal=a.fecha_senal, evaluacion=ev,
                 fecha_de_cierre=a.fecha_de_cierre,
-                fecha_del_evento=a.fecha_del_evento)
+                fecha_del_evento=a.fecha_del_evento,
+                sin_fecha=a.sin_fecha, razon_sin_fecha=a.razon_sin_fecha)
             if ev is not None:
                 # QUEDA ESCRITO que el puntaje es de hoy y no del dia de la
                 # corrida. Sin esta linea, el lazo 1 usaria un numero reevaluado
@@ -1181,7 +1235,14 @@ def main(argv=None) -> int:
             print(f"\n  ✓ SENAL DECLARADA para {c.llave}")
             print(f"     fuente:  {sen['fuente']}")
             print(f"     tipo:    {sen['tipo']}  ({sen['tipo_de_donde']})")
-            print(f"     fecha:   {sen['fecha_senal'] or 'SIN FECHA'}")
+            if sen["fecha_senal"]:
+                print(f"     fecha:   {sen['fecha_senal']}  "
+                      f"(precision de {sen['fecha_precision']})")
+            else:
+                print(f"     fecha:   SIN FECHA, declarado: "
+                      f"{sen['razon_sin_fecha']}")
+                print("              la frescura vale el minimo (2 de 25) y el "
+                      "TECHO de esta cuenta NO ES ALCANZABLE")
             if sen.get("puntaje") is not None:
                 print(f"     puntaje: {sen['puntaje']} ({sen['veredicto']})"
                       + ("  ← reevaluado HOY, no es el del dia de la corrida"
@@ -1218,7 +1279,8 @@ def main(argv=None) -> int:
             e = c.registrar_entrega(a.destino, a.url, a.archivo,
                                     sha256_subido=a.sha256,
                                     bytes_subidos=a.bytes_,
-                                    hash_de_relectura=a.sha256_releido)
+                                    hash_de_relectura=a.sha256_releido,
+                                    base64_con_longitud_confirmada=a.base64_confirmado)
             c.guardar(_ruta_de(c, a))
             print(f"\n  ✓ FICHA ENTREGADA — sobrevive a esta sesion:")
             print(f"     destino: {e['destino']}")
@@ -1233,6 +1295,10 @@ def main(argv=None) -> int:
                     "✓ contenido VERIFICADO releyendo el archivo: identico al "
                     "local byte por byte (el conector no da hash propio)",
                 "DIFIERE": "⛔ contenido DISTINTO del local (sha256 no casa)",
+                "longitud_confirmada_en_base64":
+                    "◐ LONGITUD confirmada por el servidor en la subida base64: "
+                    "el byte de mas de #306 no puede pasar por aqui, y el "
+                    "contenido no quedo comparado",
                 "mismo_tamano_sin_hash": "⚠  solo se comparo el TAMANO, y coincide "
                                          "— el tamano no verifica contenido",
                 "TAMANO_DISTINTO": "⛔ el TAMANO no coincide con el local",
@@ -1575,6 +1641,10 @@ def main(argv=None) -> int:
             # proyecto DESPUES de abrir la corrida -- que es justo lo que paso con
             # Pesqueria (#310)--. Re-emitir tiene que bastar.
             c.registrar_historia_declarada()
+            # D1 de #329: el hueco del expediente de senal se declara al emitir,
+            # por la misma razon que la historia se relee aqui -- una corrida
+            # abierta antes de que el expediente existiera no lo tiene--.
+            _falta_expediente = c.avisar_si_falta_el_expediente()
             # Los DOS modos escriben un .html autocontenido. Hasta la
             # v0.9.0 el limpio salia como fragmento -- sin doctype ni charset--
             # y el de procedencia solo como JSON. La primera corrida real de un
@@ -1590,6 +1660,11 @@ def main(argv=None) -> int:
             # cuatro plantas escribian la misma `<empresa>-limpio.html` y se
             # pisaban -- el mismo defecto que el guardado por planta acaba de
             # corregir, un paso mas abajo--.
+            if _falta_expediente:
+                # Se imprime en la salida del comando ademas de quedar en los
+                # avisos: quien emite la ficha es quien puede arreglarlo, y en ese
+                # momento.
+                print(f"\n  ⚠  {_falta_expediente[0]}")
             origen = _ruta_de(c, a)
             base = (str(exigir_fuera_del_repo(a.salida)) if a.salida
                     else origen[:-5] + f"-{a.modo}")

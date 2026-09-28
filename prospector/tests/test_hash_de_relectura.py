@@ -75,3 +75,65 @@ def test_el_veredicto_nuevo_tiene_rotulo_en_el_orquestador():
     with open(ruta, encoding="utf-8") as f:
         fuente = f.read()
     assert '"identico_por_relectura":' in fuente
+
+
+# =========================  el tercer camino: base64 con longitud confirmada
+def test_base64_con_longitud_confirmada_es_su_propio_veredicto():
+    """Hizo falta subiendo el CSV y la tarjeta del piloto (#330).
+
+    Se subieron como BASE64 declarando `expectedBytes`, y el conector RECHAZA el
+    envio si no decodifica a exactamente esa cantidad. Eso no es "el mismo tamano":
+    es una comprobacion del transporte que el servidor hizo. Forzarlo a
+    `mismo_tamano_sin_hash` lo SUBVALUARIA, y a `identico` lo sobrevaluaria.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        c, ruta = _corrida_con_ficha(tmp)
+        n = c.huella(ruta)["bytes"]
+        e = c.registrar_entrega("onedrive", "https://x/y", ruta, bytes_subidos=n,
+                                base64_con_longitud_confirmada=True)
+        assert e["verificacion"] == "longitud_confirmada_en_base64"
+        assert e["base64_con_longitud_confirmada"] is True
+
+
+def test_el_veredicto_de_base64_dice_lo_que_NO_prueba():
+    with tempfile.TemporaryDirectory() as tmp:
+        c, ruta = _corrida_con_ficha(tmp)
+        n = c.huella(ruta)["bytes"]
+        e = c.registrar_entrega("onedrive", "https://x/y", ruta, bytes_subidos=n,
+                                base64_con_longitud_confirmada=True)
+        texto = " ".join(e["avisos_de_verificacion"])
+        # Las dos mitades: lo que si comprueba y lo que no.
+        assert "el byte de mas de #306 no puede pasar" in texto
+        assert "NO es una relectura" in texto
+        assert "no su contenido" in texto
+
+
+def test_sin_la_bandera_el_veredicto_sigue_siendo_el_del_tamano():
+    # La bandera la pone quien SABE que subio en base64. Sin ella no se supone.
+    with tempfile.TemporaryDirectory() as tmp:
+        c, ruta = _corrida_con_ficha(tmp)
+        n = c.huella(ruta)["bytes"]
+        e = c.registrar_entrega("onedrive", "https://x/y", ruta, bytes_subidos=n)
+        assert e["verificacion"] == "mismo_tamano_sin_hash"
+
+
+def test_un_tamano_distinto_sigue_siendo_TAMANO_DISTINTO_con_base64():
+    with tempfile.TemporaryDirectory() as tmp:
+        c, ruta = _corrida_con_ficha(tmp)
+        e = c.registrar_entrega("onedrive", "https://x/y", ruta, bytes_subidos=1,
+                                base64_con_longitud_confirmada=True)
+        assert e["verificacion"] == "TAMANO_DISTINTO"
+
+
+def test_los_tres_veredictos_de_contenido_estan_ordenados_y_rotulados():
+    """Tres fuerzas distintas, tres nombres distintos, tres rotulos distintos.
+
+    Un veredicto sin rotulo se imprime crudo y el operador lee un identificador
+    interno. Ya paso con los estados de modulo (#323).
+    """
+    import pathlib
+    ruta = pathlib.Path(__file__).resolve().parent.parent / "flujo" / "orquestador.py"
+    fuente = ruta.read_text(encoding="utf-8")
+    for v in ("identico", "identico_por_relectura",
+              "longitud_confirmada_en_base64", "mismo_tamano_sin_hash"):
+        assert f'"{v}":' in fuente, f"el veredicto {v} no tiene rotulo"

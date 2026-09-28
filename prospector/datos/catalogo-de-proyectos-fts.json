@@ -264,7 +264,160 @@
       }
     }
   },
-  "capacidad_por_tipo": {},
+  "capacidad_por_tipo": {
+    "clima_de_tablero": {
+      "rangos": {
+        "W": {
+          "n": 2,
+          "distintos": 2,
+          "min": 2000.0,
+          "max": 4000.0,
+          "mediana": 4000.0,
+          "valores": [
+            2000.0,
+            4000.0
+          ],
+          "comparable": true
+        }
+      },
+      "n": 2,
+      "unidades_vistas": {
+        "W": 2
+      }
+    },
+    "electroducto_busway": {
+      "rangos": {
+        "A": {
+          "n": 5,
+          "distintos": 1,
+          "min": 4000.0,
+          "max": 4000.0,
+          "mediana": 4000.0,
+          "valores": [
+            4000.0
+          ],
+          "comparable": false
+        }
+      },
+      "n": 5,
+      "unidades_vistas": {
+        "A": 5
+      }
+    },
+    "estructura_metalica": {
+      "rangos": {
+        "m": {
+          "n": 1,
+          "distintos": 1,
+          "min": 11.0,
+          "max": 11.0,
+          "mediana": 11.0,
+          "valores": [
+            11.0
+          ],
+          "comparable": false
+        }
+      },
+      "n": 1,
+      "unidades_vistas": {
+        "m": 1
+      }
+    },
+    "instalacion_electrica": {
+      "rangos": {
+        "MCM": {
+          "n": 1,
+          "distintos": 1,
+          "min": 400.0,
+          "max": 400.0,
+          "mediana": 400.0,
+          "valores": [
+            400.0
+          ],
+          "comparable": false
+        },
+        "V": {
+          "n": 2,
+          "distintos": 2,
+          "min": 127.0,
+          "max": 480.0,
+          "mediana": 480.0,
+          "valores": [
+            127.0,
+            480.0
+          ],
+          "comparable": true
+        },
+        "kV": {
+          "n": 1,
+          "distintos": 1,
+          "min": 35.0,
+          "max": 35.0,
+          "mediana": 35.0,
+          "valores": [
+            35.0
+          ],
+          "comparable": false
+        },
+        "mm2": {
+          "n": 1,
+          "distintos": 1,
+          "min": 240.0,
+          "max": 240.0,
+          "mediana": 240.0,
+          "valores": [
+            240.0
+          ],
+          "comparable": false
+        }
+      },
+      "n": 5,
+      "unidades_vistas": {
+        "V": 2,
+        "MCM": 1,
+        "kV": 1,
+        "mm2": 1
+      }
+    },
+    "tablero_electrico": {
+      "rangos": {
+        "kV": {
+          "n": 1,
+          "distintos": 1,
+          "min": 36.0,
+          "max": 36.0,
+          "mediana": 36.0,
+          "valores": [
+            36.0
+          ],
+          "comparable": false
+        }
+      },
+      "n": 1,
+      "unidades_vistas": {
+        "kV": 1
+      }
+    },
+    "tuberia_y_montaje": {
+      "rangos": {
+        "m": {
+          "n": 1,
+          "distintos": 1,
+          "min": 130.0,
+          "max": 130.0,
+          "mediana": 130.0,
+          "valores": [
+            130.0
+          ],
+          "comparable": false
+        }
+      },
+      "n": 1,
+      "unidades_vistas": {
+        "m": 1
+      }
+    }
+  },
   "sin_clasificar_muestra": [
     "- Suministro, fabricación, e instalación",
     "Suministro de 1800 metros de 5/16 6X19 cable",
@@ -301,7 +454,12 @@
       "moneda": null,
       "proceso": "metalmecanica",
       "proceso_de": "hilo o propuesta del cliente",
-      "magnitudes": []
+      "magnitudes": [
+        {
+          "valor": 4000.0,
+          "unidad": "A"
+        }
+      ]
     },
     {
       "tipo": "sistema_agua_helada",
@@ -340,7 +498,12 @@
       "moneda": null,
       "proceso": "metalmecanica",
       "proceso_de": "hilo o propuesta del cliente",
-      "magnitudes": []
+      "magnitudes": [
+        {
+          "valor": 36.0,
+          "unidad": "kV"
+        }
+      ]
     },
     {
       "tipo": "tablero_electrico",
@@ -470,7 +633,12 @@
       "moneda": null,
       "proceso": "envasado_bebidas",
       "proceso_de": "hilo o propuesta del cliente",
-      "magnitudes": []
+      "magnitudes": [
+        {
+          "valor": 130.0,
+          "unidad": "m"
+        }
+      ]
     },
     {
       "tipo": "estructura_metalica",
@@ -496,7 +664,12 @@
       "moneda": null,
       "proceso": null,
       "proceso_de": null,
-      "magnitudes": []
+      "magnitudes": [
+        {
+          "valor": 400.0,
+          "unidad": "MCM"
+        }
+      ]
     },
     {
       "tipo": "estructura_metalica",
@@ -509,7 +682,12 @@
       "moneda": null,
       "proceso": "envasado_bebidas",
       "proceso_de": "hilo o propuesta del cliente",
-      "magnitudes": []
+      "magnitudes": [
+        {
+          "valor": 11.0,
+          "unidad": "m"
+        }
+      ]
     },
     {
       "tipo": "tuberia_y_montaje",
@@ -782,7 +960,12 @@
       "moneda": null,
       "proceso": "metalmecanica",
       "proceso_de": "hilo o propuesta del cliente",
-      "magnitudes": []
+      "magnitudes": [
+        {
+          "valor": 4000.0,
+          "unidad": "A"
+        }
+      ]
     },
     {
       "tipo": "conveyor_y_manejo",
@@ -886,7 +1069,12 @@
       "moneda": null,
       "proceso": "metalmecanica",
       "proceso_de": "hilo o propuesta del cliente",
-      "magnitudes": []
+      "magnitudes": [
+        {
+          "valor": 4000.0,
+          "unidad": "A"
+        }
+      ]
     },
     {
       "tipo": "instalacion_electrica",
@@ -990,7 +1178,12 @@
       "moneda": null,
       "proceso": "alimentos",
       "proceso_de": "hilo o propuesta del cliente",
-      "magnitudes": []
+      "magnitudes": [
+        {
+          "valor": 480.0,
+          "unidad": "V"
+        }
+      ]
     },
     {
       "tipo": "tablero_electrico",
@@ -1276,7 +1469,12 @@
       "moneda": null,
       "proceso": "metalmecanica",
       "proceso_de": "hilo o propuesta del cliente",
-      "magnitudes": []
+      "magnitudes": [
+        {
+          "valor": 4000.0,
+          "unidad": "A"
+        }
+      ]
     },
     {
       "tipo": "instalacion_electrica",
@@ -1354,7 +1552,12 @@
       "moneda": null,
       "proceso": "alimentos",
       "proceso_de": "hilo o propuesta del cliente",
-      "magnitudes": []
+      "magnitudes": [
+        {
+          "valor": 4000.0,
+          "unidad": "W"
+        }
+      ]
     },
     {
       "tipo": "clima_de_tablero",
@@ -1497,7 +1700,12 @@
       "moneda": null,
       "proceso": "alimentos",
       "proceso_de": "hilo o propuesta del cliente",
-      "magnitudes": []
+      "magnitudes": [
+        {
+          "valor": 127.0,
+          "unidad": "V"
+        }
+      ]
     },
     {
       "tipo": "clima_de_tablero",
@@ -1952,7 +2160,16 @@
       "moneda": null,
       "proceso": "metalmecanica",
       "proceso_de": "hilo o propuesta del cliente",
-      "magnitudes": []
+      "magnitudes": [
+        {
+          "valor": 35.0,
+          "unidad": "kV"
+        },
+        {
+          "valor": 240.0,
+          "unidad": "mm2"
+        }
+      ]
     },
     {
       "tipo": "medicion_y_calibracion",
@@ -2017,7 +2234,12 @@
       "moneda": null,
       "proceso": "metalmecanica",
       "proceso_de": "hilo o propuesta del cliente",
-      "magnitudes": []
+      "magnitudes": [
+        {
+          "valor": 4000.0,
+          "unidad": "A"
+        }
+      ]
     },
     {
       "tipo": "clima_de_tablero",
@@ -2030,7 +2252,12 @@
       "moneda": null,
       "proceso": "alimentos",
       "proceso_de": "hilo o propuesta del cliente",
-      "magnitudes": []
+      "magnitudes": [
+        {
+          "valor": 2000.0,
+          "unidad": "W"
+        }
+      ]
     },
     {
       "tipo": "bombeo",
@@ -2279,5 +2506,20 @@
       "proceso_de": "hilo o propuesta del cliente",
       "magnitudes": []
     }
-  ]
+  ],
+  "rederivacion": {
+    "por_que": "B4 de #340. `magnitudes()` no sabia leer las unidades que las descripciones ya traian -- A, kV, V, W, m, mm2, MCM-- y por eso las 154 lineas salieron con `magnitudes: []` y `capacidad_por_tipo` vacio. Se volvio a leer la descripcion guardada; NO se consulto Odoo y no se invento ningun dato.",
+    "lineas_con_magnitud_antes": 0,
+    "lineas_con_magnitud_despues": 14,
+    "tipos_con_rango": 6,
+    "rangos_comparables": 2,
+    "limite_medido": "Las descripciones vienen TRUNCADAS por el conector (51 caracteres el mas largo, medido), asi que una linea como 'Transformador seco GEAFOL Siemens Energy' casi seguro trae su kVA en Odoo y aqui ya no cabe. Ese techo no se puede subir sin volver a leer Odoo.",
+    "unidades_que_el_catalogo_NO_usa": [
+      "TR",
+      "kVA",
+      "HP",
+      "m3/h",
+      "GPM"
+    ]
+  }
 }

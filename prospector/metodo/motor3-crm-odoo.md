@@ -170,13 +170,19 @@ hace un año, y un correo directo no espera lo mismo que un InMail.
 
 | Tipo de señal | Plazo | Por qué ése |
 |---|---|---|
-| Convocatoria de proveedores / licitación | **su propia fecha de cierre** | El plazo no lo decide FTS. Si la convocatoria cierra el 30, la tarjeta caduca el 30 |
+| Convocatoria de proveedores / licitación | **su propia fecha de cierre**, y **30 días** si no se conoce | El plazo no lo decide FTS. Si la convocatoria cierra el 30, la tarjeta caduca el 30. Sin fecha de cierre son 30 días: el respaldo más corto de la tabla, porque una convocatoria sin fecha es la señal que más rápido se puede volver inútil |
 | Frase de necesidad futura en el buzón | **90 días**, o la fecha que el correo diga | Si el cliente dijo «el próximo año», el reloj arranca ahí. Lo dice el correo |
 | Obra nueva / ampliación anunciada | **120 días** | La ventana de especificación de una obra industrial. Después ya hay proveedor |
 | Vacante técnica activa | **45 días** | Una vacante se cierra rápido; pasado eso ya no prueba nada |
-| Alta en cámara / evento | **hasta el evento + 15 días** | El evento es el canal |
+| Alta en cámara / evento | **hasta el evento + 15 días**, y **45 días** si no se conoce la fecha del evento | El evento es el canal. Sin su fecha no hay cuándo tocar, y el respaldo de 45 días queda declarado en el lognote en vez de hacerse pasar por un plazo razonado |
 | Nota de prensa corporativa | **60 días** | La más débil de la tabla, y la que más rápido deja de ser noticia |
 | Visita desde IP corporativa | **21 días** | La intención de navegación se enfría en semanas |
+
+> **[calculado] Los dos respaldos de arriba —30 y 45— existían en el código y no
+> estaban en esta tabla** hasta el barrido del 28-sep-2026. Son los plazos que corren
+> cuando la fecha propia de la señal no se conoce, y un plazo que corre sin estar
+> escrito es un plazo que nadie puede discutir. Los ocho valores de
+> `DIAS_POR_TIPO_DE_SENAL` están atados a esta tabla por una prueba.
 
 **Por canal** — cuántos días esperar **cada toque** antes del siguiente:
 

@@ -1247,3 +1247,363 @@ infraestructura de n8n y del conector de Odoo**, y esa parte no se movió de
 **Fuera del proyecto de prospección, y no se tocaron:** **#1** (multi-token
 read-only para BI) y **#2** (sonda de `autocomplete_by_name`, que es del conector
 de Odoo).
+
+---
+
+# #330 · Turno nocturno: las cinco decisiones aplicadas y el piloto en pie
+
+**28-sep-2026, 01:09 a 05:xx CST** · *Turno autónomo. Esteban dormía.*
+
+Las cinco decisiones de #329 llegaron aprobadas y el turno las aplicó. Lo que no
+estaba previsto es que **D3 destapara tres defectos del evaluador**, y uno de ellos
+llevaba tiempo inflando puntajes.
+
+## Lo que se aplicó
+
+| | |
+|---|---|
+| **D1** → (b) | La ficha **avisa** cuando la cuenta no trae expediente de señal. No bloquea. Y **no va en el aviso rojo**: que falte el expediente no se cae en ninguna llamada, y meterlo ahí pondría vocabulario interno en la capa que #322 dejó libre de él |
+| **D2** | Los cuatro números (20 por celda · 1 rebote · 3 por patrón · 10 por tipo) quedan con una prueba que truena si alguien los mueve |
+| **D3** → (a) | Tipo nuevo `obra_nueva_integral`, 25 términos, y **peso derivado**: la suma de las participaciones de las seis familias que la obra necesita, escalada contra la mayor. Sale **44.4**, casi 3× el tope de una familia individual |
+| **D4** | No se tocó. Una prueba recorre todo el código buscando cualquier vía de escritura a Odoo |
+| **D5** | Estricto. Una prueba sostiene que `ejemplo.mx` **no** está permitido por dominio |
+
+## Los tres defectos que D3 destapó, y los tres eran el mismo
+
+**El evaluador no leía lo que tenía enfrente.**
+
+**B1 — «prensa» era un falso positivo sistemático.** En una línea de venta de Odoo
+«prensa» es la máquina; en el texto de una señal, *«prensa reporta…»* es el medio.
+Medido: **Coficab Pesquería puntuaba 12.7 puntos de proceso por la palabra «prensa»
+de «prensa reporta»**, y con ellos cruzaba el umbral de `pasa`.
+
+> **Un umbral cruzado por un falso positivo es peor que un umbral no cruzado.**
+
+**B2 — el catálogo no conocía la palabra «cable».** Tiene el proceso
+`arneses_cableado` con proyectos reales, y su vocabulario no lo incluía. La cuenta
+más trabajada del proyecto es de cable automotriz y puntuaba **cero** en proceso.
+
+**B3 — el giro de la cuenta no entraba al evaluador.** `puntos_de_proceso` existe
+para puntuar el proceso **del cliente** y sólo recibía el texto de la señal, que es
+un titular de prensa: **se le estaba pidiendo al encabezado de una nota que dijera a
+qué se dedica la empresa.** `Corrida.giro` existe desde siempre y nadie lo conectaba.
+
+Con los tres arreglados, Coficab Pesquería pasa de **22.7 (`archiva`) a 64.9
+(`pasa`)** — y ahora por un match de proceso real en vez de por el falso positivo.
+
+## La línea base del radar: 3 de 9
+
+`datos/senales-documentadas.json` + `herramientas/linea_base_radar.py`. El «antes»
+**no está guardado a mano**: se recalcula desactivando D3 y B1/B2/B3 en un contexto
+que restaura el estado al salir.
+
+| | |
+|---|---|
+| Cuentas ya evaluadas | 13 |
+| Con señal documentada | 9 · **4 huecos declarados** |
+| **Pasan solas** | **3 de 9** (Pesquería 64.9 · Durango 66.4 · Hershey 83.0) |
+| Subieron con D3 | 7 de 9 |
+
+**Un hueco no es un cero.** Un cero dice «el radar la evaluó y la descartó»; un
+hueco dice «nadie documentó su señal». Coficab Cd. Juárez es el caso más tentador
+—tiene **tres proyectos declarados**— y sigue siendo hueco: entró por historia en
+Odoo, no por una señal.
+
+## Lo que no se aplicó, y por qué
+
+| | |
+|---|---|
+| **D6** | El evaluador **no puede leer ninguno de los seis montos documentados**. `magnitudes()` lee TR y kVA; 60 MDD, 205 MDD, 633 MDP, 2000 MDD, 500 MDP y 19.2 MW devuelven lista vacía. No se aplicó porque exige **elegir una escala**, y `puntos_de_capacidad` corta por arriba — con inversión esa regla puede ser al revés, y aplicarla sin decidirlo metería los 2,000 MDD de Bimbo arriba de los 60 MDD de Coficab Durango |
+| **D7** | El ejemplo trabajado del §3d de `motor1-radar-de-leads.md` calcula **59 a mano** y el código nunca produjo ese número: los **seis** factores difieren. La conclusión de §3d sigue en pie, pero es la séptima vez que un número escrito a mano en un documento de diseño no coincide con lo que el código calcula |
+| **D8** | Los cuatro contactos de una tarjeta reciben su toque #1 **el mismo día**, por cuatro canales. Desde la planta no se ve como cadencia: se ve como enjambre. Hay una prueba que **documenta** el comportamiento actual en vez de exigir el corregido |
+
+## El piloto de la semana 1, en pie
+
+`flujo/base_motor3.py` habla con Postgres por `psql`. Cargadas 9 cuentas, 9 señales
+con expediente y 9 tarjetas abiertas; **cero contactos y cero cierres**, los dos a
+propósito. Las cuatro reglas verificadas **contra los datos reales del piloto**.
+
+Las tres compuertas dicen **`SIN_DATOS`**, no `prematuro`. La diferencia no es
+cosmética: `prematuro` es «hay datos y no alcanzan», `sin_datos` es «no hay ni uno».
+
+**Coficab/Durango abre con caducidad ya vencida** (dic-2025 + 120 días). No se
+cierra sola: un cierre sin un solo toque sería un expediente inventado y entraría a
+los tres lazos como un desenlace real. **Ensuciar el aprendizaje para que el tablero
+quede limpio es el peor de los dos males.**
+
+## Etapa 1, y un tercer veredicto de entrega
+
+Nueve tarjetas en un CSV —**no diez**: sólo hay nueve con señal documentada, y la
+décima habría que inventársela. Las tres reglas duras, medidas en el archivo: dos
+correos retenidos por candidato (**Hershey sale con `email_from` vacío aunque tenga
+cuatro contactos**), cero en revisión, `phone` vacía en las nueve.
+
+Subidos en **base64 con `expectedBytes`**, no como texto: el CSV lleva saltos de
+línea dentro de campos entrecomillados y ahí es donde una transcripción falla.
+
+Y eso destapó un hueco en el vocabulario que este mismo proyecto construyó el día
+anterior: `entregar` no tenía cómo registrarlo. No es `mismo_tamano_sin_hash` —el
+servidor **rechaza** lo que no decodifique a la longitud exacta— y no es
+`identico_por_relectura` —confirma la longitud, no el contenido—. Veredicto nuevo
+**`longitud_confirmada_en_base64`**.
+
+> **Forzar una verificación al veredicto que no le corresponde es el mismo pecado
+> en las dos direcciones.** Subvaluarla esconde trabajo hecho; sobrevaluarla es lo
+> que `--sha256-releido` existe para no cometer.
+
+## Restricciones del turno
+
+Cero escrituras a Odoo · **cero consultas a Odoo** · cero Lusha · purga no
+ejecutada · `fts-mcp-odoo` intacto · sin datos personales en ningún archivo · cero
+consultas web (ninguna tarea las exigió). **853 pruebas**, versión **0.13.0**.
+
+---
+
+# #335 · Turno nocturno: D6 a D9 aplicadas, y el radar medido de punta a punta
+
+Continuación de #330. Las cuatro recomendaciones que quedaron esperando criterio se
+aprobaron, se aplicaron y se midieron. **899 pruebas**, versión **0.14.0**.
+
+## La evolución de la noche, en una sola tabla
+
+| cuenta | original | con D3+B | con D6 | veredicto | techo | ¿fecha? |
+|---|---:|---:|---:|---|---:|---|
+| Coficab/Pesquería | 22.7 | 64.9 | 64.9 | **pasa** | 87.9 | NO |
+| Coficab/Durango | 12 | 66.4 | **76.4** | **pasa** | — | sí |
+| LEGO | 10 | 20 | 30 | archiva | 53 | NO |
+| Ragasa | 18 | 18 | 28 | archiva | 51 | NO |
+| Cuprum | 18 | 28 | 38 | archiva | 61 | NO |
+| Bimbo | 18 | 43 | 45.5 | guarda | 68.5 | NO |
+| Amazon | 10 | 20.5 | 30.5 | archiva | 53.5 | NO |
+| Nemak/García | 18 | 28 | 28 | archiva | 51 | NO |
+| Hershey/Escobedo | 83 | 83 | 83 | **pasa** | — | sí |
+| **PASAN** | **1** | **3** | **3** | de 9 | | |
+
+Control con señal fresca documentada: **33 → 58 → 68 (pasa)**.
+
+> **El radar funciona sobre señal fresca; lo que hunde la línea base es que seis de
+> nueve señales no traen fecha registrada.** Cinco de las nueve pasarían si la señal
+> estuviera fresca. La mejora que más movería el número no está en el evaluador:
+> está en registrar la fecha de la señal cuando se documenta.
+
+## D6 · qué se derivó y qué se declaró
+
+Lo derivable se derivó: el **piso** es el proyecto más chico de los 154 reales
+(192,000), porque un capex menor que el proyecto más chico de FTS no puede contener
+uno. Es una cota dura.
+
+Lo no derivable se declara como declarado: el corte de **500 MDD** y el tipo de
+cambio **18.5** son de Esteban, con alcance escrito y fecha de revisión. Qué
+fracción del capex de un cliente se vuelve proyecto de FTS **no se sabe**, y
+comparar 205 MDD contra el ticket de FTS sería un error de categoría.
+
+La prueba de aceptación que importaba: **Bimbo (2,000 MDD) queda 45.5 y Coficab
+Durango (60 MDD) queda 76.4.** Un programa nacional no es una planta que FTS pueda
+atender, y el evaluador ahora lo distingue.
+
+**B4, encontrado y no arreglado:** `capacidad_por_tipo` está vacío porque las 154
+entradas del catálogo traen `magnitudes: []`. El corte por arriba de TR **nunca ha
+corrido**. Ahora el `por_qué` lo dice en voz alta en lugar de fingir que el rango
+existe.
+
+## D7 · la séptima vez
+
+Es la séptima vez que un número escrito a mano en un doc de método no casa con el
+que el código produce. El §3d ahora cita `linea_base_radar.py` (12.0 → 66.4 → 76.4)
+y el 59 quedó marcado como razonado a mano, con sus cuatro causas. Hay prueba que
+ata el §3d a la salida de la herramienta.
+
+> **Una columna que dice «antes» y se mueve cuando se agrega una mejora no es un
+> antes: es otro después.** Las tres etapas de la línea base son interruptores
+> independientes por eso.
+
+## Los cuatro huecos: cero señales, y dos pistas falsas nombradas
+
+Barrido de issues e HISTORIAL para Coficab Juárez, Silao, Metalsa e International:
+**ninguna señal de negocio con fecha**. No se declara ninguna. Cada hueco quedó con
+`que_faltaria` y `lo_mas_barato`, y las **dos pistas falsas** quedaron nombradas
+para que nadie las vuelva a perseguir.
+
+## El hueco que salió al subir los entregables
+
+`prospector entregar --empresa Hershey` respondió *«No hay corrida para 'Hershey' en
+'Escobedo'»*. La comparación que nació de #306 vivía encerrada en
+`Corrida.registrar_entrega`, y **los dos archivos que de verdad salen a OneDrive no
+los produce una corrida**: se subían sin pasar por la única comprobación que existe
+para eso.
+
+El veredicto vive suelto en `flujo.estado.comparar_subida`,
+`herramientas/verificar_entrega.py` lo usa desde fuera, y
+`datos/entregas-fuera-de-corrida.json` guarda las ligas. Prueba que ata las dos vías
+al mismo veredicto y que se niega a que `registrar_entrega` lo vuelva a calcular por
+su cuenta.
+
+> **La lección de #306 no es de las fichas: es de cualquier archivo que sale de
+> aquí.** Encerrarla en la clase que produce fichas la dejó cubriendo justo lo que
+> no se subía.
+
+## Lo que queda esperando OK
+
+- **D4** (modo expansión del radar) sigue esperando alcance exacto. Sin tocar.
+- **Tarjeta que nace vencida** (`metodo/tarjeta-que-nace-vencida.md`): se recomienda
+  la opción C —estado propio `vencida_sin_trabajar`, fuera de los lazos, con
+  `caducidad_original` guardada—. Se rechaza fabricarle un cierre: **ensuciar el
+  aprendizaje para que el tablero quede limpio es el peor de los dos males**, y eso
+  se verificó contra la base real, no se afirmó.
+- **B4**: el catálogo no trae magnitudes, y arreglarlo es volver a cómo se construye.
+
+## Restricciones del turno
+
+Cero escrituras a Odoo · cero consultas a Odoo · cero Lusha · purga no ejecutada ·
+`fts-mcp-odoo` intacto · sin datos personales en ningún archivo · **Microsoft 365
+solo para subir los tres entregables finales a OneDrive**, nada más. Los tres
+puntos `[ ? ]` de `listo` quedan sin sondear **porque sondearlos rompería las reglas
+duras**, no por descuido.
+
+---
+
+# #340 · Turno de madrugada: la opción C, B4 cerrado, y una palanca que iba al revés
+
+Continuación de #335. **975 pruebas**, versión **0.15.0**.
+
+## Lo que más vale saber de esta noche
+
+> **La conclusión de la noche anterior estaba equivocada en su dirección.** El turno
+> de #335 cerró diciendo: *«lo que hunde la línea base es que seis de nueve señales
+> no traen fecha; anotarla es la mejora con más palanca»*. Se buscaron las fechas.
+> Tres se encontraron. **Y las tres bajaron el puntaje dos puntos.**
+
+| cuenta | fecha hallada | cita textual | días al 28-sep |
+|---|---|---|---:|
+| LEGO | nov-2023 | *«Anunciada nov-2023, entrega 2025»* | ~1,050 |
+| Ragasa | mar-2025 | *«arranque de obra marzo-2025»* | ~576 |
+| Bimbo | 17-jul-2025 | *«anuncio 17-jul-2025, Plan México»* | 438 |
+
+Las tres pasan de 365 días → **0 de frescura**, mientras `FRESCURA_SIN_FECHA` vale 2.
+
+> **El radar no estaba ciego por falta de fecha: estaba siendo generoso.** El respaldo
+> le regalaba dos puntos a una señal de hace tres años, y la columna «techo» prometía
+> un ascenso que esas tres nunca van a tener — su señal no va a volverse fresca.
+>
+> **Lo que la lista de 13 necesita no es mejor puntuación de señales viejas. Es señal
+> nueva.**
+
+Ragasa igual subió (28 → 32.6) y **no fue por la fecha**: su ficha dice que la señal
+es una **cogeneración propia de 19.2 MW con recuperación de vapor**, no «inversión
+anunciada de 633 MDP». Medido separando causas: **+6.6 por el texto, −2 por la
+fecha**. La mejora vino de leer bien la señal.
+
+## La línea base final
+
+| cuenta | original | con D3+B | con D6 | veredicto | ¿fecha? |
+|---|---:|---:|---:|---|---|
+| Hershey/Escobedo | 83 | 83 | 83 | **pasa** | sí |
+| Coficab/Durango | 12 | 66.4 | **76.4** | **pasa** | sí |
+| Coficab/Pesquería | 22.7 | 64.9 | 64.9 | **pasa** | NO |
+| Bimbo | 16 | 41 | 43.5 | guarda | sí |
+| Cuprum | 18 | 28 | 38 | archiva | NO |
+| Ragasa | 22.6 | 22.6 | 32.6 | archiva | sí |
+| Amazon | 10 | 20.5 | 30.5 | archiva | NO |
+| International | 20 | 20 | 30 | archiva | NO |
+| LEGO | 8 | 18 | 28 | archiva | sí |
+| Nemak/García | 18 | 28 | 28 | archiva | NO |
+| **PASAN** | **1** | **3** | **3** | **de 10** | 5 de 10 fechadas |
+
+**International dejó de ser hueco, y el error vale nombrarlo.** Sus 120 MDD para el
+área de pintura de cabinas llevaban documentados desde el 18-sep, en la misma línea
+que los otros cinco montos. El barrido los perdió porque buscó **«International»** y
+el repo la nombra **«Navistar»**.
+
+> **Una cuenta con dos nombres se pierde en una búsqueda de texto.** Ésa es la
+> lección, no el descuido.
+
+## Opción C, aplicada y medida contra la base real
+
+`vencida_sin_trabajar` como estado propio, `caducidad_original` exigida por dos
+`CHECK`, y la vista que las cuenta. La prueba que exigía que la tarjeta muerta
+**bloqueara** el reciclaje quedó invertida: ahora el reciclaje funciona y la cuenta
+queda con dos tarjetas, una abierta y la vencida — sin borrar nada.
+
+Y al poner las fechas, **nacen cuatro vencidas y no una**. El propio diseño lo había
+anticipado: *«cuando se regeneren las que tienen hueco, probablemente nazcan más»*.
+
+## B4: no era una capa, eran tres
+
+El defecto no estaba en los datos. `magnitudes()` leía la unidad del **proceso del
+cliente** —TR, kVA, HP— y el catálogo habla en la unidad del **equipo que FTS
+instala**. En las 154 líneas reales **no hay ni una TR**: hay 4,000 A de electroducto,
+36 y 35 kV, 4000 y 2000 W de clima de gabinete, 480 V, 127 V, 130 m, 240 mm², 400 MCM.
+
+| capa | estaba | ahora |
+|---|---|---|
+| el lector de magnitudes | no conocía esas unidades | 14 de 154 líneas con magnitud |
+| el constructor de rangos | sólo armaba rango en TR | 6 tipos con rango, por unidad |
+| el corte por arriba | sólo comparaba `min_TR` | corre, y **une** los tipos |
+
+Y las **comas de miles** valían cualquier cosa: `4,000 A` daba 0.0 y `1,500 TR` daba
+1.5 — que es literalmente el ejemplo que el docstring del corte usa para explicarse.
+
+> **Una magnitud que no se puede comparar con nada dejó de dar puntos**, y lo cazó una
+> prueba vieja: *«se renta nave industrial de 4000 m²»* pasó de `archiva` a `guarda`
+> en cuanto el lector aprendió a leer m². Media calificación por una comparación que
+> no se hizo es inventarla.
+
+## B5: el reloj que arrancaba en hoy sin decirlo
+
+`razon_de_caducidad` sólo leía `AAAA-MM-DD`. Una fecha con precisión de **mes** —que
+es como la prensa la da— caía al `except` y el reloj arrancaba en HOY: **una señal de
+nov-2023 salía caducando en enero de 2027**, tres años y dos meses de ventana
+inventada. Misma familia que #302, donde no reconocer la fecha *escondía* la
+antigüedad.
+
+Hoy se leen las tres precisiones, **siempre desde el día 1 del mes** —del lado que
+cierra la ventana antes, nunca del que la regala— y una fecha ilegible **se rechaza**:
+es peor que no tener fecha.
+
+## La regla que evita que se repita
+
+`senal` exige fecha o declarar su ausencia **con razón**. «No la busqué» y «la nota no
+la trae» son dos cosas distintas, y la segunda es un dato: por eso la corrida de
+Pesquería hoy se puede defender —escribió *«nota de prensa sobre inversión, sin fecha
+en el registro»*—.
+
+Y la ficha lo dice **en la capa limpia**, en lenguaje de persona: *«Esta señal no
+tiene fecha. No sabemos si es de este mes o de hace un año, y eso cambia cómo se
+menciona»*. Hay prueba que rechaza «frescura», «techo», «puntaje», «evaluador»,
+«caducidad», «radar» y «umbral» en ese texto.
+
+## La etapa 1 también mira el reloj
+
+El filtro de D9 miraba **sólo el veredicto**, y con las fechas puestas dejaba a
+Coficab/Durango (`pasa`, 76.4) y a Bimbo (`guarda`) en el archivo de SUBIR con su
+`date_deadline` ya vencido. Subir eso crea dos leads que nacen atrasados.
+
+> Si en Postgres una tarjeta vencida no entra a los lazos ni ocupa el lugar de la
+> cuenta, **en el CSV tampoco puede entrar como trabajo vivo.** Tres archivos: 2 que
+> se suben, 2 vencidas que piden decidir, 6 archiva.
+
+## Los docs, y que sea la última vez
+
+Cuatro mentiras encontradas —la fórmula del §3c decía `match_catalogo(0-50)` y sumaba
+100 cuando el máximo real es **137.4** y `padron` ni aparecía; los respaldos de 30 y
+45 días corrían sin estar escritos— y un hueco que no era un número: **D8 vivía sólo
+en el código**. Ninguno de los nueve documentos explicaba el escalonamiento.
+
+> **Una regla invisible se rompe sin querer.** Ahora tiene su §2b, con la razón
+> escrita: *«desde la planta eso no se ve como cadencia, se ve como enjambre»*.
+
+El acuerdo de que sea la última vez no se sostiene con disciplina: se sostiene con
+`tests/test_docs_contra_codigo_340.py`, que lleva el inventario de cada número que un
+doc afirma junto a la constante que lo produce, y falla por las dos razones.
+
+Y un defecto en mi propia herramienta de barrido: el `_plano()` que quita las marcas
+de cita se comía el mayor-que de `` `>= 60` ``. Una prueba floja disfrazada de
+estricta.
+
+## Restricciones del turno
+
+Cero escrituras a Odoo · cero consultas a Odoo · cero Lusha · purga no ejecutada ·
+`fts-mcp-odoo` intacto · sin datos personales en ningún archivo · **Microsoft 365 sólo
+para los entregables**: tres subidas y **dos renombres** —los dos CSV de #335 quedaron
+`OBSOLETO-no-usar-…` en vez de borrados, porque el de subir llevaba dos leads con
+fecha límite en el pasado y a las 8 de la mañana nadie mira la fecha del archivo—.

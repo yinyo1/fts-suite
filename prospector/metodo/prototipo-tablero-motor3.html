@@ -53,6 +53,25 @@
  .aviso b{color:var(--hot)}
  .aviso p{margin:6px 0 0;font-size:15px}
 
+ /* LA QUE NUNCA ENTRO AL CICLO. Va FUERA de la fila de destinos a proposito:
+    `vencida_sin_trabajar` no es un destino -- es una tarjeta que nunca se trabajo--,
+    y ponerla de quinta columna la leeria como un cuarto desenlace. */
+ .nunca{display:grid;grid-template-columns:auto 1fr;gap:0 16px;align-items:start;
+         background:var(--warn-bg);border:1px solid var(--line);
+         border-left:3px solid var(--warn);border-radius:12px;
+         padding:14px 16px;margin:0 0 18px}
+ .nunca .n{font-size:28px;font-weight:800;color:var(--warn);line-height:1}
+ .nunca .t{font-size:12px;letter-spacing:.06em;text-transform:uppercase;
+            color:var(--muted);font-weight:700;padding-top:4px}
+ .nunca .et{display:inline-block;margin-left:8px;text-transform:none;
+             letter-spacing:0;font-weight:600;font-size:12px;
+             font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+             background:var(--gray-bg);border:1px solid var(--line);
+             border-radius:5px;padding:1px 6px;color:var(--ink)}
+ .nunca p{grid-column:2;margin:6px 0 0;font-size:13.5px;color:var(--muted)}
+ @media (max-width:520px){.nunca{grid-template-columns:1fr}
+                          .nunca p{grid-column:1}}
+
  /* ------------------------------------------------------- el ciclo, arriba */
  .ciclo{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
  .paso{background:var(--card);border:1px solid var(--line);border-radius:12px;
@@ -137,7 +156,7 @@
 
 <div class="kicker">Motor 3 · tablero del ciclo</div>
 <h1>Qué toca hoy, y qué ya se puede aprender</h1>
-<p class="sub">Corte del 28-sep-2026 · 58 tarjetas cerradas · 12 abiertas · datos de ejemplo</p>
+<p class="sub">Corte del 28-sep-2026 · 58 tarjetas cerradas · 12 abiertas · 1 vencida sin trabajar · datos de ejemplo</p>
 
 <div class="aviso"><b>Prototipo con cuentas inventadas.</b><p>Las cifras ilustran la forma del tablero, no el estado real del negocio. Lo que sí es real: <b>ninguna de estas cifras necesita una sola persona</b>. Salen de <code>toque</code>, que lleva canal, fecha, nivel y resultado — y no lleva nombres ni correos. Por eso este tablero se puede abrir en una junta.</p></div>
 
@@ -147,6 +166,12 @@
   <div class="paso caduca"><div class="n">44</div><div class="r">Caducaron</div><div class="d">archivadas con motivo</div></div>
   <div class="paso recicla"><div class="n">6</div><div class="r">Reciclaron</div><div class="d">reabrieron con historial</div></div>
   <div class="paso evoluciona"><div class="n">8</div><div class="r">Evolucionaron</div><div class="d">pasaron a ventas</div></div>
+</div>
+
+<div class="nunca">
+  <div class="n">1</div>
+  <div class="t">Nació vencida y nadie la trabajó<span class="et">vencida_sin_trabajar</span></div>
+  <p><b>Coficab · Durango.</b> Señal del 8-dic-2025, ventana de 120 días: caducó en abril, y se cargó en septiembre. <b>No está en la fila de arriba porque no es un destino del ciclo</b> — nunca entró en él. No tiene <code>cierre</code>, así que los tres lazos no la ven: fabricarle uno le diría al lazo 1 que esa fuente no convirtió, cuando la verdad es que nunca se intentó. Y no ocupa el lugar <code>abierta</code> de la cuenta, así que el día que llegue señal fresca el destino 2 reabre <b>con su historial</b>. <b>Este número mide al equipo, no al radar:</b> es cuánto tarda en trabajarse lo que el radar detona.</p>
 </div>
 
 <figure>

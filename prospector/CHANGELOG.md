@@ -3,6 +3,292 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.15.0 — 2026-09-28
+
+Turno de madrugada (#340): la opcion C aplicada, B4 cerrado, las fechas de las
+senales buscadas, y la fecha vuelta obligatoria. **975 pruebas** (eran 899).
+
+### Opcion C · la tarjeta que nace vencida tiene estado propio
+
+`estado_de_tarjeta` gana `vencida_sin_trabajar`, `tarjeta` gana
+`reabierta_vencida` y `caducidad_original` -- con dos CHECK que la exigen-- y hay
+vista `vencidas_sin_trabajar`. `cerrada` significa "se trabajo y termino";
+`vencida_sin_trabajar` significa "nunca se trabajo", y el lazo 1 tiene que poder
+distinguirlas: **una cuenta que nadie toco dice algo del equipo, no de la fuente**.
+
+Medido contra la base real: cero cierres, cero filas en las tres vistas del
+aprendizaje, cero en el tablero, y **el reciclaje ya funciona** -- la prueba que
+exigia que la tarjeta muerta lo BLOQUEARA quedo invertida--.
+
+### B4 · el catalogo si trae magnitudes, y eran TRES capas rotas
+
+El defecto no estaba en los datos: estaba en el VOCABULARIO. `magnitudes()` leia la
+unidad del proceso del cliente -- TR, kVA, HP-- y el catalogo habla en la unidad del
+equipo que FTS instala. **En las 154 lineas reales no hay ni una TR:** hay 4,000 A de
+electroducto, 36 y 35 kV, 4000 y 2000 W de clima de gabinete, 480 V y 127 V, 130 m y
+11 m, 240 mm2, 400 MCM.
+
+Arregladas las tres capas -- el lector, el constructor de rangos y el corte-- mas una
+cuarta que salio de paso: el rango se UNE sobre los tipos en vez de tomar el primero
+que pegue. **14 de 154** lineas con magnitud, **6 tipos** con rango, **2 rangos** que
+comparan de verdad. Y las comas de miles valian cualquier cosa: "4,000 A" daba 0.0.
+
+Dos limites quedan dichos y no tapados: **un rango de un solo valor no es un rango**,
+y las descripciones vienen truncadas por el conector (51 caracteres la mas larga).
+
+**Y una magnitud que no se puede comparar dejo de dar puntos.** Antes valia la mitad,
+y eso regalaba 5 puntos por cualquier numero con unidad: la prueba de aceptacion de
+D3 lo cazo -- "se renta nave industrial de 4000 m2" paso de `archiva` a `guarda` en
+cuanto el lector aprendio a leer m2--.
+
+### Las fechas de las seis senales, y la palanca resulto ir al REVES
+
+Tres de seis se pudieron fechar, con cita textual: LEGO **nov-2023**, Ragasa
+**mar-2025**, Bimbo **17-jul-2025**. Estaban en las fichas de la corrida del 18-sep.
+
+**Fechar no subio el conteo: lo bajo dos puntos por cuenta.** Las tres pasan de 365
+dias, o sea 0 de frescura, y `FRESCURA_SIN_FECHA` vale 2. El radar no estaba ciego
+por falta de fecha -- estaba siendo generoso--. Lo que la lista de 13 necesita no es
+mejor puntuacion de senales viejas: es senal nueva.
+
+**DEFECTO B5:** `razon_de_caducidad` solo leia `AAAA-MM-DD`, asi que una fecha con
+precision de mes caia al `except` y el reloj arrancaba en HOY. Una senal de nov-2023
+salia caducando en **enero de 2027**. Se leen las tres precisiones, siempre desde el
+primer dia del mes, y una fecha ilegible ya no se confunde con no tener fecha.
+
+**CORRECCION:** International NO era un hueco. Sus 120 MDD llevaban documentados
+desde el 18-sep y el barrido los perdio buscando "International" donde el repo dice
+"Navistar". Son **10 cuentas con senal y 3 huecos**.
+
+### La fecha de la senal es obligatoria
+
+`senal` exige `--fecha-senal` o `--sin-fecha --razon-sin-fecha`. Tres precisiones
+validas, fecha ilegible rechazada, y la ficha lo dice **en la capa limpia**: *"Esta
+senal no tiene fecha. No sabemos si es de este mes o de hace un ano"*, sin una sola
+palabra de vocabulario interno.
+
+### La etapa 1 tambien mira el reloj
+
+El filtro de D9 miraba solo el veredicto, y con las fechas puestas dejaba a
+Coficab/Durango (`pasa`, 76.4) y a Bimbo (`guarda`) en el archivo de SUBIR con su
+`date_deadline` ya vencido. **Tres archivos ahora:** 2 que se suben, 2 vencidas que
+piden decidir, 6 archiva. Si en Postgres una tarjeta vencida no entra a los lazos, en
+el CSV tampoco puede entrar como trabajo vivo.
+
+### Los docs, segunda pasada, con prueba que la sostiene
+
+Cuatro mentiras: la formula del §3c decia `match_catalogo(0-50)` y sumaba 100 -- el
+maximo real es 137.4 y `padron` ni aparecia--, y los respaldos de 30 y 45 dias
+corrian sin estar escritos. Un hueco que no era un numero: **D8 vivia solo en el
+codigo**, y ahora tiene su §2b. `tests/test_docs_contra_codigo_340.py` lleva el
+inventario que ata cada numero del doc a su constante.
+
+## 0.14.0 — 2026-09-28
+
+Turno nocturno (#335), tercera mitad: las cuatro decisiones D6-D9 aplicadas.
+**899 pruebas** (eran 853). Herramienta nueva: `verificar_entrega.py`. Documento
+nuevo: `metodo/tarjeta-que-nace-vencida.md` (disenado, NO aplicado).
+
+### D6 · el evaluador lee el dinero, con la escala derivada y el corte por arriba
+
+`magnitudes()` ya lee MDD, MDP, MUSD, "millones de dolares/pesos" y MW. Lo que se
+puede DERIVAR del catalogo se derivo: el **piso** es el proyecto mas chico de los
+154 reales (192,000), porque un capex mas chico que el proyecto mas chico de FTS no
+puede contener uno. Lo que NO se puede derivar se declara como declarado: el corte
+de **500 MDD** para "programa corporativo" y el tipo de cambio **18.5** son de
+Esteban, con su alcance escrito y su fecha de revision. Que fraccion del capex de
+un cliente se vuelve proyecto de FTS no se sabe, y comparar 205 MDD contra el
+ticket de FTS seria un error de categoria.
+
+Las tres pruebas de aceptacion pasan: las cinco cuentas de inversion media suben,
+las dos que ya pasaban no se mueven, y **Bimbo (2,000 MDD) NO queda arriba de
+Coficab Durango (60 MDD)** — 45.5 contra 76.4. Un programa nacional no es una
+planta que FTS pueda atender.
+
+**B4 encontrado y NO arreglado:** `capacidad_por_tipo` esta vacio porque las 154
+entradas del catalogo traen `magnitudes: []`, asi que el corte por arriba de TR
+nunca ha corrido. Ahora el `por_que` lo dice en voz alta en vez de fingir que el
+rango existe.
+
+### D7 · los ejemplos de los docs llevan marca
+
+Convencion `[calculado]` / `[razonado a mano]` en los docs de metodo, y el §3d de
+`motor1-radar-de-leads.md` ahora cita `linea_base_radar.py` (12.0 -> 66.4 -> 76.4)
+en vez del 59 que nadie pudo reproducir. **Es la septima vez** que un numero
+escrito a mano en un doc no casa con el que el codigo produce; hay prueba que ata
+el §3d a la salida de la herramienta, asi que la octava se cae en rojo.
+
+### D8 · los primeros toques se escalonan
+
+Maximo **un toque #1 por cuenta por dia**, con al menos **2 dias habiles** de
+separacion, arrancando por el nivel mas alto y el canal mas directo. La prueba que
+DOCUMENTABA el enjambre se invirtio: ahora exige lo contrario. Un contacto en
+revision humana no consume dia de escalonamiento, porque no se le programa toque.
+
+### D9 · la etapa 1 filtra a pasa + guarda
+
+Dos archivos: `...-REVISAR-y-subir.csv` (4 tarjetas) y
+`...-archiva-NO-subir.csv` (5 tarjetas, referencia). El nombre carga la
+instruccion, porque el nombre es lo que se ve en OneDrive a las 8 de la manana.
+
+### El hueco que salio al subirlos: la comparacion no cubria lo que si se sube
+
+`prospector entregar --empresa Hershey` respondio *"No hay corrida para 'Hershey'
+en 'Escobedo'"*. La comparacion de #306 -- el tamano no verifica contenido-- vivia
+encerrada en `Corrida.registrar_entrega`, y los dos entregables que de verdad
+salen a OneDrive no los produce una corrida: se subian sin pasar por la unica
+comprobacion que existe para eso. El veredicto ahora vive suelto en
+`flujo.estado.comparar_subida`, `herramientas/verificar_entrega.py` lo usa desde
+fuera, y `datos/entregas-fuera-de-corrida.json` guarda las ligas. Prueba que ata
+las dos vias al mismo veredicto y que se niega a que `registrar_entrega` vuelva a
+calcularlo por su cuenta.
+
+### Tarjeta que nace vencida: disenada, NO aplicada
+
+`metodo/tarjeta-que-nace-vencida.md`. Coficab Durango llega con la senal ya
+caducada. Se recomienda la opcion C -- estado propio `vencida_sin_trabajar`, fuera
+de los lazos, con `caducidad_original` guardada--. Se rechaza fabricarle un cierre:
+un cierre inventado corrompe las tres compuertas del aprendizaje. **Espera OK.**
+
+## 0.13.0 — 2026-09-28
+
+Turno nocturno (#330), segunda mitad: el piloto en pie. **853 pruebas** (eran 812).
+Modulos nuevos: `flujo/cadencia.py`, `flujo/base_motor3.py`. Herramientas nuevas:
+`linea_base_radar.py`, `cargar_piloto.py`, `exportar_etapa1.py`,
+`tarjeta_hershey.py`.
+
+### La linea base del radar: 3 de 9 cuentas pasarian solas
+
+`datos/senales-documentadas.json` lleva la senal de cada cuenta ya evaluada CON LA
+PROCEDENCIA dentro del repo, y `herramientas/linea_base_radar.py` recalcula el
+antes y el despues. El "antes" no esta guardado a mano: se obtiene desactivando D3
+y B1/B2/B3 en un contexto que restaura el estado al salir.
+
+Nueve cuentas con senal y CUATRO HUECOS declarados. Un hueco no es un cero.
+
+**D6 y D7 propuestos y NO aplicados.** D6: el evaluador no puede leer ninguno de
+los seis montos documentados -- `magnitudes()` lee TR y kVA, y 60 MDD, 205 MDD, 633
+MDP, 2000 MDD, 500 MDP y 19.2 MW devuelven lista vacia--. No se aplico porque exige
+elegir una ESCALA y eso es criterio. D7: el ejemplo trabajado del §3d de
+`motor1-radar-de-leads.md` calcula 59 a mano y el codigo nunca produjo ese numero;
+los seis factores difieren.
+
+### La cadencia del §4c, calculada
+
+`flujo/cadencia.py`. La tabla vivia en prosa y nada la aplicaba. Dos relojes y
+manda el menor: no se programa un toque despues de la caducidad, y cuando la
+cadencia no cabe se COMPRIME en vez de perder toques. Dias habiles, y **sin
+calendario de feriados** -- una tabla que hay que mantener cada ano y que se queda
+vieja en silencio es peor que no tenerla--.
+
+**D8 reportado, no arreglado:** los cuatro contactos de una tarjeta reciben su
+toque #1 el mismo dia, por cuatro canales. Desde la planta eso no se ve como
+cadencia, se ve como enjambre. Hay una prueba que DOCUMENTA el comportamiento
+actual en vez de exigir el corregido: escalonar cambia como FTS se ve frente al
+cliente.
+
+### El piloto de la semana 1, en pie
+
+`flujo/base_motor3.py` habla con Postgres por `psql`, sin driver de Python y sin
+pegar ningun valor dentro del SQL. Cargadas 9 cuentas, 9 senales con expediente y 9
+tarjetas abiertas; cero contactos y cero cierres, los dos a proposito. Las cuatro
+reglas de la base verificadas contra los datos reales del piloto, no contra filas
+de juguete.
+
+`./prospector aprendizaje --socket ...` lee los cierres de la base, y si la base no
+contesta NO devuelve una lista vacia. Las tres compuertas dicen **SIN_DATOS**, no
+`prematuro`: la diferencia es "no hay ni uno" contra "hay y no alcanzan".
+
+**Hallazgo:** Coficab/Durango abre con caducidad ya vencida, y no se cierra sola --
+un cierre sin un solo toque seria un expediente inventado y entraria a los tres
+lazos como un desenlace real--.
+
+### Un tercer veredicto de entrega, porque hacia falta
+
+El CSV de etapa 1 y la tarjeta del piloto se subieron como **base64 declarando
+`expectedBytes`**, y el conector rechaza lo que no decodifique a esa longitud
+exacta. Eso no es "el mismo tamano" -- es una comprobacion del transporte que hizo
+el servidor, y el byte de mas de #306 no puede pasar por ahi-- y tampoco es una
+relectura. Forzarlo a `mismo_tamano_sin_hash` lo subvaluaba; a `identico`, lo
+sobrevaluaba. Veredicto nuevo **`longitud_confirmada_en_base64`**, con su rotulo, y
+su aviso dice las dos mitades: lo que comprueba y lo que no.
+
+## 0.12.0 — 2026-09-28
+
+Las cinco decisiones de #329 aplicadas, y **tres defectos del evaluador** que
+salieron al implementar D3. **812 pruebas** (eran 787). Turno nocturno (#330).
+
+### D3 · el tipo `obra_nueva_integral`, con su peso DERIVADO
+
+`tipos_que_nombra()` no reconocia "segunda planta", "planta nueva", "ampliacion
+de nave" ni "construye una planta": **una planta nueva contribuia CERO** al
+factor de tipo de obra. Y cuando si habia match -- "nave industrial"-- apuntaba a
+`trabajos_civiles`, de la familia ESTRUCTURA (11.7%): una planta nueva se
+puntuaba como un trabajo civil pequeno.
+
+Se agrego el vocabulario (16 terminos en espanol, 9 en ingles) apuntando a un
+tipo nuevo, `obra_nueva_integral`. **No es una familia mas**: una planta nueva no
+es un tipo de proyecto, es todos a la vez. Meterla como miembro de una familia la
+haria competir con sus propios componentes.
+
+Y **el peso se deriva, como todos**: es la SUMA de las participaciones de las
+familias que la obra necesita, escalada contra la mayor. Sale **44.4**, casi 3x el
+tope de una familia individual (15), y si manana FTS vende otra mezcla se mueve
+solo al regenerar el catalogo. Se incluyen las SEIS familias y no las cuatro que
+la decision nombra: una planta nueva tambien necesita comisionamiento -- no se
+entrega sola-- y mover material dentro.
+
+Una nota de "nave industrial" GENERICA no se infla: sigue en `trabajos_civiles`,
+y `archiva`. Todos los terminos nuevos exigen la palabra que dice que es nueva.
+
+### Tres defectos del evaluador, todos de la misma familia: no leia lo que tenia
+
+**B1 · "prensa" era un falso positivo sistematico, y estaba INFLANDO puntajes.**
+En una linea de venta de Odoo "prensa" es la maquina; en el texto de una senal,
+"prensa reporta..." es el medio. Medido: Coficab Pesqueria puntuaba **12.7 puntos
+de proceso por la palabra "prensa" de "prensa reporta"**, y con ellos cruzaba el
+umbral de `pasa`. Un umbral cruzado por un falso positivo es peor que un umbral no
+cruzado. Se sustituyo por las formas que si son la maquina -- "prensa hidraulica",
+"linea de prensas", "prensa de estampado"-- que no aparecen en ninguna nota
+periodistica.
+
+**B2 · el catalogo no conocia la palabra "cable".** Tiene el proceso
+`arneses_cableado` con proyectos reales, y su vocabulario no lo incluia. La cuenta
+mas trabajada del proyecto -- Coficab-- es de cable automotriz y puntuaba CERO en
+proceso.
+
+**B3 · el giro de la cuenta no entraba al evaluador.** `puntos_de_proceso` existe
+para puntuar el proceso DEL CLIENTE y solo recibia el texto de la senal, que es un
+titular de prensa: se le estaba pidiendo al encabezado de una nota que dijera a que
+se dedica la empresa. `Corrida.giro` existe desde siempre y nadie lo conectaba. El
+giro entra SOLO para reconocer el proceso, no para los tipos de obra -- si no, una
+planta de cable de datos puntuaria "cable de datos" como proyecto anunciado--.
+
+Con los tres arreglados, Coficab Pesqueria pasa de **22.7 (`archiva`) a 64.9
+(`pasa`)**, y ahora por un match de proceso real en vez de por el falso positivo.
+
+### D1 · la ficha AVISA sin expediente de senal, y no bloquea
+
+Aprobada la opcion (b). El aviso dice las tres cosas: que falta, que la ficha
+**sirve igual para llamar**, y como arreglarlo sin gastar consultas. Se REEMPLAZA
+en vez de acumularse, igual que el veredicto del padron.
+
+**No va en el aviso rojo de la capa limpia**, aunque D1 diga "igual que la cuenta
+fria". La cuenta fria si va en rojo: decir "ya trabajamos en su planta" cuando no
+es cierto se cae en la llamada. Que falte el expediente no se cae en ninguna
+llamada -- el gancho, los contactos y el Chao1 estan bien-- y meterlo ahi pondria
+vocabulario interno en la capa que #322 dejo libre de el, ademas de gastar el
+aviso rojo en algo que a quien llama no le sirve.
+
+### D2, D4, D5 · candados
+
+D2: los cuatro numeros (20 por celda, 1 rebote, 3 por patron, 10 por tipo) quedan
+con una prueba que truena si alguien los mueve. Son razonados y no medidos, y el
+dia que se muevan tiene que ser porque hay datos.
+D4: una prueba recorre todo el codigo buscando cualquier via de escritura a Odoo.
+D5: el guardia queda estricto, con una prueba que sostiene que `ejemplo.mx` NO
+esta permitido por dominio.
+
 ## 0.11.0 — 2026-09-28
 
 Los **tres lazos de aprendizaje** del motor 3, el esquema de Postgres y la

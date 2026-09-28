@@ -1,0 +1,388 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prototipo · Rentabilidad por proyecto · v1.00</title>
+<!--
+  PROTOTIPO AUTOCONTENIDO · issue #332 · sesión nocturna 2026-09-28
+  ─────────────────────────────────────────────────────────────────
+  Se abre SIN login y sin red: los datos están embebidos abajo en `DATOS`.
+  Su único propósito es evaluar el DISEÑO y la ARITMÉTICA en el celular.
+
+  TODOS los números salen de lecturas a Odoo en solo lectura de esta noche.
+  Cada uno lleva su procedencia (modelo · campos · dominio) en el atributo
+  `title` de su celda y en el bloque "de dónde sale cada número" al final.
+
+  Los colores y las clases son los de `shared/panel/panel.css` (armazón real
+  del módulo, issue #240) para que lo que se apruebe aquí no haya que
+  re-dibujarlo: mismo --verde/--ambar/--rojo, mismas tarjetas .kpi, misma caja
+  de tabla. No se usa librería de gráficas: las barras son CSS.
+-->
+<style>
+:root{
+  --bg:#0f1216; --panel:#161b22; --panel2:#1c232c; --linea:#2a333f;
+  --tinta:#e6edf3; --tinta2:#9aa7b4; --tinta3:#6b7785;
+  --verde:#2ea043; --ambar:#d29922; --rojo:#da3633; --azul:#1f6feb; --liga:#79c0ff;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tinta);font:14px/1.5 var(--sans)}
+.wrap{max-width:1400px;margin:0 auto;padding:0 14px}
+header{border-bottom:1px solid var(--linea);background:var(--panel);position:sticky;top:0;z-index:20}
+.hd{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:11px 0}
+.hd h1{font-size:16px;margin:0;font-weight:600;letter-spacing:-.2px}
+.spacer{flex:1 1 auto}
+.badge{font:600 11px/1 var(--mono);background:var(--panel2);border:1px solid var(--linea);
+       border-radius:5px;padding:5px 7px;color:var(--tinta2)}
+.jalon{font:11px/1.4 var(--mono);color:var(--tinta3)}
+.aviso{background:#20160a;border:1px solid var(--ambar);border-left-width:4px;border-radius:8px;
+       padding:11px 13px;margin:14px 0;font-size:13px;color:#f0dcb4}
+.aviso b{color:var(--ambar)}
+.kpis{display:grid;gap:9px;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));margin:14px 0}
+.kpi{background:var(--panel);border:1px solid var(--linea);border-radius:8px;padding:11px 12px}
+.kpi .n{font:600 21px/1.15 var(--mono);letter-spacing:-.5px}
+.kpi .l{color:var(--tinta2);font-size:12px;margin-top:4px}
+.kpi .n2{color:var(--tinta3);font-size:11px;margin-top:5px;font-family:var(--mono)}
+.kpi.ok .n{color:var(--verde)} .kpi.warn .n{color:var(--ambar)}
+.kpi.bad .n{color:var(--rojo)} .kpi.neu .n{color:var(--tinta)}
+h2{font-size:14px;margin:22px 0 8px;font-weight:600}
+h2 .q{color:var(--tinta3);font-weight:400;font-size:12px}
+.caja{background:var(--panel);border:1px solid var(--linea);border-radius:8px;overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:8px 9px;text-align:left;border-bottom:1px solid var(--linea);white-space:nowrap}
+th{background:var(--panel2);color:var(--tinta2);font-size:11px;text-transform:uppercase;
+   letter-spacing:.5px;font-weight:600;position:sticky;top:0}
+td.num,th.num{text-align:right;font-family:var(--mono)}
+tbody tr:hover{background:#1a2128}
+.so{font-weight:600}
+.so small{display:block;color:var(--tinta3);font-weight:400;font-size:11px;
+  white-space:normal;max-width:30ch;overflow:hidden;display:-webkit-box;
+  -webkit-line-clamp:2;-webkit-box-orient:vertical}
+.luz{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:1px}
+.luz.g{background:var(--verde)} .luz.y{background:var(--ambar)} .luz.r{background:var(--rojo)}
+.luz.o{background:var(--tinta3)}
+.mon{font:10px/1 var(--mono);color:var(--tinta3);border:1px solid var(--linea);
+     border-radius:3px;padding:2px 4px;margin-left:5px}
+.pill{font:600 10px/1 var(--mono);border-radius:3px;padding:3px 5px}
+.pill.completo{background:#0d2a15;color:var(--verde)}
+.pill.parcial{background:#2a2109;color:var(--ambar)}
+.pill.sin{background:#2b1211;color:#f0a09e}
+.barra-c{height:5px;background:var(--panel2);border-radius:3px;overflow:hidden;min-width:56px;margin-top:4px}
+.barra-c i{display:block;height:100%}
+.neg{color:#f0a09e} .pos{color:#7fdc98}
+details.nota{background:var(--panel);border:1px solid var(--linea);border-radius:8px;margin:16px 0}
+details.nota>summary{cursor:pointer;padding:11px 13px;font-weight:600;font-size:13px}
+details.nota .cuerpo{padding:0 13px 12px;font-size:12.5px;color:var(--tinta2)}
+details.nota code{color:var(--ambar);font:600 11.5px var(--mono);word-break:break-all}
+.fila-nota{border-top:1px solid var(--linea);padding:9px 0}
+.fila-nota b{color:var(--tinta)}
+footer{color:var(--tinta3);font-size:11.5px;padding:20px 0 34px;line-height:1.6}
+/* ── celular: la tabla deja de ser tabla ───────────────────────────────── */
+@media (max-width:760px){
+  th{display:none}
+  table,tbody,tr,td{display:block;width:100%}
+  tr{border-bottom:1px solid var(--linea);padding:10px 4px}
+  td{border:0;padding:3px 6px;white-space:normal;display:flex;justify-content:space-between;gap:10px}
+  td::before{content:attr(data-l);color:var(--tinta3);font-size:11px;text-transform:uppercase;
+    letter-spacing:.4px;flex:0 0 auto}
+  td.so-cell{display:block;margin-bottom:5px}
+  td.so-cell::before{content:none}
+  .so small{max-width:none}
+  .barra-c{min-width:90px}
+}
+</style>
+
+<header><div class="wrap hd">
+  <h1>Rentabilidad por proyecto</h1>
+  <span class="badge" id="badge">v1.00</span>
+  <span class="spacer"></span>
+  <span class="jalon" id="jalon"></span>
+</div></header>
+
+<div class="wrap">
+
+  <div class="aviso">
+    <b>Prototipo, no el panel.</b> Datos reales leídos de Odoo el <b>2026-09-28</b>, embebidos en el
+    archivo. Sin login y sin red, para evaluar diseño y aritmética. <b>7 proyectos</b> de muestra
+    (los que tienen presupuesto <i>y</i> gasto real cruzables), no los 216 activos.
+    Los agregados de arriba sí son del universo completo.
+  </div>
+
+  <h2>El dinero que no está en ningún proyecto <span class="q">— el primer enemigo del panel</span></h2>
+  <div class="kpis" id="kpis"></div>
+
+  <h2>Proyectos <span class="q">— cotizado vs real, por rubro, en su moneda</span></h2>
+  <div class="caja"><table id="tabla"><thead><tr>
+    <th>Proyecto</th><th>Dato</th>
+    <th class="num">Ingreso cotiz.</th><th class="num">Ingreso real</th>
+    <th class="num">MO cotiz.</th><th class="num">MO real</th>
+    <th class="num">Materiales cotiz.</th><th class="num">Materiales real</th>
+    <th class="num">Bonos cotiz.</th><th class="num">Bonos real</th>
+    <th class="num">Otros cotiz.</th>
+    <th class="num">Margen obj.</th><th class="num">Margen real</th>
+    <th>Semáforo</th>
+  </tr></thead><tbody></tbody></table></div>
+
+  <h2>Gasto en el plan equivocado <span class="q">— proyectos de la LLC cargados al eje de México</span></h2>
+  <div class="caja"><table id="tabla2"><thead><tr>
+    <th>Analítica</th><th>Empresa</th><th>Plan donde está</th><th>Plan correcto</th>
+    <th class="num">Saldo</th><th>Visible sin filtro</th>
+  </tr></thead><tbody></tbody></table></div>
+
+  <details class="nota"><summary>De dónde sale cada número (procedencia completa)</summary>
+    <div class="cuerpo" id="proc"></div>
+  </details>
+
+  <details class="nota"><summary>Reglas del semáforo — propuestas, pendientes de tu visto bueno</summary>
+    <div class="cuerpo">
+      <div class="fila-nota"><b>Es sobre desviación, no sobre estado.</b> Un proyecto avanzado y caro
+        no es rojo por estar avanzado; es rojo si el costo real ya se comió el margen objetivo.</div>
+      <div class="fila-nota"><span class="luz r"></span><b>Rojo</b> — margen real negativo,
+        <i>o</i> el costo real ya superó el costo cotizado total, <i>o</i> no hay presupuesto
+        confiable (entonces no hay contra qué medir y el rojo dice «no sé», no «va mal»).</div>
+      <div class="fila-nota"><span class="luz y"></span><b>Ámbar</b> — el consumo de costo va
+        <code>&gt; 15 puntos</code> adelante del avance de facturación. <b>El 15 es el número que
+        hay que decidir</b>; lo puse por simetría con el 85% del semáforo de bancos, sin evidencia
+        propia todavía.</div>
+      <div class="fila-nota"><span class="luz y"></span><b>Ámbar, el caso inverso y el más
+        peligroso</b> — la <i>facturación</i> va <code>&gt; 20 puntos</code> adelante del costo.
+        Un proyecto facturado al 100% con la mitad del costo registrado <b>no es rentable: está
+        incompleto</b>, y su margen es falso. Pintarlo verde es el modo de falla que hay que
+        evitar a toda costa; por eso esta regla existe. <b>El 20 también hay que decidirlo.</b></div>
+      <div class="fila-nota"><span class="luz g"></span><b>Verde</b> — dentro de presupuesto,
+        con el consumo al paso de la facturación <i>en los dos sentidos</i>.</div>
+      <div class="fila-nota"><span class="luz o"></span><b>Gris</b> — sin presupuesto en ese rubro.
+        No es un cero: es una ausencia, y se dice.</div>
+      <div class="fila-nota"><b>Un presupuesto de $1 o $0 cuenta como AUSENCIA, no como
+        presupuesto.</b> Si se toma en serio, <code>SO10198</code> da 30,550% de consumo y una
+        alerta roja que no significa nada. Hay <b>104 líneas así</b> de 825.</div>
+      <div class="fila-nota"><b>Nunca se suma MXN con USD.</b> Cada renglón reporta en su moneda y
+        la etiqueta va pegada al número. No hay fila de «total» que cruce monedas.</div>
+    </div>
+  </details>
+
+  <footer>
+    Prototipo del módulo de rentabilidad · issue #332 · el panel real vive en
+    <code>finanzas/rentabilidad/</code> y su motor es <code>fin/rentabilidad-motor</code>.<br>
+    Odoo se leyó en <b>solo lectura</b>. Cero escrituras. Cero llamadas a Microsoft 365.
+  </footer>
+</div>
+
+<script>
+/* ═══ DATOS REALES · Odoo solo-lectura · 2026-09-28 ═══════════════════════════
+   Los agregados son del universo completo. Los proyectos son 7 de muestra.     */
+var DATOS = {
+  leido: '2026-09-28',
+  /* account.analytic.line · search_count sobre el modelo completo */
+  ejes: { total: 42130, sinRubro: 25570, sinProyecto: 22020 },
+  /* budget.line · domain [["account_id","!=",false]] + cubetas por budget_amount */
+  budget: { conEje: 825, cero: 28, uno: 76, real: 720 },
+  /* account.analytic.account id=3106 · campo balance */
+  suspenseMO: { id: 3106, nombre: 'MO · POR REASIGNAR', balance: -43602.76, moneda: 'MXN',
+                plan: 'Gasto Indirecto en FTS (plan 2)', empresa: 'SERVICIOS FTS (1)' },
+  /* account.analytic.account · domain [["id","in",[...]],["active","in",[true,false]]] */
+  planEquivocado: [
+    { id:3033, so:'SO11550', saldo:-805714.63, activa:false },
+    { id:3037, so:'SO11557', saldo:-23485.52,  activa:true  },
+    { id:3035, so:'SO11634', saldo:-4939.90,   activa:false },
+    { id:3062, so:'SO11644', saldo:-1799.54,   activa:false }
+  ],
+  /* 7 proyectos · company 1 · MXN.
+     cotizado = budget.line.budget_amount agrupado por account_id + x_plan20_id
+     real     = account.analytic.line.amount, mismo agrupamiento
+     null = NO EXISTE la línea de presupuesto (distinto de 0)                    */
+  proyectos: [
+    { so:'SO10296', desc:'Suministro e instalación de banda', moneda:'MXN',
+      ingreso:{b:81200.00, r:81200.00}, mo:{b:-6200.00, r:-10532.44},
+      mat:{b:-34879.00, r:-22238.25}, bonos:{b:-1209.00, r:0}, otros:{b:-6687.00, r:0} },
+    { so:'SO10304', desc:'Renta de personal', moneda:'MXN',
+      ingreso:{b:43560.00, r:43560.00}, mo:{b:-21000.00, r:0},
+      mat:{b:-5600.00, r:-3000.00}, bonos:{b:-565.58, r:-565.58}, otros:{b:-1319.70, r:0} },
+    { so:'SO10109', desc:'Fabricación de 6 piezas', moneda:'MXN',
+      ingreso:{b:6000.00, r:6000.00}, mo:{b:-1400.00, r:0},
+      mat:{b:-1000.00, r:0}, bonos:{b:-81.57, r:-81.57}, otros:{b:-475.03, r:0} },
+    { so:'SO10299', desc:'Suministro de equipo (falda)', moneda:'MXN',
+      ingreso:{b:null, r:7800.00}, mo:{b:null, r:0},
+      mat:{b:-3300.00, r:-3093.36}, bonos:{b:null, r:0}, otros:{b:0, r:0} },
+    { so:'SO10198', desc:'Análisis AC (5 líneas de presupuesto en $4 total)', moneda:'MXN',
+      ingreso:{b:2501.00, r:2501.00}, mo:{b:null, r:0},
+      mat:{b:4.00, r:-1222.00, basura:true}, bonos:{b:null, r:0}, otros:{b:-1417.52, r:0} },
+    { so:'SO10049', desc:'Mantenimiento a motor de planta', moneda:'MXN',
+      ingreso:{b:31980.00, r:31980.00}, mo:{b:null, r:0},
+      mat:{b:null, r:0}, bonos:{b:null, r:0}, otros:{b:-19022.50, r:0} },
+    { so:'SO10159', desc:'Diagnóstico de máquina — presupuesto con signos invertidos', moneda:'MXN',
+      ingreso:{b:null, r:21500.00}, mo:{b:5800.00, r:0, signo:true},
+      mat:{b:null, r:-280.00}, bonos:{b:null, r:0}, otros:{b:1000.00, r:0, signo:true} }
+  ]
+};
+
+var UMBRAL_AMBAR = 0.15;   /* puntos de adelanto del COSTO sobre la facturación */
+var UMBRAL_FALTA = 0.20;   /* puntos de adelanto de la FACTURACIÓN sobre el costo:
+                              costo que todavía no se registró. El margen que se ve
+                              con este hueco abierto es FALSO, y es el modo de falla
+                              que la regla prohíbe mostrar en verde. */
+var BASURA = 1;            /* |budget_amount| <= 1 cuenta como ausencia         */
+
+function n(v, mon){
+  if (v === null || v === undefined) return '—';
+  var s = Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return (v < 0 ? '−' : '') + s + (mon ? '<span class="mon">'+mon+'</span>' : '');
+}
+function cls(v){ return v === null ? '' : (v < 0 ? 'neg' : v > 0 ? 'pos' : ''); }
+/* Un presupuesto ausente, cero, o de |x|<=1 es lo mismo para medir: no hay techo. */
+function bud(x){
+  if (!x || x.b === null || x.b === undefined) return null;
+  if (Math.abs(x.b) <= BASURA) return null;
+  return x.b;
+}
+function evaluar(p){
+  var iB = bud(p.ingreso), iR = p.ingreso.r || 0;
+  var costoB = 0, costoBhay = false;
+  ['mo','mat','bonos','otros'].forEach(function(k){
+    var b = bud(p[k]); if (b !== null){ costoB += Math.abs(b); costoBhay = true; }
+  });
+  var costoR = ['mo','mat','bonos','otros'].reduce(function(a,k){
+    return a + Math.abs((p[k] && p[k].r) || 0); }, 0);
+
+  /* estado del dato: los TRES rubros medulares deben tener presupuesto real */
+  var medulares = [bud(p.ingreso), bud(p.mo), bud(p.mat)];
+  var hay = medulares.filter(function(x){ return x !== null; }).length;
+  var estado = hay === 3 ? 'completo' : hay === 0 ? 'sin' : 'parcial';
+  /* un presupuesto con el signo al revés no es parcial: es no-confiable */
+  var signoMal = ['mo','mat','bonos','otros'].some(function(k){ return p[k] && p[k].signo; });
+  if (signoMal) estado = 'sin';
+
+  var margenObj  = (iB !== null && costoBhay) ? iB - costoB : null;
+  var margenReal = iR - costoR;
+  var avance = (iB !== null && iB !== 0) ? iR / iB : null;
+  var consumo = costoBhay && costoB !== 0 ? costoR / costoB : null;
+
+  var luz, porque;
+  if (estado === 'sin'){
+    luz = 'r';
+    porque = signoMal ? 'presupuesto con signos invertidos: no es medible'
+                      : 'sin presupuesto confiable: no hay contra qué medir';
+  } else if (margenReal < 0){
+    luz = 'r'; porque = 'margen real negativo';
+  } else if (margenObj !== null && costoR > costoB){
+    luz = 'r'; porque = 'el costo real ya superó el costo cotizado';
+  } else if (avance !== null && consumo !== null && (consumo - avance) > UMBRAL_AMBAR){
+    luz = 'y';
+    porque = 'consumo de costo ' + Math.round((consumo-avance)*100) +
+             ' puntos adelante del avance de facturación';
+  } else if (avance !== null && consumo !== null && (avance - consumo) > UMBRAL_FALTA){
+    // El caso inverso, y es el MÁS peligroso: facturado al 100% con el costo a medias
+    // no es un proyecto rentable, es un proyecto con costo sin registrar. Pintarlo verde
+    // seria exactamente la "margen enorme y falso" que la regla prohibe.
+    luz = 'y';
+    porque = 'facturación ' + Math.round((avance-consumo)*100) +
+             ' puntos adelante del costo: falta registrar costo, el margen que se ve es falso';
+  } else {
+    luz = 'g'; porque = 'dentro de presupuesto y al paso de la facturación';
+  }
+  if (estado === 'parcial' && luz === 'g'){
+    luz = 'y'; porque = 'presupuesto parcial: el margen que se ve está incompleto';
+  }
+  return { estado:estado, margenObj:margenObj, margenReal:margenReal,
+           avance:avance, consumo:consumo, luz:luz, porque:porque,
+           costoB:costoB, costoR:costoR };
+}
+
+/* ── KPIs del universo completo ─────────────────────────────────────────── */
+(function(){
+  var d = DATOS, pe = d.planEquivocado.reduce(function(a,x){ return a + Math.abs(x.saldo); },0);
+  var basura = d.budget.cero + d.budget.uno;
+  var k = [
+    { c:'bad',  n:n(d.suspenseMO.balance)+'<span class="mon">MXN</span>',
+      l:'MO sin proyecto', n2:'cuenta '+d.suspenseMO.id+' · '+d.suspenseMO.nombre },
+    { c:'bad',  n:d.ejes.sinProyecto.toLocaleString('en-US'),
+      l:'líneas analíticas sin eje de proyecto',
+      n2:Math.round(d.ejes.sinProyecto/d.ejes.total*100)+'% de '+d.ejes.total.toLocaleString('en-US') },
+    { c:'warn', n:d.ejes.sinRubro.toLocaleString('en-US'),
+      l:'líneas sin rubro (plan 20)',
+      n2:Math.round(d.ejes.sinRubro/d.ejes.total*100)+'% — no clasificables por rubro' },
+    { c:'bad',  n:n(-pe)+'<span class="mon">USD</span>',
+      l:'gasto en el plan equivocado', n2:d.planEquivocado.length+' analíticas de la LLC en el eje MX' },
+    { c:'warn', n:basura+' / '+d.budget.conEje,
+      l:'líneas de presupuesto basura', n2:d.budget.cero+' en $0 · '+d.budget.uno+' en ±$1' },
+    { c:'ok',   n:d.budget.real.toLocaleString('en-US'),
+      l:'líneas de presupuesto reales', n2:Math.round(d.budget.real/d.budget.conEje*100)+'% utilizable' }
+  ];
+  document.getElementById('kpis').innerHTML = k.map(function(x){
+    return '<div class="kpi '+x.c+'"><div class="n">'+x.n+'</div>'+
+           '<div class="l">'+x.l+'</div><div class="n2">'+x.n2+'</div></div>';
+  }).join('');
+  document.getElementById('jalon').textContent = 'datos leídos ' + d.leido + ' · Odoo solo lectura';
+})();
+
+/* ── tabla de proyectos ────────────────────────────────────────────────── */
+(function(){
+  var tb = document.querySelector('#tabla tbody');
+  tb.innerHTML = DATOS.proyectos.map(function(p){
+    var e = evaluar(p), m = p.moneda;
+    function par(k, lbl){
+      var b = p[k] ? p[k].b : null, r = p[k] ? p[k].r : null;
+      var flag = '';
+      if (p[k] && p[k].basura) flag = ' title="presupuesto de $'+b+' repartido en 5 líneas: se trata como AUSENCIA"';
+      if (p[k] && p[k].signo)  flag = ' title="signo invertido: un costo presupuestado en positivo"';
+      var av = (p[k] && (p[k].basura || p[k].signo)) ? ' ⚠' : '';
+      return '<td class="num '+cls(b)+'" data-l="'+lbl+' cotiz."'+flag+'>'+n(b)+av+'</td>'+
+             '<td class="num '+cls(r)+'" data-l="'+lbl+' real">'+n(r)+'</td>';
+    }
+    var barra = '';
+    if (e.consumo !== null){
+      var pct = Math.min(100, Math.round(e.consumo*100));
+      var col = e.luz==='g'?'var(--verde)':e.luz==='y'?'var(--ambar)':'var(--rojo)';
+      barra = '<div class="barra-c"><i style="width:'+pct+'%;background:'+col+'"></i></div>';
+    }
+    return '<tr>'+
+      '<td class="so-cell so" data-l="Proyecto">'+p.so+'<small>'+p.desc+'</small></td>'+
+      '<td data-l="Dato"><span class="pill '+e.estado+'">'+e.estado+'</span></td>'+
+      par('ingreso','Ingreso') + par('mo','MO') + par('mat','Materiales') + par('bonos','Bonos') +
+      '<td class="num '+cls(p.otros.b)+'" data-l="Otros cotiz." title="comisiones internas y de cliente, rubros 3.x y 5.x del plan 20">'+n(p.otros.b)+'</td>'+
+      '<td class="num" data-l="Margen obj.">'+n(e.margenObj)+'</td>'+
+      '<td class="num '+cls(e.margenReal)+'" data-l="Margen real">'+n(e.margenReal, m)+'</td>'+
+      '<td data-l="Semáforo" title="'+e.porque+'"><span class="luz '+e.luz+'"></span>'+
+        (e.consumo!==null?Math.round(e.consumo*100)+'% costo':'sin techo')+barra+'</td>'+
+    '</tr>';
+  }).join('');
+})();
+
+/* ── tabla del plan equivocado ─────────────────────────────────────────── */
+(function(){
+  document.querySelector('#tabla2 tbody').innerHTML = DATOS.planEquivocado.map(function(x){
+    return '<tr>'+
+      '<td class="so-cell so" data-l="Analítica">'+x.id+'<small>'+x.so+'</small></td>'+
+      '<td data-l="Empresa">FTS LLC (6)</td>'+
+      '<td data-l="Plan donde está"><span class="luz r"></span>plan 1 · México</td>'+
+      '<td data-l="Plan correcto">plan 18 · USA</td>'+
+      '<td class="num neg" data-l="Saldo">'+n(x.saldo,'USD')+'</td>'+
+      '<td data-l="Visible sin filtro">'+(x.activa
+        ? '<span class="luz y"></span>sí'
+        : '<span class="luz r"></span>NO — archivada')+'</td></tr>';
+  }).join('');
+})();
+
+/* ── procedencia ───────────────────────────────────────────────────────── */
+(function(){
+  var f = [
+    ['Líneas analíticas y su cobertura',
+     'account.analytic.line · search_count. Total 42,130. Sin rubro: <code>[["x_plan20_id","=",false]]</code> → 25,570. Sin eje de proyecto: <code>["&",["account_id","=",false],["x_plan18_id","=",false]]</code> → 22,020. El plan NO se alcanza por un campo <code>plan_id</code> en la línea: cada plan tiene su propia columna <code>x_planN_id</code>, y el de México es <code>account_id</code>.'],
+    ['MO sin proyecto',
+     'account.analytic.account id <b>3106</b>, campo <code>balance</code> = −43,602.76. Plan «Gasto Indirecto en FTS» (plan 2), empresa SERVICIOS FTS (1), activa. Es MO ya costeada por el parser de CONTPAQi que todavía no tiene proyecto. <b>No se reparte</b>: se muestra como renglón propio.'],
+    ['Gasto en el plan equivocado',
+     'account.analytic.account · <code>[["id","in",[3033,3037,3035,3062]],["active","in",[true,false]]]</code>. <b>El filtro de <code>active</code> es obligatorio</b>: tres de las cuatro están archivadas y una consulta normal las esconde, así que un panel ingenuo mostraría 0 y diría que no hay problema. Saldos en la moneda de la empresa 6 = USD.'],
+    ['Calidad del presupuesto',
+     'budget.line con <code>[["account_id","!=",false]]</code> = 825 líneas. Cubetas por <code>budget_amount</code>: =0 → 28 · |x|=1 → 76 · |x|&gt;1 → 720. Una línea cae fuera (valor fraccionario). <b>Corrige a #240</b>, que reportó 4 líneas basura midiendo sólo el centinela −1 y no contó el cubo de $0.'],
+    ['Cotizado por proyecto y rubro',
+     'budget.line · <code>read_group</code> por <code>account_id</code> + <code>x_plan20_id</code>, agregado <code>budget_amount:sum</code>. Rubros: 1171 Ingreso · 1177 MO · 1176 Materiales · 1159 Bono Supervisores · 1160 Bono Técnicos · 3.x y 5.x comisiones (columna «Otros»).'],
+    ['Real por proyecto y rubro',
+     'account.analytic.line · <code>read_group</code> por <code>account_id</code> + <code>x_plan20_id</code>, agregado <code>amount:sum</code>, mismo juego de rubros. <b>Se agrupa también por <code>currency_id</code></b> porque los bonos ya vienen en dos monedas (MXN y USD) y un total único los mezclaría.'],
+    ['Lo que este prototipo NO trae todavía',
+     'La <b>fuente de pago por línea</b> (journal → empresa → moneda) para detectar subsidios e intercompany: está especificada pero no medida. El <b>ingreso facturado por factura ligada a la SO</b> se toma del rubro 1171 del eje analítico, no de <code>account.move</code>; recordar que <code>invoice_origin</code> suele venir vacío y la liga real está a nivel de línea, y que la PO del cliente vive en <code>x_studio_purchase_order_number</code>. Y los <b>216 proyectos activos</b>: aquí van 7 de muestra.']
+  ];
+  document.getElementById('proc').innerHTML = f.map(function(x){
+    return '<div class="fila-nota"><b>'+x[0]+'</b><br>'+x[1]+'</div>';
+  }).join('');
+})();
+</script>

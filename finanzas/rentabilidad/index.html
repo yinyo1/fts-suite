@@ -48,6 +48,31 @@
   .c-completo{background:#0d2a14;color:#56d364;border:1px solid #1c5a2b}
   .c-parcial{background:#2b2200;color:#e3b341;border:1px solid #6b5200}
   .c-sin{background:#26292e;color:#9aa7b4;border:1px solid #3d4450}
+  /* Los cuatro estados del SEMAFORO (v1.01). Tambien son vocabulario de este
+     panel: `sin` NO es un gris neutro de «no aplica», es un rojo administrativo
+     —no hay con que medir— y por eso lleva borde punteado en vez de ausencia de
+     color. Un gris liso invitaria a leerlo como «todo bien». */
+  .s-verde{background:#0d2a14;color:#56d364;border:1px solid #1c5a2b}
+  .s-ambar{background:#2b2200;color:#e3b341;border:1px solid #6b5200}
+  .s-rojo{background:#2d0f0f;color:#f85149;border:1px solid #6e2323}
+  .s-sin{background:#26292e;color:#9aa7b4;border:1px dashed #6b7785}
+  .c-planmal{background:#2b2200;color:#e3b341;border:1px solid #6b5200}
+  .c-techo{color:var(--tinta3);font-size:11px}
+  /* La leyenda de umbrales: los numeros que rigen los colores, a la vista. Un
+     semaforo cuyo criterio no se puede leer es un semaforo en el que hay que
+     creer. */
+  .leyenda{color:var(--tinta2);font-size:12px;margin:2px 0 10px;line-height:1.7}
+  .leyenda b{color:var(--tinta)}
+  .leyenda .sep{color:var(--tinta3);margin:0 6px}
+  /* En telefono la segunda fila va de DOS en DOS. Con las doce tarjetas apiladas
+     a una columna habia que bajar pantalla y media antes de ver la tabla, y la
+     tabla es para lo que se abre el panel. La primera fila se deja como estaba:
+     es la que ya existia y no se toca por un cambio mio. */
+  @media (max-width:640px){
+    #kpis2{grid-template-columns:repeat(2,1fr)}
+    #kpis2 .kpi{padding:10px}
+    #kpis2 .kpi .n{font-size:18px}
+  }
 </style>
 </head>
 <body>
@@ -61,6 +86,8 @@
 
   <section class="vista" id="vPortada">
     <div class="kpis" id="kpis"></div>
+    <div class="kpis" id="kpis2"></div>
+    <div class="leyenda" id="leyenda"></div>
     <details class="salv"><summary>Salvedades — qué <em>no</em> cubre este número</summary>
       <div class="cuerpo" id="salvCuerpo"></div></details>
     <div class="barra">
@@ -70,6 +97,15 @@
           <option value="completo">completo</option>
           <option value="parcial">parcial</option>
           <option value="sin_presupuesto">sin presupuesto</option>
+        </select>
+      </label>
+      <label class="f">Semáforo
+        <select id="fSemaforo">
+          <option value="">todos</option>
+          <option value="rojo">rojo · costo adelante</option>
+          <option value="ambar">ámbar · facturación adelante</option>
+          <option value="verde">verde · parejos</option>
+          <option value="sin">sin · no hay con qué medir</option>
         </select>
       </label>
       <label class="f">Agrupar por <select id="fGrupo"><option value="">(sin agrupar)</option></select></label>
@@ -85,6 +121,22 @@
       y no entran en los totales. Esto no es un error del panel: es la lista de trabajo.
       Las columnas y sus tipos los manda el servidor; el ancho, el orden y los colores
       son de esta pantalla.
+      <br><br>
+      <b>Los dos semáforos no son lo mismo que el estado del dato.</b> La primera fila de
+      tarjetas dice si <i>hay</i> con qué medir; la segunda dice qué sale de medirlo, y filtra
+      por otro eje. <b>Bonos</b> y <b>Otros</b> son un desglose de lo que ya estaba contado
+      dentro del costo — no se suman aparte. <b>Cotizado de</b> distingue un presupuesto real
+      de un <i>techo SO</i> sin reparto por rubro: no son intercambiables. Y <b>Plan correcto</b>
+      exhibe, sin corregir, los proyectos cuya cuenta analítica vive en un plan que no le toca
+      a su empresa; el conteo no es una sola población, está desglosado en la tarjeta.
+      <br><br>
+      <b>Desde v1.02 la columna «Empresa» dice la empresa real.</b> Antes ponía «FTS MX» a todo lo
+      que no fuera la LLC, y eso era falso en 30 de 222 proyectos. Las cuentas nunca estuvieron mal
+      —todas esas empresas son MXN, así que la conversión y los totales ya eran correctos— pero la
+      etiqueta y el <i>agrupado</i> sí: agrupar por Empresa metía YIN dentro de FTS MX. Los que no
+      traen empresa en Odoo dicen <b>«sin empresa»</b>, que es lo que son; qué hacer con ellos es
+      una decisión pendiente, no un dato que falte. Y la bandera de <b>subsidio</b> ahora mira en
+      las dos direcciones, no sólo cuando paga la LLC.
     </div>
   </section>
 
@@ -115,7 +167,7 @@
 var P = Panel.montar({
   ruta: '/webhook/fin/rentabilidad',
   titulo: 'Rentabilidad por proyecto',
-  sub: 'FTS Suite · panel · contrato 1',
+  sub: 'FTS Suite · panel · contrato 1 · v1.02',
   volver: { href: '../index.html', txt: '← Finanzas' },
   login: '../../shared/login.html',
   /* Este panel NO guarda nada en el navegador. La lista vacía es la declaración,
@@ -127,6 +179,21 @@ var P = Panel.montar({
 });
 
 var esc = Panel.esc, nfm = Panel.nfm, dinero = Panel.dinero, pct = Panel.pct;
+
+/* La hora del dato en CST, con la conversión EXPLÍCITA. El motor manda un ISO en
+   UTC; pintarlo tal cual lo deja seis horas adelantado, que es el hallazgo #1 de
+   CLAUDE.md §11 y el que más veces se ha repetido en este repo. No se usa
+   toLocaleString con zona: el servidor de Pages no decide la zona de nadie. */
+function cst(iso){
+  if(!iso) return '—';
+  var t=Date.parse(String(iso).indexOf('Z')<0&&String(iso).indexOf('+')<0
+        ? String(iso).replace(' ','T')+'Z' : iso);
+  if(isNaN(t)) return '—';
+  var d=new Date(t-6*3600*1000);   /* CST = UTC−6, sin horario de verano en MTY */
+  function dd(n){return (n<10?'0':'')+n;}
+  return d.getUTCFullYear()+'-'+dd(d.getUTCMonth()+1)+'-'+dd(d.getUTCDate())+
+         ' '+dd(d.getUTCHours())+':'+dd(d.getUTCMinutes());
+}
 var S = { sobre:null, orden:{col:'margen_pct',dir:1}, det:null, dgrupo:'rubro', dgrupo2:'' };
 
 /* ═══ carga: REFRESH MANUAL, nunca automatico ═══════════════════════════ */
@@ -163,6 +230,38 @@ function pintarPortada(){
         (r.margen_pct===null?'—':r.margen_pct.toFixed(1)+'%'),
         'margen de los que sí tienen dato','$'+nfm(r.margen_real_mxn)+' MXN · ver salvedades','');
 
+  /* SEGUNDA FILA (v1.01): la desviación. La primera fila dice si HAY dato; ésta
+     dice qué dice el dato. Van separadas porque contestan preguntas distintas y
+     mezclarlas en una sola tira de doce tarjetas no se lee en un teléfono. */
+  var mo=d.mo_sin_proyecto||{}, u=d.semaforo_umbrales||{};
+  var dg=(r.plan_equivocado_desglose||[]);
+  document.getElementById('kpis2').innerHTML=
+    P.kpi('bad',r.semaforo_rojo,'costo adelante','gasta más rápido de lo que cobra','rojo')+
+    P.kpi('warn',r.semaforo_ambar,'facturación adelante','falta registrar costo: el margen se ve mejor','ambar')+
+    P.kpi('ok',r.semaforo_verde,'parejos','costo y facturación van a la par','verde')+
+    /* `sin` va en ROJO, no en neutro: es la mitad del universo y no medir no es
+       estar bien. Pintarlo gris lo volvería invisible, que es justo el problema. */
+    P.kpi('bad',r.semaforo_sin,'sin con qué medir','ni presupuesto ni monto vendido: no es verde, es ciego','sin')+
+    P.kpi(r.con_plan_equivocado?'warn':'neu',r.con_plan_equivocado,'plan equivocado',
+        dg.length?dg.map(function(x){return x.proyectos+' en plan '+x.plan_de_la_cuenta+'→'+x.plan_que_toca;}).join(' · '):'ninguno','')+
+    P.kpi('neu',(mo.balance===null||mo.balance===undefined)?'—':('$'+nfm(Math.abs(mo.balance))),
+        'MO por reasignar',(mo.leido?((mo.moneda||'MXN')+' · renglón propio, no se reparte'):'no se pudo leer la cuenta'),'');
+
+  /* La leyenda con los números que rigen los colores, la hora del dato y el tipo
+     de cambio. Si la config no se pudo leer, se DICE aquí y no sólo en salvedades:
+     quien mira la pantalla tiene que saber que un umbral que cambió en el archivo
+     puede no ser el que pintó estos colores. */
+  var tc=d.tipo_cambio||{};
+  document.getElementById('leyenda').innerHTML=
+    'Semáforo: <b>rojo</b> si el costo va más de '+esc(u.costo_adelante_pts)+' puntos adelante de la facturación'+
+    '<span class="sep">·</span><b>ámbar</b> si la facturación va más de '+esc(u.facturacion_adelante_pts)+' puntos adelante del costo'+
+    '<span class="sep">·</span><b>sin</b> = falta una de las dos mitades'+
+    '<br>Dato de <b>'+esc(cst(S.sobre.alcance&&S.sobre.alcance.respondido))+'</b> (CST)'+
+    '<span class="sep">·</span>USD→MXN <b>'+esc(tc.usd_mxn)+'</b>'+(tc.fecha?(' del '+esc(tc.fecha)):'')+
+    '<span class="sep">·</span>umbrales '+(u.config_viva
+      ? 'leídos del archivo en main'
+      : '<b>por default</b>: no se pudo leer la config, ver salvedades');
+
   document.getElementById('salvCuerpo').innerHTML=(S.sobre.salvedades||[]).map(function(s){
     return '<div class="salv-item"><code>'+esc(s.codigo)+'</code> — '+esc(s.dice)+'</div>';}).join('');
 
@@ -175,6 +274,12 @@ function pintarPortada(){
     el.onclick=function(){ document.getElementById('fEstado').value=el.getAttribute('data-filtro');
       pintarTabla(); };
   });
+  /* Los de la segunda fila filtran por SEMAFORO, que es otro eje: si los dos
+     escribieran en el mismo select, apretar uno borraría el otro en silencio. */
+  Array.prototype.forEach.call(document.querySelectorAll('#kpis2 .kpi.clic'),function(el){
+    el.onclick=function(){ document.getElementById('fSemaforo').value=el.getAttribute('data-filtro');
+      pintarTabla(); };
+  });
   pintarTabla();
 }
 
@@ -184,7 +289,9 @@ function visibles(){
   var e=document.getElementById('fEstado').value;
   var q=document.getElementById('fBusca').value.trim().toLowerCase();
   var soloAl=document.getElementById('fAlerta').checked;
+  var sm=document.getElementById('fSemaforo').value;
   if(e)f=f.filter(function(r){return r.estado_dato===e;});
+  if(sm)f=f.filter(function(r){return r.semaforo===sm;});
   if(soloAl)f=f.filter(function(r){return r.alertas.length;});
   if(q)f=f.filter(function(r){return (r.proyecto+' '+r.cliente).toLowerCase().indexOf(q)>=0;});
   return f;
@@ -198,7 +305,13 @@ function visibles(){
    taparlas seria ocultar un dato cierto — el error opuesto, y del mismo tamano. */
 var DEL_PRESUPUESTO = { ingreso_pres:1, ingreso_real:1, costo_pres:1, costo_real:1,
                         margen_real:1, margen_pct:1, consumo_mat:1, consumo_mo:1,
-                        horas_plan:1, consumo_horas:1 };
+                        horas_plan:1, consumo_horas:1,
+                        /* v1.01: bonos y otros tambien salen del budget, asi que
+                           un proyecto sin linea base no los puede mostrar en 0.
+                           `semaforo`, `plan_ok` y `cotizado_de` NO entran: los
+                           tres SI tienen algo que decir de una fila sin
+                           presupuesto — de hecho es donde mas dicen. */
+                        bonos_real:1, otros_real:1 };
 
 /* Devuelve el <td> cuando esta pantalla tiene algo que decir, y `null` cuando
    se lo deja al armazón (que pinta por el `kind` que declaró el servidor). */
@@ -227,6 +340,29 @@ function celda(c,r){
      plan creible sale sobre el plan, asi que un rojo ahi no informa de nada.
      Se muestra el numero en azul, que es "dato", no "alarma". */
   if(c.id==='consumo_horas') return '<td class="num">'+pct(r[c.id],'info')+'</td>';
+
+  /* ── lo nuevo de v1.01 ─────────────────────────────────────────────────── */
+  /* El semáforo lleva su PORQUÉ en el title: un color sin explicación obliga a
+     adivinar el criterio, y el criterio es justo lo discutible. */
+  if(c.id==='semaforo'){
+    var et={verde:'parejos',ambar:'facturación adelante',rojo:'costo adelante',sin:'sin medir'}[r.semaforo]||'—';
+    return '<td><span class="chip s-'+esc(r.semaforo||'sin')+'" title="'+esc(r.semaforo_porque||'')+'">'+
+           et+'</span></td>';
+  }
+  if(c.id==='plan_ok'){
+    if(r.plan_ok!=='NO') return '<td><span class="raya">sí</span></td>';
+    var pe=r.plan_equivocado||{};
+    return '<td><span class="chip c-planmal" title="'+esc((r.alertas||[]).map(function(a){return a.dice;}).join(' · '))+
+           '">plan '+esc(pe.plan_de_la_cuenta)+' → '+esc(pe.plan_que_toca)+'</span>'+
+           (pe.cuenta_archivada?'<div class="falta">cuenta archivada</div>':'')+'</td>';
+  }
+  /* D2 a la vista: el techo de la SO NO se puede confundir con un presupuesto,
+     así que se marca en la celda y no sólo en las salvedades. */
+  if(c.id==='cotizado_de'){
+    if(r.cotizado_de==='budget') return '<td><span class="raya">presupuesto</span></td>';
+    if(r.cotizado_de==='sin cotizado') return '<td><span class="raya">—</span></td>';
+    return '<td><span class="c-techo" title="Es el monto vendido de la SO, sin reparto por rubro: un techo, no un presupuesto.">techo SO</span></td>';
+  }
   return null;
 }
 
@@ -290,7 +426,9 @@ async function abrirDetalle(id){
     'en la misma línea). Esa diferencia — '+det.lineas_sin_rubro+' de '+det.filas.length+
     ' líneas sin rubro — es la fuga del Frente A, y por eso el margen de la portada sale mejor '+
     'que el real. La tabla de abajo <b>se reagrupa en tu navegador</b>: el servidor mandó las '+
-    'líneas y dijo qué se puede agrupar y qué se puede sumar, no cómo se ve.';
+    'líneas y dijo qué se puede agrupar y qué se puede sumar, no cómo se ve. '+
+    '<b>Desde v1.01 se puede agrupar por «Fuente de pago» y «Pagado por»</b>, que son el journal '+
+    'y la empresa que soltó el dinero: sirve para ver si un proyecto lo está pagando otra empresa.';
   pintarDetalle();
 }
 function etiq(cols,id){var c=cols.filter(function(x){return x.id===id;})[0];return c?c.label:id;}
@@ -332,7 +470,7 @@ function pintarDetalle(){
 
 /* ═══ cableado ═════════════════════════════════════════════════════════ */
 P.alRefrescar(cargar);
-['fEstado','fGrupo','fAlerta'].forEach(function(id){
+['fEstado','fGrupo','fAlerta','fSemaforo'].forEach(function(id){
   document.getElementById(id).onchange=pintarTabla;});
 document.getElementById('fBusca').oninput=pintarTabla;
 document.getElementById('volver').onclick=function(){ P.vista('vPortada'); };

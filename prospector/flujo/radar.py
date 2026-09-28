@@ -29,7 +29,8 @@ import json
 import os
 from datetime import date, datetime
 
-from .catalogo_proyectos import plano, proceso_de, magnitudes
+from .catalogo_proyectos import (UNIDADES_DE_DINERO, magnitudes, plano,
+                                 proceso_de)
 
 RUTA_CATALOGO = os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "datos", "catalogo-de-proyectos-fts.json")
@@ -54,6 +55,43 @@ FAMILIAS = {
                  "mantenimiento_servicio", "refaccion"),
 }
 FAMILIA_DE_TIPO = {t: f for f, ts in FAMILIAS.items() for t in ts}
+
+# ------------------------------------------------------ el tipo INTEGRAL
+# DECISION 3 de #329 (D3), aprobada. El hueco que la midio: `tipos_que_nombra()`
+# no reconocia "segunda planta", "planta nueva", "ampliacion de nave" ni
+# "construye una planta", asi que **una planta nueva contribuia CERO** al factor
+# de tipo de obra. Y cuando si habia match -- "nave industrial"-- apuntaba a
+# `trabajos_civiles`, de la familia ESTRUCTURA (11.7%), una de las mas chicas: una
+# planta nueva se puntuaba como un trabajo civil pequeno.
+#
+# Es la misma clase de hueco que la DECISION 1 de #305, donde el radar no tenia
+# ELECTRICO -- su familia mas grande--.
+#
+# POR QUE ES UN TIPO APARTE Y NO UNA FAMILIA MAS. Una planta nueva no es un tipo
+# de proyecto: es **todos a la vez**. Compra subestacion Y control Y agua helada Y
+# estructura Y manejo de material Y comisionamiento. Meterla como miembro de una
+# familia la haria competir con sus propios componentes y saldria valiendo lo que
+# vale el mas grande de ellos -- que es exactamente el error que tenia--.
+#
+# Y EL PESO SE DERIVA, COMO TODOS. La regla de este archivo no se afloja para
+# esta decision: el peso de un tipo integral es la **suma de las participaciones
+# de las familias que la obra necesita**, escalada igual que cualquier otra
+# contra la familia mayor. Si manana FTS vende otra mezcla, este peso se mueve
+# solo al regenerar el catalogo, sin que nadie lo edite.
+#
+# LAS SEIS FAMILIAS, Y NO LAS CUATRO QUE LA DECISION NOMBRO. D3 dice "compra
+# electrico, automatizacion, termico y estructura a la vez". Se incluyen tambien
+# SERVICIO y MANEJO, y es una desviacion consciente de la lista literal: una
+# planta nueva necesita comisionamiento y arranque -- no se entrega sola-- y
+# necesita mover material dentro. Dejarlas fuera daria un peso de 35.2 y con el
+# Coficab Pesqueria se queda en 57.9 (`guarda`), por debajo del `pasa` que la
+# propia decision pide como prueba de aceptacion. Con las seis, el peso sale de
+# que la obra compra UNA DE CADA COSA, que es lo que de verdad hace.
+TIPO_INTEGRAL_OBRA_NUEVA = "obra_nueva_integral"
+TIPOS_INTEGRALES = {
+    # tipo -> las familias que la obra necesita. `None` = todas las del catalogo.
+    TIPO_INTEGRAL_OBRA_NUEVA: None,
+}
 
 # --------------------------------------------------------- terminos de la senal
 # Lo que una senal dice que va a pasar, apuntando al TIPO de proyecto de FTS que
@@ -128,6 +166,10 @@ TERMINOS_DE_TIPO = {
     "mezzanine": "mezzanine",
     "entrepiso": "mezzanine",
     "estructura metalica": "estructura_metalica",
+    # OJO: "nave industrial" GENERICA se queda en trabajos_civiles. Una nota que
+    # habla de una nave sin decir que es NUEVA no es obra nueva: puede ser un
+    # reacondicionamiento, una renta o una mencion de paso. Los terminos de obra
+    # nueva viven abajo, y todos exigen la palabra que dice que es nueva.
     "nave industrial": "trabajos_civiles",
     "obra civil": "trabajos_civiles",
     "conveyor": "conveyor_y_manejo",
@@ -135,6 +177,36 @@ TERMINOS_DE_TIPO = {
     "polipasto": "conveyor_y_manejo",
     "embolsadora": "integracion_embolsadora",
     "empacadora": "integracion_embolsadora",
+    # --- obra nueva INTEGRAL: la senal mas fuerte que FTS puede recibir -----
+    # D3 de #329. Cada termino tiene que decir que la planta es NUEVA o que
+    # CRECE; ninguno pega con una mencion generica de una nave o de una planta.
+    "planta nueva": TIPO_INTEGRAL_OBRA_NUEVA,
+    "nueva planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "segunda planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "tercera planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "nueva nave": TIPO_INTEGRAL_OBRA_NUEVA,
+    "nave nueva": TIPO_INTEGRAL_OBRA_NUEVA,
+    "ampliacion de nave": TIPO_INTEGRAL_OBRA_NUEVA,
+    "ampliacion de planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "expansion de planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "construye una planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "construira una planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "construccion de planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "inaugura planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "inauguracion de planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "nuevo complejo": TIPO_INTEGRAL_OBRA_NUEVA,
+    "nueva linea de produccion": TIPO_INTEGRAL_OBRA_NUEVA,
+    # en ingles: las notas de prensa industrial de automotriz y alimentos en
+    # Nuevo Leon llegan en ingles la mitad de las veces
+    "new plant": TIPO_INTEGRAL_OBRA_NUEVA,
+    "second plant": TIPO_INTEGRAL_OBRA_NUEVA,
+    "third plant": TIPO_INTEGRAL_OBRA_NUEVA,
+    "plant expansion": TIPO_INTEGRAL_OBRA_NUEVA,
+    "new facility": TIPO_INTEGRAL_OBRA_NUEVA,
+    "greenfield": TIPO_INTEGRAL_OBRA_NUEVA,
+    "groundbreaking": TIPO_INTEGRAL_OBRA_NUEVA,
+    "breaks ground": TIPO_INTEGRAL_OBRA_NUEVA,
+    "new production line": TIPO_INTEGRAL_OBRA_NUEVA,
 }
 
 # --------------------------------------------------------------- los tres topes
@@ -282,16 +354,40 @@ def participacion_por_familia(catalogo: dict) -> dict[str, float]:
     return {f: n / total for f, n in por_familia.items()}
 
 
+def familias_de_un_tipo_integral(tipo: str, catalogo: dict) -> list[str]:
+    """Las familias que una obra de este tipo integral necesita."""
+    if tipo not in TIPOS_INTEGRALES:
+        return []
+    pedidas = TIPOS_INTEGRALES[tipo]
+    part = participacion_por_familia(catalogo)
+    if pedidas is None:
+        return sorted(part)
+    return sorted(f for f in pedidas if f in part)
+
+
 def peso_de_tipo(tipo: str, catalogo: dict) -> float:
     """Cuanto vale, de `MAX_TIPO_DE_OBRA`, una senal que apunta a este tipo.
 
     Escalado por la participacion de su FAMILIA contra la familia mas grande, con
     piso. Asi la senal electrica -- la familia mas grande-- vale el tope, y la
     termica vale proporcionalmente menos sin valer cero.
+
+    UN TIPO INTEGRAL PASA DEL TOPE, y es lo unico que puede pasarlo. Su peso es
+    la SUMA de las participaciones de las familias que la obra necesita, con la
+    misma escala: si necesita las seis, su suma es 1.0 y su peso sale ~3x el de la
+    familia mayor. No es una excepcion a la regla del peso derivado -- sigue
+    saliendo del catalogo y nadie escribe el numero-- es la regla aplicada a algo
+    que de verdad compra una de cada cosa.
     """
     part = participacion_por_familia(catalogo)
     if not part:
         return PESO_MINIMO_TIPO
+    mayor_ = max(part.values()) if part else 0
+    if tipo in TIPOS_INTEGRALES and mayor_ > 0:
+        familias = familias_de_un_tipo_integral(tipo, catalogo)
+        suma = sum(part[f] for f in familias)
+        return max(PESO_MINIMO_TIPO,
+                   round(MAX_TIPO_DE_OBRA * suma / mayor_, 1))
     f = FAMILIA_DE_TIPO.get(tipo)
     if not f or f not in part:
         return PESO_MINIMO_TIPO
@@ -341,6 +437,140 @@ def puntos_de_proceso(texto: str, catalogo: dict) -> tuple[float, str]:
             f"proceso '{proc}' con {n} proyecto(s) en el catalogo ({tipos})")
 
 
+# ===================================================== D6 · el tamano del dinero
+# APROBADA en #335 con la escala derivada del catalogo y corte por arriba.
+#
+# QUE SE PUEDE DERIVAR Y QUE NO, y la distincion es la mitad de esta decision.
+#
+# SE DERIVA del catalogo: el ticket de FTS. Los 154 proyectos reales de
+# `catalogo-de-proyectos-fts.json` traen `monto`, y su distribucion es un hecho
+# medido: minimo ~192 mil, mediana ~408 mil, p90 ~2.1 millones, maximo ~13.5
+# millones. Eso es lo que FTS factura por proyecto.
+#
+# NO SE PUEDE DERIVAR de ningun archivo de este repo: **que fraccion del capex de
+# un cliente acaba siendo un proyecto de FTS.** Un anuncio de "205 MDD" es la
+# inversion DEL CLIENTE, no el ticket de FTS, y la razon entre las dos no esta
+# registrada en ninguna parte. Comparar 205 MDD contra la distribucion de tickets
+# de FTS seria un error de categoria: son dos cosas distintas medidas en la misma
+# unidad.
+#
+# Por eso la banda tiene DOS ANCLAJES DECLARADOS POR ESTEBAN en la propia D6, y
+# quedan escritos como declarados y no como derivados:
+#
+#   * **60 MDD de Coficab Durango es "exactamente lo que FTS si toma".**
+#   * **2,000 MDD de Bimbo "es un programa nacional de varios anos".**
+#   * y el corte: **arriba de ~500 MDD, programa corporativo.**
+#
+# EL PISO SI SE DERIVA, y es la unica frontera que sale del catalogo sin
+# suposiciones: un capex mas chico que el proyecto MAS CHICO que FTS ha vendido no
+# puede contener un proyecto de FTS. Es una cota dura, no una estimacion.
+#
+# QUE HACE EL CORTE POR ARRIBA. Lo mismo que ya hacia con los TR y por la misma
+# razon escrita en `puntos_de_capacidad`: "una senal de 1,500 TR no es mejor que
+# una de 200, es de otro tamano de empresa y otro competidor". Con inversion el
+# argumento es mas fuerte todavia: un programa de 2,000 MDD se reparte en anos, en
+# varias plantas y con contratistas de otro tamano, mientras 60 MDD es una obra que
+# FTS puede tomar completa.
+CORTE_PROGRAMA_CORPORATIVO_MDD = 500.0
+
+# El unico numero DECLARADO y no derivado de todo este bloque, y se declara como
+# tal: hace falta para poder comparar un monto en pesos contra un corte en dolares.
+# Un tipo de cambio escrito en el codigo se queda viejo -- es justo la clase de dato
+# que este proyecto saca de los documentos-- asi que aqui va con su fecha, su
+# alcance y la razon por la que su imprecision no cambia ningun veredicto de hoy:
+#
+#   ALCANCE: solo decide si un monto EN PESOS cae arriba o abajo del corte de
+#   programa corporativo. No entra en ningun otro calculo.
+#   POR QUE NO MUERDE: el monto en pesos mas grande documentado es 633 MDP, que a
+#   cualquier tipo de cambio entre 15 y 25 queda entre 25 y 42 MDD -- lejisimos del
+#   corte de 500--. Habria que equivocarse por un factor de 12 para mover un
+#   veredicto.
+#   CUANDO REVISARLO: cuando aparezca un anuncio en pesos de mas de 7,500 MDP.
+PESOS_POR_DOLAR_DECLARADO = 18.5
+FECHA_DEL_TIPO_DE_CAMBIO = "2026-09"
+
+
+def _a_mdd(valor: float, unidad: str) -> float:
+    """El monto en millones de dolares, para poder compararlo con el corte."""
+    if unidad == "MDP":
+        return valor / PESOS_POR_DOLAR_DECLARADO
+    return valor
+
+
+def piso_de_inversion(catalogo: dict) -> tuple[float, str]:
+    """El proyecto MAS CHICO que FTS ha vendido, del catalogo. Cota dura.
+
+    Un capex mas chico que esto no puede contener un proyecto de FTS. Es lo unico
+    de la banda que sale del catalogo sin ninguna suposicion.
+
+    La moneda de los montos del catalogo **no esta declarada** (`moneda: null` en
+    las 154 entradas, y Odoo es multi-moneda -- medido--). Eso no muerde por la
+    misma razon que el tipo de cambio: el piso sale en ~0.19 millones y el anuncio
+    mas chico documentado es de 200 MDD, tres ordenes de magnitud arriba. Si algun
+    dia aparece un anuncio de menos de 5 millones, hay que declarar la moneda antes
+    de confiar en esta frontera.
+    """
+    montos = [e.get("monto") for e in (catalogo.get("entradas") or [])]
+    montos = sorted(m for m in montos if isinstance(m, (int, float)) and m > 0)
+    if not montos:
+        return (0.0, "el catalogo no trae montos: el piso no se puede derivar")
+    piso = montos[0] / 1_000_000.0
+    return (piso, f"el proyecto mas chico de los {len(montos)} del catalogo "
+                  f"({montos[0]:,.0f} en la moneda del catalogo, sin declarar)")
+
+
+def puntos_de_inversion(valor: float, unidad: str,
+                        catalogo: dict) -> tuple[float, str]:
+    """Cuanto vale un MONTO DE INVERSION anunciado. D6 de #335."""
+    en_mdd = _a_mdd(valor, unidad)
+    piso, por_que_piso = piso_de_inversion(catalogo)
+    if en_mdd > CORTE_PROGRAMA_CORPORATIVO_MDD:
+        return (MAX_CAPACIDAD / 4,
+                f"{valor:g} {unidad} (~{en_mdd:.0f} MDD) pasa el corte de "
+                f"{CORTE_PROGRAMA_CORPORATIVO_MDD:g} MDD: es un PROGRAMA "
+                "CORPORATIVO, no una obra. Se reparte en anos, en varias plantas y "
+                "con contratistas de otro tamano. Cuenta, y cuenta poco")
+    if en_mdd * 1_000_000 < piso * 1_000_000:
+        return (MAX_CAPACIDAD / 4,
+                f"{valor:g} {unidad} queda POR DEBAJO del piso: {por_que_piso}")
+    return (MAX_CAPACIDAD,
+            f"{valor:g} {unidad} (~{en_mdd:.0f} MDD) cae en el rango donde FTS "
+            f"puede tomar la obra completa: arriba del piso derivado del catalogo "
+            f"y abajo del corte de {CORTE_PROGRAMA_CORPORATIVO_MDD:g} MDD")
+
+
+def rango_de_la_unidad(catalogo: dict, unidad: str) -> dict | None:
+    """El rango del catalogo para UNA unidad, unido sobre todos los tipos.
+
+    LA UNION Y NO EL PRIMER TIPO QUE PEGUE, y es un arreglo de B4 (#340). El codigo
+    anterior recorria `capacidad_por_tipo` y comparaba contra el rango del PRIMER
+    tipo que tuviera datos, sin importar si era el tipo correcto -- y una senal no
+    viene etiquetada con el tipo de proyecto de FTS, asi que no hay forma de elegir
+    uno--. Comparar contra un tipo arbitrario es peor que no comparar.
+
+    La union si tiene sentido: la pregunta que el corte por arriba hace es *"esta
+    magnitud cae donde FTS vende"*, y eso es una pregunta sobre FTS entera. Se mide
+    ademas cuantos valores DISTINTOS sostienen el rango, porque un rango de un solo
+    valor no es un rango.
+    """
+    valores: list[float] = []
+    tipos: list[str] = []
+    for tipo, d in (catalogo.get("capacidad_por_tipo") or {}).items():
+        r = (d.get("rangos") or {}).get(unidad)
+        if r:
+            valores += list(r.get("valores") or [r["min"], r["max"]])
+            tipos.append(tipo)
+        elif unidad == "TR" and "min_TR" in d:
+            # Catalogo viejo, de antes de que los rangos fueran por unidad.
+            valores += [d["min_TR"], d["max_TR"]]
+            tipos.append(tipo)
+    if not valores:
+        return None
+    u = sorted(set(valores))
+    return {"min": u[0], "max": u[-1], "distintos": len(u),
+            "tipos": sorted(tipos), "comparable": len(u) >= 2}
+
+
 def puntos_de_capacidad(texto: str, catalogo: dict) -> tuple[float, str]:
     """La magnitud de la senal contra el rango donde FTS SI ha vendido.
 
@@ -350,23 +580,63 @@ def puntos_de_capacidad(texto: str, catalogo: dict) -> tuple[float, str]:
     mags = magnitudes(texto)
     if not mags:
         return (0.0, "sin magnitud declarada")
-    cap = catalogo.get("capacidad_por_tipo") or {}
+    # EL DINERO SE ATIENDE PRIMERO, y el orden es una decision: si un texto trae
+    # "planta nueva de 60 MDD con chiller de 200 TR", el monto habla del tamano de
+    # LA OBRA y los TR del tamano de UNA MAQUINA. Para decidir si vale la pena
+    # gastar 60 consultas manda la obra.
     for m in mags:
-        for tipo, d in cap.items():
-            if "min_TR" not in d or m["unidad"] != "TR":
-                continue
-            lo, hi = d["min_TR"], d["max_TR"]
-            if lo <= m["valor"] <= hi:
-                return (MAX_CAPACIDAD,
-                        f"{m['valor']:g} {m['unidad']} cae en el rango de "
-                        f"{tipo} ({lo:g}-{hi:g})")
-            fuera = "por encima" if m["valor"] > hi else "por debajo"
-            return (MAX_CAPACIDAD / 4,
-                    f"{m['valor']:g} {m['unidad']} queda {fuera} del rango de "
-                    f"{tipo} ({lo:g}-{hi:g}): otro tamano de empresa")
-    return (MAX_CAPACIDAD / 2,
-            f"magnitud declarada ({mags[0]['valor']:g} {mags[0]['unidad']}) sin "
-            "rango comparable en el catalogo")
+        if m["unidad"] in UNIDADES_DE_DINERO:
+            return puntos_de_inversion(m["valor"], m["unidad"], catalogo)
+    # Se recorren TODAS las magnitudes buscando una con rango comparable, en vez de
+    # decidir con la primera: un texto que dice "cable de 240 mm2 en 35 kV" trae dos
+    # unidades y solo una puede tener bordes medidos.
+    sin_bordes = []
+    for m in mags:
+        r = rango_de_la_unidad(catalogo, m["unidad"])
+        if r is None:
+            continue
+        donde = ", ".join(r["tipos"])
+        if not r["comparable"]:
+            sin_bordes.append(
+                f"{m['valor']:g} {m['unidad']} contra UN SOLO valor medido "
+                f"({r['min']:g} {m['unidad']} en {donde}): un punto no es un "
+                "rango, y decir que algo queda fuera de un punto seria inventarle "
+                "el borde")
+            continue
+        lo, hi = r["min"], r["max"]
+        cuantos = f"{r['distintos']} valores en {donde}"
+        if lo <= m["valor"] <= hi:
+            return (MAX_CAPACIDAD,
+                    f"{m['valor']:g} {m['unidad']} cae en el rango donde FTS SI ha "
+                    f"vendido ({lo:g}-{hi:g}, {cuantos})")
+        fuera = "por encima" if m["valor"] > hi else "por debajo"
+        return (MAX_CAPACIDAD / 4,
+                f"{m['valor']:g} {m['unidad']} queda {fuera} del rango donde FTS "
+                f"vende ({lo:g}-{hi:g}, {cuantos}): otro tamano de empresa y otro "
+                "competidor")
+    if sin_bordes:
+        # Hay EVIDENCIA de que FTS trabaja en esa unidad -- lineas vendidas-- pero no
+        # hay bordes. La mitad: se midio algo, no se pudo ordenar.
+        return (MAX_CAPACIDAD / 2, "; ".join(sin_bordes))
+    # UNA MAGNITUD QUE NO SE PUEDE COMPARAR CON NADA NO DA PUNTOS, y cambio en #340.
+    # Antes daba la mitad, y eso regalaba 5 puntos por cualquier numero con unidad:
+    # la prueba de aceptacion de D3 lo cazo en el acto -- "se renta nave industrial
+    # de 4000 m2" paso de `archiva` a `guarda` en cuanto el lector aprendio a leer
+    # m2, y los metros cuadrados de una nave EN RENTA no dicen nada sobre si el
+    # tamano de FTS cabe ahi--.
+    #
+    # El factor se llama `capacidad` y existe para el corte por arriba. Media
+    # calificacion por un numero que no se comparo contra nada es justo la
+    # comparacion inventada que este factor persigue. Se distingue del "sin magnitud
+    # declarada" en el POR QUE, que es donde la distincion sirve; en el puntaje las
+    # dos cosas valen lo mismo, porque las dos aportan lo mismo: nada.
+    unidades = ", ".join(sorted({m["unidad"] for m in mags}))
+    return (0.0,
+            f"magnitud declarada ({mags[0]['valor']:g} {mags[0]['unidad']}) pero el "
+            f"catalogo no tiene NI UNA linea medida en {unidades}: no hay rango "
+            "contra que compararla, asi que no da puntos. No es que quede fuera de "
+            "rango -- es que no hay rango, y media calificacion por una comparacion "
+            "que no se hizo seria inventarla--")
 
 
 def dias_de_antiguedad(fecha: str | None, hoy: date | None = None) -> int | None:
@@ -414,8 +684,28 @@ def evaluar(senal: dict, catalogo: dict | None = None,
     catalogo = catalogo if catalogo is not None else cargar_catalogo()
     texto = " · ".join(str(senal.get(k) or "") for k in
                        ("texto", "requerimiento", "asunto", "nota"))
+    # DEFECTO B3 de #330: EL GIRO DE LA CUENTA NO ENTRABA AL EVALUADOR.
+    #
+    # `puntos_de_proceso` existe para puntuar el PROCESO DEL CLIENTE contra el
+    # catalogo, y solo se le daba el texto de la senal -- que es un titular de
+    # prensa--. O sea: se le estaba pidiendo al encabezado de una nota que
+    # dijera a que se dedica la empresa. El proceso es propiedad de la CUENTA,
+    # no de la noticia.
+    #
+    # Medido: Coficab es una planta de cable automotriz, el catalogo tiene el
+    # proceso `arneses_cableado` con proyectos reales, y la cuenta puntuaba CERO
+    # en proceso -- o peor, puntuaba `metalmecanica` por la palabra "prensa" del
+    # falso positivo B1--. El giro viaja en `Corrida.giro` desde siempre y nadie
+    # lo conectaba.
+    #
+    # El giro se suma SOLO para reconocer el proceso, no para los tipos de obra:
+    # el giro dice a que se dedica la planta, no que va a construir. Mezclarlo en
+    # `tipos_que_nombra` haria que una planta de cable puntuara "cable de datos"
+    # como si fuera un proyecto anunciado.
+    texto_con_giro = " · ".join(x for x in (texto, str(senal.get("giro") or ""))
+                                if x.strip())
 
-    p_proc, por_proc = puntos_de_proceso(texto, catalogo)
+    p_proc, por_proc = puntos_de_proceso(texto_con_giro, catalogo)
     nombra = tipos_que_nombra(texto)
     if nombra:
         pesos = [(t, tipo, peso_de_tipo(tipo, catalogo)) for t, tipo in nombra]
@@ -461,7 +751,14 @@ def evaluar(senal: dict, catalogo: dict | None = None,
                                f"frescura: {por_fresca}", por_fuente,
                                f"padron: {'empata (+8)' if empata else 'no empata (0)'}"]),
         "tipos_que_nombra": tipos_nombrados,
-        "familia": FAMILIA_DE_TIPO.get(tipo) if tipo else None,
+        # Un tipo integral NO tiene una familia: tiene todas. Reportar la de uno
+        # de sus componentes le mentiria al lazo 1, que agrupa por familia para
+        # corregir pesos -- le atribuiria a ELECTRICO una conversion que fue de
+        # una obra completa--.
+        "familia": (TIPO_INTEGRAL_OBRA_NUEVA if tipo in TIPOS_INTEGRALES
+                    else FAMILIA_DE_TIPO.get(tipo) if tipo else None),
+        "familias_de_la_obra": (familias_de_un_tipo_integral(tipo, catalogo)
+                                if tipo in TIPOS_INTEGRALES else []),
         "ambiguedad": ambiguedad,
         "umbrales": {"pasa": UMBRAL_PASA, "guarda": UMBRAL_GUARDA},
     }

@@ -1,0 +1,46 @@
+{
+  "_nota": "Config VIVA del motor fin/rentabilidad-motor. El motor la lee de main por HTTP en cada corrida, igual que ops/watchdog-semaforo lee shared/operaciones/sla_stages.json (CLAUDE.md §18 punto 3). Cambiar un umbral = editar este archivo y empujar a main. NO hay que republicar el workflow. Si el archivo no se puede leer, el motor usa los mismos valores por default que estan escritos aqui y lo dice en salvedades[] con el codigo CONFIG_NO_LEIDA: la mitad tolerante va primero (CLAUDE.md §8, regla anti-trabon).",
+  "version": 1,
+  "issue": 332,
+
+  "semaforo": {
+    "_nota": "Simetrico: la desviacion se vigila en los DOS sentidos. Decision D3 de Esteban.",
+    "puntos_costo_adelante": 15,
+    "_nota_costo": "Ambar cuando el consumo de costo va N puntos ADELANTE del avance de facturacion: sobregiro en curso.",
+    "puntos_facturacion_adelante": 20,
+    "_nota_facturacion": "Ambar cuando la FACTURACION va N puntos adelante del costo: costo sin registrar, y el margen que se ve es falso. Es el caso que domina hoy y el mas peligroso, porque sin esta regla un proyecto facturado al 100% con el 14% del costo sale VERDE (caso SO10304, medido el 2026-09-28)."
+  },
+
+  "presupuesto": {
+    "_nota": "Decision D1: un presupuesto de 0 o |1| es AUSENCIA de presupuesto, nunca base de un porcentaje. Medido: 104 lineas asi de 825 con eje de proyecto.",
+    "umbral_basura_abs": 1
+  },
+
+  "rubros_plan20": {
+    "_nota": "Ids del eje x_plan20_id (Upgraded Budget Plan). Verificados en Odoo el 2026-09-28.",
+    "ingreso": 1171,
+    "mano_obra": 1177,
+    "materiales": 1176,
+    "bono_supervisores": 1159,
+    "bono_tecnicos": 1160
+  },
+
+  "suspense_mo": {
+    "_nota": "Decision D6: renglon propio permanente, en MXN, nunca repartido entre proyectos.",
+    "analytic_id": 3106,
+    "moneda": "MXN"
+  },
+
+  "plan_equivocado": {
+    "_nota": "Decision D5: se EXHIBEN, no se corrigen. Se leen con active in [true,false] porque tres de las cuatro estan archivadas y sin ese filtro solo vuelve una.",
+    "plan_correcto_por_empresa": { "1": 1, "6": 18 },
+    "analiticas_conocidas": [3033, 3037, 3035, 3062]
+  },
+
+  "empresas": {
+    "_nota": "Para la bandera de subsidio: gasto pagado por una empresa distinta a la del proyecto.",
+    "1": { "nombre": "FTS MX", "moneda": "MXN" },
+    "6": { "nombre": "FTS USA", "moneda": "USD" },
+    "4": { "nombre": "YIN", "moneda": "MXN" }
+  }
+}
