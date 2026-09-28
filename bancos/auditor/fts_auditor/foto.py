@@ -75,10 +75,32 @@ def pendientes(dirf: Path):
         print(json.dumps(lista[k:k + 25]))
 
 
+def heredar(prev: Path, dirf: Path):
+    """Reusa los PDFs de una foto anterior: mismo item_id y misma huella quickXor = mismo contenido.
+    Copia el sha256 al onedrive.json nuevo y el PDF a pdf/, para no volver a bajarlo."""
+    import shutil
+    (dirf / "pdf").mkdir(exist_ok=True)
+    viejo = {f["item_id"]: f for f in json.loads((prev / "onedrive.json").read_text())["archivos"] if f.get("sha256")}
+    od = json.loads((dirf / "onedrive.json").read_text())
+    n = 0
+    for f in od["archivos"]:
+        v = viejo.get(f["item_id"])
+        if v and v.get("quickxor") and v.get("quickxor") == f.get("quickxor") and (prev / "pdf" / f"{v['sha256']}.pdf").exists():
+            f["sha256"] = v["sha256"]
+            shutil.copyfile(prev / "pdf" / f"{v['sha256']}.pdf", dirf / "pdf" / f"{v['sha256']}.pdf")
+            n += 1
+    (dirf / "onedrive.json").write_text(json.dumps(od, ensure_ascii=False))
+    if (prev / "originales.json").exists() and not (dirf / "originales.json").exists():
+        shutil.copyfile(prev / "originales.json", dirf / "originales.json")
+    print("heredados", n)
+
+
 if __name__ == "__main__":
     a = sys.argv[1:]
     if a[0] == "pendientes":
         pendientes(Path(a[1]))
+    elif a[0] == "heredar":
+        heredar(Path(a[1]), Path(a[2]))
     else:
         dirf = Path(a[2]); dirf.mkdir(parents=True, exist_ok=True)
         {"base": base, "onedrive": onedrive, "pdfs": pdfs}[a[0]](a[1], dirf)

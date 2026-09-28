@@ -18,7 +18,8 @@ Prohibido el conector de Microsoft 365: Graph sólo vía los workflows de n8n.
 2. `execute_workflow wMR2SG7Hzjm9tsLP` (trigger `Auditor (entrada)`, body `{"accion":"foto"}`) y
    `get_workflow_execution` con `includeData` y `nodeNames ["Postgres - Leer base (bancos_auditor)","Code - Inventario OneDrive"]`
    → el resultado se guarda en un archivo. `cd bancos/auditor && python -m fts_auditor.foto base <archivo> F && python -m fts_auditor.foto onedrive <archivo> F`.
-3. `python -m fts_auditor.foto pendientes F` imprime lotes; por cada lote `execute_workflow` con body
+3. `python -m fts_auditor.foto heredar <F anterior> F` reusa los PDFs de la foto previa (mismo item_id y quickXor);
+   después `python -m fts_auditor.foto pendientes F` imprime lotes; por cada lote `execute_workflow` con body
    `{"accion":"bajar","drive_id":…,"ids":[…]}` (hasta 5) y `python -m fts_auditor.foto pdfs <archivo> F`. **Nunca más de 5 por llamada**:
    más de ~4 MB en una respuesta tumba la sesión MCP.
 4. Salud de n8n: `search_workflows query "fts_bancos"` → escribir `F/n8n.json` con
