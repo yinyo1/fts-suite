@@ -21,6 +21,21 @@ número a los 3 grupos.
 Esta noche la capa de permisos no me dejó desplegar dos servicios ni ponerle contraseña a los
 roles de la base (DECISIONES-NOCHE N5). Por eso quedaron **preparados, sin aplicar**:
 
+0. **Antes del Deploy, actualiza dos variables del mantenimiento** (cambio de la segunda noche,
+   DECISIONES N29). El script que quedó preparado es el viejo. En cuanto Evolution crea sus tablas,
+   ese script o falla el respaldo (sin permiso sobre `memoria_pasarela`) o mete al bucket las llaves
+   de sesión de WhatsApp. El corregido las excluye.
+   Railway → `memoria-mantenimiento` (staged) → Variables:
+   - `MANT_SCRIPT_URL` = `https://raw.githubusercontent.com/yinyo1/fts-suite/9f4ae9680a3717eb24ebbf93654622ec10202de1/whatsapp/mantenimiento/mantenimiento.sh`
+   - `MANT_SCRIPT_SHA256` = `cce196eeb084566cd02e608100ab10ad07b30b93b3499563edc3f50932448320`
+
+   Opcional, y recomendado: el receptor `-3` (fechas más estrictas, 422 en vez de 500 para eventos
+   sin partición). Railway → `memoria-receptor` → Variables:
+   - `RECEPTOR_URL` = `https://raw.githubusercontent.com/yinyo1/fts-suite/9f4ae9680a3717eb24ebbf93654622ec10202de1/whatsapp/receptor/dist/receptor.js`
+   - `RECEPTOR_SHA256` = `1f18ed1ea108793e1fedbdcd86b69c1fe31ce93453081bbb3e539afbc55e52db`
+
+   El receptor `-2` que corre hoy **ya funciona** con la base: la captura rota por `memoria_0006` se
+   arregló en la base con `memoria_0007` (N24).
 1. Railway → proyecto **cheerful-comfort** → entorno **production**. Arriba aparece el aviso de
    cambios preparados (staged).
 2. Revisa que sean **solo** estos dos servicios nuevos (58 cambios, ninguno destructivo):
@@ -123,7 +138,7 @@ La pasarela **no tiene dominio público**, y está bien así. Para escanear el Q
 
 Manda un mensaje de texto y una foto en el grupo de proyecto. En n8n, corre **`memoria/pruebas`**:
 
-- La batería de motores debe dar **19/19** (desde `memoria_0006` ya no la ensucian los datos reales ni los de la autoprueba).
+- La batería de motores debe dar **34/34** (desde `memoria_0006` ya no la ensucian los datos reales ni los de la autoprueba; `memoria_0007` sumó 15 casos).
 - `eventos_total` debe subir.
 - `senales` debe marcar `respaldo_ultimo: ok`.
 
@@ -136,6 +151,9 @@ Manda un mensaje de texto y una foto en el grupo de proyecto. En n8n, corre **`m
 | N12 | Crear en n8n las credenciales Postgres por rol (`memoria_motor`, `memoria_admin`) con las contraseñas de `memoria-mantenimiento`, y cambiarlas en los workflows `memoria/*` |
 | P6 | Registrar el módulo en la suite y dar los scopes `memoria:admin` y `memoria:aprobar` en `suite_usuarios` |
 | D5 | Abrir Azure para la copia fuera de Railway y el frío. Hasta entonces el video original vive en `frio/` del mismo bucket |
+| D10 | Elegir el par del A/B y el presupuesto (`D10-PROVEEDORES.md` §7). Recomendación: voz gpt-4o-transcribe contra Gemini 2.5 Flash; fotos Claude Haiku 4.5 contra Gemini 2.5 Flash; ≈ $26/mes. Confirmar antes los precios marcados «no verificado» |
+| R7 | Autorizar (o no) las reglas de ciclo de vida del bucket de respaldos (`RESPALDOS-PODA.md`, camino A). Hasta entonces el bucket crece sin poda |
+| — | Histórico: cuando un grupo esté aprobado, cargar su exportación con `CARGA-HISTORICO.md` (primero en simulado) |
 | — | Motores: **siguen inactivos** hasta resolver la capacidad de n8n (`CAPACIDAD-N8N.md`) |
 
 ## ⚠️ Al mergear el PR #327

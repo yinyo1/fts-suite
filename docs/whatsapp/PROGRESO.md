@@ -27,5 +27,21 @@ Inicio: 2026-09-28 07:08 UTC (01:08 CST). Límite: 06:00 CST.
 | Revisión adversarial | **hecho, en vivo** | 14 hallazgos. `memoria_0006` aplicada (ejecución 116404); batería **19/19** en vivo (116405), residuos 0; receptor `receptor-2026.09.28-2` desplegado; mantenimiento corregido (preparado). N20/N21 |
 | Cierre | **hecho** | comentario final en #328; PR #327 sin mergear |
 
+## Continuación nocturna (02:40–06:00 CST)
+
+| tarea | estado | nota |
+|---|---|---|
+| Paso 0 auditoría | **hecho** | bitácora 0001–0006 con sus sha256 (ejecución 116418), 10 workflows inactivos, patch `d341b8c9` en STAGED (58 cambios) |
+| R1 segunda revisión | **hecho** | 15 hallazgos medidos en PG 17.10 local (N22). El más grave: **0006 dejaba la captura caída** (N24). Correcciones en `memoria_0007`, receptor `-3` (repo) y mantenimiento (repo); lo no aplicado en N28 |
+| R2 evidencia para comercial | **hecho, en vivo** | `api_evidencia_so/lead` (sólo lo publicable, sin teléfonos), CONTRATOS §3; 7 casos |
+| R3 reporte de avance y acta | **hecho, en vivo (simulado)** | motor `avance`, workflow `memoria/motor-avance` (`w3enXBwj8fUL7FtP`, inactivo, corrida 116453); 6 casos |
+| `memoria_0007` | **aplicada en vivo** | ejecución **116451**, sha256 `ca0ad3ed…`; batería **34/34** en vivo (116452), residuos 0 |
+| R4 cargador del histórico | **hecho** | `whatsapp/historico/cargador.ts` + `zip.ts`, 8 pruebas; e2e contra receptor + PG17 (8 nuevos + 2 ruido; 2.ª vez 8 duplicados); CARGA-HISTORICO.md |
+| R5 servicio de derivados | **hecho, sin desplegar** | `whatsapp/derivados/` + Dockerfile; 6/6 con ffmpeg y PG17 |
+| R6 D10 | **hecho** | D10-PROVEEDORES.md: ≈ $26/mes y ≈ $195 el histórico; 7 de 12 precios **no verificados** (red bloqueada) |
+| R7 poda | **hecho (simulado)** | `poda.ts` 4/4; RESPALDOS-PODA.md con reglas de ciclo de vida por prefijo |
+| R8 CI | **hecho** | `.github/workflows/memoria.yml` + `whatsapp/ci/correr.sh`, verde en local |
+| R9 cierre | ver #328 | |
+
 ## Para retomar si se reinicia el contexto
 - Leer esta tabla, `DECISIONES-NOCHE.md` y el último comentario de #328.

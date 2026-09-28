@@ -1,0 +1,51 @@
+# CI del frente memoria (#328). Sin secretos reales: la base es efímera y las
+# contraseñas son sintéticas, válidas sólo dentro de este job.
+name: memoria
+
+on:
+  pull_request:
+    paths:
+      - "whatsapp/**"
+      - "db/migrations/memoria/**"
+      - ".github/workflows/memoria.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: memoria-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: fts_admin
+          POSTGRES_PASSWORD: ci-solo-prueba
+          POSTGRES_DB: fts_suite
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U fts_admin -d fts_suite"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: fts_admin
+      PGPASSWORD: ci-solo-prueba
+      PGDATABASE: fts_suite
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.11"     # la misma con la que se construyó dist/receptor.js
+      - name: Herramientas (psql y ffmpeg)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client ffmpeg >/dev/null
+          psql --version && ffmpeg -version | head -1
+      - name: Migraciones, batería, pruebas y autoprueba del receptor
+        run: sh whatsapp/ci/correr.sh
