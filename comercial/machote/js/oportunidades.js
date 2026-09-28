@@ -149,7 +149,15 @@
 
   /** Las candidatas para ESTE machote: por cliente y por parecido de nombre.
    *  La decisión de a quién se parece la toma el SERVIDOR, que es el que tiene
-   *  el catálogo; aquí sólo se pintan. */
+   *  el catálogo; aquí sólo se pintan.
+   *
+   *  ⚠️ Medido la noche que se construyó esto, y casi se cuela: **los leads de
+   *  Odoo apuntan a CONTACTOS, no a la empresa**, y el machote guarda la
+   *  EMPRESA (`comercial/clientes` sólo devuelve `is_company`). Buscando por
+   *  igualdad, un cliente con 86 oportunidades vivas devolvía 37 — las otras 49
+   *  cuelgan de sus contactos—. El servidor usa `child_of`, que trae la empresa
+   *  y sus contactos. Se apunta aquí porque el vacío se habría leído como
+   *  «ninguna se parece» y nadie lo habría cuestionado (CLAUDE.md §20 #13). */
   function candidatas(m) {
     if (!m) return Promise.resolve({ ok: true, candidatas: [] });
     return postear({
@@ -328,9 +336,14 @@
           '<div id="opCandsCuerpo" class="tiny nota">Buscando en Odoo…</div>' +
         '</div>' +
 
-        '<label class="op-l">Buscar otra<br>' +
+        /* El texto dice lo que la búsqueda hace DE VERDAD: casa por el nombre de
+         * la oportunidad, no por el del cliente. Prometer «o del cliente» y
+         * devolver vacío es la peor combinación: quien busque «Nalco» va a
+         * concluir que ese cliente no tiene ninguna. Por cliente está el bloque
+         * de candidatas, que es el camino bueno. */
+        '<label class="op-l">Buscar por nombre de la oportunidad<br>' +
           '<input id="opBuscar" class="cel" autocomplete="off" ' +
-          'placeholder="Nombre de la oportunidad o del cliente…">' +
+          'placeholder="Parte del nombre de la oportunidad…">' +
           '<span id="opEstado" class="tiny nota">Escribe al menos dos letras.</span></label>' +
         '<div id="opLista" class="op-lista"></div>' +
 

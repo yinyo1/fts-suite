@@ -1,8 +1,8 @@
 /* ═══ Machote · los beneficiarios de comisión (V1.44) ═════════════════════
  *
  * Hasta la V1.43 los nombres de la tabla de comisiones eran **texto libre**, y
- * los cuatro que traía la plantilla salían de una hoja de Excel de hace años:
- * `ALDO`, `ANGEL`, `DIEGO`, `MONTY`. Medido esta noche contra Odoo:
+ * los cuatro que traía la plantilla salían de una hoja de Excel de hace años.
+ * Medido contra Odoo la noche que se construyó esto:
  *
  *   · de esos cuatro, **tres ya no están en la empresa** (no aparecen en el
  *     padrón de empleados activos de la compañía 1);
@@ -11,9 +11,9 @@
  *     de memoria cada vez.
  *
  * El problema de fondo no es que los nombres estén viejos: es que un NOMBRE no
- * es una llave. «MONTY» no se puede casar con una cuenta analítica sin que
- * alguien sepa que Monty es Montalvo, y ese saber no está en ninguna parte del
- * sistema. Por eso esta versión guarda **ids**:
+ * es una llave. Un apodo de tres letras no se puede casar con una cuenta
+ * analítica sin que alguien sepa de quién es ese apodo, y ese saber no está en
+ * ninguna parte del sistema. Por eso esta versión guarda **ids**:
  *
  *     { nombre: '…',            ← se conserva: es lo que se IMPRIME
  *       pct: 0.25,
@@ -409,7 +409,16 @@
       (b.cuenta_nombre ? '<span class="op-cli">' + esc(b.cuenta_nombre) + '</span>' : '') +
       '<span class="op-meta tiny nota">cuenta ' + b.cuenta_id +
         (b.pendiente === true ? ' · pendiente de autorizar' : '') +
-        (b.vigente === false ? ' · ya no está activo' : '') + '</span>' +
+        (b.vigente === false ? ' · ya no está activo' : '') +
+        /* ── V1.44 · AMBIGUO no es «se fue», y por eso se dice aparte ────────
+         * El servidor deduce a quién pertenece una cuenta del nombre de la
+         * cuenta, porque el catálogo de Odoo no tiene llave. Cuando ese nombre
+         * casa con varias personas del padrón, NO elige: lo marca. Salió
+         * probando con los datos de verdad — hay dos apellidos repetidos en el
+         * padrón, y con la primera versión de la heurística la cuenta del único
+         * vendedor de la plantilla vieja que sigue aquí desaparecía del
+         * selector. Se ofrece, y se pide confirmarlo. */
+        (b.ambiguo === true ? ' · hay varias personas con ese nombre: confírmalo' : '') + '</span>' +
       '</button>';
   }
 

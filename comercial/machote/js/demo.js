@@ -79,10 +79,21 @@
   const sec = (nombre, partidas, moArr) =>
     ({ id: uid('s'), nombre, partidas: partidas || [], mo: moArr || [] });
 
-  // REAL — el equipo de venta de la plantilla, a 0,25 cada uno.
+  /* ── V1.44 · los ejemplos ya no nombran a nadie ────────────────────────
+   * Traían cuatro apodos de personas, igual que la plantilla del motor.
+   * Se van por las MISMAS dos razones, y las dos importan:
+   *
+   *   1. Tres de los cuatro ya no están en la empresa (medido contra el padrón
+   *      de Odoo). Un ejemplo que reparte comisiones entre gente que se fue
+   *      enseña mal a quien abre la aplicación por primera vez.
+   *   2. Este repositorio es PÚBLICO y sirve Pages (§20 #7). Son apodos de
+   *      personas reales, y estaban en el código a la vista de cualquiera.
+   *
+   * Los ejemplos siguen enseñando lo que tienen que enseñar —cómo se reparte
+   * una bolsa— con etiquetas de PAPEL, no de persona. */
   const EQUIPO_PLANTILLA = () => ([
-    { nombre: 'ALDO',  pct: 0.25 }, { nombre: 'ANGEL', pct: 0.25 },
-    { nombre: 'DIEGO', pct: 0.25 }, { nombre: 'MONTY', pct: 0.25 }
+    { nombre: 'Vendedor 1', pct: 0.25 }, { nombre: 'Vendedor 2', pct: 0.25 },
+    { nombre: 'Vendedor 3', pct: 0.25 }, { nombre: 'Vendedor 4', pct: 0.25 }
   ]);
   const OPS_PLANTILLA = () => ([
     { nombre: 'SUPERVISOR FTS', pct: 0.25 }, { nombre: 'SEGURIDAD', pct: 0.25 },
@@ -215,10 +226,13 @@
       cliente: 'Nalco de México · Topo Chico', so: 'SO11738', estado: 'revision',
       analista: 'Analista de propuestas', fecha: '2026-08-22',
       comision_fts: 0.06, comision_cliente: 0.05,
+      /* Cinco renglones que NO suman 1 (0.20+0.15+0.05+0.70+0.15 = 1.25): este
+       * ejemplo existe justamente para que la regla `reparto-descuadrado`
+       * tenga algo que señalar. Los nombres son de papel desde la V1.44. */
       equipo_venta: [
-        { nombre: 'ALDO',  pct: 0.20 }, { nombre: 'ANGEL', pct: 0.15 },
-        { nombre: 'DIEGO', pct: 0.05 }, { nombre: 'MONTY', pct: 0.70 },
-        { nombre: 'Rissia', pct: 0.15 }
+        { nombre: 'Vendedor 1', pct: 0.20 }, { nombre: 'Vendedor 2', pct: 0.15 },
+        { nombre: 'Vendedor 3', pct: 0.05 }, { nombre: 'Vendedor 4', pct: 0.70 },
+        { nombre: 'Vendedor 5', pct: 0.15 }
       ],
       diagnostico: { tipo: 'servicio', respuestas: { alcance_horas: 'Por entregable', sitio: 'En sitio' } },
       secciones: [

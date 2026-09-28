@@ -255,8 +255,8 @@
    * "las comisiones no suman 100%" saltaría desde el primer segundo, y una
    * alerta que sale siempre deja de leerse. */
   /* ── V1.44 · la plantilla ya no nombra a nadie ──────────────────────────
-   * Hasta la V1.43 esto decía `ALDO`, `ANGEL`, `DIEGO`, `MONTY`: los cuatro
-   * nombres de una hoja de Excel de hace años. Medido contra el padrón de
+   * Hasta la V1.43 esto traía cuatro apodos de personas, salidos de una hoja de
+   * Excel de hace años. Medido contra el padrón de
    * empleados de Odoo la noche del 27-sep: **tres de los cuatro ya no están en
    * la empresa**, y dos personas activas que sí tienen cuenta de comisión
    * propia no aparecían en ninguna plantilla.

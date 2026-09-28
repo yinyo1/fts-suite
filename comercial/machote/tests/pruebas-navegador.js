@@ -7161,13 +7161,23 @@ await sembrarMachotes(q);
     await ir('#/m/M-1041');
     await p.waitForTimeout(400);
 
-    const nom = '[data-cel="eq:venta:0:nombre"]';
+    /* ⚠️ V1.44 · esta prueba probaba el deshacer CON LA CELDA DEL NOMBRE DE UNA
+     * COMISIÓN, y esa celda dejó de ser un campo de texto: ahora es un botón
+     * que abre el selector de beneficiarios, porque lo que se guarda es la
+     * CUENTA del plan 20 y no un nombre tecleado. La prueba se cayó con «no se
+     * encontró el campo», que es exactamente lo que tenía que pasar.
+     *
+     * Se cambia al campo de la FUENTE DEL TIPO DE CAMBIO, que sigue siendo
+     * texto libre y vive en la misma pantalla. El deshacer no tiene nada que
+     * ver con comisiones: lo que se mide es que tres pasos atrás funcionen y
+     * que el almacén los siga. */
+    const nom = '[data-cel="tc_fuente"]';
     if (!(await p.$(nom))) throw new Error('no se encontró el campo con el que probar');
     const original = await p.inputValue(nom);
     const escribir = async (v) => {
       await p.fill(nom, v); await p.dispatchEvent(nom, 'change'); await p.waitForTimeout(450);
     };
-    const enAlmacen = () => delAlmacen((m) => ((m.equipo_venta || [])[0] || {}).nombre);
+    const enAlmacen = () => delAlmacen((m) => m.tc_fuente);
 
     await escribir('PASO UNO'); await escribir('PASO DOS'); await escribir('PASO TRES');
 
@@ -8415,7 +8425,7 @@ await sembrarMachotes(q);
             machotes:[{ id:'M-NUEVO', nombre:'Recién creada', cliente:'ZZ', moneda:'MXN',
               reparto:{ venta:0.73, operaciones:0.27 },
               comision_fts:0.055, comision_cliente:0, margen_deseado:0.4,
-              equipo_venta:[{ nombre:'MONTY', pct:1 }],
+              equipo_venta:[{ nombre:'Vendedor 1', pct:1 }],
               equipo_operaciones:[{ nombre:'SUPERVISOR FTS', pct:1 }],
               equipo_cliente:[{ nombre:'Contacto cliente 1', pct:1 }],
               secciones:[{ id:'s-nueva', nombre:'SECCIÓN 1', mo:[], partidas:[
@@ -9716,6 +9726,224 @@ await sembrarMachotes(q);
           if (r.medidas !== 16) malos.push(w + ': se midieron ' + r.medidas + ' celdas de la previa, no 16');
           if (!r.valores.some(v => /^16200$/.test(String(v).trim())))
             malos.push(w + ': la previa no está enseñando el importe calculado: ' + JSON.stringify(r.valores));
+        }
+      } finally { await q.close(); }
+    }
+    if (malos.length) throw new Error(malos.join(' | '));
+  });
+
+  /* ═══ V1.44 · la oportunidad de CRM y el beneficiario de comisión ═══════
+   *
+   * Lo que sólo se puede comprobar MIRANDO la pantalla: que la franja aparece,
+   * que la celda del nombre de una comisión ya no es un campo sino un botón, y
+   * que sin catálogo nada se traba. La lógica pura —de dónde sale el id, quién
+   * está vigente— vive en `pruebas-motor.js`, que corre en un segundo.
+   *
+   * ⚠️ El catálogo de oportunidades y el de beneficiarios se FINGEN, por las
+   * mismas dos razones que el de clientes: determinismo, y que el contenedor no
+   * alcanza Railway. Los nombres son inventados. */
+  const sembrarOp = async (pg, opciones) => {
+    await pg.addInitScript((cfg) => {
+      const orig = window.fetch;
+      window.fetch = function (u, o) {
+        const s = String(u);
+        if (s.indexOf('/comercial/oportunidades') >= 0) {
+          if (cfg.muerto) return Promise.reject(new Error('sin red de prueba'));
+          const cuerpo = JSON.parse((o && o.body) || '{}');
+          if (cuerpo.modo === 'candidatas') {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({
+              ok: true, modo: 'candidatas', candidatas: [
+                { id: 901, nombre: 'Cambio de bomba en planta piloto', cliente: 'Cliente Inventado',
+                  etapa: 'Cotizacion Enviada', puntos: 5, por_que: 'coincide una palabra · etapa viva' },
+                { id: 902, nombre: 'Otra cosa del mismo cliente', cliente: 'Cliente Inventado',
+                  etapa: 'Prospecto Lead', puntos: 2, por_que: 'mismo cliente' }
+              ] }) });
+          }
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, modo: 'buscar', oportunidades: [], total: 0 }) });
+        }
+        if (s.indexOf('/comercial/beneficiarios') >= 0) {
+          if (cfg.muerto) return Promise.reject(new Error('sin red de prueba'));
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, modo: 'catalogo',
+            internos: [{ cuenta_id: 1156, cuenta_nombre: '3.4 Comisiones Apellido Uno',
+                         nombre: '3.4 Comisiones Apellido Uno', tipo: 'interno', empleado_id: 8,
+                         vigente: true, pendiente: false, ambiguo: true, como: 'varios empleados casan' },
+                        { cuenta_id: 1179, cuenta_nombre: '3.1.1 Comisiones Apellido Dos',
+                          nombre: '3.1.1 Comisiones Apellido Dos', tipo: 'interno', empleado_id: 97,
+                          vigente: true, pendiente: false, ambiguo: false, como: 'nombre de la cuenta contra el padron' }],
+            externos: [{ cuenta_id: 9001, cuenta_nombre: '5. Comisiones Clientes externo · Contacto Inventado',
+                         nombre: 'Contacto Inventado', tipo: 'externo', vigente: true,
+                         pendiente: true, ambiguo: false, como: 'guardado en la base' }] }) });
+        }
+        return orig(u, o);
+      };
+    }, opciones || {});
+  };
+
+  await paso('V1.44 · A · sin oportunidad: la franja lo pide y el revisador BLOQUEA', async () => {
+    await ir('#/m/M-1041');
+    await p.waitForTimeout(400);
+    if (!(await p.$('#opFranja')))
+      throw new Error('no apareció la franja de la oportunidad que falta');
+    const txt = (await p.textContent('#opFranja')).replace(/\s+/g, ' ');
+    /* El mensaje tiene que decir QUÉ falta, POR QUÉ importa y DÓNDE se
+     * arregla: un aviso que sólo dice «falta» es uno que la gente aprende a
+     * rodear. */
+    if (txt.indexOf('no se puede confirmar') < 0)
+      throw new Error('la franja no dice que bloquea la confirmación: «' + txt + '»');
+    if (!(await p.$('#opElegir'))) throw new Error('la franja no trae el botón de elegir');
+    if (await p.$('#opPastilla')) throw new Error('pinta la pastilla de ligada y NO lo está');
+
+    /* Y la regla DURA, que es lo que de verdad bloquea. Se mide con el motor de
+     * reglas dentro de la página, no leyendo el texto de la pantalla. */
+    const r = await p.evaluate(() => {
+      const m = window.MachoteApp ? null : null;   // el estado vive en el módulo
+      const doc = JSON.parse(localStorage.getItem('machotes_v1') || '[]')
+        .find(x => x.id === 'M-1041');
+      const rev = window.REGLAS.revisar(doc);
+      return { bloquea: rev.duras.some(h => h.id === 'sin-oportunidad'),
+               puede: rev.puedeConfirmar };
+    });
+    if (!r.bloquea) throw new Error('la regla dura sin-oportunidad NO saltó');
+    if (r.puede) throw new Error('dice que se puede confirmar sin oportunidad');
+    console.log('    franja + regla dura: dice qué falta, por qué importa y dónde se arregla');
+  });
+
+  await paso('V1.44 · A · las candidatas se ofrecen, y al elegir aparece la pastilla', async () => {
+    const q = await b.newPage();
+    try {
+      await sembrarGeo(q);
+      await sembrarOp(q, { muerto: false });
+      await q.goto(BASE); await q.waitForTimeout(260);
+      await q.evaluate(() => { location.hash = '#/m/M-1041'; });
+      await q.waitForTimeout(420);
+      await q.click('#opElegir'); await q.waitForTimeout(500);
+      if (!(await q.$('#opCaja'))) throw new Error('no abrió el diálogo');
+      const ops = await q.$$('#opCandsCuerpo [data-opid]');
+      if (ops.length !== 2) throw new Error('se ofrecieron ' + ops.length + ' candidatas, no 2');
+      /* La razón por la que se propone va A LA VISTA: una sugerencia que no
+       * dice por qué lo es no se puede contradecir. */
+      const meta = await q.textContent('#opCandsCuerpo [data-opid] .op-meta');
+      if (meta.indexOf('coincide') < 0)
+        throw new Error('la candidata no dice por qué se propone: «' + meta + '»');
+      await ops[0].click(); await q.waitForTimeout(500);
+      if (await q.$('#opFranja')) throw new Error('sigue pidiendo la oportunidad después de elegirla');
+      if (!(await q.$('#opPastilla'))) throw new Error('no pintó la pastilla de ligada');
+      const past = (await q.textContent('#opPastilla')).replace(/\s+/g, ' ');
+      if (past.indexOf('901') < 0) throw new Error('la pastilla no trae el id: «' + past + '»');
+      const enDoc = await q.evaluate(() => (JSON.parse(localStorage.getItem('machotes_v1') || '[]')
+        .find(x => x.id === 'M-1041') || {}).oportunidad);
+      if (!enDoc || enDoc.lead_id !== 901)
+        throw new Error('no quedó en el documento: ' + JSON.stringify(enDoc));
+      console.log('    2 candidatas con su porqué · elegida 901 · franja fuera, pastilla dentro, y en el documento');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.44 · A · sin catálogo NO se traba: se puede capturar y se dice el porqué', async () => {
+    const q = await b.newPage();
+    try {
+      await sembrarGeo(q);
+      await sembrarOp(q, { muerto: true });
+      await q.goto(BASE); await q.waitForTimeout(260);
+      await q.evaluate(() => { location.hash = '#/m/M-1041'; });
+      await q.waitForTimeout(420);
+      await q.click('#opElegir'); await q.waitForTimeout(700);
+      const cuerpo = (await q.textContent('#opCandsCuerpo')).replace(/\s+/g, ' ');
+      if (cuerpo.indexOf('No se pudo leer Odoo') < 0)
+        throw new Error('no dijo que no pudo leer Odoo: «' + cuerpo + '»');
+      /* Y lo importante: la cotización sigue viva. Sin catálogo se sigue
+       * capturando; lo único que no se puede es ligar. */
+      await q.click('#opDespues'); await q.waitForTimeout(200);
+      const cel = '[data-cel="tc_fuente"]';
+      await q.fill(cel, 'DOF del día'); await q.dispatchEvent(cel, 'change');
+      await q.waitForTimeout(400);
+      if (await q.inputValue(cel) !== 'DOF del día')
+        throw new Error('sin catálogo la captura dejó de funcionar');
+      console.log('    dice el porqué · y la captura sigue viva');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.44 · B · la celda del beneficiario es un BOTÓN y abre el selector', async () => {
+    const q = await b.newPage();
+    try {
+      await sembrarGeo(q);
+      await sembrarOp(q, { muerto: false });
+      await q.goto(BASE); await q.waitForTimeout(260);
+      await q.evaluate(() => { location.hash = '#/m/M-1041'; });
+      await q.waitForTimeout(420);
+      /* Lo que cambió de forma: donde había un input hay un botón. Se exige que
+       * el input YA NO exista, no sólo que el botón esté: si quedaran los dos,
+       * habría dos formas de escribir el mismo campo. */
+      if (await q.$('[data-cel="eq:venta:0:nombre"]'))
+        throw new Error('sigue existiendo el campo de texto del nombre de la comisión');
+      const cel = '[data-ben="eq:venta:0:nombre"]';
+      if (!(await q.$(cel))) throw new Error('no apareció la celda-botón del beneficiario');
+      /* Un renglón de la plantilla reparte dinero y no dice a quién: se marca
+       * «sin ligar», que es el estado de los 19 machotes que ya existen. */
+      const t = (await q.textContent(cel)).replace(/\s+/g, ' ');
+      if (t.indexOf('sin ligar') < 0) throw new Error('no marca el renglón como suelto: «' + t + '»');
+      await q.click(cel); await q.waitForTimeout(600);
+      if (!(await q.$('#benCaja'))) throw new Error('no abrió el selector de beneficiarios');
+      const ints = await q.$$('#benInternos [data-cuenta]');
+      const exts = await q.$$('#benExternos [data-cuenta]');
+      if (ints.length !== 2) throw new Error('internos ofrecidos: ' + ints.length + ', se esperaban 2');
+      if (exts.length !== 1) throw new Error('externos ofrecidos: ' + exts.length + ', se esperaba 1');
+      /* AMBIGUO se ve. No es «se fue» y no es «confirmado»: es una tercera cosa
+       * y la pantalla la dice con palabras, no sólo con un color. */
+      const metas = await q.$$eval('#benInternos [data-cuenta] .op-meta', ns => ns.map(n => n.textContent));
+      if (!metas.some(x => /confírmalo|confirmalo/i.test(x)))
+        throw new Error('no pide confirmar el caso ambiguo: ' + JSON.stringify(metas));
+      /* Y el externo PENDIENTE DE AUTORIZAR se anuncia antes de elegirlo. */
+      const mExt = await q.textContent('#benExternos [data-cuenta] .op-meta');
+      if (mExt.indexOf('pendiente de autorizar') < 0)
+        throw new Error('no avisa que el externo está pendiente: «' + mExt + '»');
+
+      await ints[1].click(); await q.waitForTimeout(500);
+      const t2 = (await q.textContent(cel)).replace(/\s+/g, ' ');
+      if (t2.indexOf('sin ligar') >= 0) throw new Error('después de ligar sigue diciendo «sin ligar»');
+      const guardado = await q.evaluate(() => ((JSON.parse(localStorage.getItem('machotes_v1') || '[]')
+        .find(x => x.id === 'M-1041') || {}).equipo_venta || [])[0]);
+      if (!guardado || !guardado.beneficiario || guardado.beneficiario.cuenta_id !== 1179)
+        throw new Error('no guardó la CUENTA: ' + JSON.stringify(guardado));
+      console.log('    botón en vez de campo · ambiguo y pendiente dichos con palabras · guarda la cuenta 1179');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.44 · nada desborda a 380, 760, 900 y 1280 con la franja y el selector', async () => {
+    /* Los CUATRO anchos de la regla de CLAUDE.md §20 #20, y los dos de en medio
+     * son el punto: lo que se rompe se rompe entre 721 y 980, donde una media
+     * query ya se apagó y la otra no ha entrado. */
+    const malos = [];
+    for (const w of [380, 760, 900, 1280]) {
+      const q = await b.newPage();
+      try {
+        await sembrarGeo(q);
+        await sembrarOp(q, { muerto: false });
+        await q.setViewportSize({ width: w, height: 900 });
+        await q.goto(BASE); await q.waitForTimeout(260);
+        await q.evaluate(() => { location.hash = '#/m/M-1041'; });
+        await q.waitForTimeout(420);
+        const desborde = await q.evaluate(() => {
+          const d = document.documentElement;
+          return { pagina: d.scrollWidth - d.clientWidth,
+                   franja: !!document.querySelector('#opFranja') };
+        });
+        if (desborde.pagina > 2) malos.push(w + ': la página desborda ' + desborde.pagina + 'px');
+        if (!desborde.franja) malos.push(w + ': no se ve la franja de la oportunidad');
+        /* Y el diálogo abierto, que es donde caben menos cosas. */
+        await q.click('#opElegir'); await q.waitForTimeout(600);
+        const dlg = await q.evaluate(() => {
+          const c = document.querySelector('#opCaja .caja');
+          if (!c) return null;
+          const r = c.getBoundingClientRect();
+          return { ancho: Math.round(r.width), fuera: Math.round(r.right - window.innerWidth),
+                   desborde: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+        });
+        if (!dlg) { malos.push(w + ': el diálogo no abrió'); }
+        else {
+          if (dlg.fuera > 2) malos.push(w + ': el diálogo se sale ' + dlg.fuera + 'px');
+          if (dlg.desborde > 2) malos.push(w + ': con el diálogo abierto la página desborda ' + dlg.desborde + 'px');
         }
       } finally { await q.close(); }
     }
