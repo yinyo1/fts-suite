@@ -27,6 +27,11 @@ def _corrida(**kw):
     c = Corrida(empresa="Ejemplo", ciudad="Monterrey")
     c.senal.append("amplian la subestacion de la planta, nota de 2026-07-01")
     if kw:
+        # #340: declarar la senal EXIGE fecha o declarar que no hay. Estas pruebas
+        # no son de la fecha, asi que se les pone la de la nota que el propio texto
+        # de arriba cita. Lo que NO se hace es rodear la compuerta con `sin_fecha`:
+        # eso entrenaria a rodearla.
+        kw.setdefault("fecha_senal", "2026-07-01")
         c.declarar_senal_origen(**kw)
     return c
 
@@ -531,7 +536,8 @@ def test_reevaluar_marca_que_el_puntaje_es_de_hoy(tmp_path, monkeypatch):
     from flujo.orquestador import main, _cargar_de
     _corrida().guardar(str(tmp_path / "ejemplo" / "monterrey.json"))
     main(["senal", "--empresa", "Ejemplo", "--ciudad", "Monterrey",
-          "--fuente", "prensa_industrial", "--reevaluar"])
+          "--fuente", "prensa_industrial", "--fecha-senal", "2026-07-01",
+          "--reevaluar"])
     otra = _cargar_de(str(tmp_path / "ejemplo" / "monterrey.json"))
     assert otra.senal_origen["puntaje"] is not None
     # El numero NO es el del dia de la corrida: la frescura cambio. Sin esta

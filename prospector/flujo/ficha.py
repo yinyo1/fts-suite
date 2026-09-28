@@ -436,6 +436,39 @@ def aviso_rojo(c: Corrida) -> str:
             + "".join(f"<p>{x}</p>" for x in partes) + "</div>")
 
 
+def aviso_de_senal_sin_fecha(c: Corrida) -> str:
+    """«Esta senal no tiene fecha», en lenguaje de persona. Tarea 3 de #340.
+
+    VA EN LA CAPA LIMPIA, dentro de «Por que ahora», y no en los avisos tecnicos.
+    La razon es la que #322 fijo para esta capa: el aviso tiene que servirle a quien
+    LLAMA. Y a quien llama le sirve muchisimo -- es la diferencia entre decir "vi que
+    van a ampliar la planta" con una nota de esta semana y decirlo con una de hace
+    tres anios, donde la obra ya se adjudico y el que contesta lo sabe--.
+
+    Tambien va SIN vocabulario interno: no dice «frescura», ni «FRESCURA_SIN_FECHA»,
+    ni «techo». Dice que no se sabe de cuando es y que conviene confirmarlo antes de
+    usarla como novedad.
+
+    De donde salio la necesidad: seis de las nueve senales de septiembre llegaron sin
+    fecha y nadie lo veia en la ficha. Cuando se buscaron, tres eran de mas de un
+    ano.
+    """
+    sen = c.senal_origen or {}
+    if not sen.get("fuente"):
+        return ""            # sin expediente hay otro aviso, y este sobraria
+    if sen.get("fecha_senal"):
+        return ""
+    razon = (sen.get("razon_sin_fecha") or "").strip()
+    return (
+        '<p class="hueco"><b>Esta senal no tiene fecha.</b> '
+        'No sabemos si es de este mes o de hace un ano, y eso cambia como se '
+        'menciona: con una nota reciente se habla de algo que apenas se anuncio; '
+        'con una vieja, la obra probablemente ya tiene proveedor y conviene '
+        'preguntar por la SIGUIENTE etapa en lugar de por esta.'
+        + (f' Quedo anotado por que no la hay: {html.escape(razon)}' if razon else '')
+        + ' <b>Antes de usarla como novedad, confirma la fecha de la nota.</b></p>')
+
+
 def linea_de_tiempo(c: Corrida) -> str:
     """La senal como linea de tiempo: fecha a la izquierda, hecho a la derecha.
 
@@ -978,6 +1011,7 @@ def modo_limpio(c: Corrida) -> str:
             + CARGA % ("gancho", '"..."'))
 
     tl = linea_de_tiempo(c)
+    bl_sin_fecha = aviso_de_senal_sin_fecha(c)
     bl_porque = (f'<p style="margin:0 0 12px">{html.escape(c.por_que_ahora)}</p>'
                  if c.por_que_ahora else _hueco(
                      "razon de oportunidad escrita",
@@ -1219,6 +1253,7 @@ def modo_limpio(c: Corrida) -> str:
 <div class="card">
 <h2>Por que ahora</h2>
 {bl_porque}
+{bl_sin_fecha}
 {tl or '<p class="nt">Sin senal registrada en esta corrida.</p>'}
 </div>
 

@@ -71,7 +71,8 @@ def test_d1_al_completar_el_expediente_el_aviso_desaparece():
     assert any("SIN EXPEDIENTE" in a for a in c.avisos)
     ev = radar.evaluar({"texto": "amplian la subestacion", "fuente": "correo_propio"},
                        hoy=HOY)
-    c.declarar_senal_origen("correo_propio", evaluacion=ev)
+    c.declarar_senal_origen("correo_propio", fecha_senal="2026-09-01",
+                            evaluacion=ev)
     c.avisar_si_falta_el_expediente()
     assert not any("SIN EXPEDIENTE" in a for a in c.avisos)
 

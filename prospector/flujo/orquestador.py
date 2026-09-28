@@ -681,8 +681,17 @@ def main(argv=None) -> int:
                            help="el hallazgo tal cual. Si no se pasa se toma la "
                                 "primera senal registrada de la corrida")
             s.add_argument("--fecha-senal", default="", dest="fecha_senal",
-                           help="la fecha del EVENTO, no la de la consulta. El "
-                                "reloj de caducidad arranca aqui")
+                           help="CUANDO SE SUPO, no cuando se consulto. El reloj "
+                                "de caducidad arranca aqui y la frescura la mide. "
+                                "Se acepta AAAA-MM-DD, AAAA-MM o AAAA: la prensa "
+                                "fecha al mes y esa es una precision valida")
+            s.add_argument("--sin-fecha", action="store_true", dest="sin_fecha",
+                           help="declara que NO hay fecha. Exige --razon-sin-fecha. "
+                                "La ficha lo va a decir en voz alta y el techo de "
+                                "la cuenta queda marcado como NO alcanzable")
+            s.add_argument("--razon-sin-fecha", default="", dest="razon_sin_fecha",
+                           help="por que no hay fecha. «No la busque» y «la nota no "
+                                "la trae» son cosas distintas")
             s.add_argument("--fecha-de-cierre", default="", dest="fecha_de_cierre",
                            help="solo convocatorias: el plazo no lo decide FTS")
             s.add_argument("--fecha-del-evento", default="", dest="fecha_del_evento",
@@ -1207,7 +1216,8 @@ def main(argv=None) -> int:
                 a.fuente, texto=texto, tipo=a.tipo,
                 fecha_senal=a.fecha_senal, evaluacion=ev,
                 fecha_de_cierre=a.fecha_de_cierre,
-                fecha_del_evento=a.fecha_del_evento)
+                fecha_del_evento=a.fecha_del_evento,
+                sin_fecha=a.sin_fecha, razon_sin_fecha=a.razon_sin_fecha)
             if ev is not None:
                 # QUEDA ESCRITO que el puntaje es de hoy y no del dia de la
                 # corrida. Sin esta linea, el lazo 1 usaria un numero reevaluado
@@ -1225,7 +1235,14 @@ def main(argv=None) -> int:
             print(f"\n  ✓ SENAL DECLARADA para {c.llave}")
             print(f"     fuente:  {sen['fuente']}")
             print(f"     tipo:    {sen['tipo']}  ({sen['tipo_de_donde']})")
-            print(f"     fecha:   {sen['fecha_senal'] or 'SIN FECHA'}")
+            if sen["fecha_senal"]:
+                print(f"     fecha:   {sen['fecha_senal']}  "
+                      f"(precision de {sen['fecha_precision']})")
+            else:
+                print(f"     fecha:   SIN FECHA, declarado: "
+                      f"{sen['razon_sin_fecha']}")
+                print("              la frescura vale el minimo (2 de 25) y el "
+                      "TECHO de esta cuenta NO ES ALCANZABLE")
             if sen.get("puntaje") is not None:
                 print(f"     puntaje: {sen['puntaje']} ({sen['veredicto']})"
                       + ("  ← reevaluado HOY, no es el del dia de la corrida"

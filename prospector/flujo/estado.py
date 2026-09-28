@@ -916,7 +916,9 @@ class Corrida:
                               tipo: str = "", fecha_senal: str = "",
                               evaluacion: dict | None = None,
                               fecha_de_cierre: str = "",
-                              fecha_del_evento: str = "") -> dict:
+                              fecha_del_evento: str = "",
+                              sin_fecha: bool = False,
+                              razon_sin_fecha: str = "") -> dict:
         """El expediente de la senal que origino esta cuenta.
 
         Lo llena el radar cuando siembra -- pasandole su `evaluar()` completo-- o
@@ -926,6 +928,18 @@ class Corrida:
         fuente sin peso declarado vale CERO y no un promedio; dejar entrar aqui
         una fuente que el evaluador no conoce produciria una tarjeta cuyo lazo de
         aprendizaje mueve un peso que no existe.
+
+        Y TAMPOCO SE ACEPTA UNA SENAL SIN FECHA EN SILENCIO (#340). Seis de las
+        nueve senales documentadas llegaron sin fecha, y el contrato de M12 -- el
+        modulo que las produjo-- dice literalmente que su salida es *"el gancho:
+        proyecto, monto, FECHA, ventana"*. La fecha estaba en el contrato y no
+        llegaba al registro, y al buscarla despues se encontro que tres eran de hace
+        mas de un ano: el respaldo de `FRESCURA_SIN_FECHA = 2` les habia estado
+        dando MAS puntos que la verdad.
+
+        Asi que o viene la fecha, o el operador declara `sin_fecha=True` CON RAZON
+        escrita. Las dos cosas quedan en el expediente y la ficha las dice en
+        lenguaje de persona. Dejar que pase en silencio es como llegamos aqui.
         """
         from .radar import FUERZA_DE_FUENTE, tipo_de_senal_de
         f = (fuente or "").strip().lower().replace(" ", "_")
@@ -940,13 +954,44 @@ class Corrida:
                 + ", ".join(sorted(FUERZA_DE_FUENTE))
                 + ". Una fuente que el evaluador no conoce puntua CERO y su "
                   "leccion no tiene donde aterrizar.")
+        fs = (fecha_senal or "").strip()
+        if fs and _precision_de_fecha(fs) is None:
+            raise CompuertaCerrada(
+                f"La fecha de senal '{fs}' no se puede leer. Se aceptan "
+                "AAAA-MM-DD, AAAA-MM y AAAA -- la prensa fecha al mes, y eso es "
+                "una precision valida que se declara--. Una fecha ilegible es PEOR "
+                "que no tener fecha: el defecto B5 de #340 hacia que el reloj de "
+                "caducidad arrancara en HOY sin decirlo, y una senal de nov-2023 "
+                "salia caducando en enero de 2027.")
+        if not fs and not sin_fecha:
+            raise CompuertaCerrada(
+                "Declarar la senal EXIGE fecha, o decir en voz alta que no la hay.\n"
+                "  · con fecha:  --fecha-senal AAAA-MM-DD (o AAAA-MM, o AAAA)\n"
+                "  · sin fecha:  --sin-fecha --razon-sin-fecha '<por que no la hay>'\n"
+                "POR QUE SE EXIGE: sin fecha la frescura vale el minimo (2 de 25) y "
+                "el TECHO de la cuenta no es alcanzable -- no se puede saber si la "
+                "senal es de este mes o de hace tres anios--. Seis de las nueve "
+                "senales de septiembre llegaron asi, y cuando se buscaron las fechas "
+                "tres resultaron de hace mas de un ano: el respaldo les estaba dando "
+                "mas puntos que la verdad.")
+        if not fs and sin_fecha and not (razon_sin_fecha or "").strip():
+            raise CompuertaCerrada(
+                "--sin-fecha EXIGE --razon-sin-fecha. «No la busque» y «la nota no "
+                "la trae» son dos cosas distintas, y la segunda es un dato: la "
+                "corrida de Pesqueria escribio «nota de prensa sobre inversion, sin "
+                "fecha en el registro» y por eso hoy se sabe que no fue descuido.")
         tipo_final, de_donde = tipo_de_senal_de(f, tipo)
         ev = dict(evaluacion or {})
         self.senal_origen = {
             "fuente": f,
             "tipo": tipo_final,
             "tipo_de_donde": de_donde,
-            "fecha_senal": (fecha_senal or "").strip(),
+            "fecha_senal": fs,
+            # La PRECISION con la que se supo. La prensa fecha al mes, y una fecha
+            # al mes no deberia poder ganarle puntos a una que se sabe al dia.
+            "fecha_precision": _precision_de_fecha(fs) if fs else None,
+            "sin_fecha_declarada": bool(not fs and sin_fecha),
+            "razon_sin_fecha": (razon_sin_fecha or "").strip() if not fs else "",
             "fecha_de_cierre": (fecha_de_cierre or "").strip(),
             "fecha_del_evento": (fecha_del_evento or "").strip(),
             "texto": (texto or "").strip(),
@@ -967,6 +1012,13 @@ class Corrida:
                 "puede contar conversiones por fuente, y NO puede corregir la "
                 "curva de frescura ni los pesos por familia, porque no sabe con "
                 "que numero se decidio gastar las consultas.")
+        if self.senal_origen["sin_fecha_declarada"]:
+            self.avisos.append(
+                MARCA_SENAL + "SENAL SIN FECHA, declarado: "
+                + self.senal_origen["razon_sin_fecha"]
+                + " — la frescura vale el minimo (2 de 25) y el TECHO de esta "
+                  "cuenta NO ES ALCANZABLE: mientras no se sepa la fecha, no se "
+                  "puede decir que pasaria con la senal fresca.")
         if tipo_final == "convocatoria_abierta" and not self.senal_origen["fecha_de_cierre"]:
             self.avisos.append(
                 MARCA_SENAL + "Convocatoria SIN fecha de cierre. El plazo de una "
@@ -1743,3 +1795,24 @@ def comparar_subida(local: dict, sha256_subido: str = "",
             "`--sha256` con el hash que devolvio el conector, o al menos "
             "`--bytes`.")
     return verificacion, avisos
+
+
+def _precision_de_fecha(bruto) -> str | None:
+    """'dia' | 'mes' | 'anio', o None si no es una fecha que se pueda leer.
+
+    Las tres precisiones son validas porque el dato real las trae: «anuncio
+    17-jul-2025» es al dia, «anunciada nov-2023» es al mes. Lo que NO es valido es
+    una cadena que nadie pueda interpretar, y por eso esto devuelve None en vez de
+    adivinar: el defecto B5 de #340 nacio justo de un `except` que se tragaba la
+    fecha ilegible y arrancaba el reloj en hoy.
+    """
+    s = str(bruto or "").strip()
+    for forma, largo, nombre in (("%Y-%m-%d", 10, "dia"), ("%Y-%m", 7, "mes"),
+                                 ("%Y", 4, "anio")):
+        if len(s) == largo:
+            try:
+                datetime.strptime(s, forma)
+                return nombre
+            except ValueError:
+                return None
+    return None
