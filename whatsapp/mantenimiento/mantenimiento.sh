@@ -111,5 +111,35 @@ INSERT INTO memoria.respaldo_prueba (respaldo_id, ok, verificaciones, duracion_s
 VALUES (nullif(:'rid','')::bigint, :'ok'::boolean, :'ver'::jsonb, :'dur'::int);
 SQL
 rm -f "$DUMP" /tmp/bajado.dump
+
+# ── 5. Pasarela: asegurar la instancia de Evolution (NUNCA la vincula, NUNCA envía) ──
+# Sólo crea/ajusta la instancia 'fts-memoria' y su webhook hacia el receptor por
+# red privada. El QR lo escanea una persona (docs/whatsapp/VINCULAR-MANANA.md).
+if [ -n "${EVO_URL:-}" ] && [ -n "${EVO_API_KEY:-}" ] && [ -n "${MEMORIA_HMAC_SECRET:-}" ]; then
+  apk add --no-cache openssl >/dev/null 2>&1 || true
+  TOKEN=$(printf '%s' evolution-webhook | openssl dgst -sha256 -hmac "$MEMORIA_HMAC_SECRET" | awk '{print $NF}' | cut -c1-40)
+  WH="${RECEPTOR_URL:-http://memoria-receptor.railway.internal:8080}/v1/evolution/${TOKEN}"
+  INST=fts-memoria
+  EVENTOS='["MESSAGES_UPSERT","GROUPS_UPSERT","GROUP_UPDATE"]'
+  existe=$(curl -sS -m 20 -H "apikey: $EVO_API_KEY" "$EVO_URL/instance/fetchInstances?instanceName=$INST" 2>/dev/null | grep -c "\"$INST\"")
+  if [ "${existe:-0}" = "0" ]; then
+    code=$(curl -sS -m 30 -o /tmp/evo.out -w '%{http_code}' -X POST -H "apikey: $EVO_API_KEY" -H 'content-type: application/json' "$EVO_URL/instance/create" \
+      -d "{\"instanceName\":\"$INST\",\"integration\":\"WHATSAPP-BAILEYS\",\"qrcode\":false,
+           \"groupsIgnore\":false,\"rejectCall\":false,\"alwaysOnline\":false,\"readMessages\":false,\"readStatus\":false,\"syncFullHistory\":false,
+           \"webhook\":{\"url\":\"$WH\",\"byEvents\":false,\"base64\":true,\"events\":$EVENTOS}}")
+    log "pasarela: instancia creada http=$code"
+  else
+    code=$(curl -sS -m 30 -o /tmp/evo.out -w '%{http_code}' -X POST -H "apikey: $EVO_API_KEY" -H 'content-type: application/json' "$EVO_URL/webhook/set/$INST" \
+      -d "{\"webhook\":{\"enabled\":true,\"url\":\"$WH\",\"byEvents\":false,\"base64\":true,\"events\":$EVENTOS}}")
+    code2=$(curl -sS -m 30 -o /dev/null -w '%{http_code}' -X POST -H "apikey: $EVO_API_KEY" -H 'content-type: application/json' "$EVO_URL/settings/set/$INST" \
+      -d '{"rejectCall":false,"groupsIgnore":false,"alwaysOnline":false,"readMessages":false,"readStatus":false,"syncFullHistory":false}')
+    log "pasarela: instancia ya existía; webhook http=$code settings http=$code2"
+  fi
+  estado=$(curl -sS -m 20 -H "apikey: $EVO_API_KEY" "$EVO_URL/instance/connectionState/$INST" 2>/dev/null | grep -o '"state":"[a-z]*"')
+  log "pasarela: estado de conexión ${estado:-desconocido} (esperado antes del QR: close/connecting)"
+else
+  log "pasarela: sin EVO_URL/EVO_API_KEY, se omite"
+fi
+
 log "fin: respaldo=$ok_dump restauracion=$ok_rest"
 [ "$ok_dump" = "true" ] && [ "$ok_rest" = "true" ]
