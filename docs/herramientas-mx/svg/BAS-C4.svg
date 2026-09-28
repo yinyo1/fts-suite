@@ -9,18 +9,79 @@
 <line x1="26" y1="46" x2="38" y2="46" stroke="#333"/><line x1="26" y1="364" x2="38" y2="364" stroke="#333"/>
 <text x="28" y="205.0" font-size="11" text-anchor="middle" transform="rotate(-90 28 205.0)">318 mm</text>
 <text x="253.0" y="378" font-size="10" text-anchor="middle" fill="#555">FRENTE DEL CAJON</text>
-<rect x="52" y="52" width="200" height="280" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
-<text x="152.0" y="189.8" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C4-01 R</text>
-<text x="152.0" y="203.0" font-size="9.3" text-anchor="middle">Matraca 3/8 + dados (juego Husky P, </text>
-<text x="54" y="330" font-size="7.7" fill="#333">280x200x45</text>
-<rect x="264" y="52" width="175" height="245" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
-<text x="351.5" y="172.3" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C4-02 R</text>
-<text x="351.5" y="185.5" font-size="9.3" text-anchor="middle">Juego 7 llaves combinadas matra</text>
-<text x="266" y="295" font-size="7.7" fill="#333">245x175x45</text>
-<rect x="264" y="309" width="190" height="30" rx="4" fill="#FFE08A" stroke="#111" stroke-width="1.2"/>
-<text x="359.0" y="322.125" font-size="9.4" text-anchor="middle" font-weight="bold">FTS-BAS-01-C4-03</text>
-<text x="359.0" y="333.375" font-size="8.0" text-anchor="middle">Desarmador aislado PH1 x 80 (32101)</text>
+<rect x="337.0" y="52" width="42.0" height="240.0" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
+<text x="358.0" y="170.8" font-size="6.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C4-01 R</text>
+<text x="358.0" y="178.0" font-size="5.1" text-anchor="middle">Matraca rotati</text>
+<text x="339.0" y="290.0" font-size="5.0" fill="#333">240x42x34</text>
+<rect x="58" y="52" width="175.0" height="245.0" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
+<text x="145.5" y="172.3" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C4-02 R</text>
+<text x="145.5" y="185.5" font-size="9.3" text-anchor="middle">Juego 7 llaves combinadas matra</text>
+<text x="60" y="295.0" font-size="7.7" fill="#333">245x175x45</text>
+<rect x="391.0" y="52" width="30.0" height="190.0" rx="4" fill="#FFE08A" stroke="#111" stroke-width="1.2"/>
+<text x="406.0" y="145.8" font-size="6.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C4-03 R</text>
+<text x="406.0" y="153.0" font-size="5.1" text-anchor="middle">Desarmador</text>
+<text x="393.0" y="240.0" font-size="5.0" fill="#333">190x30x30</text>
+<rect x="245.0" y="52" width="80.0" height="230.0" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
+<circle cx="262.0" cy="265.0" r="17.0" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="262.0" y="267.0" font-size="7.0" text-anchor="middle" fill="#333">01</text>
+<circle cx="262.0" cy="230.5" r="14.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="262.0" y="232.5" font-size="7.0" text-anchor="middle" fill="#333">02</text>
+<circle cx="262.0" cy="199.5" r="13.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="262.0" y="201.5" font-size="7.0" text-anchor="middle" fill="#333">03</text>
+<circle cx="262.0" cy="170.5" r="12.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="262.0" y="172.5" font-size="7.0" text-anchor="middle" fill="#333">04</text>
+<circle cx="262.0" cy="143.0" r="12.0" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="262.0" y="145.0" font-size="7.0" text-anchor="middle" fill="#333">05</text>
+<circle cx="262.0" cy="116.0" r="12.0" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="262.0" y="118.0" font-size="7.0" text-anchor="middle" fill="#333">06</text>
+<circle cx="262.0" cy="89.5" r="11.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="262.0" y="91.5" font-size="7.0" text-anchor="middle" fill="#333">07</text>
+<circle cx="262.0" cy="63.5" r="11.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="262.0" y="65.5" font-size="7.0" text-anchor="middle" fill="#333">08</text>
+<circle cx="293.5" cy="270.5" r="11.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="293.5" y="272.5" font-size="7.0" text-anchor="middle" fill="#333">09</text>
+<circle cx="293.5" cy="244.5" r="11.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="293.5" y="246.5" font-size="7.0" text-anchor="middle" fill="#333">10</text>
+<circle cx="293.5" cy="219.0" r="11.0" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="293.5" y="221.0" font-size="7.0" text-anchor="middle" fill="#333">11</text>
+<circle cx="293.5" cy="194.5" r="10.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="293.5" y="196.5" font-size="7.0" text-anchor="middle" fill="#333">12</text>
+<circle cx="293.5" cy="171.0" r="10.0" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="293.5" y="173.0" font-size="6.7" text-anchor="middle" fill="#333">13</text>
+<circle cx="293.5" cy="148.0" r="10.0" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="293.5" y="150.0" font-size="6.7" text-anchor="middle" fill="#333">14</text>
+<circle cx="293.5" cy="125.5" r="9.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="293.5" y="127.5" font-size="6.3" text-anchor="middle" fill="#333">15</text>
+<circle cx="293.5" cy="103.5" r="9.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="293.5" y="105.5" font-size="6.3" text-anchor="middle" fill="#333">16</text>
+<circle cx="293.5" cy="82.0" r="9.0" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="293.5" y="84.0" font-size="6.0" text-anchor="middle" fill="#333">17</text>
+<circle cx="293.5" cy="61.0" r="9.0" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="293.5" y="63.0" font-size="6.0" text-anchor="middle" fill="#333">18</text>
+<circle cx="316.5" cy="273.5" r="8.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="316.5" y="275.5" font-size="5.7" text-anchor="middle" fill="#333">19</text>
+<circle cx="316.5" cy="253.5" r="8.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="316.5" y="255.5" font-size="5.7" text-anchor="middle" fill="#333">20</text>
+<circle cx="316.5" cy="234.0" r="8.0" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="316.5" y="236.0" font-size="5.3" text-anchor="middle" fill="#333">21</text>
+<circle cx="316.5" cy="215.0" r="8.0" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="316.5" y="217.0" font-size="5.3" text-anchor="middle" fill="#333">22</text>
+<circle cx="316.5" cy="196.0" r="8.0" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="316.5" y="198.0" font-size="5.3" text-anchor="middle" fill="#333">23</text>
+<circle cx="316.5" cy="177.5" r="7.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="316.5" y="179.5" font-size="5.0" text-anchor="middle" fill="#333">24</text>
+<circle cx="316.5" cy="160.0" r="7.0" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="316.5" y="162.0" font-size="4.7" text-anchor="middle" fill="#333">25</text>
+<circle cx="316.5" cy="143.0" r="7.0" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="316.5" y="145.0" font-size="4.7" text-anchor="middle" fill="#333">26</text>
+<circle cx="316.5" cy="126.0" r="7.0" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="316.5" y="128.0" font-size="4.7" text-anchor="middle" fill="#333">27</text>
+<circle cx="316.5" cy="109.0" r="7.0" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="316.5" y="111.0" font-size="4.7" text-anchor="middle" fill="#333">28</text>
+<circle cx="316.5" cy="92.0" r="7.0" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="316.5" y="94.0" font-size="4.7" text-anchor="middle" fill="#333">29</text>
+<text x="285.0" y="290.0" font-size="7" text-anchor="middle" font-weight="bold" fill="#fff">FTS-BAS-01-C4-04 · 29 huecos</text>
 <text x="46" y="396" font-size="11" fill="#000">Modulo BASE · caja 48-22-8444 · cajon C4 · alto interior 58 mm, util 48 mm</text>
-<text x="46" y="410" font-size="11" fill="#000">Ocupacion en planta 79.4 % · peso 2.67 kg de 11 kg</text>
+<text x="46" y="410" font-size="11" fill="#000">Ocupacion en planta 58.5 % · peso 10.03 kg de 11 kg</text>
 <text x="46" y="424" font-size="11" fill="#000">Medidas no validadas: confirmar con vernier antes de imprimir</text>
 </svg>

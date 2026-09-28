@@ -10,6 +10,10 @@ Datos del fabricante (paginas de milwaukeetool.com leidas en la sesion nocturna 
   8447 y 8442: mismas medidas exteriores (catalogo de dimensiones PACKOUT 2023); peso: SUPUESTO igual al 8444.
 SUPUESTOS (parametricos, sin cota oficial): apoyos, alturas internas, masa del cajon vacio, carrera de las correderas y
 orientacion de las cajas sobre la 8420. Se corren las DOS orientaciones posibles del acople.
+
+Renders #343, bloque 1: si el diseno trae base_rodante 48-22-8410 (base plana con ruedas), la pila es 8410 + 3 cajas.
+  8410: 24.4 x 18.9 x 7.6 in (620 x 480 x 193 mm), 11 lb (5.0 kg), milwaukeetool.com. SUPUESTOS: ruedas y patas 30 mm
+  adentro del ancho y 35 mm adentro del largo; centro de gravedad de la base vacia a 100 mm del piso.
 Cargas por cajon: datos/interferencias_3d.json (herramienta del catalogo + fichas y loseta PETG).
 """
 import json, math, os
@@ -20,6 +24,9 @@ G = 9.81
 APOYO_LAT = 482 / 2 - 15          # borde lateral de apoyo (ruedas y patas 15 mm adentro del ancho de 482)
 APOYO_FRENTE = 610 / 2 - 25       # patas delanteras de la 8420, 25 mm adentro del frente
 CG_8420 = (0.0, -40.0, 220.0)     # vacia: ruedas y eje atras y abajo
+APOYO_LAT_8410 = 480 / 2 - 30     # SUPUESTO
+APOYO_FRENTE_8410 = 620 / 2 - 35  # SUPUESTO
+CG_8410 = (0.0, 0.0, 100.0)       # SUPUESTO
 Z_PISO_8420 = 60                  # piso interior del cajon grande de la 8420
 CARRERA = 318                     # correderas de extension total: el cajon sale su fondo completo
 CAJON_VACIO_KG = {'48-22-8443': 1.4, '48-22-8444': 1.3, '48-22-8447': 1.4, '48-22-8442': 1.6}
@@ -37,15 +44,20 @@ def cajones_caja(modelo, cajones):
 def pila(d, modulo_arriba=None):
     """Lista de masas puntuales [(kg, x, y, z, etiqueta, cajon_ref)] con las cajas cerradas. x = lateral, y = frente."""
     inter = {(r['modulo'], r['cajon']): r['peso']['total'] for r in json.load(open(os.path.join(BASE, 'datos', 'interferencias_3d.json')))['cajones']}
-    masas = [(13.2, *CG_8420, '8420 vacia', None)]
     base = d['modulos']['BASE']['cajas']
-    c8420 = [c for c in base if c['modelo'] == '48-22-8420'][0]
+    br = d['modulos']['BASE'].get('base_rodante', {}).get('modelo')
+    if br == '48-22-8410':
+        masas = [(d['modulos']['BASE']['base_rodante']['peso_kg'], *CG_8410, '8410 base plana', None)]
+        c8420 = {'cajones': []}; z0 = 193
+    else:
+        masas = [(13.2, *CG_8420, '8420 vacia', None)]
+        c8420 = [c for c in base if c['modelo'] == '48-22-8420'][0]; z0 = 502
     for cj in c8420['cajones']:
         zc = Z_PISO_8420 + (0 if cj['alto'] == 200 else 206) + cj['alto'] / 3
         masas.append((inter.get(('BASE', cj['n']), 0), 0, 60, zc, f"BASE C{cj['n']} (8420)", None))
-    cajas = [('BASE', c) for c in sorted([c for c in base if c['modelo'] != '48-22-8420'], key=lambda c: 0 if c['modelo'] == '48-22-8444' else 1)]
+    orden = {'48-22-8442': 0, '48-22-8444': 1}
+    cajas = [('BASE', c) for c in sorted([c for c in base if c['modelo'] != '48-22-8420'], key=lambda c: orden.get(c['modelo'], 2))]
     if modulo_arriba: cajas += [(modulo_arriba, c) for c in d['modulos'][modulo_arriba]['cajas'] if c['modelo'] != '48-22-8420']
-    z0 = 502
     for mod, c in cajas:
         m = c['modelo']; ncaj = len(c['cajones'])
         masas.append((PESO_CAJA[m] - CAJON_VACIO_KG[m] * ncaj, 0, 0, z0 + ALTO_CAJA * 0.45, f'{mod} {m} casco', None))
@@ -57,11 +69,13 @@ def pila(d, modulo_arriba=None):
         z0 += ALTO_CAJA
     return masas, z0
 
+BORDES = {'A': APOYO_LAT, 'B': APOYO_FRENTE}
+
 def evaluar(masas, abierto, orient, extra_kg=0.0):
     """orient 'A': cajas con su frente de 564 a lo largo de la 8420, los cajones abren de LADO (borde de apoyo lateral).
        orient 'B': cajas giradas, los cajones abren al FRENTE de la 8420 (borde de apoyo delantero).
        abierto: (modulo, n) del cajon abierto por completo. extra_kg: carga agregada a ese cajon (hasta su capacidad)."""
-    borde = APOYO_LAT if orient == 'A' else APOYO_FRENTE
+    borde = BORDES[orient]
     M = mx = mz = 0.0
     for kg, x, y, z, et, ref in masas:
         s = y if ref is not None else (x if orient == 'A' else y)   # coordenada en la direccion de apertura
@@ -87,6 +101,8 @@ def carga_limite(masas, abierto, orient):
 
 if __name__ == '__main__':
     d = json.load(open(os.path.join(BASE, 'diseno_carrito.json'), encoding='utf-8'))
+    BASE_ROD = d['modulos']['BASE'].get('base_rodante', {}).get('modelo', '48-22-8420')
+    if BASE_ROD == '48-22-8410': BORDES.update({'A': APOYO_LAT_8410, 'B': APOYO_FRENTE_8410})
     inter = json.load(open(os.path.join(BASE, 'datos', 'interferencias_3d.json')))['cajones']
     cap = {(r['modulo'], r['cajon']): (r['peso']['capacidad'], r['peso']['total']) for r in inter}
     casos = []
@@ -117,6 +133,6 @@ if __name__ == '__main__':
             print(peor['pila'], orient, 'alto', alto, 'peor cajon', peor['cajon_abierto'], 'real 5g', peor['carga_real']['margen_5grados_mm'],
                   'a capacidad 5g', peor['cargado_a_capacidad']['margen_5grados_mm'], 'extra', peor['kg_extra_antes_de_voltear_5grados'],
                   'cerrado 5g', cerrado['margen_5grados_mm'], 'angulo', peor['carga_real']['angulo_vuelco_grados'], 'masa', peor['carga_real']['masa_kg'], 'cg z', peor['carga_real']['cg_alto_mm'])
-    json.dump({'fecha': '2026-09-28', 'supuestos': {'apoyo_lateral_mm': APOYO_LAT, 'apoyo_frente_mm': APOYO_FRENTE, 'cg_8420_vacia': CG_8420,
+    json.dump({'fecha': '2026-09-28', 'base_rodante': BASE_ROD, 'supuestos': {'apoyo_lateral_mm': BORDES['A'], 'apoyo_frente_mm': BORDES['B'], 'cg_base_vacia': CG_8410 if BASE_ROD == '48-22-8410' else CG_8420,
                'carrera_mm': CARRERA, 'cajon_vacio_kg': CAJON_VACIO_KG, 'peso_caja_kg': PESO_CAJA, 'inclinacion_grados': INCL},
                'casos': casos}, open(os.path.join(BASE, 'datos', 'estabilidad.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)

@@ -983,7 +983,7 @@
       1
      ],
      "holgura_min_mm": 1.0,
-     "contra": "ficha FTS-BAS-01-C3-06",
+     "contra": "ficha FTS-BAS-01-C3-04",
      "chequeo": "d dedos lado 2",
      "tope_mm": 23.6,
      "envolvente": [
@@ -1013,6 +1013,88 @@
       {
        "k": "b",
        "que": "herramienta vs cajon",
+       "mm": 9.0,
+       "contra": "pared/labio"
+      },
+      {
+       "k": "b",
+       "que": "ficha vs cajon",
+       "mm": 5.0,
+       "contra": "pared/labio"
+      },
+      {
+       "k": "c",
+       "que": "herramienta vs cajon de arriba",
+       "mm": 52.4,
+       "contra": "techo (cajon de arriba)"
+      },
+      {
+       "k": "c",
+       "que": "ficha vs cajon de arriba",
+       "mm": 60.4,
+       "contra": "techo (cajon de arriba)"
+      },
+      {
+       "k": "d",
+       "que": "dedos lado 1",
+       "mm": 1.0,
+       "contra": "pared/labio"
+      },
+      {
+       "k": "d",
+       "que": "dedos lado 2",
+       "mm": 1.0,
+       "contra": "ficha FTS-BAS-01-C3-04"
+      },
+      {
+       "k": "d",
+       "que": "columna de salida",
+       "mm": 5.0,
+       "contra": "pared/labio"
+      }
+     ]
+    },
+    {
+     "activo": "FTS-BAS-01-C3-02",
+     "id": "BROCAS",
+     "desc": "Juego 15 brocas HSS 1/16-1/2 Truper (estuche)",
+     "tipo": "estuche",
+     "estado": "PASA JUSTO",
+     "rebaje_lados": [
+      0,
+      1
+     ],
+     "holgura_min_mm": 1.0,
+     "contra": "pared/labio",
+     "chequeo": "d dedos lado 1",
+     "tope_mm": 23.6,
+     "envolvente": [
+      150.0,
+      149.1,
+      20.0
+     ],
+     "checks": [
+      {
+       "k": "a",
+       "que": "herramienta vs herramienta",
+       "mm": 12.0,
+       "contra": "herr FTS-BAS-01-C3-04"
+      },
+      {
+       "k": "a",
+       "que": "herramienta vs fichas ajenas",
+       "mm": 8.0,
+       "contra": "ficha FTS-BAS-01-C3-04"
+      },
+      {
+       "k": "a",
+       "que": "herramienta vs ficha propia",
+       "mm": null,
+       "contra": "ficha propia"
+      },
+      {
+       "k": "b",
+       "que": "herramienta vs cajon",
        "mm": 6.0,
        "contra": "pared/labio"
       },
@@ -1055,23 +1137,105 @@
      ]
     },
     {
-     "activo": "FTS-BAS-01-C3-02",
-     "id": "BROCAS",
-     "desc": "Juego 15 brocas HSS 1/16-1/2 Truper (estuche)",
-     "tipo": "estuche",
+     "activo": "FTS-BAS-01-C3-03",
+     "id": "PDIAG",
+     "desc": "Pinza diagonal 7 in Husky 903465",
+     "tipo": "pinza",
      "estado": "PASA JUSTO",
      "rebaje_lados": [
       0,
       1
      ],
      "holgura_min_mm": 1.0,
-     "contra": "pared/labio",
+     "contra": "ficha FTS-BAS-01-C3-06",
      "chequeo": "d dedos lado 1",
-     "tope_mm": 23.6,
+     "tope_mm": 20.6,
      "envolvente": [
-      150.0,
-      80.0,
-      20.0
+      178.0,
+      58.0,
+      17.0
+     ],
+     "checks": [
+      {
+       "k": "a",
+       "que": "herramienta vs herramienta",
+       "mm": 12.0,
+       "contra": "herr FTS-BAS-01-C3-05"
+      },
+      {
+       "k": "a",
+       "que": "herramienta vs fichas ajenas",
+       "mm": 8.0,
+       "contra": "ficha FTS-BAS-01-C3-06"
+      },
+      {
+       "k": "a",
+       "que": "herramienta vs ficha propia",
+       "mm": null,
+       "contra": "ficha propia"
+      },
+      {
+       "k": "b",
+       "que": "herramienta vs cajon",
+       "mm": 6.0,
+       "contra": "pared/labio"
+      },
+      {
+       "k": "b",
+       "que": "ficha vs cajon",
+       "mm": 2.0,
+       "contra": "pared/labio"
+      },
+      {
+       "k": "c",
+       "que": "herramienta vs cajon de arriba",
+       "mm": 55.4,
+       "contra": "techo (cajon de arriba)"
+      },
+      {
+       "k": "c",
+       "que": "ficha vs cajon de arriba",
+       "mm": 62.2,
+       "contra": "techo (cajon de arriba)"
+      },
+      {
+       "k": "d",
+       "que": "dedos lado 1",
+       "mm": 1.0,
+       "contra": "ficha FTS-BAS-01-C3-06"
+      },
+      {
+       "k": "d",
+       "que": "dedos lado 2",
+       "mm": 13.9,
+       "contra": "pared/labio"
+      },
+      {
+       "k": "d",
+       "que": "columna de salida",
+       "mm": 2.0,
+       "contra": "pared/labio"
+      }
+     ]
+    },
+    {
+     "activo": "FTS-BAS-01-C3-04",
+     "id": "AJ8",
+     "desc": "Llave ajustable 8 in Husky 17016",
+     "tipo": "llave",
+     "estado": "PASA JUSTO",
+     "rebaje_lados": [
+      0,
+      1
+     ],
+     "holgura_min_mm": 1.0,
+     "contra": "ficha FTS-BAS-01-C3-01",
+     "chequeo": "d dedos lado 1",
+     "tope_mm": 18.6,
+     "envolvente": [
+      205.0,
+      56.0,
+      15.0
      ],
      "checks": [
       {
@@ -1095,341 +1259,13 @@
       {
        "k": "b",
        "que": "herramienta vs cajon",
-       "mm": 9.0,
+       "mm": 41.0,
        "contra": "pared/labio"
       },
       {
        "k": "b",
        "que": "ficha vs cajon",
-       "mm": 5.0,
-       "contra": "pared/labio"
-      },
-      {
-       "k": "c",
-       "que": "herramienta vs cajon de arriba",
-       "mm": 52.4,
-       "contra": "techo (cajon de arriba)"
-      },
-      {
-       "k": "c",
-       "que": "ficha vs cajon de arriba",
-       "mm": 60.4,
-       "contra": "techo (cajon de arriba)"
-      },
-      {
-       "k": "d",
-       "que": "dedos lado 1",
-       "mm": 1.0,
-       "contra": "pared/labio"
-      },
-      {
-       "k": "d",
-       "que": "dedos lado 2",
-       "mm": 40.0,
-       "contra": "ficha FTS-BAS-01-C3-06"
-      },
-      {
-       "k": "d",
-       "que": "columna de salida",
-       "mm": 5.0,
-       "contra": "pared/labio"
-      }
-     ]
-    },
-    {
-     "activo": "FTS-BAS-01-C3-03",
-     "id": "PDIAG",
-     "desc": "Pinza diagonal 7 in Husky 903465",
-     "tipo": "pinza",
-     "estado": "PASA",
-     "rebaje_lados": [
-      0,
-      1
-     ],
-     "holgura_min_mm": 8.0,
-     "contra": "ficha FTS-BAS-01-C3-04",
-     "chequeo": "a herramienta vs fichas ajenas",
-     "tope_mm": 20.6,
-     "envolvente": [
-      178.0,
-      58.0,
-      17.0
-     ],
-     "checks": [
-      {
-       "k": "a",
-       "que": "herramienta vs herramienta",
-       "mm": 12.0,
-       "contra": "herr FTS-BAS-01-C3-04"
-      },
-      {
-       "k": "a",
-       "que": "herramienta vs fichas ajenas",
-       "mm": 8.0,
-       "contra": "ficha FTS-BAS-01-C3-04"
-      },
-      {
-       "k": "a",
-       "que": "herramienta vs ficha propia",
-       "mm": null,
-       "contra": "ficha propia"
-      },
-      {
-       "k": "b",
-       "que": "herramienta vs cajon",
-       "mm": 13.0,
-       "contra": "pared/labio"
-      },
-      {
-       "k": "b",
-       "que": "ficha vs cajon",
-       "mm": 9.0,
-       "contra": "pared/labio"
-      },
-      {
-       "k": "c",
-       "que": "herramienta vs cajon de arriba",
-       "mm": 55.4,
-       "contra": "techo (cajon de arriba)"
-      },
-      {
-       "k": "c",
-       "que": "ficha vs cajon de arriba",
-       "mm": 62.2,
-       "contra": "techo (cajon de arriba)"
-      },
-      {
-       "k": "d",
-       "que": "dedos lado 1",
-       "mm": 22.0,
-       "contra": "ficha FTS-BAS-01-C3-06"
-      },
-      {
-       "k": "d",
-       "que": "dedos lado 2",
-       "mm": 67.0,
-       "contra": "ficha FTS-BAS-01-C3-04"
-      },
-      {
-       "k": "d",
-       "que": "columna de salida",
-       "mm": 9.0,
-       "contra": "pared/labio"
-      }
-     ]
-    },
-    {
-     "activo": "FTS-BAS-01-C3-04",
-     "id": "AJ8",
-     "desc": "Llave ajustable 8 in Husky 17016",
-     "tipo": "llave",
-     "estado": "PASA JUSTO",
-     "rebaje_lados": [
-      0,
-      1
-     ],
-     "holgura_min_mm": 1.0,
-     "contra": "ficha FTS-BAS-01-C3-06",
-     "chequeo": "d dedos lado 1",
-     "tope_mm": 18.6,
-     "envolvente": [
-      205.0,
-      56.0,
-      15.0
-     ],
-     "checks": [
-      {
-       "k": "a",
-       "que": "herramienta vs herramienta",
-       "mm": 12.0,
-       "contra": "herr FTS-BAS-01-C3-03"
-      },
-      {
-       "k": "a",
-       "que": "herramienta vs fichas ajenas",
-       "mm": 8.0,
-       "contra": "ficha FTS-BAS-01-C3-06"
-      },
-      {
-       "k": "a",
-       "que": "herramienta vs ficha propia",
-       "mm": null,
-       "contra": "ficha propia"
-      },
-      {
-       "k": "b",
-       "que": "herramienta vs cajon",
-       "mm": 6.0,
-       "contra": "pared/labio"
-      },
-      {
-       "k": "b",
-       "que": "ficha vs cajon",
-       "mm": 2.0,
-       "contra": "pared/labio"
-      },
-      {
-       "k": "c",
-       "que": "herramienta vs cajon de arriba",
-       "mm": 57.4,
-       "contra": "techo (cajon de arriba)"
-      },
-      {
-       "k": "c",
-       "que": "ficha vs cajon de arriba",
-       "mm": 63.4,
-       "contra": "techo (cajon de arriba)"
-      },
-      {
-       "k": "d",
-       "que": "dedos lado 1",
-       "mm": 1.0,
-       "contra": "ficha FTS-BAS-01-C3-06"
-      },
-      {
-       "k": "d",
-       "que": "dedos lado 2",
-       "mm": 1.0,
-       "contra": "ficha FTS-BAS-01-C3-05"
-      },
-      {
-       "k": "d",
-       "que": "columna de salida",
-       "mm": 2.0,
-       "contra": "pared/labio"
-      }
-     ]
-    },
-    {
-     "activo": "FTS-BAS-01-C3-05",
-     "id": "CHOF8",
-     "desc": "Pinza de chofer 8 in Truper 17301",
-     "tipo": "pinza",
-     "estado": "PASA JUSTO",
-     "rebaje_lados": [
-      0,
-      1
-     ],
-     "holgura_min_mm": 1.0,
-     "contra": "ficha FTS-BAS-01-C3-04",
-     "chequeo": "d dedos lado 1",
-     "tope_mm": 18.6,
-     "envolvente": [
-      203.0,
-      50.0,
-      15.0
-     ],
-     "checks": [
-      {
-       "k": "a",
-       "que": "herramienta vs herramienta",
-       "mm": 22.4,
-       "contra": "herr FTS-BAS-01-C3-04"
-      },
-      {
-       "k": "a",
-       "que": "herramienta vs fichas ajenas",
-       "mm": 8.0,
-       "contra": "ficha FTS-BAS-01-C3-04"
-      },
-      {
-       "k": "a",
-       "que": "herramienta vs ficha propia",
-       "mm": null,
-       "contra": "ficha propia"
-      },
-      {
-       "k": "b",
-       "que": "herramienta vs cajon",
-       "mm": 6.0,
-       "contra": "pared/labio"
-      },
-      {
-       "k": "b",
-       "que": "ficha vs cajon",
-       "mm": 2.0,
-       "contra": "pared/labio"
-      },
-      {
-       "k": "c",
-       "que": "herramienta vs cajon de arriba",
-       "mm": 57.4,
-       "contra": "techo (cajon de arriba)"
-      },
-      {
-       "k": "c",
-       "que": "ficha vs cajon de arriba",
-       "mm": 63.4,
-       "contra": "techo (cajon de arriba)"
-      },
-      {
-       "k": "d",
-       "que": "dedos lado 1",
-       "mm": 1.0,
-       "contra": "ficha FTS-BAS-01-C3-04"
-      },
-      {
-       "k": "d",
-       "que": "dedos lado 2",
-       "mm": 23.0,
-       "contra": "pared/labio"
-      },
-      {
-       "k": "d",
-       "que": "columna de salida",
-       "mm": 2.0,
-       "contra": "pared/labio"
-      }
-     ]
-    },
-    {
-     "activo": "FTS-BAS-01-C3-06",
-     "id": "PELEC",
-     "desc": "Pinza de electricista 9 in Husky 709195",
-     "tipo": "pinza",
-     "estado": "PASA JUSTO",
-     "rebaje_lados": [
-      0,
-      1
-     ],
-     "holgura_min_mm": 1.0,
-     "contra": "ficha FTS-BAS-01-C3-01",
-     "chequeo": "d dedos lado 1",
-     "tope_mm": 18.6,
-     "envolvente": [
-      250.0,
-      50.0,
-      15.0
-     ],
-     "checks": [
-      {
-       "k": "a",
-       "que": "herramienta vs herramienta",
-       "mm": 12.7,
-       "contra": "herr FTS-BAS-01-C3-02"
-      },
-      {
-       "k": "a",
-       "que": "herramienta vs fichas ajenas",
-       "mm": 8.0,
-       "contra": "ficha FTS-BAS-01-C3-03"
-      },
-      {
-       "k": "a",
-       "que": "herramienta vs ficha propia",
-       "mm": null,
-       "contra": "ficha propia"
-      },
-      {
-       "k": "b",
-       "que": "herramienta vs cajon",
-       "mm": 6.0,
-       "contra": "pared/labio"
-      },
-      {
-       "k": "b",
-       "que": "ficha vs cajon",
-       "mm": 2.0,
+       "mm": 37.0,
        "contra": "pared/labio"
       },
       {
@@ -1453,67 +1289,130 @@
       {
        "k": "d",
        "que": "dedos lado 2",
-       "mm": 1.0,
-       "contra": "ficha FTS-BAS-01-C3-04"
+       "mm": 2.1,
+       "contra": "ficha FTS-BAS-01-C3-06"
       },
       {
        "k": "d",
        "que": "columna de salida",
-       "mm": 2.0,
-       "contra": "pared/labio"
+       "mm": 12.0,
+       "contra": "herr FTS-BAS-01-C3-01"
       }
      ]
-    }
-   ],
-   "peso": {
-    "herramienta": 1.92,
-    "fichas_petg": 0.26,
-    "loseta_petg": 0.38,
-    "bandeja": 0,
-    "total": 2.56,
-    "capacidad": 11,
-    "excede": false
-   }
-  },
-  {
-   "modulo": "BASE",
-   "caja": "48-22-8444",
-   "cajon": 4,
-   "ancho": 414,
-   "fondo": 318,
-   "alto": 58,
-   "estado": "PASA JUSTO",
-   "piezas": [
+    },
     {
-     "activo": "FTS-BAS-01-C4-01",
-     "id": "MATR",
-     "desc": "Matraca 3/8 + dados (juego Husky P, 3/8)",
-     "tipo": "estuche",
-     "estado": "PASA JUSTO",
+     "activo": "FTS-BAS-01-C3-05",
+     "id": "CHOF8",
+     "desc": "Pinza de chofer 8 in Truper 17301",
+     "tipo": "pinza",
+     "estado": "PASA",
      "rebaje_lados": [
+      0,
       1
      ],
-     "holgura_min_mm": 2.0,
-     "contra": "pared/labio",
-     "chequeo": "b ficha vs cajon",
-     "tope_mm": 48.6,
+     "holgura_min_mm": 7.6,
+     "contra": "ficha FTS-BAS-01-C3-06",
+     "chequeo": "d dedos lado 1",
+     "tope_mm": 18.6,
      "envolvente": [
-      280.0,
-      200.0,
-      45.0
+      203.0,
+      50.0,
+      15.0
      ],
      "checks": [
       {
        "k": "a",
        "que": "herramienta vs herramienta",
        "mm": 12.0,
-       "contra": "herr FTS-BAS-01-C4-03"
+       "contra": "herr FTS-BAS-01-C3-03"
       },
       {
        "k": "a",
        "que": "herramienta vs fichas ajenas",
        "mm": 8.0,
-       "contra": "ficha FTS-BAS-01-C4-03"
+       "contra": "ficha FTS-BAS-01-C3-03"
+      },
+      {
+       "k": "a",
+       "que": "herramienta vs ficha propia",
+       "mm": null,
+       "contra": "ficha propia"
+      },
+      {
+       "k": "b",
+       "que": "herramienta vs cajon",
+       "mm": 15.0,
+       "contra": "pared/labio"
+      },
+      {
+       "k": "b",
+       "que": "ficha vs cajon",
+       "mm": 11.0,
+       "contra": "pared/labio"
+      },
+      {
+       "k": "c",
+       "que": "herramienta vs cajon de arriba",
+       "mm": 57.4,
+       "contra": "techo (cajon de arriba)"
+      },
+      {
+       "k": "c",
+       "que": "ficha vs cajon de arriba",
+       "mm": 63.4,
+       "contra": "techo (cajon de arriba)"
+      },
+      {
+       "k": "d",
+       "que": "dedos lado 1",
+       "mm": 7.6,
+       "contra": "ficha FTS-BAS-01-C3-06"
+      },
+      {
+       "k": "d",
+       "que": "dedos lado 2",
+       "mm": 21.9,
+       "contra": "pared/labio"
+      },
+      {
+       "k": "d",
+       "que": "columna de salida",
+       "mm": 11.0,
+       "contra": "pared/labio"
+      }
+     ]
+    },
+    {
+     "activo": "FTS-BAS-01-C3-06",
+     "id": "PELEC",
+     "desc": "Pinza de electricista 9 in Husky 709195",
+     "tipo": "pinza",
+     "estado": "PASA JUSTO",
+     "rebaje_lados": [
+      0,
+      1
+     ],
+     "holgura_min_mm": 1.0,
+     "contra": "ficha FTS-BAS-01-C3-02",
+     "chequeo": "d dedos lado 1",
+     "tope_mm": 18.6,
+     "envolvente": [
+      250.0,
+      50.0,
+      15.0
+     ],
+     "checks": [
+      {
+       "k": "a",
+       "que": "herramienta vs herramienta",
+       "mm": 15.5,
+       "contra": "herr FTS-BAS-01-C3-04"
+      },
+      {
+       "k": "a",
+       "que": "herramienta vs fichas ajenas",
+       "mm": 8.0,
+       "contra": "ficha FTS-BAS-01-C3-05"
       },
       {
        "k": "a",
@@ -1536,26 +1435,128 @@
       {
        "k": "c",
        "que": "herramienta vs cajon de arriba",
-       "mm": 9.4,
+       "mm": 57.4,
        "contra": "techo (cajon de arriba)"
       },
       {
        "k": "c",
        "que": "ficha vs cajon de arriba",
-       "mm": 29.4,
+       "mm": 63.4,
        "contra": "techo (cajon de arriba)"
       },
       {
        "k": "d",
-       "que": "dedos lado 1 (no aplica: rebaje solo del otro lado)",
-       "mm": null,
-       "contra": "pared/labio"
+       "que": "dedos lado 1",
+       "mm": 1.0,
+       "contra": "ficha FTS-BAS-01-C3-02"
       },
       {
        "k": "d",
        "que": "dedos lado 2",
-       "mm": 5.0,
-       "contra": "herr FTS-BAS-01-C4-02"
+       "mm": 1.0,
+       "contra": "ficha FTS-BAS-01-C3-03"
+      },
+      {
+       "k": "d",
+       "que": "columna de salida",
+       "mm": 2.0,
+       "contra": "pared/labio"
+      }
+     ]
+    }
+   ],
+   "peso": {
+    "herramienta": 1.92,
+    "fichas_petg": 0.29,
+    "loseta_petg": 0.38,
+    "bandeja": 0,
+    "total": 2.59,
+    "capacidad": 11,
+    "excede": false
+   }
+  },
+  {
+   "modulo": "BASE",
+   "caja": "48-22-8444",
+   "cajon": 4,
+   "ancho": 414,
+   "fondo": 318,
+   "alto": 58,
+   "estado": "PASA JUSTO",
+   "piezas": [
+    {
+     "activo": "FTS-BAS-01-C4-01",
+     "id": "MATRACA",
+     "desc": "Matraca rotativa 3/8 Husky H38ROTORATMX",
+     "tipo": "estuche",
+     "estado": "PASA JUSTO",
+     "rebaje_lados": [
+      0,
+      1
+     ],
+     "holgura_min_mm": 1.0,
+     "contra": "ficha FTS-BAS-01-C4-04",
+     "chequeo": "d dedos lado 1",
+     "tope_mm": 37.6,
+     "envolvente": [
+      240.0,
+      42.0,
+      34.0
+     ],
+     "checks": [
+      {
+       "k": "a",
+       "que": "herramienta vs herramienta",
+       "mm": 12.0,
+       "contra": "herr FTS-BAS-01-C4-04"
+      },
+      {
+       "k": "a",
+       "que": "herramienta vs fichas ajenas",
+       "mm": 8.0,
+       "contra": "ficha FTS-BAS-01-C4-04"
+      },
+      {
+       "k": "a",
+       "que": "herramienta vs ficha propia",
+       "mm": null,
+       "contra": "ficha propia"
+      },
+      {
+       "k": "b",
+       "que": "herramienta vs cajon",
+       "mm": 6.0,
+       "contra": "pared/labio"
+      },
+      {
+       "k": "b",
+       "que": "ficha vs cajon",
+       "mm": 2.0,
+       "contra": "pared/labio"
+      },
+      {
+       "k": "c",
+       "que": "herramienta vs cajon de arriba",
+       "mm": 20.4,
+       "contra": "techo (cajon de arriba)"
+      },
+      {
+       "k": "c",
+       "que": "ficha vs cajon de arriba",
+       "mm": 34.0,
+       "contra": "techo (cajon de arriba)"
+      },
+      {
+       "k": "d",
+       "que": "dedos lado 1",
+       "mm": 1.0,
+       "contra": "ficha FTS-BAS-01-C4-04"
+      },
+      {
+       "k": "d",
+       "que": "dedos lado 2",
+       "mm": 1.4,
+       "contra": "ficha FTS-BAS-01-C4-03"
       },
       {
        "k": "d",
@@ -1575,9 +1576,9 @@
       0,
       1
      ],
-     "holgura_min_mm": 2.0,
+     "holgura_min_mm": 1.0,
      "contra": "pared/labio",
-     "chequeo": "b ficha vs cajon",
+     "chequeo": "d dedos lado 1",
      "tope_mm": 48.6,
      "envolvente": [
       245.0,
@@ -1589,13 +1590,13 @@
        "k": "a",
        "que": "herramienta vs herramienta",
        "mm": 12.0,
-       "contra": "herr FTS-BAS-01-C4-03"
+       "contra": "herr FTS-BAS-01-C4-04"
       },
       {
        "k": "a",
        "que": "herramienta vs fichas ajenas",
        "mm": 8.0,
-       "contra": "ficha FTS-BAS-01-C4-03"
+       "contra": "ficha FTS-BAS-01-C4-04"
       },
       {
        "k": "a",
@@ -1630,14 +1631,14 @@
       {
        "k": "d",
        "que": "dedos lado 1",
-       "mm": 5.0,
-       "contra": "herr FTS-BAS-01-C4-01"
+       "mm": 1.0,
+       "contra": "pared/labio"
       },
       {
        "k": "d",
        "que": "dedos lado 2",
-       "mm": 10.0,
-       "contra": "pared/labio"
+       "mm": 5.0,
+       "contra": "herr FTS-BAS-01-C4-04"
       },
       {
        "k": "d",
@@ -1658,7 +1659,7 @@
       1
      ],
      "holgura_min_mm": 1.0,
-     "contra": "ficha FTS-BAS-01-C4-02",
+     "contra": "ficha FTS-BAS-01-C4-01",
      "chequeo": "d dedos lado 1",
      "tope_mm": 33.6,
      "envolvente": [
@@ -1677,7 +1678,7 @@
        "k": "a",
        "que": "herramienta vs fichas ajenas",
        "mm": 8.0,
-       "contra": "ficha FTS-BAS-01-C4-02"
+       "contra": "ficha FTS-BAS-01-C4-01"
       },
       {
        "k": "a",
@@ -1713,13 +1714,95 @@
        "k": "d",
        "que": "dedos lado 1",
        "mm": 1.0,
+       "contra": "ficha FTS-BAS-01-C4-01"
+      },
+      {
+       "k": "d",
+       "que": "dedos lado 2",
+       "mm": 28.0,
+       "contra": "pared/labio"
+      },
+      {
+       "k": "d",
+       "que": "columna de salida",
+       "mm": 2.0,
+       "contra": "pared/labio"
+      }
+     ]
+    },
+    {
+     "activo": "FTS-BAS-01-C4-04",
+     "id": "DADOS",
+     "desc": "Dadera: 29 dados de la caja P, cada uno en su hueco",
+     "tipo": "estuche",
+     "estado": "PASA JUSTO",
+     "rebaje_lados": [
+      0,
+      1
+     ],
+     "holgura_min_mm": 1.4,
+     "contra": "ficha FTS-BAS-01-C4-02",
+     "chequeo": "d dedos lado 1",
+     "tope_mm": 44.6,
+     "envolvente": [
+      230.0,
+      80.0,
+      41.0
+     ],
+     "checks": [
+      {
+       "k": "a",
+       "que": "herramienta vs herramienta",
+       "mm": 12.0,
+       "contra": "herr FTS-BAS-01-C4-02"
+      },
+      {
+       "k": "a",
+       "que": "herramienta vs fichas ajenas",
+       "mm": 8.0,
+       "contra": "ficha FTS-BAS-01-C4-01"
+      },
+      {
+       "k": "a",
+       "que": "herramienta vs ficha propia",
+       "mm": null,
+       "contra": "ficha propia"
+      },
+      {
+       "k": "b",
+       "que": "herramienta vs cajon",
+       "mm": 6.0,
+       "contra": "pared/labio"
+      },
+      {
+       "k": "b",
+       "que": "ficha vs cajon",
+       "mm": 2.0,
+       "contra": "pared/labio"
+      },
+      {
+       "k": "c",
+       "que": "herramienta vs cajon de arriba",
+       "mm": 13.4,
+       "contra": "techo (cajon de arriba)"
+      },
+      {
+       "k": "c",
+       "que": "ficha vs cajon de arriba",
+       "mm": 29.8,
+       "contra": "techo (cajon de arriba)"
+      },
+      {
+       "k": "d",
+       "que": "dedos lado 1",
+       "mm": 1.4,
        "contra": "ficha FTS-BAS-01-C4-02"
       },
       {
        "k": "d",
        "que": "dedos lado 2",
-       "mm": 14.0,
-       "contra": "pared/labio"
+       "mm": 5.0,
+       "contra": "herr FTS-BAS-01-C4-01"
       },
       {
        "k": "d",
@@ -1731,11 +1814,11 @@
     }
    ],
    "peso": {
-    "herramienta": 2.67,
-    "fichas_petg": 0.38,
+    "herramienta": 10.03,
+    "fichas_petg": 0.35,
     "loseta_petg": 0.38,
     "bandeja": 0,
-    "total": 3.43,
+    "total": 10.76,
     "capacidad": 11,
     "excede": false
    }
@@ -2766,7 +2849,7 @@
      "tope_mm": 28.6,
      "envolvente": [
       70.0,
-      40.0,
+      63.0,
       25.0
      ],
      "checks": [
@@ -2821,8 +2904,8 @@
       {
        "k": "d",
        "que": "dedos lado 2",
-       "mm": 25.5,
-       "contra": "ficha FTS-BAS-01-C6-04"
+       "mm": 24.0,
+       "contra": "pared/labio"
       },
       {
        "k": "d",
@@ -2835,10 +2918,10 @@
    ],
    "peso": {
     "herramienta": 2.05,
-    "fichas_petg": 0.34,
+    "fichas_petg": 0.35,
     "loseta_petg": 0.38,
     "bandeja": 0,
-    "total": 2.77,
+    "total": 2.78,
     "capacidad": 11,
     "excede": false
    }
@@ -3274,11 +3357,11 @@
   },
   {
    "modulo": "BASE",
-   "caja": "48-22-8420",
+   "caja": "48-22-8442",
    "cajon": 8,
-   "ancho": 432,
-   "fondo": 330,
-   "alto": 190,
+   "ancho": 414,
+   "fondo": 318,
+   "alto": 127,
    "estado": "PASA JUSTO",
    "piezas": [
     {
@@ -3334,13 +3417,13 @@
       {
        "k": "c",
        "que": "herramienta vs cajon de arriba",
-       "mm": 96.4,
+       "mm": 33.4,
        "contra": "techo (cajon de arriba)"
       },
       {
        "k": "c",
        "que": "ficha vs cajon de arriba",
-       "mm": 161.4,
+       "mm": 98.4,
        "contra": "techo (cajon de arriba)"
       },
       {
@@ -3352,7 +3435,7 @@
       {
        "k": "d",
        "que": "dedos lado 2",
-       "mm": 150.5,
+       "mm": 143.0,
        "contra": "pared/labio"
       },
       {
@@ -3367,20 +3450,20 @@
    "peso": {
     "herramienta": 1.59,
     "fichas_petg": 0.19,
-    "loseta_petg": 0.41,
-    "bandeja": 0.902,
-    "total": 3.09,
-    "capacidad": 15,
+    "loseta_petg": 0.38,
+    "bandeja": 0,
+    "total": 2.16,
+    "capacidad": 11.3,
     "excede": false
    }
   },
   {
    "modulo": "BASE",
-   "caja": "48-22-8420",
+   "caja": "48-22-8442",
    "cajon": 9,
-   "ancho": 432,
-   "fondo": 330,
-   "alto": 200,
+   "ancho": 414,
+   "fondo": 318,
+   "alto": 127,
    "estado": "PASA JUSTO",
    "piezas": [
     {
@@ -3436,13 +3519,13 @@
       {
        "k": "c",
        "que": "herramienta vs cajon de arriba",
-       "mm": 109.4,
+       "mm": 36.4,
        "contra": "techo (cajon de arriba)"
       },
       {
        "k": "c",
        "que": "ficha vs cajon de arriba",
-       "mm": 171.4,
+       "mm": 98.4,
        "contra": "techo (cajon de arriba)"
       },
       {
@@ -3469,10 +3552,10 @@
    "peso": {
     "herramienta": 0.91,
     "fichas_petg": 0.12,
-    "loseta_petg": 0.41,
+    "loseta_petg": 0.38,
     "bandeja": 0,
-    "total": 1.44,
-    "capacidad": 25,
+    "total": 1.41,
+    "capacidad": 11.3,
     "excede": false
    }
   },
@@ -7688,433 +7771,5 @@
    }
   }
  ],
- "variantes": {
-  "M18 con bateria puesta": [
-   {
-    "modulo": "BASE",
-    "cajon": 1,
-    "alto": 76,
-    "estado": "FALLA",
-    "piezas": [
-     {
-      "activo": "FTS-BAS-01-C1-01",
-      "id": "IMP38",
-      "desc": "Llave de impacto M18 FUEL 3/8 2854-20 (sin bateria)",
-      "tipo": "pistola",
-      "estado": "FALLA",
-      "rebaje_lados": [
-       0,
-       1
-      ],
-      "holgura_min_mm": 0.0,
-      "contra": "herr FTS-BAS-01-C1-02",
-      "chequeo": "a herramienta vs herramienta",
-      "tope_mm": 82.6,
-      "envolvente": [
-       202.0,
-       167.0,
-       79
-      ],
-      "checks": [
-       {
-        "k": "a",
-        "que": "herramienta vs herramienta",
-        "mm": 0.0,
-        "contra": "herr FTS-BAS-01-C1-02"
-       },
-       {
-        "k": "a",
-        "que": "herramienta vs fichas ajenas",
-        "mm": 0.0,
-        "contra": "ficha FTS-BAS-01-C1-02"
-       },
-       {
-        "k": "a",
-        "que": "herramienta vs ficha propia",
-        "mm": null,
-        "contra": "ficha propia"
-       },
-       {
-        "k": "b",
-        "que": "herramienta vs cajon",
-        "mm": 6.0,
-        "contra": "pared/labio"
-       },
-       {
-        "k": "b",
-        "que": "ficha vs cajon",
-        "mm": 2.0,
-        "contra": "pared/labio"
-       },
-       {
-        "k": "c",
-        "que": "herramienta vs cajon de arriba",
-        "mm": 0.0,
-        "contra": "techo (cajon de arriba)"
-       },
-       {
-        "k": "c",
-        "que": "ficha vs cajon de arriba",
-        "mm": 47.4,
-        "contra": "techo (cajon de arriba)"
-       },
-       {
-        "k": "d",
-        "que": "dedos lado 1",
-        "mm": 0.5,
-        "contra": "pared/labio"
-       },
-       {
-        "k": "d",
-        "que": "dedos lado 2",
-        "mm": 15.1,
-        "contra": "herr FTS-BAS-01-C1-02"
-       }
-      ]
-     },
-     {
-      "activo": "FTS-BAS-01-C1-02",
-      "id": "ROTO18",
-      "desc": "Rotomartillo M18 1/2 3602-20 (sin bateria)",
-      "tipo": "pistola",
-      "estado": "FALLA",
-      "rebaje_lados": [
-       0,
-       1
-      ],
-      "holgura_min_mm": 0.0,
-      "contra": "herr FTS-BAS-01-C1-01",
-      "chequeo": "a herramienta vs herramienta",
-      "tope_mm": 82.6,
-      "envolvente": [
-       202.0,
-       192.0,
-       79
-      ],
-      "checks": [
-       {
-        "k": "a",
-        "que": "herramienta vs herramienta",
-        "mm": 0.0,
-        "contra": "herr FTS-BAS-01-C1-01"
-       },
-       {
-        "k": "a",
-        "que": "herramienta vs fichas ajenas",
-        "mm": 0.0,
-        "contra": "ficha FTS-BAS-01-C1-01"
-       },
-       {
-        "k": "a",
-        "que": "herramienta vs ficha propia",
-        "mm": null,
-        "contra": "ficha propia"
-       },
-       {
-        "k": "b",
-        "que": "herramienta vs cajon",
-        "mm": 7.5,
-        "contra": "pared/labio"
-       },
-       {
-        "k": "b",
-        "que": "ficha vs cajon",
-        "mm": 7.5,
-        "contra": "pared/labio"
-       },
-       {
-        "k": "c",
-        "que": "herramienta vs cajon de arriba",
-        "mm": 0.0,
-        "contra": "techo (cajon de arriba)"
-       },
-       {
-        "k": "c",
-        "que": "ficha vs cajon de arriba",
-        "mm": 47.4,
-        "contra": "techo (cajon de arriba)"
-       },
-       {
-        "k": "d",
-        "que": "dedos lado 1",
-        "mm": 0.5,
-        "contra": "pared/labio"
-       },
-       {
-        "k": "d",
-        "que": "dedos lado 2",
-        "mm": 13.1,
-        "contra": "herr FTS-BAS-01-C1-05"
-       }
-      ]
-     }
-    ]
-   },
-   {
-    "modulo": "BASE",
-    "cajon": 2,
-    "alto": 76,
-    "estado": "FALLA",
-    "piezas": [
-     {
-      "activo": "FTS-BAS-01-C2-01",
-      "id": "IMP14",
-      "desc": "Atornillador de impacto M18 3650-20 (sin bateria)",
-      "tipo": "pistola",
-      "estado": "FALLA",
-      "rebaje_lados": [
-       1
-      ],
-      "holgura_min_mm": 0.0,
-      "contra": "herr FTS-BAS-01-C2-02",
-      "chequeo": "a herramienta vs herramienta",
-      "tope_mm": 82.6,
-      "envolvente": [
-       196.0,
-       157.0,
-       79
-      ],
-      "checks": [
-       {
-        "k": "a",
-        "que": "herramienta vs herramienta",
-        "mm": 0.0,
-        "contra": "herr FTS-BAS-01-C2-02"
-       },
-       {
-        "k": "a",
-        "que": "herramienta vs fichas ajenas",
-        "mm": 0.0,
-        "contra": "ficha FTS-BAS-01-C2-02"
-       },
-       {
-        "k": "a",
-        "que": "herramienta vs ficha propia",
-        "mm": null,
-        "contra": "ficha propia"
-       },
-       {
-        "k": "b",
-        "que": "herramienta vs cajon",
-        "mm": 6.0,
-        "contra": "pared/labio"
-       },
-       {
-        "k": "b",
-        "que": "ficha vs cajon",
-        "mm": 2.0,
-        "contra": "pared/labio"
-       },
-       {
-        "k": "c",
-        "que": "herramienta vs cajon de arriba",
-        "mm": 0.0,
-        "contra": "techo (cajon de arriba)"
-       },
-       {
-        "k": "c",
-        "que": "ficha vs cajon de arriba",
-        "mm": 47.4,
-        "contra": "techo (cajon de arriba)"
-       },
-       {
-        "k": "d",
-        "que": "dedos lado 1 (no aplica: rebaje solo del otro lado)",
-        "mm": null,
-        "contra": "pared/labio"
-       },
-       {
-        "k": "d",
-        "que": "dedos lado 2",
-        "mm": 44.0,
-        "contra": "herr FTS-BAS-01-C2-02"
-       }
-      ]
-     }
-    ]
-   }
-  ],
-  "esmeriladora con mango lateral": [
-   {
-    "modulo": "BASE",
-    "cajon": 8,
-    "alto": 190,
-    "estado": "PASA JUSTO",
-    "piezas": [
-     {
-      "activo": "FTS-BAS-01-C8-01",
-      "id": "ESM45",
-      "desc": "Mini esmeriladora 4-1/2 alambrica 6130-33 + cable",
-      "tipo": "esmeril",
-      "estado": "PASA JUSTO",
-      "rebaje_lados": [
-       0,
-       1
-      ],
-      "holgura_min_mm": 1.0,
-      "contra": "pared/labio",
-      "chequeo": "d dedos lado 1",
-      "tope_mm": 93.6,
-      "envolvente": [
-       357.0,
-       222.0,
-       90.0
-      ],
-      "checks": [
-       {
-        "k": "a",
-        "que": "herramienta vs herramienta",
-        "mm": null,
-        "contra": null
-       },
-       {
-        "k": "a",
-        "que": "herramienta vs fichas ajenas",
-        "mm": null,
-        "contra": null
-       },
-       {
-        "k": "a",
-        "que": "herramienta vs ficha propia",
-        "mm": null,
-        "contra": "ficha propia"
-       },
-       {
-        "k": "b",
-        "que": "herramienta vs cajon",
-        "mm": 6.0,
-        "contra": "pared/labio"
-       },
-       {
-        "k": "b",
-        "que": "ficha vs cajon",
-        "mm": 2.0,
-        "contra": "pared/labio"
-       },
-       {
-        "k": "c",
-        "que": "herramienta vs cajon de arriba",
-        "mm": 96.4,
-        "contra": "techo (cajon de arriba)"
-       },
-       {
-        "k": "c",
-        "que": "ficha vs cajon de arriba",
-        "mm": 161.4,
-        "contra": "techo (cajon de arriba)"
-       },
-       {
-        "k": "d",
-        "que": "dedos lado 1",
-        "mm": 1.0,
-        "contra": "pared/labio"
-       },
-       {
-        "k": "d",
-        "que": "dedos lado 2",
-        "mm": 85.0,
-        "contra": "pared/labio"
-       },
-       {
-        "k": "d",
-        "que": "columna de salida",
-        "mm": 2.0,
-        "contra": "pared/labio"
-       }
-      ]
-     }
-    ]
-   },
-   {
-    "modulo": "SOL",
-    "cajon": 3,
-    "alto": 127,
-    "estado": "FALLA",
-    "piezas": [
-     {
-      "activo": "FTS-SOL-01-C3-01",
-      "id": "ESM45B",
-      "desc": "Mini esmeriladora 4-1/2 6130-33 (2a)",
-      "tipo": "esmeril",
-      "estado": "FALLA",
-      "rebaje_lados": [
-       0,
-       1
-      ],
-      "holgura_min_mm": 0.0,
-      "contra": "herr FTS-SOL-01-C3-02",
-      "chequeo": "a herramienta vs herramienta",
-      "tope_mm": 93.6,
-      "envolvente": [
-       357.0,
-       222.0,
-       90.0
-      ],
-      "checks": [
-       {
-        "k": "a",
-        "que": "herramienta vs herramienta",
-        "mm": 0.0,
-        "contra": "herr FTS-SOL-01-C3-02"
-       },
-       {
-        "k": "a",
-        "que": "herramienta vs fichas ajenas",
-        "mm": 7.0,
-        "contra": "ficha FTS-SOL-01-C3-02"
-       },
-       {
-        "k": "a",
-        "que": "herramienta vs ficha propia",
-        "mm": null,
-        "contra": "ficha propia"
-       },
-       {
-        "k": "b",
-        "que": "herramienta vs cajon",
-        "mm": 6.0,
-        "contra": "pared/labio"
-       },
-       {
-        "k": "b",
-        "que": "ficha vs cajon",
-        "mm": 2.0,
-        "contra": "pared/labio"
-       },
-       {
-        "k": "c",
-        "que": "herramienta vs cajon de arriba",
-        "mm": 33.4,
-        "contra": "techo (cajon de arriba)"
-       },
-       {
-        "k": "c",
-        "que": "ficha vs cajon de arriba",
-        "mm": 98.4,
-        "contra": "techo (cajon de arriba)"
-       },
-       {
-        "k": "d",
-        "que": "dedos lado 1",
-        "mm": 1.0,
-        "contra": "pared/labio"
-       },
-       {
-        "k": "d",
-        "que": "dedos lado 2",
-        "mm": 15.0,
-        "contra": "herr FTS-SOL-01-C3-02"
-       },
-       {
-        "k": "d",
-        "que": "columna de salida",
-        "mm": 2.0,
-        "contra": "pared/labio"
-       }
-      ]
-     }
-    ]
-   }
-  ]
- }
+ "variantes": null
 }

@@ -24,6 +24,8 @@ Nada escribe en Odoo ni en n8n.
 > - En el cajón C6 del piloto, 3 de sus 5 fichas llevan el rebaje de dedo de un solo lado. Ver `reporte_interferencias.md`.
 >
 > Hay una regla nueva para la checklist, sacada de `estabilidad.md`: **un cajón abierto a la vez y nunca abrir en rampa.**
+>
+> **Actualización de #343 (renders):** la base cambia de 8420 a **8410 (base plana con ruedas) + 8442**, y los juegos van en huecos individuales. El total del piloto pasa a **$26,544.79** (sube por la pared entre huecos, baja por la bandeja que ya no va). Ver `correcciones_acomodo.md`.
 
 | Concepto | Con el inventario del listado | Si nada del listado aparece | Cómo salió |
 |---|---|---|---|

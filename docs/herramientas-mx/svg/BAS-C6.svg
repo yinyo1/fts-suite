@@ -10,26 +10,48 @@
 <text x="28" y="205.0" font-size="11" text-anchor="middle" transform="rotate(-90 28 205.0)">318 mm</text>
 <text x="253.0" y="378" font-size="10" text-anchor="middle" fill="#555">FRENTE DEL CAJON</text>
 <rect x="52" y="52" width="100" height="230" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
-<text x="102.0" y="165.57142857142858" font-size="7.1" text-anchor="middle" font-weight="bold">FTS-BAS-01-C6-01 R</text>
-<text x="102.0" y="174.14285714285714" font-size="6.1" text-anchor="middle">3 desarmadores Husky (P2 x3)</text>
-<text x="54" y="280" font-size="5.0" fill="#333">230x100x32</text>
+<rect x="52.0" y="52.0" width="31.3" height="230" rx="1.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="67.65" y="169.0" font-size="7.0" text-anchor="middle" fill="#333">01</text>
+<rect x="86.3" y="52.0" width="31.3" height="230" rx="1.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="101.95" y="169.0" font-size="7.0" text-anchor="middle" fill="#333">02</text>
+<rect x="120.6" y="52.0" width="31.3" height="230" rx="1.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="136.25" y="169.0" font-size="7.0" text-anchor="middle" fill="#333">03</text>
+<text x="102.0" y="290" font-size="7" text-anchor="middle" font-weight="bold" fill="#fff">FTS-BAS-01-C6-01 · 3 huecos</text>
 <rect x="164" y="52" width="279" height="110" rx="4" fill="#F6C2A8" stroke="#111" stroke-width="1.2"/>
 <text x="303.5" y="104.8" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C6-02</text>
 <text x="303.5" y="118.0" font-size="9.3" text-anchor="middle">Pinza de presion C 11 in Torque Lock 48-22-3531</text>
 <text x="166" y="160" font-size="7.7" fill="#333">279x110x25</text>
 <rect x="164" y="174" width="260" height="80" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
-<text x="294.0" y="211.8" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C6-03</text>
-<text x="294.0" y="225.0" font-size="9.3" text-anchor="middle">Extensiones 3/8 (6 in, 10 in, oscilantes) y pal</text>
-<text x="166" y="252" font-size="7.7" fill="#333">260x80x25</text>
+<rect x="164.0" y="174.0" width="152.4" height="24.7" rx="1.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="240.2" y="188.35" font-size="7.0" text-anchor="middle" fill="#333">01</text>
+<rect x="164.0" y="201.7" width="254.0" height="24.7" rx="1.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="291.0" y="216.04999999999998" font-size="7.0" text-anchor="middle" fill="#333">02</text>
+<rect x="164.0" y="229.4" width="230.0" height="24.7" rx="1.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="279.0" y="243.75" font-size="7.0" text-anchor="middle" fill="#333">03</text>
+<text x="294.0" y="262" font-size="7" text-anchor="middle" font-weight="bold" fill="#fff">FTS-BAS-01-C6-03 · 3 huecos</text>
 <rect x="164" y="266" width="190" height="90" rx="4" fill="#FFE08A" stroke="#111" stroke-width="1.2"/>
-<text x="259.0" y="308.8" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C6-04</text>
-<text x="259.0" y="322.0" font-size="9.3" text-anchor="middle">Juego 6 desarmadores de precision </text>
-<text x="166" y="354" font-size="7.7" fill="#333">190x90x25</text>
-<rect x="366" y="266" width="70" height="40" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
-<text x="401.0" y="284.8" font-size="6.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C6-05</text>
-<text x="401.0" y="292.0" font-size="5.1" text-anchor="middle">Juego 3 adaptadores 1/4</text>
-<text x="368" y="304" font-size="5.0" fill="#333">70x40x25</text>
+<rect x="164.0" y="266.0" width="190" height="12.5" rx="1.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="259.0" y="274.25" font-size="5.7" text-anchor="middle" fill="#333">01</text>
+<rect x="164.0" y="281.5" width="190" height="12.5" rx="1.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="259.0" y="289.75" font-size="5.7" text-anchor="middle" fill="#333">02</text>
+<rect x="164.0" y="297.0" width="190" height="12.5" rx="1.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="259.0" y="305.25" font-size="5.7" text-anchor="middle" fill="#333">03</text>
+<rect x="164.0" y="312.5" width="190" height="12.5" rx="1.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="259.0" y="320.75" font-size="5.7" text-anchor="middle" fill="#333">04</text>
+<rect x="164.0" y="328.0" width="190" height="12.5" rx="1.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="259.0" y="336.25" font-size="5.7" text-anchor="middle" fill="#333">05</text>
+<rect x="164.0" y="343.5" width="190" height="12.5" rx="1.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="259.0" y="351.75" font-size="5.7" text-anchor="middle" fill="#333">06</text>
+<text x="259.0" y="264" font-size="7" text-anchor="middle" font-weight="bold" fill="#fff">FTS-BAS-01-C6-04 · 6 huecos</text>
+<rect x="366" y="266" width="70" height="63.0" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
+<rect x="366.0" y="266.0" width="70" height="19.0" rx="1.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="401.0" y="277.5" font-size="7.0" text-anchor="middle" fill="#333">01</text>
+<rect x="366.0" y="288.0" width="70" height="19.0" rx="1.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="401.0" y="299.5" font-size="7.0" text-anchor="middle" fill="#333">02</text>
+<rect x="366.0" y="310.0" width="70" height="19.0" rx="1.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="401.0" y="321.5" font-size="7.0" text-anchor="middle" fill="#333">03</text>
+<text x="401.0" y="337.0" font-size="7" text-anchor="middle" font-weight="bold" fill="#fff">FTS-BAS-01-C6-05 · 3 huecos</text>
 <text x="46" y="396" font-size="11" fill="#000">Modulo BASE · caja 48-22-8444 · cajon C6 · alto interior 58 mm, util 48 mm</text>
-<text x="46" y="410" font-size="11" fill="#000">Ocupacion en planta 71.7 % · peso 2.05 kg de 11 kg</text>
+<text x="46" y="410" font-size="11" fill="#000">Ocupacion en planta 72.9 % · peso 2.05 kg de 11 kg</text>
 <text x="46" y="424" font-size="11" fill="#000">Medidas no validadas: confirmar con vernier antes de imprimir</text>
 </svg>

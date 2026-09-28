@@ -72,12 +72,14 @@ wb_c = load_workbook(os.path.join(BASE, 'asignacion_y_compra.xlsx'), read_only=T
 H = [r for r in wb_c['Herramienta'].iter_rows(min_row=2, values_only=True) if r and r[0]]
 COMPARTIDO = {'2677-23', '36475'}          # un solo juego para toda la flota (Fase 5)
 CONT = {r[0]: r for r in wb_c['Contenedores_y_control'].iter_rows(min_row=2, values_only=True) if r and r[0]}
-P_CONT = {k: float(CONT[k][4]) for k in ('48-22-8443', '48-22-8444', '48-22-8420', '48-22-8447', '48-22-8442')}
+P_CONT = {k: float(CONT[k][4]) for k in ('48-22-8443', '48-22-8444', '48-22-8420', '48-22-8447', '48-22-8442', '48-22-8410') if k in CONT}
 EXISTE_CONT = {k: int(CONT[k][2]) for k in P_CONT}
 P_CANDADO = float(CONT['Candado de combinacion (1 por contenedor)'][4])
 P_CABLE = float([v for k, v in CONT.items() if k.startswith('Cable')][0][4])
 disen = json.load(open(os.path.join(BASE, 'diseno_carrito.json'), encoding='utf-8'))
-CAJAS_MOD = {m: [c['modelo'] for c in v['cajas']] for m, v in disen['modulos'].items()}
+CAJAS_MOD = {m: [c['modelo'] for c in v['cajas']] + ([v['base_rodante']['modelo']] if v.get('base_rodante') else []) for m, v in disen['modulos'].items()}
+SIN_CANDADO = {'48-22-8410'}   # base plana con ruedas (#343): no lleva candado
+CON_BANDEJA = '48-22-8420' in CAJAS_MOD['BASE']   # la bandeja impresa solo existe si la base es la 8420
 imp = json.load(open(os.path.join(D, 'estimacion_impresion.json'), encoding='utf-8'))
 stl = json.load(open(os.path.join(BASE, 'stl', 'estimacion_stl.json'), encoding='utf-8'))
 g_c6 = sum(x['gramos'] * x['cantidad'] for x in stl if x['stl'].startswith('BASE-C6'))
@@ -108,11 +110,11 @@ def costo(unid, existe=True):
     for m, n in unid.items():
         for c in CAJAS_MOD[m]: cajas[c] = cajas.get(c, 0) + n
     cont = sum(max(0, n - (EXISTE_CONT[c] if existe else 0)) * P_CONT[c] for c, n in cajas.items())
-    n_cont = sum(cajas.values())
+    n_cont = sum(n for c, n in cajas.items() if c not in SIN_CANDADO)
     cables = unid.get('BASE', 0) + sum(n for m, n in unid.items() if m != 'BASE' and '48-22-8420' in CAJAS_MOD[m])
     ctrl = n_cont * P_CANDADO + cables * P_CABLE
-    g = sum(imp[m]['g'] * n for m, n in unid.items()) * F_G + unid.get('BASE', 0) * g_band
-    h = sum(imp[m]['h_std'] * n for m, n in unid.items()) * F_H + unid.get('BASE', 0) * h_band
+    g = sum(imp[m]['g'] * n for m, n in unid.items()) * F_G + (unid.get('BASE', 0) * g_band if CON_BANDEJA else 0)
+    h = sum(imp[m]['h_std'] * n for m, n in unid.items()) * F_H + (unid.get('BASE', 0) * h_band if CON_BANDEJA else 0)
     petg = g / 1000 * MERMA * P_PETG
     return {'herr': round(herr, 2), 'cont': round(cont, 2), 'ctrl': round(ctrl, 2), 'petg': round(petg, 2),
             'total': round(herr + cont + ctrl + petg, 2), 'sin_precio': sin_precio, 'n_cont': n_cont,
@@ -230,8 +232,8 @@ hoja('Sensibilidad', ['carritos base', 'modulos', 'unidades por modulo', 'herram
 pf = [('herramienta que falta para 1 base + 1 TUB (segun listado)', pil['herr'], pil_nuevo['herr'], '; '.join(f'{s} x{q} a {p:,.2f}' for s, q, p in pil['det']) or 'nada: el listado cubre 1 unidad de todo'),
       ('contenedores ' + ', '.join(f'{c} x{n}' for c, n in pil['cajas'].items()), pil['cont'], pil_nuevo['cont'], f'48-22-8444: ya hay {EXISTE_CONT["48-22-8444"]} (listado)'),
       (f'candados ({pil["n_cont"]}) y cable (1)', pil['ctrl'], pil_nuevo['ctrl'], f'candado {P_CANDADO}, cable {P_CABLE}'),
-      (f'PETG {pil["kg"]} kg (incluye 15 % merma)', pil['petg'], pil_nuevo['petg'], f'gramos de Fase 6 x {F_G:.2f} (C6 medido {g_c6} g contra {C6_EST["g"]} g estimados) + bandeja 8420 {g_band} g; {P_PETG}/kg'),
-      ('horas de impresion (estandar)', pil['h_std'], pil_nuevo['h_std'], f'Fase 6 x {F_H:.2f} (C6 medido {h_c6:.1f} h contra {C6_EST["h_std"]} h) + bandeja {h_band:.1f} h. A 20 h por dia son {pil["h_std"]/20:.0f} dias de impresora estandar'),
+      (f'PETG {pil["kg"]} kg (incluye 15 % merma)', pil['petg'], pil_nuevo['petg'], f'gramos de Fase 6 x {F_G:.2f} (C6 medido {g_c6} g contra {C6_EST["g"]} g estimados)' + (f' + bandeja 8420 {g_band} g' if CON_BANDEJA else ' (sin bandeja: la base es 8410 + 8442, #343)') + f'; {P_PETG}/kg'),
+      ('horas de impresion (estandar)', pil['h_std'], pil_nuevo['h_std'], f'Fase 6 x {F_H:.2f} (C6 medido {h_c6:.1f} h contra {C6_EST["h_std"]} h)' + (f' + bandeja {h_band:.1f} h' if CON_BANDEJA else '') + f'. A 20 h por dia son {pil["h_std"]/20:.0f} dias de impresora estandar'),
       ('placas QR de aluminio', None, None, 'COTIZAR; el piloto usa etiqueta de laser propio (etiquetas/)'),
       ('lector RFID', None, None, f'no entra al piloto (fase 2, {RFID_LECTOR:,.0f})'),
       ('TOTAL piloto', pil['total'], pil_nuevo['total'], f'{pil["sin_precio"]} renglones sin precio en el escenario con listado; {pil_nuevo["sin_precio"]} en todo nuevo')]

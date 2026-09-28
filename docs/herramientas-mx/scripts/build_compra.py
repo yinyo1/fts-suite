@@ -102,11 +102,13 @@ def _cont_desde_diseno():
     for m, v in dz['modulos'].items():
         d = defaultdict(int)
         for c in v['cajas']: d[c['modelo']] += 1
+        if v.get('base_rodante'): d[v['base_rodante']['modelo']] += 1   # base plana con ruedas (#343): no lleva candado
         out[m] = dict(d)
     return out
 CONT = _cont_desde_diseno()
 CONT_PRECIO = {'48-22-8444': (3614.00, 'Odoo P03220 (2025-04-28, "4 cajones", sin IVA)', 'pagado'),
                '48-22-8420': (5599.00, 'buscador HerramientaElectrica.mx', 'media'),
+               '48-22-8410': (2345.00, 'buscador Ferreterias Calzada, IVA incluido (leido 2026-09-28, #343)', 'media'),
                '48-22-8442': (3952.00, 'buscador HerramientaElectrica.mx (agotado)', 'alta'),
                '48-22-8443': (3799.00, 'Home Depot MX sku 165831, pagina leida 2026-09-28, IVA incluido', 'tienda'),
                '48-22-8447': (3499.00, 'Odoo P05566 (2026-02-04, sin IVA)', 'pagado')}
@@ -151,7 +153,8 @@ for sku, (desc, porm, ex, odoo_extra, precio, fuente, conf) in S.items():
 cont_need = defaultdict(int)
 for m, u in UNIDADES.items():
     for k, v in CONT[m].items(): cont_need[k] += v * u
-n_cont_total = sum(cont_need.values())
+SIN_CANDADO = {'48-22-8410'}   # base plana: no tiene tapa ni barra
+n_cont_total = sum(v for k, v in cont_need.items() if k not in SIN_CANDADO)
 cfilas = []
 for k, n in cont_need.items():
     ex = CONT_EXISTE.get(k, 0)   # P03220 (4 cajones) y P05566 (8447) si aparecen en el conteo fisico
@@ -201,7 +204,7 @@ total_n = t_herr_n + t_cont_n + t_rfid + t_fab_n
 # por carrito base y por modulo (herramienta + contenedores + candados)
 def cont_cost(m):
     s = 0
-    for k, v in CONT[m].items(): s += v * CONT_PRECIO[k][0] + v * CANDADO[0]
+    for k, v in CONT[m].items(): s += v * CONT_PRECIO[k][0] + (0 if k in SIN_CANDADO else v * CANDADO[0])
     return s
 por_unidad = []
 for m in UNIDADES:

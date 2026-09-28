@@ -1,0 +1,308 @@
+{
+ "fecha": "2026-09-28",
+ "dados": [
+  {
+   "ref": "P7",
+   "desc": "Dado 19 mm 3/8",
+   "sku_hd": "129326",
+   "largo_mm": 22,
+   "diametro_mm": 23,
+   "peso_hd_kg": 0.062
+  },
+  {
+   "ref": "P8",
+   "desc": "Dado 18 mm 3/8",
+   "sku_hd": "129325",
+   "largo_mm": 26,
+   "diametro_mm": 24,
+   "peso_hd_kg": 0.052
+  },
+  {
+   "ref": "P9",
+   "desc": "Dado 18 mm 3/8",
+   "sku_hd": "129325",
+   "largo_mm": 26,
+   "diametro_mm": 24,
+   "peso_hd_kg": 0.052
+  },
+  {
+   "ref": "P10",
+   "desc": "Dado 17 mm 3/8",
+   "sku_hd": "129323",
+   "largo_mm": 23,
+   "diametro_mm": 21,
+   "peso_hd_kg": 0.515
+  },
+  {
+   "ref": "P11",
+   "desc": "Dado 16 mm 1/2 12 puntas",
+   "sku_hd": "106503",
+   "largo_mm": 35,
+   "diametro_mm": 20,
+   "peso_hd_kg": 0.705
+  },
+  {
+   "ref": "P12",
+   "desc": "Dado 15 mm 3/8",
+   "sku_hd": "129322",
+   "largo_mm": 21,
+   "diametro_mm": 18,
+   "peso_hd_kg": 0.375
+  },
+  {
+   "ref": "P13",
+   "desc": "Dado 15 mm 3/8",
+   "sku_hd": "129322",
+   "largo_mm": 21,
+   "diametro_mm": 18,
+   "peso_hd_kg": 0.375
+  },
+  {
+   "ref": "P14",
+   "desc": "Dado 14 mm 3/8",
+   "sku_hd": "129321",
+   "largo_mm": 22,
+   "diametro_mm": 17,
+   "peso_hd_kg": 0.035
+  },
+  {
+   "ref": "P15",
+   "desc": "Dado 13 mm 3/8",
+   "sku_hd": "129320",
+   "largo_mm": 21,
+   "diametro_mm": 16,
+   "peso_hd_kg": 0.034
+  },
+  {
+   "ref": "P16",
+   "desc": "Dado 12 mm 3/8",
+   "sku_hd": "129319",
+   "largo_mm": 22,
+   "diametro_mm": 14,
+   "peso_hd_kg": 0.275
+  },
+  {
+   "ref": "P17",
+   "desc": "Dado 11 mm 3/8 (SIN FICHA: se usa el del 10 mm)",
+   "sku_hd": null,
+   "largo_mm": 24,
+   "diametro_mm": 19,
+   "peso_hd_kg": 0.025
+  },
+  {
+   "ref": "P18",
+   "desc": "Dado 10 mm 3/8",
+   "sku_hd": "129318",
+   "largo_mm": 24,
+   "diametro_mm": 19,
+   "peso_hd_kg": 0.025
+  },
+  {
+   "ref": "P19",
+   "desc": "Dado 5/16 in",
+   "sku_hd": "106513",
+   "largo_mm": 22,
+   "diametro_mm": 14,
+   "peso_hd_kg": 0.25
+  },
+  {
+   "ref": "P20",
+   "desc": "Dado 7/16 in 3/8",
+   "sku_hd": "106515",
+   "largo_mm": 24,
+   "diametro_mm": 14,
+   "peso_hd_kg": 0.28
+  },
+  {
+   "ref": "P21",
+   "desc": "Dado 7/16 in 3/8",
+   "sku_hd": "106515",
+   "largo_mm": 24,
+   "diametro_mm": 14,
+   "peso_hd_kg": 0.28
+  },
+  {
+   "ref": "P22",
+   "desc": "Dado 7/16 in 3/8",
+   "sku_hd": "106515",
+   "largo_mm": 24,
+   "diametro_mm": 14,
+   "peso_hd_kg": 0.28
+  },
+  {
+   "ref": "P23",
+   "desc": "Dado 1/2 in 3/8",
+   "sku_hd": "106512",
+   "largo_mm": 21,
+   "diametro_mm": 16,
+   "peso_hd_kg": 0.345
+  },
+  {
+   "ref": "P24",
+   "desc": "Dado 1/2 in 3/8",
+   "sku_hd": "106512",
+   "largo_mm": 21,
+   "diametro_mm": 16,
+   "peso_hd_kg": 0.345
+  },
+  {
+   "ref": "P25",
+   "desc": "Dado 3/4 in 3/8",
+   "sku_hd": "106507",
+   "largo_mm": 23,
+   "diametro_mm": 23,
+   "peso_hd_kg": 0.6
+  },
+  {
+   "ref": "P26",
+   "desc": "Dado 3/4 in 3/8",
+   "sku_hd": "106507",
+   "largo_mm": 23,
+   "diametro_mm": 23,
+   "peso_hd_kg": 0.6
+  },
+  {
+   "ref": "P27",
+   "desc": "Dado 3/4 in 3/8",
+   "sku_hd": "106507",
+   "largo_mm": 23,
+   "diametro_mm": 23,
+   "peso_hd_kg": 0.6
+  },
+  {
+   "ref": "P28",
+   "desc": "Dado 15/16 in 1/2 12 puntas",
+   "sku_hd": "106483",
+   "largo_mm": 36,
+   "diametro_mm": 29,
+   "peso_hd_kg": 0.124
+  },
+  {
+   "ref": "P29",
+   "desc": "Dado 1 in 1/2 12 puntas",
+   "sku_hd": "106482",
+   "largo_mm": 41,
+   "diametro_mm": 34,
+   "peso_hd_kg": 0.142
+  },
+  {
+   "ref": "P30",
+   "desc": "Dado 3/8 in 3/8",
+   "sku_hd": "106514",
+   "largo_mm": 22,
+   "diametro_mm": 15,
+   "peso_hd_kg": 0.265
+  },
+  {
+   "ref": "P31",
+   "desc": "Dado 9/16 in 3/8",
+   "sku_hd": "106511",
+   "largo_mm": 22,
+   "diametro_mm": 17,
+   "peso_hd_kg": 0.36
+  },
+  {
+   "ref": "P32",
+   "desc": "Dado 5/8 in 3/8",
+   "sku_hd": "106510",
+   "largo_mm": 22,
+   "diametro_mm": 20,
+   "peso_hd_kg": 0.465
+  },
+  {
+   "ref": "P33",
+   "desc": "Dado 11/16 in 3/8",
+   "sku_hd": "106509",
+   "largo_mm": 26,
+   "diametro_mm": 22,
+   "peso_hd_kg": 0.049
+  },
+  {
+   "ref": "P34",
+   "desc": "Dado 13/16 in 1/2 12 puntas",
+   "sku_hd": "106485",
+   "largo_mm": 35,
+   "diametro_mm": 25,
+   "peso_hd_kg": 0.975
+  },
+  {
+   "ref": "P35",
+   "desc": "Dado 7/8 in 1/2 12 puntas",
+   "sku_hd": "106484",
+   "largo_mm": 35,
+   "diametro_mm": 27,
+   "peso_hd_kg": 0.109
+  }
+ ],
+ "dadera": {
+  "L": 230.0,
+  "A": 80.0,
+  "H": 41,
+  "peso_kg": 8.599,
+  "huecos": 29
+ },
+ "matraca": {
+  "id": "MATRACA",
+  "ref": "dados38",
+  "corto": "Matraca rotativa 3/8 Husky H38ROTORATMX",
+  "L": 240,
+  "A": 42,
+  "H": 34,
+  "peso_kg": 0.357,
+  "fuente": "Home Depot MX sku 106478 (Largo 24 cm, Ancho 4.2, Profundidad 3.4)",
+  "nivel": "D1"
+ },
+ "juegos_en_regleta": {
+  "PREC6": {
+   "huecos": 6,
+   "fuente": "envolvente del estuche 190 x 90 (F, sesion 1): 6 huecos de 190 x 12.5",
+   "anchos_mm": null
+  },
+  "BROCAS": {
+   "huecos": 15,
+   "fuente": "largo: el del estuche, 150 (F); ancho de cada hueco: el diametro NOMINAL del nombre (1/16 a 1/2 por 1/32). En los 80 mm del estuche no caben acostadas: los 15 diametros suman 107 mm, mas 14 paredes de 3 mm = 149 mm. Largo por broca SIN fuente (truper.com bloqueado por la red)",
+   "anchos_mm": [
+    1.6,
+    2.4,
+    3.2,
+    4.0,
+    4.8,
+    5.6,
+    6.3,
+    7.1,
+    7.9,
+    8.7,
+    9.5,
+    10.3,
+    11.1,
+    11.9,
+    12.7
+   ]
+  },
+  "HDS-A": {
+   "huecos": 3,
+   "fuente": "envolvente de los 3 juntos 230 x 100 (F)",
+   "anchos_mm": null
+  },
+  "HDS-B": {
+   "huecos": 3,
+   "fuente": "envolvente de los 3 juntos 230 x 100 (F)",
+   "anchos_mm": null
+  },
+  "ADAP": {
+   "huecos": 3,
+   "fuente": "largo: envolvente del juego, 70 (F). Ancho: 19 mm por hueco, que es el grueso del empaque de Home Depot 106475 (98 x 72 x 19, D1): ningun adaptador puede ser mas grueso que su empaque. Los 11 mm de repartir 40 entre 3 no alcanzaban para el cuadro hembra de 1/2 (12.7 nominal)",
+   "anchos_mm": [
+    19.0,
+    19.0,
+    19.0
+   ]
+  },
+  "EXTS": {
+   "huecos": 3,
+   "fuente": "extensiones: largo nominal del nombre (6 y 10 in); Home Depot 129311 dice 21.5 cm, que no cuadra con 6 in (empaque, se descarta); maneral H38BB10MX: Largo 23 cm, Home Depot sku 106480 (D1)",
+   "anchos_mm": null
+  }
+ },
+ "nota_pesos": "Los pesos de Home Depot son poco confiables (hay dados de 0.5 a 1 kg, que parecen pesos de empaque). Se usan tal cual para el chequeo de capacidad del cajon: queda del lado conservador."
+}

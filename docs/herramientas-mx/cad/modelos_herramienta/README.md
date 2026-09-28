@@ -10,13 +10,13 @@ Sesión nocturna 2 (#338). Código: `modelos.py`, que tiene un generador por tip
 
 | Pieza | Descripción | Tipo de modelo | L × A × H (mm) | Nivel L / A / H | Dónde va |
 |---|---|---|---|---|---|
-| ADAP | Juego 3 adaptadores 1/4-3/8-1/2 | estuche | 70 × 40 × 25 | F/F/F | BASE C6 |
+| ADAP | Juego 3 adaptadores 1/4-3/8-1/2 | estuche | 70 × 63.0 × 25 | F/F/F | BASE C6 |
 | AJ12 | Llave ajustable 12 in Husky 17018 | llave | 305 × 78 × 20 | D2/D1/D1 | BASE C2 |
 | AJ8 | Llave ajustable 8 in Husky 17016 | llave | 205 × 56 × 15 | D2/D1/D1 | BASE C3 |
 | AMARRE | 4 amarres tipo matraca 3.6 m (enrollados) | estuche | 180 × 120 × 60 | F/F/F | MED C1 |
 | BAT1 | Bateria M18 CP2.0 | estuche | 118 × 79 × 55 | D1/D1/D1 | BASE C1 |
 | BAT2 | Bateria M18 CP2.0 | estuche | 118 × 79 × 55 | D1/D1/D1 | BASE C1 |
-| BROCAS | Juego 15 brocas HSS 1/16-1/2 Truper (estuche) | estuche | 150 × 80 × 20 | F/F/F | BASE C3 |
+| BROCAS | Juego 15 brocas HSS 1/16-1/2 Truper (estuche) | estuche | 150 × 149.1 × 20 | F/F/F | BASE C3 |
 | CAB34 | Cabezal 12R 3/4 NPT de repuesto | cilindro | 100 × 100 × 60 | F/F/F | TUB C1 |
 | CAIMAN | Llave de cadena caiman 6 in Urrea 797UR | llave | 400 × 80 × 40 | F/F/F | TUB C1 |
 | CALAD | Sierra caladora Ryobi JS481LG | estuche | 279 × 236 × 72 | D1/D1/D1 | CIV C7 |
@@ -26,6 +26,7 @@ Sesión nocturna 2 (#338). Código: `modelos.py`, que tiene un generador por tip
 | COMB10 | Juego 10 llaves combinadas Husky BITE | estuche | 300 × 180 × 25 | F/F/F | SOL C4 |
 | COMB7 | Juego 7 llaves combinadas matraca Husky (en su riel) | estuche | 245 × 175 × 45 | D1/D1/D1 | BASE C4 |
 | CRIMP | Pinza crimpadora Weidmuller 1445070000 | pinza | 230 × 90 × 30 | F/F/F | ELE C2 |
+| DADOS | Dadera: 29 dados de la caja P, cada uno en su hueco | estuche | 230.0 × 80.0 × 41 | ?/?/? | BASE C4 |
 | DETV | Detector de voltaje Milwaukee | estuche | 155 × 25 × 25 | F/F/F | ELE C1 |
 | ESCAL | Juego 3 brocas escalonadas Truper | estuche | 150 × 90 × 35 | F/F/F | BASE C5 |
 | ESCCAR | Escuadra de carpintero 12 in Truper EC-12 | estuche | 304 × 166 × 14 | D1/D1/D1 | MED C2 |
@@ -57,7 +58,7 @@ Sesión nocturna 2 (#338). Código: `modelos.py`, que tiene un generador por tip
 | MAPPER | Probador de cableado Fluke MicroMapper MT-8200-49A | estuche | 125 × 52 × 30 | D2/D2/D2 | ELE C2 |
 | MART | Martillo una curva 16 oz Truper MA-16F | llave | 340 × 130 × 30 | D1/D1/D1 | BASE C7 |
 | MART2 | Martillo una curva 16 oz (2o) | llave | 340 × 130 × 30 | D1/D1/D1 | CIV C4 |
-| MATR | Matraca 3/8 + dados (juego Husky P, 3/8) | estuche | 280 × 200 × 45 | F/F/F | BASE C4 |
+| MATRACA | Matraca rotativa 3/8 Husky H38ROTORATMX | estuche | 240 × 42 × 34 | ?/?/? | BASE C4 |
 | MAZO | Mazo de hule 16 oz Truper MH-16 | llave | 357 × 104 × 51 | D1/D1/D1 | CIV C8 |
 | MINIP | Mini pinza de corte al ras 48-22-6105 | pinza | 127 × 60 × 13 | D2/D1/D2 | BASE C1 |
 | MOTO | Moto tool Truper (estuche) | estuche | 300 × 200 × 80 | F/F/F | SOL C6 |

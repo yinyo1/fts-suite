@@ -33,8 +33,8 @@ Cada cajón con piezas se armó en 3D y se corrieron los chequeos con `trimesh` 
 |---|---|---|---|---|---|
 | acomodo de la sesion 1 | dedos en los dos lados largos | 0 | 0 | 27 | - |
 | acomodo de la sesion 1 | rebaje solo del lado libre si uno da a la pared | 0 | 27 | 0 | 43 |
-| reacomodado (vigente) | dedos en los dos lados largos | 0 | 20 | 7 | - |
-| reacomodado (vigente) | rebaje solo del lado libre si uno da a la pared | 0 | 27 | 0 | 10 |
+| reacomodado (vigente) | dedos en los dos lados largos | 0 | 21 | 6 | - |
+| reacomodado (vigente) | rebaje solo del lado libre si uno da a la pared | 0 | 27 | 0 | 9 |
 
 Son los 27 cajones con piezas.
 
@@ -53,18 +53,21 @@ Son los 27 cajones con piezas.
 - **Error corregido de paso:** la ficha ponía el rebaje en los lados cortos de las piezas giradas. Ahora va siempre en los lados largos.
 - **Muchos cajones quedan en PASA JUSTO:** entre dos piezas vecinas el agarre de la Fase 4 deja 1 mm de sobra cuando se mide la zona de dedos contra la ficha de al lado. **Es el diseño, no un choque.**
 
-### Piezas movidas por la corrección (58, contra el commit a52a979)
+### Piezas movidas por la corrección (61, contra el commit a52a979)
 
 | Módulo y cajón | Pieza | De (x, y, girada) | A (x, y, girada) |
 |---|---|---|---|
 | BASE C1 | IMP38 (FTS-BAS-01-C1-01) | 6, 6, sí | 11.5, 6, sí |
 | BASE C1 | ROTO18 (FTS-BAS-01-C1-02) | 140, 6, no | 140, 11.5, no |
-| BASE C3 | VERN (FTS-BAS-01-C3-01) | 6, 6, sí | 6, 12, no |
-| BASE C3 | BROCAS (FTS-BAS-01-C3-02) | 98, 6, sí | 255.0, 12, no |
-| BASE C3 | PDIAG (FTS-BAS-01-C3-03) | 190, 6, no | 223.0, 166.0, no |
-| BASE C3 | AJ8 (FTS-BAS-01-C3-04) | 190, 76, no | 6, 166.0, no |
-| BASE C3 | CHOF8 (FTS-BAS-01-C3-05) | 190, 144, no | 6, 234.0, no |
-| BASE C3 | PELEC (FTS-BAS-01-C3-06) | 6, 255, no | 6, 104.0, no |
+| BASE C3 | VERN (FTS-BAS-01-C3-01) | 6, 6, sí | 168.0, 12, no |
+| BASE C3 | BROCAS (FTS-BAS-01-C3-02) | 98, 6, sí | 6, 12, no |
+| BASE C3 | PDIAG (FTS-BAS-01-C3-03) | 190, 6, no | 6, 235.1, no |
+| BASE C3 | AJ8 (FTS-BAS-01-C3-04) | 190, 76, no | 168.0, 104.0, no |
+| BASE C3 | CHOF8 (FTS-BAS-01-C3-05) | 190, 144, no | 196.0, 235.1, no |
+| BASE C3 | PELEC (FTS-BAS-01-C3-06) | 6, 255, no | 6, 173.1, no |
+| BASE C4 | MATR (FTS-BAS-01-C4-01) | 6, 6, sí | 291.0, 6, sí |
+| BASE C4 | COMB7 (FTS-BAS-01-C4-02) | 218, 6, sí | 12, 6, sí |
+| BASE C4 | WIHA-DS1 (FTS-BAS-01-C4-03) | 218, 263, no | 345.0, 6, sí |
 | BASE C5 | TAZON (FTS-BAS-01-C5-01) | 6, 6, no | 248.0, 12, no |
 | BASE C5 | HDS-A (FTS-BAS-01-C5-02) | 168, 6, no | 6, 12, no |
 | BASE C5 | WIHA-DS2 (FTS-BAS-01-C5-03) | 168, 118, no | 6, 124.0, no |
@@ -124,13 +127,13 @@ Las posiciones nuevas quedaron en `diseno_carrito.json`. Si se vuelve a correr `
 |---|---|---|---|---|---|---|
 | BASE C1 | 48-22-8443 | 414 x 318 x 76 | **PASA JUSTO** | IMP38 0.5 mm | 3.99 de 11 kg | IMP38 pasa justo (0.5 mm, d dedos lado 1, contra pared/labio); ROTO18 pasa justo (0.5 mm, d dedos lado 1, contra pared/labio); TORPEDO pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C1-02); BAT1 pasa justo (2.0 mm, b ficha vs cajon, contra pared/labio); MINIP pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C1-03) |
 | BASE C2 | 48-22-8443 | 414 x 318 x 76 | **PASA JUSTO** | WIHA-PC 1.0 mm | 2.82 de 11 kg | IMP14 pasa justo (2.0 mm, b ficha vs cajon, contra pared/labio); WIHA-PC pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C2-01); AJ12 pasa justo (1.0 mm, d dedos lado 2, contra ficha FTS-BAS-01-C2-04); NAVAJA pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C2-03); WIHA-PE pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C2-01) |
-| BASE C3 | 48-22-8443 | 414 x 318 x 76 | **PASA JUSTO** | VERN 1.0 mm | 2.56 de 11 kg | VERN pasa justo (1.0 mm, d dedos lado 2, contra ficha FTS-BAS-01-C3-06); BROCAS pasa justo (1.0 mm, d dedos lado 1, contra pared/labio); AJ8 pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C3-06); CHOF8 pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C3-04); PELEC pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C3-01) |
-| BASE C4 | 48-22-8444 | 414 x 318 x 58 | **PASA JUSTO** | WIHA-DS1 1.0 mm | 3.43 de 11 kg | MATR pasa justo (2.0 mm, b ficha vs cajon, contra pared/labio); COMB7 pasa justo (2.0 mm, b ficha vs cajon, contra pared/labio); WIHA-DS1 pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C4-02) |
+| BASE C3 | 48-22-8443 | 414 x 318 x 76 | **PASA JUSTO** | VERN 1.0 mm | 2.59 de 11 kg | VERN pasa justo (1.0 mm, d dedos lado 2, contra ficha FTS-BAS-01-C3-04); BROCAS pasa justo (1.0 mm, d dedos lado 1, contra pared/labio); PDIAG pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C3-06); AJ8 pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C3-01); PELEC pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C3-02) |
+| BASE C4 | 48-22-8444 | 414 x 318 x 58 | **PASA JUSTO** | MATRACA 1.0 mm | 10.76 de 11 kg | MATRACA pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C4-04); COMB7 pasa justo (1.0 mm, d dedos lado 1, contra pared/labio); WIHA-DS1 pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C4-01); DADOS pasa justo (1.4 mm, d dedos lado 1, contra ficha FTS-BAS-01-C4-02) |
 | BASE C5 | 48-22-8444 | 414 x 318 x 58 | **PASA JUSTO** | TAZON 1.0 mm | 2.76 de 11 kg | TAZON pasa justo (1.0 mm, d dedos lado 1, contra pared/labio); HDS-A pasa justo (1.0 mm, d dedos lado 2, contra ficha FTS-BAS-01-C5-03); WIHA-DS2 pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C5-02); PRES6C pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C5-01); FLEX1 pasa justo (1.4 mm, d dedos lado 1, contra ficha FTS-BAS-01-C5-01); ESCAL pasa justo (2.0 mm, b ficha vs cajon, contra pared/labio); FLEX2 pasa justo (1.0 mm, d dedos lado 2, contra pared/labio); WIHA-DS4 pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C5-06) |
-| BASE C6 | 48-22-8444 | 414 x 318 x 58 | **PASA JUSTO** | PRES11 1.0 mm | 2.77 de 11 kg | HDS-B pasa justo (2.0 mm, b ficha vs cajon, contra pared/labio); PRES11 pasa justo (1.0 mm, d dedos lado 2, contra ficha FTS-BAS-01-C6-03); EXTS pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C6-02); PREC6 pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C6-03); ADAP pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C6-03) |
+| BASE C6 | 48-22-8444 | 414 x 318 x 58 | **PASA JUSTO** | PRES11 1.0 mm | 2.78 de 11 kg | HDS-B pasa justo (2.0 mm, b ficha vs cajon, contra pared/labio); PRES11 pasa justo (1.0 mm, d dedos lado 2, contra ficha FTS-BAS-01-C6-03); EXTS pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C6-02); PREC6 pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C6-03); ADAP pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C6-03) |
 | BASE C7 | 48-22-8444 | 414 x 318 x 58 | **PASA JUSTO** | WIHA-DS3 1.0 mm | 2.58 de 11 kg | MART pasa justo (1.6 mm, d dedos lado 2, contra ficha FTS-BAS-01-C7-03); WIHA-DS3 pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C7-01); PRES7 pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C7-01); WIHA-PP pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-BAS-01-C7-05); PRES10 pasa justo (2.0 mm, b ficha vs cajon, contra pared/labio) |
-| BASE C8 | 48-22-8420 | 432 x 330 x 190 | **PASA JUSTO** | ESM45 1.0 mm | 3.09 de 15 kg | ESM45 pasa justo (1.0 mm, d dedos lado 1, contra pared/labio) |
-| BASE C9 | 48-22-8420 | 432 x 330 x 200 | **PASA JUSTO** | CARG1 1.0 mm | 1.44 de 25 kg | CARG1 pasa justo (1.0 mm, d dedos lado 1, contra pared/labio) |
+| BASE C8 | 48-22-8442 | 414 x 318 x 127 | **PASA JUSTO** | ESM45 1.0 mm | 2.16 de 11.3 kg | ESM45 pasa justo (1.0 mm, d dedos lado 1, contra pared/labio) |
+| BASE C9 | 48-22-8442 | 414 x 318 x 127 | **PASA JUSTO** | CARG1 1.0 mm | 1.41 de 11.3 kg | CARG1 pasa justo (1.0 mm, d dedos lado 1, contra pared/labio) |
 | ELE C1 | 48-22-8444 | 414 x 318 x 58 | **PASA JUSTO** | SACAB 0.5 mm | 2.6 de 11 kg | EXTECH pasa justo (2.0 mm, b ficha vs cajon, contra pared/labio); DETV pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-ELE-01-C1-01); FLUKE pasa justo (1.0 mm, d dedos lado 2, contra ficha FTS-ELE-01-C1-04); HDS-C pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-ELE-01-C1-03); HDS-D pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-ELE-01-C1-04); SACAB pasa justo (0.5 mm, d dedos lado 2, contra pared/labio) |
 | ELE C2 | 48-22-8444 | 414 x 318 x 58 | **PASA JUSTO** | CRIMP 1.0 mm | 1.82 de 11 kg | CRIMP pasa justo (1.0 mm, d dedos lado 2, contra ficha FTS-ELE-01-C2-02); PONCH pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-ELE-01-C2-01); MAPPER pasa justo (1.0 mm, d dedos lado 1, contra pared/labio) |
 | SOL C1 | 48-22-8447 | 414 x 318 x 63 | **PASA JUSTO** | EXTQ 1.0 mm | 5.89 de 11 kg | EXTQ pasa justo (1.0 mm, d dedos lado 1, contra pared/labio); PRES10B pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-SOL-01-C1-03); PRES11B pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-SOL-01-C1-01); FRESA pasa justo (1.0 mm, d dedos lado 1, contra ficha FTS-SOL-01-C1-02) |
@@ -156,41 +159,5 @@ Peso = herramienta (catálogo) + fichas PETG + loseta PETG. Las fichas salen del
 
 Capacidad por cajón: 11 kg en 8443, 8444 y 8447, y 11.3 kg en 8442, según el fabricante. En la 8420 son 15 kg arriba y 25 kg abajo: es **supuesto**, porque el fabricante solo publica 113 kg del conjunto.
 
-**Cajones que exceden la capacidad: 0.** Ninguno. El más cargado es SOL C1 con 54 % de su capacidad.
-
-## Decisión: las M18 se guardan SIN batería
-
-Van acostadas en los cajones de 76 mm de la 8443, con la base de silueta de 3.6 mm:
-
-| Pieza | Sin batería: tope (mm) | Holgura contra el cajón de arriba | Con batería: tope (mm) | Resultado con batería |
-|---|---|---|---|---|
-| IMP38 | 68.6 | 7.4 mm | 82.6 | **FALLA**: rebasa 6.6 mm y choca con la pieza vecina |
-| ROTO18 | 59.6 | 16.4 mm | 82.6 | **FALLA**: rebasa 6.6 mm y choca con la pieza vecina |
-| IMP14 | 56.6 | 19.4 mm | 82.6 | **FALLA**: rebasa 6.6 mm y choca con la pieza vecina |
-
-**Por qué no caben:** con la batería CP2.0 puesta, el grosor de la herramienta acostada pasa al ancho de la batería, 79 mm (catálogo, nivel D1). 3.6 + 79 = 82.6 mm, contra un cajón de 76 mm.
-
-**Dónde irían con batería:**
-- en un cajón de 127 mm (8442 u 8447 C3), o
-- paradas sobre la batería en la 8420.
-En la base eso obliga a cambiar una caja. En la C9 de la 8420 (432 × 330) no caben las tres con el cargador: faltan 8 mm de ancho con las holguras de la Fase 4 (3 × 79 + 2 × 12 + 12 + 155 + 2 × 6 = 440 mm contra 432).
-
-**Recomendación:** sin batería. Las dos baterías van en sus fichas del mismo cajón C1, así se revisan en la foto de cierre y no se descargan puestas.
-
-## Variantes
-
-### M18 con bateria puesta
-
-| Cajón | Alto | Pieza | Estado | Holgura mínima | Chequeo | Tope de la pieza (mm) | Envolvente L × A × H |
-|---|---|---|---|---|---|---|---|
-| BASE C1 | 76 | IMP38 | **FALLA** | 0.0 mm | a herramienta vs herramienta | 82.6 | 202.0 x 167.0 x 79 |
-| BASE C1 | 76 | ROTO18 | **FALLA** | 0.0 mm | a herramienta vs herramienta | 82.6 | 202.0 x 192.0 x 79 |
-| BASE C2 | 76 | IMP14 | **FALLA** | 0.0 mm | a herramienta vs herramienta | 82.6 | 196.0 x 157.0 x 79 |
-
-### esmeriladora con mango lateral
-
-| Cajón | Alto | Pieza | Estado | Holgura mínima | Chequeo | Tope de la pieza (mm) | Envolvente L × A × H |
-|---|---|---|---|---|---|---|---|
-| BASE C8 | 190 | ESM45 | **PASA JUSTO** | 1.0 mm | d dedos lado 1 | 93.6 | 357.0 x 222.0 x 90.0 |
-| SOL C3 | 127 | ESM45B | **FALLA** | 0.0 mm | a herramienta vs herramienta | 93.6 | 357.0 x 222.0 x 90.0 |
+**Cajones que exceden la capacidad: 0.** Ninguno. El más cargado es BASE C4 con 98 % de su capacidad.
 

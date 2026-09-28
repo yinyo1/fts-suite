@@ -1,0 +1,42 @@
+{
+ "fuentes": {
+  "48-22-8420": "milwaukeetool.com: 24 x 19 x 20 in, 29 lb; sin barra de candado (sesion 1). Precio 5,599 (buscador HerramientaElectrica.mx, media)",
+  "48-22-8410": "milwaukeetool.com/products/48-22-8410 leida 2026-09-28: PACKOUT Dolly 24.4 x 18.9 x 7.6 in (620 x 480 x 193 mm), 11 lb (5.0 kg), 250 lb de capacidad. Precio 2,345 con IVA (Ferreterias Calzada, datos/precios_mx_busqueda.json, confianza media)",
+  "48-22-8442": "catalogo PACKOUT 2023: 2 cajones de 127 mm (414 x 318), barra de candado. Precio 3,952 (buscador, agotado)",
+  "48-22-8441": "milwaukeetool.com: 1 cajon 419 x 330 x 260, barra; 23.15 lb"
+ },
+ "opciones": [
+  {
+   "id": "a",
+   "que": "8420 como cajon de consumibles sin candado (discos, cinta, cinchos, brocas de reposicion) con minimos y maximos; esmeril y cargador se quedan en la 8420",
+   "costo_por_base": 0,
+   "alto_pila_mm": 1228,
+   "bajo_llave": "todo menos esmeriladora, cargador y consumibles",
+   "impresion": "bandeja 8420: 902 g, 52 h",
+   "estabilidad": "la de #338 (vuelco a 15.5 grados con un cajon abierto)",
+   "contras": "la herramienta electrica mas cara de la base sigue sin llave; la esmeriladora no cabe en ningun cajon de 76 o 58 mm (90 mm de alto)"
+  },
+  {
+   "id": "b",
+   "que": "base plana con ruedas 48-22-8410 + 48-22-8442: esmeril en un cajon de 127 y cargador en el otro, los dos con barra",
+   "costo_por_base": 698,
+   "alto_pila_mm": 1282,
+   "bajo_llave": "todo",
+   "impresion": "sin bandeja: ahorra 902 g y 52 h por base; suma 2 losetas de 8442",
+   "estabilidad": "recalculada (scripts/estabilidad.py, base sola, orientacion A): peor cajon abierto BASE C4 vuelca a 10.7 grados (antes 15.5 con C1); todos los de arriba abiertos a 5.7 (antes 9.8); cerrada a 15.0 (antes 17.8). Con los dados a 60 g cada uno, en vez del peso de Home Depot, sube a 13.3 y 7.7. Pierde margen porque la 8410 pesa 5 kg contra 13.2 y su apoyo es mas angosto (supuesto). Con 5 grados sigue en pie en todos los casos",
+   "contras": "+54 mm de alto; la 8410 no trae asa telescopica: el carrito se empuja; hay que confirmar si las rodajas traen freno"
+  },
+  {
+   "id": "c",
+   "que": "base plana 8410 + 48-22-8441 (un cajon de 260 mm con barra): esmeril y cargador juntos",
+   "costo_por_base": null,
+   "alto_pila_mm": 1282,
+   "bajo_llave": "todo",
+   "impresion": "1 cajon grande",
+   "estabilidad": "como b",
+   "contras": "NO caben juntos: 6 + 152 + 12 + 155 + 6 = 331 mm contra 330 de fondo; sin precio de la 8441 en el repo"
+  }
+ ],
+ "recomendada": "b",
+ "por_que": "Es la unica que deja TODO bajo llave con cajas que ya estan en el diseno; cuesta 698 pesos mas por base y ahorra la bandeja impresa. Lo que cuesta en estabilidad no cambia las reglas de uso: un cajon a la vez y nunca en rampa. La a deja sin llave justo la esmeriladora, que es la pieza que mas se ha repuesto (4 veces, caso de negocio). La c no cabe por 1 mm."
+}

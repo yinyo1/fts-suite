@@ -98,7 +98,7 @@
  [
   "Quien recibe confirma y sale el formato de ENTRADA de Vertiv",
   "PASA",
-  "50 piezas · una sola vez por estancia"
+  "51 piezas · una sola vez por estancia"
  ],
  [
   "El kit queda EN_USO en Vertiv",
@@ -108,7 +108,7 @@
  [
   "Retiro: formato de SALIDA con la lista exacta del kit (base + soldadura)",
   "PASA",
-  "55 piezas"
+  "56 piezas"
  ],
  [
   "Catalogo: rechaza \"cajon general\" como lugar",
@@ -128,7 +128,7 @@
  [
   "Llegada: formato de ENTRADA con base + medicion",
   "PASA",
-  "47 piezas"
+  "48 piezas"
  ],
  [
   "Foto completa: ningun hueco",

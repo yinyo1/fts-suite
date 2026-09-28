@@ -70,34 +70,36 @@
  },
  "piloto": {
   "herr": 6407.12,
-  "cont": 13197.0,
+  "cont": 13895.0,
   "ctrl": 813.55,
-  "petg": 5837.06,
-  "total": 26254.73,
+  "petg": 5429.12,
+  "total": 26544.79,
   "sin_precio": 0,
   "n_cont": 4,
-  "kg": 9.22,
-  "h_std": 465.2,
+  "kg": 8.58,
+  "h_std": 431.3,
   "cajas": {
    "48-22-8443": 2,
    "48-22-8444": 1,
-   "48-22-8420": 1
+   "48-22-8442": 1,
+   "48-22-8410": 1
   }
  },
  "piloto_todo_nuevo": {
   "herr": 52796.13,
-  "cont": 16811.0,
+  "cont": 17509.0,
   "ctrl": 813.55,
-  "petg": 5837.06,
-  "total": 76257.74,
+  "petg": 5429.12,
+  "total": 76547.8,
   "sin_precio": 1,
   "n_cont": 4,
-  "kg": 9.22,
-  "h_std": 465.2,
+  "kg": 8.58,
+  "h_std": 431.3,
   "cajas": {
    "48-22-8443": 2,
    "48-22-8444": 1,
-   "48-22-8420": 1
+   "48-22-8442": 1,
+   "48-22-8410": 1
   }
  },
  "piloto_det": [
@@ -119,20 +121,21 @@
  ],
  "plan_actual": {
   "herr": 166422.1,
-  "cont": 107838.0,
+  "cont": 111328.0,
   "ctrl": 5357.3,
-  "petg": 37312.33,
-  "total": 316929.73,
+  "petg": 36648.19,
+  "total": 319755.59,
   "sin_precio": 5,
   "n_cont": 28,
-  "kg": 58.95,
-  "h_std": 2974.7,
+  "kg": 57.9,
+  "h_std": 2911.2,
   "cajas": {
    "48-22-8443": 7,
    "48-22-8444": 8,
-   "48-22-8420": 6,
+   "48-22-8442": 8,
+   "48-22-8410": 5,
    "48-22-8447": 4,
-   "48-22-8442": 3
+   "48-22-8420": 1
   }
  },
  "sensibilidad": [
@@ -140,90 +143,90 @@
    "bases": 4,
    "modulos": "compartidos",
    "herr": 136007.11,
-   "cont": 94826.0,
+   "cont": 97618.0,
    "ctrl": 4662.75,
-   "petg": 32291.98,
-   "total": 267787.84,
+   "petg": 32174.02,
+   "total": 270461.88,
    "sin_precio": 5,
    "n_cont": 25,
-   "kg": 51.01,
-   "h_std": 2574.6
+   "kg": 50.83,
+   "h_std": 2555.7
   },
   {
    "bases": 4,
    "modulos": "dedicados",
    "herr": 247461.51,
-   "cont": 171047.0,
+   "cont": 173839.0,
    "ctrl": 7936.4,
-   "petg": 49405.57,
-   "total": 475850.48,
+   "petg": 52184.21,
+   "total": 481421.12,
    "sin_precio": 6,
    "n_cont": 44,
-   "kg": 78.05,
-   "h_std": 3940.0
+   "kg": 82.44,
+   "h_std": 4144.6
   },
   {
    "bases": 5,
    "modulos": "compartidos",
    "herr": 166422.1,
-   "cont": 107838.0,
+   "cont": 111328.0,
    "ctrl": 5357.3,
-   "petg": 37312.33,
-   "total": 316929.73,
+   "petg": 36648.19,
+   "total": 319755.59,
    "sin_precio": 5,
    "n_cont": 28,
-   "kg": 58.95,
-   "h_std": 2974.7
+   "kg": 57.9,
+   "h_std": 2911.2
   },
   {
    "bases": 5,
    "modulos": "dedicados",
    "herr": 326772.83,
-   "cont": 215587.0,
+   "cont": 219077.0,
    "ctrl": 9920.5,
-   "petg": 61756.96,
-   "total": 614037.29,
+   "petg": 65230.26,
+   "total": 621000.59,
    "sin_precio": 6,
    "n_cont": 55,
-   "kg": 97.56,
-   "h_std": 4925.0
+   "kg": 103.05,
+   "h_std": 5180.7
   },
   {
    "bases": 6,
    "modulos": "compartidos",
    "herr": 196837.09,
-   "cont": 120850.0,
+   "cont": 125038.0,
    "ctrl": 6051.85,
-   "petg": 42332.68,
-   "total": 366071.62,
+   "petg": 41122.37,
+   "total": 369049.31,
    "sin_precio": 5,
    "n_cont": 31,
-   "kg": 66.88,
-   "h_std": 3374.9
+   "kg": 64.96,
+   "h_std": 3266.8
   },
   {
    "bases": 6,
    "modulos": "dedicados",
    "herr": 406084.15,
-   "cont": 260127.0,
+   "cont": 264315.0,
    "ctrl": 11904.6,
-   "petg": 74108.36,
-   "total": 752224.11,
+   "petg": 78276.32,
+   "total": 760580.07,
    "sin_precio": 6,
    "n_cont": 66,
-   "kg": 117.07,
-   "h_std": 5910.0
+   "kg": 123.66,
+   "h_std": 6216.9
   }
  ],
  "factor_petg": [
-  1.898,
-  2.1
+  2.22,
+  2.444
  ],
  "inversiones": {
-  "Piloto (1 base + 1 modulo TUB, con inventario existente)": 26254.73,
-  "Plan completo (5 bases, modulos compartidos), sin RFID": 316929.73,
+  "Piloto (1 base + 1 modulo TUB, con inventario existente)": 26544.79,
+  "Plan completo (5 bases, modulos compartidos), sin RFID": 319755.59,
   "Plan completo + RFID (asignacion_y_compra.xlsx, total conservador)": 316214.8,
-  "Solo el control (contenedores, candados, cables, PETG, RFID), sin herramienta": 170583.73
+  "Solo el control (contenedores, candados, cables, PETG, RFID), sin herramienta": 173409.59
  },
  "huerfanos": [
   {
@@ -328,40 +331,40 @@
   "recuperacion": [
    [
     "Piloto (1 base + TUB)",
-    26254.73,
+    26544.79,
     0.36,
     "bajo",
     19514.02,
     3938.1,
     24310.0,
     12895.77,
-    2.04
+    2.06
    ],
    [
     "Piloto (1 base + TUB)",
-    26254.73,
+    26544.79,
     0.36,
     "medio sin ferreteria",
     34676.25,
     3938.1,
     72920.0,
     30114.27,
-    0.87
+    0.88
    ],
    [
     "Piloto (1 base + TUB)",
-    26254.73,
+    26544.79,
     0.36,
     "medio",
     34676.25,
     277710.88,
     72920.0,
     104032.93,
-    0.25
+    0.26
    ],
    [
     "Piloto (1 base + TUB)",
-    26254.73,
+    26544.79,
     0.36,
     "alto",
     40872.8,
@@ -372,29 +375,29 @@
    ],
    [
     "Lote de 2 (acumulado F2, 3 bases)",
-    125934.52,
+    126672.32,
     0.72,
     "bajo",
     19514.02,
     3938.1,
     24310.0,
     25791.54,
-    4.88
+    4.91
    ],
    [
     "Lote de 2 (acumulado F2, 3 bases)",
-    125934.52,
+    126672.32,
     0.72,
     "medio sin ferreteria",
     34676.25,
     3938.1,
     72920.0,
     60228.55,
-    2.09
+    2.1
    ],
    [
     "Lote de 2 (acumulado F2, 3 bases)",
-    125934.52,
+    126672.32,
     0.72,
     "medio",
     34676.25,
@@ -405,7 +408,7 @@
    ],
    [
     "Lote de 2 (acumulado F2, 3 bases)",
-    125934.52,
+    126672.32,
     0.72,
     "alto",
     40872.8,
@@ -416,47 +419,47 @@
    ],
    [
     "Plan completo (5 bases)",
-    316929.73,
+    319755.59,
     1.0,
     "bajo",
     19514.02,
     3938.1,
     24310.0,
     35821.59,
-    8.85
+    8.93
    ],
    [
     "Plan completo (5 bases)",
-    316929.73,
+    319755.59,
     1.0,
     "medio sin ferreteria",
     34676.25,
     3938.1,
     72920.0,
     83650.76,
-    3.79
+    3.82
    ],
    [
     "Plan completo (5 bases)",
-    316929.73,
+    319755.59,
     1.0,
     "medio",
     34676.25,
     277710.88,
     72920.0,
     288980.35,
-    1.1
+    1.11
    ],
    [
     "Plan completo (5 bases)",
-    316929.73,
+    319755.59,
     1.0,
     "alto",
     40872.8,
     551483.66,
     145830.0,
     553639.85,
-    0.57
+    0.58
    ]
   ]
  }

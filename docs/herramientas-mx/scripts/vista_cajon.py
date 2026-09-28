@@ -5,6 +5,16 @@ COLORES = {'electrico': '#FFE08A', 'mecanica_general': '#C9DDF2', 'soldadura_met
            'perforacion_corte': '#D8C8F0', 'inalambricas_energia': '#F4A6A6', 'medicion_trazo': '#BFE6C8',
            'tuberia': '#B8E0E8', 'izaje_amarre': '#E6D3B3', 'limpieza': '#DDDDDD'}
 
+def subs_en_cajon(p):
+    """Huecos individuales de un juego (#343, bloque 1) en el marco del cajon, relativos a la esquina de la pieza.
+    La pieza girada usa la misma rotacion que el contorno de cad/generar_cajon.py: (x, y) -> (y, L - x)."""
+    out = []
+    for s in p.get('subhuecos') or []:
+        if p.get('rot'): x, y, w, h = s['y'], p['L'] - s['x'] - s['L'], s['A'], s['L']
+        else: x, y, w, h = s['x'], s['y'], s['L'], s['A']
+        out.append({'x': round(x, 1), 'y': round(y, 1), 'w': w, 'h': h, 'forma': s['forma'], 'activo': s['activo'], 'ref': s['ref'], 'desc': s['desc']})
+    return out
+
 def svg_cajon(caj, piezas, margen=6, titulo=''):
     W, D = caj['ancho'], caj['fondo']
     M = 46
@@ -27,6 +37,17 @@ def svg_cajon(caj, piezas, margen=6, titulo=''):
         x, y, w, h = M + p['x'], M + p['y'], p['w'], p['h']
         col = COLORES.get(p['familia'], '#EEEEEE')
         o.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="4" fill="{col}" stroke="#111" stroke-width="1.2"/>')
+        subs = subs_en_cajon(p)
+        for sb in subs:   # un hueco por pieza del juego, con su numero corto
+            if sb['forma'] == 'circulo':
+                o.append(f'<circle cx="{x + sb["x"] + sb["w"]/2}" cy="{y + sb["y"] + sb["h"]/2}" r="{sb["w"]/2}" fill="#fff8" stroke="#111" stroke-width="0.6"/>')
+            else:
+                o.append(f'<rect x="{x + sb["x"]}" y="{y + sb["y"]}" width="{sb["w"]}" height="{sb["h"]}" rx="1.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>')
+            o.append(f'<text x="{x + sb["x"] + sb["w"]/2}" y="{y + sb["y"] + sb["h"]/2 + 2}" font-size="{max(4, min(7, sb["w"]/3, sb["h"]/2.2)):.1f}" text-anchor="middle" fill="#333">{sb["activo"][-2:]}</text>')
+        if subs:
+            ty = y + h + 8 if p['y'] + h + 10 <= D else y - 2   # debajo de la ficha si cabe; si no, arriba
+            o.append(f'<text x="{x + w/2}" y="{ty}" font-size="7" text-anchor="middle" font-weight="bold" fill="#fff">{e(p["activo"])} · {len(subs)} huecos</text>')
+            continue
         fs = max(6, min(11, w / 14, h / 3.2))
         o.append(f'<text x="{x + w/2}" y="{y + h/2 - fs*0.2}" font-size="{fs:.1f}" text-anchor="middle" font-weight="bold">{e(p["activo"])}{" R" if p["rot"] else ""}</text>')
         o.append(f'<text x="{x + w/2}" y="{y + h/2 + fs}" font-size="{fs*0.85:.1f}" text-anchor="middle">{e(p["corto"][:max(8, int(w / (fs*0.5)))])}</text>')

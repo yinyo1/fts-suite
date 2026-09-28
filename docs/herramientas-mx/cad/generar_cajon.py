@@ -76,8 +76,16 @@ def scad_cajon(modulo, cajon):
         prof = round(min(PROF_MAX, PROF_FRAC * q['H']), 1)
         v = val.get(q['id'], {})
         nivel = ''.join(v.get(k, {}).get('nivel', '?') for k in ('L', 'A', 'H'))
+        if not v and q.get('fuente_dim'): nivel = q['fuente_dim'] * 3   # piezas nuevas de #343 (dadera, matraca): nivel de su fuente
         lin.append(f'// {q["activo"]} · {q["id"]} · {q["corto"]} · contorno {tipo} · niveles L/A/H {nivel}')
-        lin.append(f'if (PARTE == "todo" || PARTE == "{q["id"]}") color("#f2b705") ficha({json.dumps(pts)}, {q["w"]}, {q["h"]}, {prof}, {q["x"]}, {q["y"]}, "{q["activo"]}", {json.dumps(lados_por.get(q["activo"], [0, 1]))});')
+        subs = []
+        if q.get('subhuecos'):   # #343: un hueco por pieza del juego; profundidad propia (min(60 % de su alto, 25))
+            sys.path.insert(0, os.path.join(BASE, 'scripts')); from vista_cajon import subs_en_cajon
+            hs = {h['activo']: h for h in q['subhuecos']}
+            for sb in subs_en_cajon(q):
+                subs.append([sb['x'], sb['y'], sb['w'], sb['h'], 1 if sb['forma'] == 'circulo' else 0,
+                             round(min(PROF_MAX, PROF_FRAC * hs[sb['activo']]['H'], prof), 1), sb['activo'][-2:]])
+        lin.append(f'if (PARTE == "todo" || PARTE == "{q["id"]}") color("#f2b705") ficha({json.dumps(pts)}, {q["w"]}, {q["h"]}, {prof}, {q["x"]}, {q["y"]}, "{q["activo"]}", {json.dumps(lados_por.get(q["activo"], [0, 1]))}, {json.dumps(subs).replace(chr(39), chr(34))});')
         fichas.append({'id': q['id'], 'activo': q['activo'], 'tipo': tipo, 'nivel': nivel, 'prof': prof, 'rebaje_lados': lados_por.get(q['activo'], [0, 1])})
     p = os.path.join(AQUI, 'cajones', f'{nombre}.scad')
     open(p, 'w', encoding='utf-8').write('\n'.join(lin) + '\n')

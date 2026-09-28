@@ -7,11 +7,11 @@ Sesión nocturna 2 (#338). Sale de `scripts/build_plan_maestro.py`, igual que `p
 | Fase | Fechas | Objetivo | Entregables | Criterio para pasar | Quién decide | Costo de la fase | Acumulado |
 |---|---|---|---|---|---|---|---|
 | F0 Levantamiento | 29-Sep-2026 a 02-Oct-2026 | Saber que herramienta hay de verdad y medir las 40 piezas que deciden el acomodo | conteo_fisico.json y medicion_fisica.json ingestados; cajon C6 impreso y medido; costo del piloto con la existencia real | Conteo cerrado (100 % de los renglones con estado); 40 piezas medidas; C6 impreso y probado en el cajon real | Direccion (aprueba la compra del piloto) | $0 (Sin compra. PETG del C6 ya se tiene) | $0 |
-| F1 Piloto en Topo Chico | 05-Oct-2026 a 30-Oct-2026 | Probar un carrito base con modulo TUB 4 semanas en la planta con mas gente | Carrito FTS-CAR-01 operando; checklist diaria; 4 mediciones de viernes (M1 a M9); reporte en el issue | M1 >= 90 %, M3 = 0, M4 <= 5 min, M6 >= 95 %, M7 = 0, el encargado del frente y el supervisor SR dicen que se queda; y decision de compra de 2 impresoras rapidas para F2 | Manager de operaciones propone; direccion decide | $26,255 (76,258 si nada del listado aparece) | $26,255 |
-| F2 Lote de 2 bases | 02-Nov-2026 a 11-Dec-2026 | Carrito para Bridgestone SO11699 (con modulo ELE) y uno de reserva en el taller; usar la app MVP | FTS-CAR-02 y 03; modulo ELE; app MVP en uso; 8 semanas acumuladas de M3 y M5 | M3 y M5 de 8 semanas mejores que la linea base; costo real por carrito dentro de +-15 % del plan; app MVP sin perdidas de eventos | Direccion | $99,680 (148,053 si nada del listado aparece) | $125,935 |
-| F3 App dentro de la suite | 05-Oct-2026 a 26-Feb-2027 | Pasar del prototipo a un modulo de la suite: MVP para el lote de 2 y completa antes de escalar | Issues H1 a H13 (seccion Ruta de la app); webhooks /herramientas/*; esquema herramientas en fts-suite-db | MVP (H1 a H7 y H9) en uso con el lote de 2 antes del 30-nov; completa (H8, H10 a H13) antes del 22-feb-2027 | Direccion aprueba el esquema de datos; manager de operaciones acepta cada entrega | $0 (Horas internas: 81 h estimadas (tabla de issues)) | $125,935 |
-| F4 Escalamiento a 5 bases | 11-Jan-2027 a 26-Feb-2027 | Completar 5 carritos base y los modulos compartidos (ELE 2, SOL 2, TUB 2, CIV 1, MED 2) | FTS-CAR-04 y 05; 9 modulos; RFID si se aprueba; capacitacion de todos los encargados | Todos los carritos con revision diaria >= 90 % durante 4 semanas; alertas A1 a A7 activas; 0 kits huerfanos sin atender | Direccion | $190,995 (216,765 si nada del listado aparece; RFID aparte 20,076) | $316,930 |
-| F5 Operacion estable | 01-Mar-2027 a 28-May-2027 | Que funcione sin el equipo del proyecto: revision semanal, bono ligado y reposicion con referencia | Tablero mensual; bono del encargado ligado a M1 y M3; procedimiento de alta y baja de piezas | 3 meses con reposicion por perdida < 25 % de la linea base y revision diaria >= 90 % | Direccion | $0 (Reposicion y reimpresion normales (se miden)) | $316,930 |
+| F1 Piloto en Topo Chico | 05-Oct-2026 a 30-Oct-2026 | Probar un carrito base con modulo TUB 4 semanas en la planta con mas gente | Carrito FTS-CAR-01 operando; checklist diaria; 4 mediciones de viernes (M1 a M9); reporte en el issue | M1 >= 90 %, M3 = 0, M4 <= 5 min, M6 >= 95 %, M7 = 0, el encargado del frente y el supervisor SR dicen que se queda; y decision de compra de 2 impresoras rapidas para F2 | Manager de operaciones propone; direccion decide | $26,545 (76,548 si nada del listado aparece) | $26,545 |
+| F2 Lote de 2 bases | 02-Nov-2026 a 11-Dec-2026 | Carrito para Bridgestone SO11699 (con modulo ELE) y uno de reserva en el taller; usar la app MVP | FTS-CAR-02 y 03; modulo ELE; app MVP en uso; 8 semanas acumuladas de M3 y M5 | M3 y M5 de 8 semanas mejores que la linea base; costo real por carrito dentro de +-15 % del plan; app MVP sin perdidas de eventos | Direccion | $100,128 (148,501 si nada del listado aparece) | $126,672 |
+| F3 App dentro de la suite | 05-Oct-2026 a 26-Feb-2027 | Pasar del prototipo a un modulo de la suite: MVP para el lote de 2 y completa antes de escalar | Issues H1 a H13 (seccion Ruta de la app); webhooks /herramientas/*; esquema herramientas en fts-suite-db | MVP (H1 a H7 y H9) en uso con el lote de 2 antes del 30-nov; completa (H8, H10 a H13) antes del 22-feb-2027 | Direccion aprueba el esquema de datos; manager de operaciones acepta cada entrega | $0 (Horas internas: 81 h estimadas (tabla de issues)) | $126,672 |
+| F4 Escalamiento a 5 bases | 11-Jan-2027 a 26-Feb-2027 | Completar 5 carritos base y los modulos compartidos (ELE 2, SOL 2, TUB 2, CIV 1, MED 2) | FTS-CAR-04 y 05; 9 modulos; RFID si se aprueba; capacitacion de todos los encargados | Todos los carritos con revision diaria >= 90 % durante 4 semanas; alertas A1 a A7 activas; 0 kits huerfanos sin atender | Direccion | $193,083 (218,853 si nada del listado aparece; RFID aparte 20,076) | $319,756 |
+| F5 Operacion estable | 01-Mar-2027 a 28-May-2027 | Que funcione sin el equipo del proyecto: revision semanal, bono ligado y reposicion con referencia | Tablero mensual; bono del encargado ligado a M1 y M3; procedimiento de alta y baja de piezas | 3 meses con reposicion por perdida < 25 % de la linea base y revision diaria >= 90 % | Direccion | $0 (Reposicion y reimpresion normales (se miden)) | $319,756 |
 
 **Cómo sale el costo de cada fase:**
 - Es la diferencia del costo de su configuración acumulada contra la de la fase anterior. El inventario que ya existe se consume primero.
@@ -23,12 +23,12 @@ Sesión nocturna 2 (#338). Sale de `scripts/build_plan_maestro.py`, igual que `p
 
 | Fase | Configuración acumulada | Herramienta | Contenedores | Candados y cables | PETG | Total de la fase | Si nada del listado aparece |
 |---|---|---|---|---|---|---|---|
-| F1 | BASE 1, TUB 1 | $6,407 | $13,197 | $814 | $5,837 | **$26,255** | $76,258 |
-| F2 | BASE 3, TUB 1, ELE 1 | $57,642 | $29,638 | $1,508 | $10,892 | **$99,680** | $148,053 |
-| F4 | BASE 5, ELE 2, SOL 2, TUB 2, CIV 1, MED 2 | $102,373 | $65,003 | $3,036 | $20,583 | **$190,995** | $216,765 |
+| F1 | BASE 1, TUB 1 | $6,407 | $13,895 | $814 | $5,429 | **$26,545** | $76,548 |
+| F2 | BASE 3, TUB 1, ELE 1 | $57,642 | $31,034 | $1,508 | $9,944 | **$100,128** | $148,501 |
+| F4 | BASE 5, ELE 2, SOL 2, TUB 2, CIV 1, MED 2 | $102,373 | $66,399 | $3,036 | $21,275 | **$193,083** | $218,853 |
 | RFID (opcional, F4) | tags + lector | | | | | $20,076 | |
 
-**Total del plan sin RFID: $316,930.** Con RFID son $337,006.
+**Total del plan sin RFID: $319,756.** Con RFID son $339,832.
 
 Hay renglones sin precio que se cotizan aparte: dados 3/8, Torx, limas, grilletes y mangos. Los detalla `asignacion_y_compra.xlsx`.
 
@@ -36,12 +36,12 @@ Hay renglones sin precio que se cotizan aparte: dados 3/8, Torx, limas, grillete
 
 | Bases | Módulos | Total | kg PETG | Horas de impresión |
 |---|---|---|---|---|
-| 4 | compartidos | $267,788 | 51.01 | 2574.6 |
-| 4 | dedicados | $475,850 | 78.05 | 3940.0 |
-| 5 | compartidos | $316,930 | 58.95 | 2974.7 |
-| 5 | dedicados | $614,037 | 97.56 | 4925.0 |
-| 6 | compartidos | $366,072 | 66.88 | 3374.9 |
-| 6 | dedicados | $752,224 | 117.07 | 5910.0 |
+| 4 | compartidos | $270,462 | 50.83 | 2555.7 |
+| 4 | dedicados | $481,421 | 82.44 | 4144.6 |
+| 5 | compartidos | $319,756 | 57.9 | 2911.2 |
+| 5 | dedicados | $621,001 | 103.05 | 5180.7 |
+| 6 | compartidos | $369,049 | 64.96 | 3266.8 |
+| 6 | dedicados | $760,580 | 123.66 | 6216.9 |
 
 ## Capacidad de impresión 3D
 
@@ -52,14 +52,14 @@ Hay renglones sin precio que se cotizan aparte: dados 3/8, Torx, limas, grillete
 | Fase | kg PETG | Horas estándar | Semanas con 1 estándar | Con 2 rápidas | Con 1 estándar + 2 rápidas |
 |---|---|---|---|---|---|
 | F0 | 0.67 | 33.6 | 0.4 | 0.1 | 0.1 |
-| F1 | 9.22 | 465.2 | 5.7 | 1.4 | 1.1 |
-| F2 | 17.21 | 868.2 | 10.6 | 2.7 | 2.1 |
-| F4 | 32.52 | 1641.3 | 20.1 | 5.0 | 4.0 |
+| F1 | 8.58 | 431.3 | 5.3 | 1.3 | 1.1 |
+| F2 | 15.71 | 790.1 | 9.7 | 2.4 | 1.9 |
+| F4 | 33.61 | 1689.8 | 20.7 | 5.2 | 4.1 |
 
 **Lectura:**
-- **F1:** con la impresora estándar son 5.7 semanas contra 4 del piloto. Por eso el piloto imprime por prioridad y usa cartulina en el resto.
-- **F2:** con una estándar son 10.6 semanas contra 6 de la fase. **No cabe sin impresoras rápidas.**
-- **F4:** son 20.1 semanas con una estándar, contra 4.0 con una estándar más 2 rápidas.
+- **F1:** con la impresora estándar son 5.3 semanas contra 4 del piloto. Por eso el piloto imprime por prioridad y usa cartulina en el resto.
+- **F2:** con una estándar son 9.7 semanas contra 6 de la fase. **No cabe sin impresoras rápidas.**
+- **F4:** son 20.7 semanas con una estándar, contra 4.1 con una estándar más 2 rápidas.
 - **La compra de 2 impresoras rápidas se decide en la compuerta G1 (30 de octubre), no después.** Ya no es F4 lo que las necesita: es el lote de 2.
 
 ## Ruta de la app (issues por crear, redactados aquí)
@@ -126,6 +126,6 @@ Los 7 u 8 intentos anteriores **no están documentados en el repo**. Las causas 
 
 ## Próxima decisión de dirección
 
-- **Compuerta F0, viernes 2 de octubre:** aprobar la compra del piloto, entre $26,255 y $76,258 según el conteo.
+- **Compuerta F0, viernes 2 de octubre:** aprobar la compra del piloto, entre $26,545 y $76,548 según el conteo.
 - **Nombrar al dueño del proyecto.**
 - **Decidir en G1** la compra de las 2 impresoras rápidas que el lote de 2 ya necesita. Hay que cotizarlas: no tienen precio en el repo.

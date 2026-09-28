@@ -58,7 +58,11 @@ module loseta(x0, y0, w, h, ancho_cajon, fondo_cajon) {
 // Sesion nocturna 2 (#338): antes el rebaje iba siempre en los lados paralelos a L, o sea en los CORTOS cuando la pieza
 // va girada (L < A en el marco del cajon); ahora va en los largos, y solo del lado donde caben los dedos
 // (scripts/interferencias_3d.py decide cual, contra la pared y el labio).
-module ficha(pts, L, A, prof, x, y, etiqueta = "", lados = [0, 1]) {
+// subs (#343, bloque 1): juegos con un hueco POR PIEZA. Cada elemento es [x, y, w, h, circulo, prof, etiqueta] en el
+// marco de la ficha. Si hay subs, la cavidad es la suma de los huecos (cada uno con su profundidad desde la cara de
+// arriba) y el rebaje de dedo es una canal que cruza todas las barras por la mitad; en los dados (circulos) no hay
+// canal: se toman de arriba.
+module ficha(pts, L, A, prof, x, y, etiqueta = "", lados = [0, 1], subs = []) {
     ext = PARED + HOLGURA;
     alto = BASE_FICHA + prof;
     translate([x, y, ESP_LOSETA]) difference() {
@@ -76,14 +80,26 @@ module ficha(pts, L, A, prof, x, y, etiqueta = "", lados = [0, 1]) {
             }
         }
         // cavidad de la herramienta
-        translate([0, 0, BASE_FICHA]) linear_extrude(prof + 1) offset(delta = HOLGURA) polygon(pts);
+        if (len(subs) == 0) translate([0, 0, BASE_FICHA]) linear_extrude(prof + 1) offset(delta = HOLGURA) polygon(pts);
+        for (h = subs) {
+            translate([h[0], h[1], BASE_FICHA + prof - h[5]]) linear_extrude(h[5] + 1)
+                if (h[4] == 1) translate([h[2] / 2, h[3] / 2]) circle(d = h[2] + 2 * HOLGURA);
+                else offset(delta = HOLGURA) square([h[2], h[3]]);
+            if (h[6] != "" && min(h[2], h[3]) >= 8) translate([h[0] + h[2] / 2, h[1] + h[3] / 2, BASE_FICHA + prof - h[5] - 0.6])
+                linear_extrude(1) text(h[6], size = min(3, h[2] / 3, h[3] / 3), halign = "center", valign = "center");
+        }
+        barras = len(subs) > 0 && subs[0][4] == 0;
+        if (barras) {   // canal de dedos que cruza todas las barras
+            if (subs[0][2] >= subs[0][3]) translate([L / 2, A / 2, BASE_FICHA + prof]) rotate([90, 0, 0]) cylinder(d = DEDO, h = A + 2 * ext + 2, center = true);
+            else                           translate([L / 2, A / 2, BASE_FICHA + prof]) rotate([0, 90, 0]) cylinder(d = DEDO, h = L + 2 * ext + 2, center = true);
+        }
         // rebajes para dedos, al centro de los dos lados largos
-        for (s = lados) {
+        if (len(subs) == 0) for (s = lados) {
             if (L >= A) translate([L / 2, s == 0 ? -ext : A + ext, BASE_FICHA + DEDO / 2]) rotate([0, 90, 0]) cylinder(d = DEDO, h = min(L * 0.5, 60), center = true);
             else        translate([s == 0 ? -ext : L + ext, A / 2, BASE_FICHA + DEDO / 2]) rotate([90, 0, 0]) cylinder(d = DEDO, h = min(A * 0.5, 60), center = true);
         }
         // numero de activo grabado en el piso (0.6 mm)
-        if (etiqueta != "") translate([L / 2, A / 2, BASE_FICHA - 0.6]) linear_extrude(1) text(etiqueta, size = min(5, A / 4), halign = "center", valign = "center");
+        if (etiqueta != "" && len(subs) == 0) translate([L / 2, A / 2, BASE_FICHA - 0.6]) linear_extrude(1) text(etiqueta, size = min(5, A / 4), halign = "center", valign = "center");
     }
 }
 

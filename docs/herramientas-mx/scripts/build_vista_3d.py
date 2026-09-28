@@ -39,6 +39,8 @@ for m, v in d['modulos'].items():
              'piezas': [{'id': q['id'], 'act': q['activo'], 'd': q['corto'][:60], 'x': q['x'], 'y': q['y'], 'w': q['w'], 'h': q['h'], 'H': q['H'],
                          'f': q['familia'], 'g': malla(q), 'e': EST.get((m, q['activo']), ('SIN DATO', None, ''))} for q in cj['piezas']]} for cj in c['cajones']]})
     mods[m] = {'cajas': cajas, 'alto': v['metricas']['alto_mm']}
+    if v.get('base_rodante'):   # #343: base plana con ruedas (8410), frente x fondo x alto del fabricante
+        e = v['base_rodante']['ext_mm']; mods[m]['base'] = {'modelo': v['base_rodante']['modelo'], 'ext': [e[0], e[1], e[2]]}   # el largo de 620 va con el frente de 564 de las cajas
 # variante para ver en rojo: carrito base con las M18 con bateria puesta (no cierran el cajon de 76 mm)
 import copy as _c
 mods['BASE_BAT'] = _c.deepcopy(mods['BASE'])
@@ -81,6 +83,9 @@ const mRojo=new THREE.MeshLambertMaterial({color:0xc62828}),mNegro=new THREE.Mes
 function caja(w,h,d,m){return new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m)}
 function at(o,x,y,z){o.position.set(x,y,z);return o}
 function construir(mod){if(grupo)esc.remove(grupo);grupo=new THREE.Group();cajones=[];abierto=null;let y=0;const M=D[mod];
+ if(M.base){const [bw,bd,bh]=M.base.ext;const g=new THREE.Group();g.add(at(caja(bw,bh-90,bd,mRojo),0,90+(bh-90)/2,0));g.add(at(caja(bw-40,12,bd-40,mNegro),0,bh-6,0));
+  [[-1,-1],[-1,1],[1,-1],[1,1]].forEach(([sx,sz])=>{const r=new THREE.Mesh(new THREE.CylinderGeometry(45,45,40,20),mNegro);r.rotation.z=Math.PI/2;r.position.set(sx*(bw/2-50),45,sz*(bd/2-70));g.add(r)});
+  grupo.add(g);y=bh}
  M.cajas.forEach((c,ci)=>{const [ew,ed,eh]=c.ext;const g=new THREE.Group();g.position.y=y;
   const es8420=c.modelo==='48-22-8420';const tapa=es8420?60:40,fondo=es8420?40:20;
   // carcasa: laterales, fondo trasero, tapa negra con la huella PACKOUT

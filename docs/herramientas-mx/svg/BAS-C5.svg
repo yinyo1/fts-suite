@@ -14,9 +14,13 @@
 <text x="369.0" y="143.71428571428572" font-size="9.1" text-anchor="middle">Tazon magnetico Husky</text>
 <text x="296.0" y="206.0" font-size="7.5" fill="#333">150x150x40</text>
 <rect x="52" y="58" width="230.0" height="100.0" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
-<text x="167.0" y="105.8" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C5-02</text>
-<text x="167.0" y="119.0" font-size="9.3" text-anchor="middle">3 desarmadores Husky (P1, P1, P2)</text>
-<text x="54" y="156.0" font-size="7.7" fill="#333">230x100x32</text>
+<rect x="52.0" y="58.0" width="230" height="31.3" rx="1.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="167.0" y="75.65" font-size="7.0" text-anchor="middle" fill="#333">01</text>
+<rect x="52.0" y="92.3" width="230" height="31.3" rx="1.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="167.0" y="109.95" font-size="7.0" text-anchor="middle" fill="#333">02</text>
+<rect x="52.0" y="126.6" width="230" height="31.3" rx="1.5" fill="#fff8" stroke="#111" stroke-width="0.6"/>
+<text x="167.0" y="144.25" font-size="7.0" text-anchor="middle" fill="#333">03</text>
+<text x="167.0" y="166.0" font-size="7" text-anchor="middle" font-weight="bold" fill="#fff">FTS-BAS-01-C5-02 · 3 huecos</text>
 <rect x="52" y="170.0" width="215.0" height="32.0" rx="4" fill="#FFE08A" stroke="#111" stroke-width="1.2"/>
 <text x="159.5" y="184.0" font-size="10.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C5-03</text>
 <text x="159.5" y="196.0" font-size="8.5" text-anchor="middle">Desarmador aislado PH2 x 100 (32102)</text>
