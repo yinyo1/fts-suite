@@ -164,25 +164,103 @@ def test_ningun_toque_de_hershey_cae_despues_de_su_caducidad():
             assert date.fromisoformat(x["fecha"]) <= caduca
 
 
-# ============================================  D8 · el defecto que salio
-def test_D8_los_cuatro_primeros_toques_caen_EL_MISMO_DIA():
-    """DEFECTO REPORTADO, NO ARREGLADO — D8 de #330.
+# ==================================  D8 · ARREGLADO en #335, y la prueba invertida
+def test_D8_los_primeros_toques_YA_NO_caen_el_mismo_dia():
+    """La prueba que documentaba el enjambre, invertida.
 
-    La tabla del §4c es POR CONTACTO y no dice nada de como se reparten los
-    primeros toques entre los contactos de una misma cuenta. Resultado: los cuatro
-    contactos de Hershey reciben su toque #1 el mismo dia, por cuatro canales
-    distintos. Desde la planta eso no se ve como una cadencia: se ve como un
-    enjambre, y el riesgo es que el primer contacto que conteste avise a los otros
-    tres de que le llego lo mismo.
-
-    Esta prueba DOCUMENTA el comportamiento actual en vez de exigir el corregido.
-    Escalonar los primeros toques cambia como FTS se ve frente al cliente, y eso es
-    criterio del dueno, no mio. Cuando Esteban decida, esta prueba se invierte.
+    En #330 esta prueba exigia que los cuatro primeros toques cayeran el MISMO dia,
+    porque eso era lo que el codigo hacia y escalonar cambia como FTS se ve frente
+    al cliente -- criterio del dueno--. D8 se aprobo en #335 y ahora exige lo
+    contrario: un solo toque #1 por cuenta por dia.
     """
     t = _tarjeta()
     primeros = [p["toques"][0]["fecha"] for p in t["cadencia"]["plan"]
                 if p["toques"]]
     assert len(primeros) == 4
-    assert len(set(primeros)) == 1, (
-        "si esto falla es porque alguien ya escalono los primeros toques: "
-        "invierte la prueba y borra D8")
+    assert len(set(primeros)) == 4, f"dos primeros toques el mismo dia: {primeros}"
+    assert t["cadencia"]["un_solo_primer_toque_por_dia"] is True
+
+
+def test_D8_hay_al_menos_dos_dias_habiles_entre_primeros_toques():
+    t = _tarjeta()
+    fechas = sorted(date.fromisoformat(p["toques"][0]["fecha"])
+                    for p in t["cadencia"]["plan"] if p["toques"])
+    for a, b in zip(fechas, fechas[1:]):
+        habiles = sum(1 for n in range((b - a).days)
+                      if (a + __import__("datetime").timedelta(days=n + 1)).weekday() < 5)
+        assert habiles >= cd.SEPARACION_ENTRE_PRIMEROS_TOQUES, (a, b)
+
+
+def test_D8_arranca_el_de_mayor_nivel_y_canal_mas_directo():
+    """Las dos mitades del orden tienen razon propia.
+
+    Mayor nivel primero: si alguien va a contestar, el del dato mejor sostenido es
+    el que mas probabilidad tiene, y una respuesta temprana puede volver
+    innecesarios los toques que siguen. Canal mas directo primero: el correo con
+    historia es el unico que empieza con "sobre lo que platicamos", y gastar el dia
+    1 en un conmutador es tirar la unica ventaja que la cuenta da.
+    """
+    t = _tarjeta()
+    orden = t["cadencia"]["orden_de_arranque"]
+    assert orden[0] == "Gerente de Mantenimiento"
+    # Los dos `solido` con correo directo van antes que los dos `candidato`.
+    niveles = [x["nivel_confianza"] for x in cd.orden_de_arranque(t["contactos"])]
+    assert niveles == ["solido", "solido", "candidato", "candidato"]
+
+
+def test_D8_el_desempate_es_ESTABLE():
+    """Sin desempate estable, dos corridas de la misma tarjeta escalonarian
+    distinto y la cadencia dejaria de ser reproducible -- que es lo que el lazo 3
+    necesita para comparar cadencias entre cuentas--."""
+    gemelos = [
+        {"puesto": "Zeta", "nivel_confianza": "solido",
+         "canal_recomendado": cd.CORREO_DIRECTO, "cercania_decision": 10},
+        {"puesto": "Alfa", "nivel_confianza": "solido",
+         "canal_recomendado": cd.CORREO_DIRECTO, "cercania_decision": 10},
+    ]
+    una = [x["puesto"] for x in cd.orden_de_arranque(gemelos)]
+    otra = [x["puesto"] for x in cd.orden_de_arranque(list(reversed(gemelos)))]
+    assert una == otra == ["Alfa", "Zeta"]
+
+
+def test_D8_un_contacto_en_revision_no_ocupa_lugar_en_el_escalonamiento():
+    """No entra a la cadencia, asi que no puede consumir un dia del escalonamiento
+    y empujar a los demas."""
+    contactos = [
+        {"puesto": "En revision", "nivel_confianza": "solido",
+         "canal_recomendado": cd.CORREO_DIRECTO, "revision_humana": True,
+         "motivo_revision": "dos redacciones"},
+        {"puesto": "Bueno", "nivel_confianza": "solido",
+         "canal_recomendado": cd.CORREO_DIRECTO},
+    ]
+    r = cd.plan_de_la_tarjeta(contactos, date(2026, 9, 28), date(2026, 12, 23))
+    assert r["contactos_en_cadencia"] == 1
+    assert r["orden_de_arranque"] == ["Bueno"]
+    # El unico que queda arranca el dia 1, no el dia 3.
+    assert r["plan"][0]["toques"][0]["fecha"] == "2026-09-28"
+
+
+def test_D8_el_plan_DECLARA_si_la_regla_se_cumplio():
+    """Quien lea el plan tiene que poder verlo sin ir al codigo."""
+    sin = cd.plan_de_la_tarjeta(
+        [{"puesto": f"P{i}", "nivel_confianza": "solido",
+          "canal_recomendado": cd.CORREO_DIRECTO} for i in range(3)],
+        date(2026, 9, 28), date(2026, 12, 23), escalonar=False)
+    assert sin["un_solo_primer_toque_por_dia"] is False
+    assert any("ENJAMBRE" in a.upper() or "enjambre" in a for a in sin["avisos"])
+    con = cd.plan_de_la_tarjeta(
+        [{"puesto": f"P{i}", "nivel_confianza": "solido",
+          "canal_recomendado": cd.CORREO_DIRECTO} for i in range(3)],
+        date(2026, 9, 28), date(2026, 12, 23))
+    assert con["un_solo_primer_toque_por_dia"] is True
+    assert con["avisos"] == []
+
+
+def test_D8_el_escalonamiento_no_empuja_toques_despues_de_la_caducidad():
+    """El escalonamiento corre las fechas hacia adelante, asi que el ultimo contacto
+    tiene menos ventana. Los dos relojes siguen valiendo: nada cae despues."""
+    t = _tarjeta()
+    caduca = date.fromisoformat(t["caduca_el"])
+    for p in t["cadencia"]["plan"]:
+        for x in p["toques"]:
+            assert date.fromisoformat(x["fecha"]) <= caduca

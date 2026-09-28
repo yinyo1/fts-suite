@@ -44,6 +44,52 @@ ESPERA_Y_TOQUES = {
 #: reloj.
 PROHIBIDO = ("celular_personal",)
 
+# ============================================== D8 · el escalonamiento del dia 1
+# APROBADA en #335. El defecto que la motivo, medido en la tarjeta de Hershey: la
+# tabla del §4c es POR CONTACTO y no dice nada de como se reparten los primeros
+# toques entre los contactos de UNA MISMA CUENTA. Resultado: los cuatro contactos
+# recibian su toque #1 el mismo dia, por cuatro canales distintos.
+#
+# Desde la planta eso no se ve como una cadencia: **se ve como un enjambre**, y el
+# riesgo concreto es que el primero que conteste avise a los otros tres de que le
+# llego lo mismo -- y entonces FTS no parece organizada, parece desesperada--.
+#
+# LA REGLA: maximo UN toque #1 por cuenta por dia, con al menos DOS dias habiles
+# entre contactos.
+SEPARACION_ENTRE_PRIMEROS_TOQUES = 2
+
+# EL ORDEN: primero el de mayor nivel de confianza y, a igual nivel, el canal mas
+# directo. Las dos mitades tienen razon propia.
+#
+#   * MAYOR NIVEL PRIMERO porque si alguien va a contestar, el que tiene el dato
+#     mejor sostenido es el que tiene mas probabilidad de contestar, y una respuesta
+#     temprana puede volver innecesarios los toques que siguen -- que es el mejor
+#     resultado posible: menos toques, misma cuenta abierta--.
+#   * CANAL MAS DIRECTO PRIMERO porque el correo directo con historia no es un
+#     toque frio: es el unico que empieza con "sobre lo que platicamos". Gastar el
+#     dia 1 en un conmutador y dejar el correo con historia para el dia 5 es tirar
+#     la unica ventaja que la cuenta da.
+ORDEN_DE_NIVEL = {"confirmado": 0, "solido": 1, "candidato": 2,
+                  "en_conflicto": 3, "no_encontrado": 4, "desmentido": 5}
+ORDEN_DE_CANAL = {CORREO_DIRECTO: 0, LINKEDIN: 1, CONMUTADOR: 2, EVENTO: 3}
+
+
+def orden_de_arranque(contactos: list[dict]) -> list[dict]:
+    """Los contactos en el orden en que reciben su primer toque. D8.
+
+    El desempate final es el PUESTO, alfabetico, y no es cosmetico: sin un
+    desempate estable, dos corridas de la misma tarjeta podrian escalonar distinto
+    y la cadencia dejaria de ser reproducible -- que es lo que el lazo 3 necesita
+    para comparar cadencias entre cuentas--.
+    """
+    def llave(x):
+        return (ORDEN_DE_NIVEL.get(x.get("nivel_confianza"), 9),
+                ORDEN_DE_CANAL.get(x.get("canal_recomendado"), 9),
+                # A igual nivel y canal, el mas cercano a la decision primero.
+                x.get("cercania_decision", 999),
+                str(x.get("puesto") or ""))
+    return sorted(contactos, key=llave)
+
 
 def espera_y_toques(canal: str, con_historia: bool = False) -> tuple[int, int]:
     if canal in PROHIBIDO:
@@ -126,14 +172,28 @@ def plan_de_un_contacto(canal: str, arranque: date, caduca_el: date | None = Non
 
 
 def plan_de_la_tarjeta(contactos: list[dict], arranque: date,
-                       caduca_el: date | None = None) -> dict:
+                       caduca_el: date | None = None,
+                       escalonar: bool = True) -> dict:
     """La cadencia completa de una tarjeta, contacto por contacto.
 
     `contactos` lleva, por cada uno: `puesto`, `canal_recomendado`,
     `nivel_confianza` y `con_historia`. **No necesita nombres**: la cadencia se
     programa por PUESTO y canal, y quien es va en la tabla de personas.
+
+    `escalonar` aplica D8: un solo toque #1 por cuenta por dia. Se deja como
+    parametro para poder medir la diferencia -- la prueba de #330 documentaba el
+    enjambre y ahora documenta que se arreglo--, no para apagarlo en produccion.
     """
     plan, avisos = [], []
+    # D8: el orden de arranque decide QUIEN va el dia 1, y cada siguiente contacto
+    # arranca dos dias habiles despues del anterior.
+    en_cadencia = [x for x in contactos if not x.get("revision_humana")]
+    arranques = {}
+    if escalonar:
+        d = habil(arranque)
+        for i, x in enumerate(orden_de_arranque(en_cadencia)):
+            arranques[id(x)] = d
+            d = dias_habiles_despues(d, SEPARACION_ENTRE_PRIMEROS_TOQUES)
     for x in contactos:
         canal = x.get("canal_recomendado") or CONMUTADOR
         if x.get("revision_humana"):
@@ -144,7 +204,7 @@ def plan_de_la_tarjeta(contactos: list[dict], arranque: date,
                 f"{x.get('puesto') or '(sin puesto)'}: EN REVISION HUMANA, no "
                 f"entra a la cadencia — {x.get('motivo_revision') or 'sin motivo'}")
             continue
-        p = plan_de_un_contacto(canal, arranque, caduca_el,
+        p = plan_de_un_contacto(canal, arranques.get(id(x), arranque), caduca_el,
                                 con_historia=bool(x.get("con_historia")))
         p["puesto"] = x.get("puesto")
         p["nivel_confianza"] = x.get("nivel_confianza")
@@ -152,7 +212,22 @@ def plan_de_la_tarjeta(contactos: list[dict], arranque: date,
         if p["comprimida"]:
             avisos.append(f"{x.get('puesto') or '(sin puesto)'}: {p['nota']}")
     total = sum(len(p["toques"]) for p in plan)
+    # La comprobacion de la regla va EN EL RESULTADO, no solo en una prueba: quien
+    # lea el plan tiene que poder ver que la regla se cumplio sin ir al codigo.
+    primeros = [p["toques"][0]["fecha"] for p in plan if p["toques"]]
+    repetidos = sorted({f for f in primeros if primeros.count(f) > 1})
+    if repetidos:
+        avisos.append(
+            f"MAS DE UN PRIMER TOQUE EL MISMO DIA ({', '.join(repetidos)}): la "
+            "regla de D8 es un solo toque #1 por cuenta por dia, y aqui no se "
+            "cumplio. Desde la planta eso se ve como un enjambre.")
     return {
+        "escalonada": bool(escalonar),
+        "separacion_entre_primeros": (SEPARACION_ENTRE_PRIMEROS_TOQUES
+                                      if escalonar else 0),
+        "un_solo_primer_toque_por_dia": not repetidos,
+        "orden_de_arranque": [x.get("puesto") for x in
+                              orden_de_arranque(en_cadencia)],
         "arranque": habil(arranque).isoformat(),
         "caduca_el": caduca_el.isoformat() if caduca_el else None,
         "contactos_en_cadencia": len(plan),

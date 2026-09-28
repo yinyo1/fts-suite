@@ -99,6 +99,19 @@ def _paquete(c: dict, hoy: date) -> dict:
     }
 
 
+# ===================================================== D9 · el filtro de la etapa 1
+# APROBADA en #335. Una tarjeta que el radar manda ARCHIVAR no deberia llegar a Odoo
+# como lead: si llega, el embudo se llena de cuentas que el propio evaluador dijo que
+# no valian, y la primera vez que alguien las trabaje va a aprender que el puntaje no
+# significa nada.
+#
+# Las `archiva` NO se tiran: van a un segundo archivo marcado. La razon es la misma
+# por la que una tarjeta caducada se archiva y no se borra -- el historial es lo que
+# hace posible el reciclaje-- y ademas son el material del lazo 1: si una `archiva`
+# hubiera convertido, eso es justo lo que el evaluador tiene que aprender.
+VEREDICTOS_QUE_SE_SUBEN = (radar.PASA, radar.GUARDA)
+
+
 def exportar(destino: str, hoy: date | None = None) -> dict:
     hoy = hoy or date.today()
     with open(lb.RUTA, encoding="utf-8") as f:
@@ -110,10 +123,12 @@ def exportar(destino: str, hoy: date | None = None) -> dict:
     paquetes.sort(key=lambda t: -(t[0]["puntaje_del_evaluador"] or 0))
 
     os.makedirs(destino, exist_ok=True)
-    filas_todas, detalle = [], []
+    filas_suben, filas_archiva, detalle = [], [], []
     for pq, c in paquetes:
         fila = io.lineas(pq, hoy)[0]
-        filas_todas.append(fila)
+        veredicto = pq["senal_origen"]["veredicto"]
+        (filas_suben if veredicto in VEREDICTOS_QUE_SE_SUBEN
+         else filas_archiva).append(fila)
         contactos = pq["contactos_de_valor"]
         retenidos = [x for x in contactos
                      if x.get("correo") and x.get("nivel_confianza") == CANDIDATO]
@@ -130,27 +145,51 @@ def exportar(destino: str, hoy: date | None = None) -> dict:
             "en_revision_no_creados": sum(1 for x in contactos
                                           if x.get("revision_humana")),
             "phone_vacio": fila["phone"] == "",
+            "se_sube": veredicto in VEREDICTOS_QUE_SE_SUBEN,
         })
 
-    # UN archivo con las nueve tarjetas: la importacion de Odoo toma un CSV con
-    # varias filas, y nueve archivos serian nueve subidas a mano.
-    ruta = os.path.join(destino, "crm-lead-etapa1-9-tarjetas.csv")
+    # DOS archivos, y el nombre de cada uno dice lo que hay que hacer con el. Un
+    # archivo llamado "etapa1.csv" con nueve filas de las que seis no se deben subir
+    # es una trampa: quien lo abra a las 9 de la manana lo va a subir completo.
     import csv
     import io as _io
-    buf = _io.StringIO()
-    w = csv.DictWriter(buf, fieldnames=list(io.COLUMNAS), extrasaction="ignore")
-    w.writeheader()
-    for f in filas_todas:
-        w.writerow(f)
-    texto = buf.getvalue()
-    with open(ruta, "w", encoding="utf-8-sig", newline="") as f:
-        f.write(texto)
+
+    def _csv(filas):
+        buf = _io.StringIO()
+        w = csv.DictWriter(buf, fieldnames=list(io.COLUMNAS),
+                           extrasaction="ignore")
+        w.writeheader()
+        for f in filas:
+            w.writerow(f)
+        return buf.getvalue()
+
+    archivos = []
+    for filas, nombre, que_es in (
+            (filas_suben,
+             f"crm-lead-etapa1-{len(filas_suben)}-tarjetas-REVISAR-y-subir.csv",
+             "pasa + guarda: estas si se suben, despues de revisarlas"),
+            (filas_archiva,
+             f"crm-lead-etapa1-{len(filas_archiva)}-tarjetas-archiva-NO-subir.csv",
+             "archiva: referencia, NO se suben. Son material del lazo 1 -- si una "
+             "hubiera convertido, eso es lo que el evaluador tiene que aprender--")):
+        if not filas:
+            continue
+        ruta = os.path.join(destino, nombre)
+        texto = _csv(filas)
+        with open(ruta, "w", encoding="utf-8-sig", newline="") as f:
+            f.write(texto)
+        archivos.append({"archivo": ruta, "nombre": nombre,
+                         "bytes": len(texto.encode("utf-8-sig")),
+                         "tarjetas": len(filas), "que_es": que_es})
 
     return {
-        "archivo": ruta,
-        "bytes": len(texto.encode("utf-8-sig")),
-        "tarjetas": len(filas_todas),
-        "pedidas": 10,
+        "archivos": archivos,
+        "tarjetas_totales": len(filas_suben) + len(filas_archiva),
+        "se_suben": len(filas_suben),
+        "no_se_suben": len(filas_archiva),
+        "filtro": (f"D9: solo {' y '.join(VEREDICTOS_QUE_SE_SUBEN)} se suben a "
+                   "Odoo. Las `archiva` van a un archivo marcado, no se tiran: son "
+                   "material del lazo 1"),
         "por_que_no_son_diez": (
             "solo hay nueve cuentas con senal documentada; las otras cuatro de las "
             "trece son huecos, y una tarjeta sin expediente no tiene puntaje con el "
@@ -169,18 +208,23 @@ if __name__ == "__main__":
     if a.json:
         print(json.dumps(r, ensure_ascii=False, indent=2, default=str))
     else:
-        print(f"\n  ETAPA 1 — {r['tarjetas']} tarjeta(s) en un CSV")
-        print(f"  {r['archivo']}  ({r['bytes']:,} bytes)")
-        print(f"  escrituras a Odoo: {r['escrituras_a_odoo']}")
+        print(f"\n  ETAPA 1 — {r['tarjetas_totales']} tarjeta(s) en "
+              f"{len(r['archivos'])} archivo(s)")
+        print(f"  {r['filtro']}")
+        print(f"  escrituras a Odoo: {r['escrituras_a_odoo']}\n")
+        for a_ in r["archivos"]:
+            print(f"   · {a_['nombre']}  ({a_['bytes']:,} bytes, "
+                  f"{a_['tarjetas']} tarjeta(s))")
+            print(f"       {a_['que_es']}")
         print(f"\n  {r['por_que_no_son_diez']}\n")
         print(f"  {'tarjeta':22} {'pts':>6} {'veredicto':>9} {'caduca':>12} "
-              f"{'cont':>5} {'email_from':>28}")
-        print("  " + "-" * 92)
+              f"{'cont':>5} {'sube?':>6}")
+        print("  " + "-" * 66)
         for x in r["detalle"]:
-            ef = x["email_from"] or "(vacio)"
             print(f"  {x['llave']:22} {x['puntaje']:>6} {x['veredicto']:>9} "
-                  f"{x['caduca']:>12} {x['contactos']:>5} {ef:>28}")
-        print("  " + "-" * 92)
+                  f"{x['caduca']:>12} {x['contactos']:>5} "
+                  f"{('SI' if x['se_sube'] else 'no'):>6}")
+        print("  " + "-" * 66)
         ret = sum(x["correos_retenidos_por_candidato"] for x in r["detalle"])
         rev = sum(x["en_revision_no_creados"] for x in r["detalle"])
         print(f"  REGLA 1 · correos retenidos por ser candidato: {ret}")

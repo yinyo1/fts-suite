@@ -205,3 +205,74 @@ def test_b4_el_catalogo_no_trae_rangos_de_capacidad_y_se_DICE():
     assert v == radar.MAX_CAPACIDAD / 2
     assert "NO trae rangos de capacidad" in por
     assert "el rango no existe" in por
+
+
+# ==========================================================  D9 · el filtro
+def _exportado(tmp_path):
+    import exportar_etapa1 as ee
+    return ee.exportar(str(tmp_path / "etapa1"), hoy=HOY)
+
+
+def test_d9_solo_pasa_y_guarda_se_suben(tmp_path):
+    r = _exportado(tmp_path)
+    for x in r["detalle"]:
+        assert x["se_sube"] == (x["veredicto"] in ("pasa", "guarda")), x["llave"]
+
+
+def test_d9_las_archiva_NO_se_tiran_van_a_un_archivo_marcado(tmp_path):
+    """Es la misma razon por la que una tarjeta caducada se archiva y no se borra:
+    el historial es lo que hace posible el reciclaje. Y son material del lazo 1 --
+    si una `archiva` hubiera convertido, eso es justo lo que el evaluador tiene que
+    aprender."""
+    r = _exportado(tmp_path)
+    assert len(r["archivos"]) == 2
+    nombres = [a["nombre"] for a in r["archivos"]]
+    assert any("REVISAR-y-subir" in n for n in nombres)
+    assert any("archiva-NO-subir" in n for n in nombres)
+    assert r["se_suben"] + r["no_se_suben"] == r["tarjetas_totales"]
+
+
+def test_d9_el_nombre_del_archivo_dice_que_hacer_con_el(tmp_path):
+    """Un archivo llamado "etapa1.csv" con nueve filas de las que seis no se deben
+    subir es una trampa: quien lo abra a las 9 de la manana lo va a subir completo.
+    """
+    r = _exportado(tmp_path)
+    for a in r["archivos"]:
+        assert "subir" in a["nombre"]
+        assert str(a["tarjetas"]) in a["nombre"]
+        assert os.path.exists(a["archivo"])
+
+
+def test_d9_ninguna_archiva_esta_en_el_archivo_que_se_sube(tmp_path):
+    import csv
+    r = _exportado(tmp_path)
+    suben = next(a for a in r["archivos"] if "REVISAR-y-subir" in a["nombre"])
+    with open(suben["archivo"], encoding="utf-8-sig") as f:
+        filas = list(csv.DictReader(f))
+    assert len(filas) == r["se_suben"]
+    archiva = {x["llave"] for x in r["detalle"] if not x["se_sube"]}
+    nombres = {x["name"] for x in filas}
+    for llave in archiva:
+        empresa = llave.split("/")[0]
+        assert not any(n.startswith(empresa) for n in nombres), llave
+
+
+def test_d9_las_tres_reglas_duras_siguen_en_los_dos_archivos(tmp_path):
+    import csv
+    r = _exportado(tmp_path)
+    for a in r["archivos"]:
+        with open(a["archivo"], encoding="utf-8-sig") as f:
+            for fila in csv.DictReader(f):
+                # REGLA 3 en las dos: no hay celular, y `phone` va vacio.
+                assert fila["phone"] == ""
+                assert "celular" not in fila["description"].lower() or \
+                       "PROHIBIDO" in fila["description"]
+
+
+def test_d9_con_d6_los_puntajes_del_csv_son_los_de_la_linea_base(tmp_path):
+    import linea_base_radar as lb
+    r = _exportado(tmp_path)
+    base = {f"{f['empresa']}/{f.get('planta') or '?'}": f["por_etapa"]["con_d6"]
+            for f in lb.linea_base(hoy=HOY)["filas"] if not f["hueco"]}
+    for x in r["detalle"]:
+        assert abs(x["puntaje"] - base[x["llave"]]) < 0.05, x["llave"]
