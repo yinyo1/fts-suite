@@ -15,7 +15,7 @@
  * ═══════════════════════════════════════════════════════════════════════════ */
 'use strict';
 
-const VERSION = 'er-2026-v1.0';
+const VERSION = 'er-2026-v1.1';
 const ANIO = '2026';
 const NOMBRE_MES = { '01': 'ene', '02': 'feb', '03': 'mar', '04': 'abr', '05': 'may', '06': 'jun', '07': 'jul', '08': 'ago', '09': 'sep', '10': 'oct', '11': 'nov', '12': 'dic' };
 const CONMET_SO = 'SO11771';                 // contrato Conmet (decisión de Esteban: renglón propio)
@@ -23,7 +23,8 @@ const PLANES_PROYECTO = [1, 18];             // planes analíticos de proyecto (
 const VENTANA_CFDI_DIAS = 15;                // ajuste C
 const VENTANA_DEVOLUCION_DIAS = 5;
 const CUENTAS = ['General', 'Nomina', 'USD'];
-const TODAS = { d1: true, d2: true, d3: true, d5: true, d6: true, d7: true };
+const TODAS = { d1: true, d2: true, d3: true, d5: true, d6: true, d7: true, r1: true, r2: true };
+const UMBRAL_HORAS_MEDIDAS = 0.8;          // R1: un mes de una persona se toma como medido si ≥80 % de sus horas tiene proyecto o bolsa
 
 // ── utilidades ───────────────────────────────────────────────────────────────
 const cents = v => (v === null || v === undefined || v === '' || v === false) ? 0 : Math.round(Number(v) * 100);
@@ -176,6 +177,23 @@ function motor(ins, F) {
     }
   }
   for (const f of Object.values(facturas)) { f.planes.sort((a, b) => a - b); f.cuentasProyecto.sort(); }
+  // R2: reparto analítico de la factura por subtotal de línea: proyecto (plan 1/18), común (plan 2) o ninguna.
+  // El plan 20 (rubro) no es ni proyecto ni común: se ignora. Otros planes (activos, combustible, flota…) cuentan como «ninguna» (SUPUESTO S23).
+  for (const f of Object.values(facturas)) f.dist = { p: 0, c: 0, n: 0 };
+  for (const l of (O.lineas || [])) {
+    const f = facturas[m2o(l.move_id).id]; if (!f) continue;
+    const w = Math.abs(cents(l.price_subtotal)); if (!w) continue;
+    let ad = l.analytic_distribution; if (typeof ad === 'string') { try { ad = JSON.parse(ad); } catch (e) { ad = null; } }
+    const partes = [];
+    if (ad && typeof ad === 'object') for (const k of Object.keys(ad)) {
+      const pl = k.split(',').map(id => (analitica[id.trim()] || {}).plan);
+      const c = pl.some(x => PLANES_PROYECTO.includes(x)) ? 'p' : pl.includes(2) ? 'c' : pl.every(x => x === 20) ? null : 'n';
+      if (c) partes.push([c, Number(ad[k]) || 0]);
+    }
+    const tot = partes.reduce((a, x) => a + x[1], 0);
+    if (!tot) { f.dist.n += w; continue; }
+    for (const [c, v] of partes) f.dist[c] += w * v / tot;
+  }
   // proyecto vendido antes del año: todas sus cuentas analíticas de proyecto nacieron antes del 1-ene (SUPUESTO S17)
   const proyectoPrevio = f => !!(f && f.cuentasProyecto.length && f.cuentasProyecto.every(id => (analitica[id].creada || '9999') < ANIO + '-01-01'));
   const ratio = f => (f && f.total > 0) ? { num: f.sin_iva, den: f.total } : null;
@@ -214,7 +232,7 @@ function motor(ins, F) {
   const oficina = (ins.nomina_oficina || []).map(o => ({ nombre: norm(o.beneficiario || '').replace(/\s+/g, ' ').trim(), mask: String(o.cuenta_mask || '').trim(),
     desde: dia(o.vigente_desde) || '0000-00-00', hasta: dia(o.vigente_hasta) || '9999-12-31' }));
   const esOficina = (texto, fecha) => {
-    if (!F.d1 || !oficina.length) return false;
+    if (!F.d1 || F.r1 || !oficina.length) return false;
     const t = norm(texto).replace(/\s+/g, ' '), nums = (String(texto).match(/\d{10,18}/g) || []);
     return oficina.some(o => fecha >= o.desde && fecha <= o.hasta && ((o.nombre && t.includes(o.nombre)) || (o.mask && nums.some(n => n.slice(-4) === o.mask))));
   };
@@ -258,7 +276,95 @@ function motor(ins, F) {
     archivo: null, pagina: null, sha256: null, cfdi: null, proveedor: '', regla: 'cálculo', conmet: false, previo: false, iva_estimado: false }, extra || {}));
 
   const candidatasPartida = [];
+  // R2: parte un monto según el reparto analítico de su factura (resto al último para cuadrar al centavo)
+  const partirPorAnalitica = (f, monto) => {
+    const d = f && f.dist; const t = d ? d.p + d.c + d.n : 0;
+    if (!t) return { p: 0, c: 0, n: monto };
+    const pp = Math.round(monto * d.p / t), cc = Math.round(monto * d.c / t);
+    return { p: pp, c: cc, n: monto - pp - cc };
+  };
   const activos = [];
+
+  // ── R1: reparto de la nómina por dónde carga horas cada persona ──
+  function repartirNomina() {
+    const NOM = ['nomina_fondeo', 'nomina_directa', 'nomina_fondeo_lado_nomina', 'nomina_oficina'];
+    const emp = {}; for (const e of (O.empleados || [])) emp[e.id] = { id: e.id, nombre: String(e.name || ''), activo: e.active === true || e.active === 't', creado: dia(e.create_date) };
+    const H = {}, MO = {}, mesesMO = new Set(), conHoras = new Set();
+    for (const a of (O.asistencias || [])) {
+      const e = m2o(a.employee_id).id; if (!e) continue;
+      const mes = fechaLocalMty(a.check_in).slice(0, 7), h = Number(a.worked_hours) || 0; if (h <= 0) continue;
+      const k = e + '|' + mes, o = H[k] || (H[k] = { t: 0, p: 0, c: 0 }); conHoras.add(e);
+      o.t += h; if (a.x_studio_sales_order_2) o.p += h; else if (a.x_studio_many2one_field_GUbBF) o.c += h;
+      if (!emp[e]) emp[e] = { id: e, nombre: m2o(a.employee_id).name, activo: true, creado: '' };
+    }
+    for (const l of (O.carga_mo || [])) {
+      const x = String(l.name || '').match(/^MO S(\d+)\/2026 · emp(\d+) · ([PB])/); if (!x) continue;
+      const e = +x[2], mes = dia(l.date).slice(0, 7), a = Math.abs(cents(l.amount)); if (!a) continue;
+      const k = e + '|' + mes, o = MO[k] || (MO[k] = { t: 0, p: 0 }); o.t += a; if (x[3] === 'P' && l.account_id) o.p += a;
+      mesesMO.add(mes); conHoras.add(e);
+      if (!emp[e]) emp[e] = { id: e, nombre: 'empleado ' + e, activo: true, creado: '' };
+    }
+    const forzado = (e, mes) => oficina.some(o => o.nombre && norm(emp[e].nombre).replace(/\s+/g, ' ').includes(o.nombre) && (mes + '-31') >= o.desde && (mes + '-01') <= o.hasta);
+    const medido = (e, mes) => {
+      if (forzado(e, mes)) return { pct: 0, fuente: 'corrección manual (bancos.nomina_oficina)' };
+      const mo = MO[e + '|' + mes]; if (mo && mo.t > 0) return { pct: mo.p / mo.t, fuente: 'Carga MO' };
+      const h = H[e + '|' + mes]; if (h && h.t > 0 && (h.p + h.c) > 0 && (h.p + h.c) >= h.t * UMBRAL_HORAS_MEDIDAS) return { pct: h.p / (h.p + h.c), fuente: 'horas' };
+      return null;
+    };
+    const todosMeses = Array.from(new Set(Object.keys(H).concat(Object.keys(MO)).map(k => k.split('|')[1]))).sort();
+    const hist = {}; let gN = 0, gD = 0;
+    for (const e of Object.keys(emp)) {
+      const ms = todosMeses.map(mes => medido(e, mes)).filter(Boolean);
+      if (ms.length) { hist[e] = ms.reduce((a, x) => a + x.pct, 0) / ms.length; }
+    }
+    for (const k of Object.keys(H)) { const h = H[k]; if ((h.p + h.c) >= h.t * UMBRAL_HORAS_MEDIDAS && h.p + h.c > 0) { gN += h.p; gD += h.p + h.c; } }
+    // ventana de cada persona (primer y último mes con horas o Carga MO) y sus horas promedio por mes con datos
+    const ventana = {};
+    for (const k of Object.keys(H).concat(Object.keys(MO))) {
+      const [e, mes] = k.split('|'); const v = ventana[e] || (ventana[e] = { ini: mes, fin: mes, meses: new Set(), horas: 0 });
+      if (mes < v.ini) v.ini = mes; if (mes > v.fin) v.fin = mes; v.meses.add(mes);
+    }
+    for (const k of Object.keys(H)) { const e = k.split('|')[0]; ventana[e].horas += H[k].t; }
+    const global = gD ? gN / gD : 1;
+    const out = {};
+    for (const mes of MESES) {
+      const N = items.filter(i => i.fuente === 'banco' && NOM.includes(i.destino) && i.periodo === mes).reduce((a, i) => a + i.bruto, 0);
+      const miembros = Object.keys(emp).filter(e => (H[e + '|' + mes] && H[e + '|' + mes].t > 0) || (MO[e + '|' + mes] && MO[e + '|' + mes].t > 0));
+      // en nómina pero sin horas este mes (vacaciones, incapacidad…): dentro de su ventana y, si ya no está activa, antes de su último mes con datos
+      const ausentes = Object.keys(emp).filter(e => !miembros.includes(e) && ventana[e] && ventana[e].ini <= mes && (emp[e].activo || ventana[e].fin >= mes));
+      let rate = 0;
+      if (mesesMO.has(mes)) { let a = 0, h = 0; for (const e of miembros) { const mo = MO[e + '|' + mes], hh = H[e + '|' + mes]; if (mo && hh) { a += mo.t; h += hh.t; } } rate = h ? a / h : 0; }
+      const personas = miembros.map(e => {
+        const mo = MO[e + '|' + mes], hh = H[e + '|' + mes] || { t: 0 };
+        const w = mo ? mo.t : (rate ? hh.t * rate : hh.t);
+        const m1 = medido(e, mes);
+        const r = m1 ? Object.assign({ tipo: 'medido' }, m1) : (e in hist ? { pct: hist[e], fuente: 'estimado por historial', tipo: 'historial' } : { pct: global, fuente: 'estimado con el % global', tipo: 'global' });
+        return { id: +e, nombre: emp[e].nombre, horas: Math.round(hh.t * 100) / 100, peso: w, pct: r.pct, fuente: r.fuente, tipo: r.tipo };
+      }).concat(ausentes.map(e => {
+        const hp = ventana[e].horas / Math.max(1, ventana[e].meses.size), w = rate ? hp * rate : hp;
+        const r = forzado(e, mes) ? { pct: 0, fuente: 'corrección manual (bancos.nomina_oficina)', tipo: 'medido' } : (e in hist ? { pct: hist[e], fuente: 'sin horas este mes · estimado por historial', tipo: 'historial' } : { pct: global, fuente: 'sin horas este mes · estimado con el % global', tipo: 'global' });
+        return { id: +e, nombre: emp[e].nombre, horas: 0, peso: w || 1, pct: r.pct, fuente: r.fuente, tipo: r.tipo };
+      }));
+      const W0 = personas.reduce((a, x) => a + x.peso, 0), wProm = personas.length ? W0 / personas.length : 0;
+      const sinHoras = Object.keys(emp).filter(e => !conHoras.has(+e) && !conHoras.has(e) && emp[e].activo && (!emp[e].creado || emp[e].creado <= mes + '-31'))
+        .map(e => ({ id: +e, nombre: emp[e].nombre, horas: 0, peso: wProm || 1, pct: 0, fuente: 'nunca ha cargado horas', tipo: 'sin_horas' }));
+      const todos = personas.concat(sinHoras), W = todos.reduce((a, x) => a + x.peso, 0);
+      let costo, sin;
+      if (W > 0) { costo = Math.round(N * personas.reduce((a, x) => a + x.peso * x.pct, 0) / W); sin = Math.round(N * sinHoras.reduce((a, x) => a + x.peso, 0) / W); }
+      else { costo = Math.round(N * global); sin = 0; }
+      const comun = N - costo - sin;
+      const medidoW = personas.filter(x => x.tipo === 'medido').reduce((a, x) => a + x.peso, 0);
+      out[mes] = { N, costo, comun, sin, pct_proyecto: N ? costo / N : 0, personas: ordenar(todos, 'nombre', 'id'), estimado: medidoW === 0,
+        cuenta: { medido: personas.filter(x => x.tipo === 'medido').length, historial: personas.filter(x => x.tipo === 'historial').length, global: personas.filter(x => x.tipo === 'global').length, sin_horas: sinHoras.length },
+        base: mesesMO.has(mes) ? 'Carga MO (monto por persona)' : 'horas de asistencia', global };
+      const et = ' · reparto R1 (' + out[mes].base + (out[mes].estimado ? ', mes estimado' : '') + ')';
+      if (costo) itemAjuste(mes, 'nomina_proyectos', costo, 'nómina × % a proyecto' + et, { ref: 'r1' });
+      if (comun) itemAjuste(mes, 'nomina_comun', comun, 'nómina × % común' + et, { ref: 'r1' });
+      if (sin) itemAjuste(mes, 'nomina_sin_horas', sin, 'nómina de personas sin horas cargadas' + et, { ref: 'r1' });
+    }
+    out.global = global;
+    return out;
+  }
 
   // ── cargos del banco ──
   for (const m of banco.filter(x => x.cargo_nat > 0)) {
@@ -333,7 +439,8 @@ function motor(ins, F) {
     itemBanco(m, 'nomina_fondeo_lado_nomina', { regla: 'mes sin estado de la General: fondeo leído en el estado de Nómina' });
   }
   // D1: la parte de oficina pagada desde la cuenta Nómina sale de la nómina de campo (ajuste que suma cero)
-  if (F.d1) for (const p of MESES) {
+  const repartoNomina = F.r1 ? repartirNomina() : null;
+  if (F.d1 && !F.r1) for (const p of MESES) {
     const x = items.filter(i => i.fuente === 'banco' && i.destino === 'excl_cubierto_fondeo_nomina' && i.oficina && i.periodo === p).reduce((s, i) => s + i.bruto, 0);
     if (x) { itemAjuste(p, 'nomina_oficina', x, 'nómina de oficina pagada desde la cuenta Nómina (D1)'); itemAjuste(p, 'nomina_fondeo', -x, 'se resta de la nómina de campo (D1)'); }
   }
@@ -360,13 +467,21 @@ function motor(ins, F) {
     }
     const vj = { comercio_jeeves: comercio };
     const ext = reglas.primera('jeeves_extranjero', vj);
-    const rj = reglas.primeraDe(['jeeves_costo', 'jeeves_admin'], vj);
-    const bruto = -c, neto = ext ? bruto : Math.round(bruto * 100 / 116);      // IVA estimado (D3)
-    let destino;
-    if (c > 0) destino = 'costo_jeeves_devolucion';
-    else if (!rj) destino = 'costo_jeeves_sin_clasificar';
-    else destino = (rj.destino === 'jeeves_admin' ? 'admin_jeeves_' : 'costo_jeeves_') + (rj.subcategoria || 'otros');
-    push(Object.assign(base, { destino, bruto, neto, iva_estimado: !ext, regla: (rj ? 'regla ' + rj.id : 'sin regla de comercio') + (ext ? ' · comercio extranjero, sin IVA' : ' · IVA estimado ÷1.16, sin CFDI') }));
+    const bruto = -c, iva = b => ext ? b : Math.round(b * 100 / 116);        // IVA estimado (D3), sin cambio en R2
+    const notaIva = ext ? ' · comercio extranjero, sin IVA' : ' · IVA estimado ÷1.16, sin CFDI';
+    if (c > 0) { push(Object.assign(base, { destino: 'costo_jeeves_devolucion', bruto, neto: iva(bruto), iva_estimado: !ext, regla: 'devolución de comercio' + notaIva })); continue; }
+    // R2: primero la analítica de la factura con la que se concilió el consumo
+    const fac = (F.r2 && (j.is_reconciled === true || j.is_reconciled === 't') && j.reconciled_lines_name) ? facturaPorNombre[String(j.reconciled_lines_name).match(/BILL\d+/) ? String(j.reconciled_lines_name).match(/BILL\d+/)[0] : ''] || null : null;
+    const pz = F.r2 ? partirPorAnalitica(fac, bruto) : { p: 0, c: 0, n: bruto };
+    const refF = fac ? ' · ' + fac.name : '';
+    if (pz.p) push(Object.assign({}, base, { id: base.id + (pz.c || pz.n ? '#p' : ''), destino: 'costo_jeeves_proyecto', bruto: pz.p, neto: iva(pz.p), iva_estimado: !ext, via: 'analitica', proveedor: fac.partner, previo: proyectoPrevio(fac), regla: 'analítica de proyecto (plan 1/18) de la factura conciliada' + refF + notaIva }));
+    if (pz.c) push(Object.assign({}, base, { id: base.id + (pz.p || pz.n ? '#c' : ''), destino: 'admin_jeeves_analitica_comun', bruto: pz.c, neto: iva(pz.c), iva_estimado: !ext, via: 'analitica', proveedor: fac.partner, regla: 'analítica común (plan 2) de la factura conciliada' + refF + notaIva }));
+    if (pz.n) {
+      const rj = reglas.primeraDe(['jeeves_costo', 'jeeves_admin'], vj);
+      const destino = !rj ? 'costo_jeeves_sin_clasificar' : (rj.destino === 'jeeves_admin' ? 'admin_jeeves_' : 'costo_jeeves_') + (rj.subcategoria || 'otros');
+      push(Object.assign({}, base, { id: base.id + (pz.p || pz.c ? '#n' : ''), destino, bruto: pz.n, neto: iva(pz.n), iva_estimado: !ext, via: rj ? 'regla' : 'sin_clasificar',
+        regla: (rj ? 'regla ' + rj.id + (F.r2 ? ' · clasificado por regla, sin analítica' : '') : 'sin regla de comercio') + notaIva }));
+    }
   }
 
   // ── Payana: pagos del diario 74 cotejados contra facturas de proveedor ──
@@ -386,11 +501,24 @@ function motor(ins, F) {
       activos.push({ periodo: p, base: neto, ref: base.id, concepto: base.concepto }); continue;
     }
     if ((r = reglas.primera('conmet', v))) { push(Object.assign(base, { destino: 'costo_conmet', bruto: cr, neto, cfdi, conmet: true, regla: 'regla ' + r.id })); continue; }
-    if (fac && fac.proyecto) { push(Object.assign(base, { destino: 'costo_payana_proyecto', bruto: cr, neto, cfdi, regla: 'factura con cuenta analítica de proyecto (plan 1/18)' })); continue; }
-    const ra = F.d2 ? reglas.primera('administrativo', v) : reglas.primera('administrativo', Object.assign({}, v, { plan_analitico: '' }));
-    if (ra) { push(Object.assign(base, { destino: 'admin_' + (ra.subcategoria || 'otros'), bruto: cr, neto, cfdi, regla: 'regla ' + ra.id })); continue; }
-    push(Object.assign(base, { destino: 'costo_payana_por_clasificar', bruto: cr, neto, cfdi,
-      regla: fac ? 'factura sin proyecto (planes ' + (fac.planes.join('/') || 'ninguno') + ')' : 'sin factura ligada' }));
+    if (!F.r2) {
+      if (fac && fac.proyecto) { push(Object.assign(base, { destino: 'costo_payana_proyecto', bruto: cr, neto, cfdi, regla: 'factura con cuenta analítica de proyecto (plan 1/18)' })); continue; }
+      const ra = F.d2 ? reglas.primera('administrativo', v) : reglas.primera('administrativo', Object.assign({}, v, { plan_analitico: '' }));
+      if (ra) { push(Object.assign(base, { destino: 'admin_' + (ra.subcategoria || 'otros'), bruto: cr, neto, cfdi, regla: 'regla ' + ra.id })); continue; }
+      push(Object.assign(base, { destino: 'costo_payana_sin_clasificar', bruto: cr, neto, cfdi, regla: fac ? 'factura sin proyecto (planes ' + (fac.planes.join('/') || 'ninguno') + ')' : 'sin factura ligada' }));
+      continue;
+    }
+    // R2: proyecto → costo; común (plan 2) → administrativo; mixta → se parte; sin analítica → regla de proveedor; sin regla → costo sin clasificar
+    const pb = partirPorAnalitica(fac, cr), pn = partirPorAnalitica(fac, neto);
+    const pieza = (suf, destino, b, n, regla, extra) => push(Object.assign({}, base, { id: base.id + suf, destino, bruto: b, neto: n, cfdi, regla }, extra || {}));
+    const hay = [pb.p, pb.c, pb.n].filter(x => x).length > 1;
+    if (pb.p) pieza(hay ? '#p' : '', 'costo_payana_proyecto', pb.p, pn.p, 'analítica de proyecto (plan 1/18) de ' + (fac && fac.name), { via: 'analitica' });
+    if (pb.c) pieza(hay ? '#c' : '', 'admin_payana_indirecto', pb.c, pn.c, 'analítica común (plan 2) de ' + (fac && fac.name), { via: 'analitica' });
+    if (pb.n) {
+      const ra = reglas.primera('administrativo', Object.assign({}, v, { plan_analitico: '' }));
+      if (ra) pieza(hay ? '#n' : '', 'admin_' + (ra.subcategoria || 'otros'), pb.n, pn.n, 'regla ' + ra.id + ' · clasificado por regla, sin analítica', { via: 'regla' });
+      else pieza(hay ? '#n' : '', 'costo_payana_sin_clasificar', pb.n, pn.n, fac ? 'factura sin analítica de proyecto ni común, y sin regla de proveedor' : 'sin factura ligada', { via: 'sin_clasificar' });
+    }
   }
 
   // ── D6: depreciación de activo fijo, línea recta desde el mes de compra ──
@@ -434,7 +562,27 @@ function motor(ins, F) {
   }
   if (MV) conmetMes[MV] = { venta: 0, avance: acumRec && contrato ? acumRec / contrato : 0, costo_acum: acumCosto, reconocido_acum: acumRec, cobrado_acum: acumCobrado };
 
-  return { MESES, MV, cobertura, items, ventas, facturado, P, contrato, estimado, conmetMes, candidatasPartida, activos, reglas };
+  // ── R3: conciliación de cada intermediario contra BBVA (todo peso del estado sale de BBVA) ──
+  const conciliacion = { jeeves: {}, payana: {}, nomina: {} };
+  const sumI = (pred, p) => items.filter(i => pred(i) && i.periodo === p).reduce((a, i) => a + i.bruto, 0);
+  let acJ = 0, acY = 0;
+  for (const p of MESES) {
+    const fJ = sumI(i => i.destino === 'excl_fondeo_jeeves', p);
+    const cJ = sumI(i => i.cuenta.indexOf('Jeeves') === 0 && i.destino.indexOf('info_') !== 0, p);      // consumos − devoluciones
+    acJ += fJ - cJ;
+    conciliacion.jeeves[p] = { fondeos: fJ, consumos: cJ, dif_mes: fJ - cJ, acumulado: acJ, pendiente_fondear: acJ < 0 ? -acJ : 0, diferencia: acJ > 0 ? acJ : 0 };
+    const fY = sumI(i => i.destino === 'excl_fondeo_payana', p);
+    const cY = sumI(i => i.cuenta.indexOf('Payana') === 0 && i.destino.indexOf('info_') !== 0, p);       // pagos (incluye activo fijo pagado por Payana)
+    acY += fY - cY;
+    conciliacion.payana[p] = { fondeos: fY, consumos: cY, dif_mes: fY - cY, acumulado: acY, pendiente_fondear: acY < 0 ? -acY : 0, diferencia: acY > 0 ? acY : 0 };
+    const eN = estados.find(e => e.alias === 'Nomina' && e.periodo === p);
+    const fN = sumI(i => i.destino === 'nomina_fondeo' || i.destino === 'nomina_fondeo_lado_nomina', p);
+    const dN = sumI(i => i.destino === 'excl_cubierto_fondeo_nomina', p);
+    const dS = eN && eN.saldo_final != null && eN.saldo_inicial != null ? cents(eN.saldo_final) - cents(eN.saldo_inicial) : null;
+    conciliacion.nomina[p] = { fondeos: fN, consumos: dN, var_saldo: dS, dif_mes: dS === null ? null : fN - dN - dS, sin_estado: !eN };
+  }
+
+  return { MESES, MV, cobertura, items, ventas, facturado, P, contrato, estimado, conmetMes, candidatasPartida, activos, reglas, repartoNomina, conciliacion };
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -476,12 +624,14 @@ function armarVistas(m, F) {
     const cs = [
       renglon('costo_prov_cfdi', 'Proveedores con CFDI ligado (sin IVA)', D('costo_proveedor_con_cfdi'), 'v_movimientos_validados · cargos con factura de proveedor en Odoo'),
       renglon('costo_prov_sin', 'Proveedores sin CFDI ligado (bruto)', D('costo_proveedor_sin_cfdi'), 'v_movimientos_validados · cargos sin factura (monto exacto ±15 días)'),
-      renglon('costo_jeeves', F.d3 ? 'Jeeves costo (IVA estimado, sin CFDI)' : 'Jeeves: consumos (bruto)', i => i.destino.indexOf('costo_jeeves') === 0 && i.destino !== 'costo_jeeves_sin_clasificar' && i.destino !== 'costo_jeeves_devolucion', 'Odoo diario 61 · consumos por tipo de comercio (D3)'),
+      renglon('costo_jeeves_proy', 'Jeeves con analítica de proyecto (IVA estimado)', D('costo_jeeves_proyecto'), 'Odoo diario 61 · consumo conciliado con factura con analítica plan 1/18 (R2)'),
+      renglon('costo_jeeves', F.d3 ? 'Jeeves costo por regla de comercio (IVA estimado, sin CFDI)' : 'Jeeves: consumos (bruto)', i => i.destino.indexOf('costo_jeeves') === 0 && ['costo_jeeves_sin_clasificar', 'costo_jeeves_devolucion', 'costo_jeeves_proyecto'].indexOf(i.destino) < 0, 'Odoo diario 61 · sin analítica: reglas por tipo de comercio (D3)'),
       renglon('costo_jeeves_sin', 'Jeeves sin clasificar (IVA estimado)', D('costo_jeeves_sin_clasificar'), 'Odoo diario 61 · comercio sin regla'),
       renglon('costo_jeeves_dev', 'Jeeves: devoluciones de comercio', D('costo_jeeves_devolucion'), 'Odoo diario 61 · [DEVOLUCIÓN]'),
-      renglon('costo_payana_proy', 'Payana: facturas de proyecto (sin IVA)', D('costo_payana_proyecto'), 'Odoo diario 74 · factura con analítica plan 1/18'),
-      renglon('costo_payana_pc', 'Payana: por clasificar', D('costo_payana_por_clasificar'), 'Odoo diario 74 · sin factura o sin proyecto'),
-      renglon('costo_nomina', F.d1 ? 'Nómina de campo' : 'Nómina (sin separar campo/oficina)', i => NOMINA.includes(i.destino), 'fondeos General→Nómina + pagos directos (− oficina, D1)'),
+      renglon('costo_payana_proy', 'Payana con analítica de proyecto (sin IVA)', D('costo_payana_proyecto'), 'Odoo diario 74 · factura con analítica plan 1/18; las mixtas se parten (R2)'),
+      renglon('costo_payana_pc', 'Payana sin clasificar (sin analítica ni regla)', D('costo_payana_sin_clasificar'), 'Odoo diario 74 · factura sin analítica de proyecto ni común y sin regla de proveedor (R2)'),
+      F.r1 ? renglon('costo_nomina', 'Nómina de proyectos (reparto por horas)', D('nomina_proyectos'), 'nómina total del banco × % de horas o Carga MO a proyecto, por persona y mes (R1) · ver «Reparto de nómina»')
+        : renglon('costo_nomina', F.d1 ? 'Nómina de campo' : 'Nómina (sin separar campo/oficina)', i => NOMINA.includes(i.destino), 'fondeos General→Nómina + pagos directos (− oficina, D1)'),
       renglon('costo_depreciacion', 'Depreciación asignable (activo fijo)', D('costo_depreciacion'), '25 % anual en línea recta desde el mes de compra (D6)'),
     ];
     if (tipo === 'A') cs.push(renglon('costo_conmet', 'Conmet: costo del proyecto (sin IVA)', D('costo_conmet'), 'cargos con CONMET o proveedor del proyecto'));
@@ -489,9 +639,12 @@ function armarVistas(m, F) {
     const UB = linea('utilidad_bruta', 'Utilidad bruta', 1, p => V[p] - C[p]);
     L.push({ clave: 'margen', etiqueta: 'Margen bruto', nivel: 3, vals: Object.fromEntries(COLS.concat(['acum']).map(p => [p, V[p] ? Math.round((UB[p] * 10000) / V[p]) : null])), es_pct: true });
     // gastos administrativos
-    const ga = [renglon('ga_nomina_oficina', 'Nómina de oficina', D('nomina_oficina'), 'personal de bancos.nomina_oficina (D1)'),
-      renglon('ga_jeeves', 'Jeeves administrativo (IVA estimado)', P('admin_jeeves_'), 'Odoo diario 61 · software, papelería, restaurantes en Monterrey (D3)'),
-      renglon('ga_payana', 'Payana indirecto (plan 2)', D('admin_payana_indirecto'), 'Odoo diario 74 · analítica plan 2 sin proyecto (D2)')];
+    const ga = F.r1 ? [renglon('ga_nomina_oficina', 'Nómina de cuentas comunes (reparto por horas)', D('nomina_comun'), 'nómina total del banco × % de horas o Carga MO a bolsas comunes (R1) · ver «Reparto de nómina»'),
+        renglon('ga_nomina_sin_horas', 'Nómina sin horas cargadas', D('nomina_sin_horas'), 'personas activas que nunca han cargado horas (R1)')]
+      : [renglon('ga_nomina_oficina', 'Nómina de oficina', D('nomina_oficina'), 'personal de bancos.nomina_oficina (D1)')];
+    ga.push(renglon('ga_jeeves_an', 'Jeeves con analítica común (IVA estimado)', D('admin_jeeves_analitica_comun'), 'Odoo diario 61 · factura conciliada con analítica plan 2 (R2)'),
+      renglon('ga_jeeves', 'Jeeves administrativo por regla de comercio (IVA estimado)', i => i.destino.indexOf('admin_jeeves_') === 0 && i.destino !== 'admin_jeeves_analitica_comun', 'Odoo diario 61 · software, papelería, restaurantes en Monterrey (D3)'),
+      renglon('ga_payana', 'Payana con analítica común (plan 2)', D('admin_payana_indirecto'), 'Odoo diario 74 · factura con analítica plan 2; las mixtas se parten (R2)'));
     const otros = Array.from(new Set(items.filter(i => i.destino.indexOf('admin_') === 0 && i.destino.indexOf('admin_jeeves_') !== 0 && i.destino !== 'admin_payana_indirecto').map(i => i.destino))).sort();
     for (const d of otros) ga.push(renglon('ga_' + d, d.replace('admin_', '').replace(/_/g, ' ').replace(/^./, x => x.toUpperCase()), D(d), 'reglas administrativo (bancos.reglas_edo_resultados)'));
     const GA = linea('gastos_admin', 'Gastos administrativos', 1, p => ga.reduce((s, x) => s + x[p], 0));
@@ -520,17 +673,17 @@ function armarVistas(m, F) {
 function armarPuente(m, A) {
   const { MESES, items } = m;
   const suma = (pred, campo, p) => items.filter(i => pred(i) && i.periodo === p).reduce((s, i) => s + i[campo], 0);
-  const EXCL = [['excl_cubierto_fondeo_nomina', 'Salidas de la cuenta Nómina (cubiertas por los fondeos)'], ['excl_traspaso', 'Traspasos entre cuentas propias (no Nómina)'],
-    ['excl_fondeo_payana', 'Fondeos a Payana'], ['excl_fondeo_jeeves', 'Fondeos / pagos a Jeeves'], ['excl_financiamiento', 'Pagos de financiamiento, préstamos y aportaciones'],
+  const EXCL = [['excl_cubierto_fondeo_nomina', 'dispersiones de la cuenta Nómina (ya contadas en los fondeos General → Nómina)'], ['excl_traspaso', 'traspasos entre cuentas BBVA propias (no Nómina)'],
+    ['excl_fondeo_payana', 'fondeos BBVA → Payana'], ['excl_fondeo_jeeves', 'fondeos BBVA → Jeeves'], ['excl_financiamiento', 'Pagos de financiamiento, préstamos y aportaciones'],
     ['impuestos_', 'Impuestos y cuotas (SAT, IMSS/INFONAVIT, ISN)'], ['excl_devolucion', 'Cargos devueltos por el banco'], ['activo_fijo', 'Compras de activo fijo (fuera del resultado)']];
   const puente = [];
   const pl = (clave, etiqueta, fn, signo) => { const vals = {}; for (const p of MESES) vals[p] = fn(p); vals.acum = MESES.reduce((s, p) => s + vals[p], 0); puente.push({ clave, etiqueta, signo, vals }); return vals; };
   const esBancoCargo = i => i.fuente === 'banco' && i.destino.indexOf('info_') !== 0 && i.destino !== 'nomina_fondeo_lado_nomina';
-  const bS = pl('salidas', 'Total de salidas del banco (cargos de General, Nómina y USD en pesos)', p => suma(esBancoCargo, 'bruto', p), '');
+  const bS = pl('salidas', 'Total de cargos BBVA (General, Nómina y USD en pesos)', p => suma(esBancoCargo, 'bruto', p), '');
   const exs = EXCL.map(([d, et]) => pl(d, 'menos ' + et, p => -suma(i => i.fuente === 'banco' && (d.slice(-1) === '_' ? i.destino.indexOf(d) === 0 : i.destino === d), 'bruto', p), '−'));
   const bE = pl('egresos_estado', 'Egresos bancarios que entran al estado o a partidas (bruto)', p => bS[p] + exs.reduce((s, x) => s + x[p], 0), '=');
-  const bJ = pl('mas_jeeves', 'más Jeeves: consumos netos de devoluciones (diario 61, bruto)', p => suma(i => i.fuente === 'odoo' && i.cuenta.indexOf('Jeeves') === 0 && i.destino.indexOf('info_') !== 0, 'bruto', p), '+');
-  const bP = pl('mas_payana', 'más Payana: pagos (diario 74, bruto)', p => suma(i => i.fuente === 'odoo' && i.cuenta.indexOf('Payana') === 0 && i.destino.indexOf('info_') !== 0 && i.destino !== 'activo_fijo', 'bruto', p), '+');
+  const bJ = pl('mas_jeeves', 'más consumos de Jeeves que entran al estado, netos de devoluciones (diario 61, bruto) · diferencia contra los fondeos en «Conciliación contra BBVA»', p => suma(i => i.fuente === 'odoo' && i.cuenta.indexOf('Jeeves') === 0 && i.destino.indexOf('info_') !== 0, 'bruto', p), '+');
+  const bP = pl('mas_payana', 'más pagos de Payana que entran al estado (diario 74, bruto) · diferencia contra los fondeos en «Conciliación contra BBVA»', p => suma(i => i.fuente === 'odoo' && i.cuenta.indexOf('Payana') === 0 && i.destino.indexOf('info_') !== 0 && i.destino !== 'activo_fijo', 'bruto', p), '+');
   const bN = pl('mas_nomina_lado_nomina', 'más nómina de meses sin estado de la General (leída en el estado de Nómina)', p => suma(i => i.destino === 'nomina_fondeo_lado_nomina', 'bruto', p), '+');
   const bD = pl('mas_depreciacion', 'más depreciación del activo fijo (no es salida de banco)', p => suma(i => i.destino === 'costo_depreciacion', 'bruto', p), '+');
   const enER = i => i.destino.indexOf('costo_') === 0 || i.destino.indexOf('admin_') === 0 || i.destino.indexOf('nomina') === 0 || i.destino.indexOf('partida_') === 0;
@@ -564,8 +717,10 @@ function escenarioCore(base, movs, seleccion, pctFin) {
 function decidir(res, opciones) {
   const ult = opciones.ultimo_calculo || null, ver = opciones.ultima_version || null;
   const motivos = [];
-  const nuevaVersion = !ver || ver.huella_resultados !== res.huella;
-  if (!ver) motivos.push('primera versión del estado automático (v1)');
+  const cuadra = res.resumen.cuadra_al_centavo !== false;
+  const nuevaVersion = cuadra && (!ver || ver.huella_resultados !== res.huella);
+  if (!cuadra) motivos.push('el puente contra BBVA NO cuadra al centavo: no se publica versión nueva hasta explicarlo');
+  if (!ver && cuadra) motivos.push('primera versión del estado automático (v1)');
   const cobPrev = {}; for (const c of ((ult && ult.resumen && ult.resumen.cobertura) || [])) cobPrev[c.periodo] = c.estado;
   for (const c of res.resumen.cobertura) if (cobPrev[c.periodo] === 'INCOMPLETO' && c.estado !== 'INCOMPLETO') motivos.push(nombreMes(c.periodo) + ' pasó de INCOMPLETO a ' + c.estado.toLowerCase());
   const um = (res.resumen.parametros && res.resumen.parametros.correo_umbral_cambio_utilidad_pct) || 1;
@@ -591,13 +746,19 @@ function calcular(insumos, opciones) {
   // ── qué cambió contra el v0: decisiones encendidas una a una, en orden ──
   const pasos = [['v0', {}], ['D1 nómina de oficina', { d1: 1 }], ['D2 administrativo literal', { d1: 1, d2: 1 }], ['D3 Jeeves por comercio', { d1: 1, d2: 1, d3: 1 }],
     ['D4 sin CFDI en su renglón (sin efecto en cifras)', { d1: 1, d2: 1, d3: 1 }], ['D5 partidas por identificar', { d1: 1, d2: 1, d3: 1, d5: 1 }],
-    ['D6 activo fijo y casa de cambio', { d1: 1, d2: 1, d3: 1, d5: 1, d6: 1 }], ['D7 Conmet por avance de obra', TODAS]];
+    ['D6 activo fijo y casa de cambio', { d1: 1, d2: 1, d3: 1, d5: 1, d6: 1 }], ['D7 Conmet por avance de obra (= v1)', { d1: 1, d2: 1, d3: 1, d5: 1, d6: 1, d7: 1 }],
+    ['R1 nómina repartida por horas', { d1: 1, d2: 1, d3: 1, d5: 1, d6: 1, d7: 1, r1: 1 }], ['R2 Jeeves y Payana por analítica', TODAS],
+    ['R3 conciliación contra BBVA (sin efecto en cifras: sólo verifica)', TODAS]];
   const cambios = []; let prev = null;
   for (const [nombre, f] of pasos) {
-    const ff = { d1: !!f.d1, d2: !!f.d2, d3: !!f.d3, d5: !!f.d5, d6: !!f.d6, d7: !!f.d7 };
-    const vv = armarVistas(motor(ins, ff), ff).A.tot;
-    const x = { paso: nombre, uo: vv.UO.acum, uop: vv.UOP.acum };
-    x.efecto_uo = prev ? x.uo - prev.uo : 0; x.efecto_uop = prev ? x.uop - prev.uop : 0; cambios.push(x); prev = x;
+    const ff = { d1: !!f.d1, d2: !!f.d2, d3: !!f.d3, d5: !!f.d5, d6: !!f.d6, d7: !!f.d7, r1: !!f.r1, r2: !!f.r2 };
+    const vs = armarVistas(motor(ins, ff), ff);
+    const x = { paso: nombre, grupo: /^R/.test(nombre) ? 'v1' : 'v0', uo: vs.A.tot.UO.acum, uop: vs.A.tot.UOP.acum,
+      uo_abc: { A: vs.A.tot.UO.acum, B: vs.B.tot.UO.acum, C: vs.C.tot.UO.acum }, ub_abc: { A: vs.A.tot.UB.acum, B: vs.B.tot.UB.acum, C: vs.C.tot.UB.acum } };
+    x.efecto_uo = prev ? x.uo - prev.uo : 0; x.efecto_uop = prev ? x.uop - prev.uop : 0;
+    x.efecto_abc = prev ? { A: x.uo_abc.A - prev.uo_abc.A, B: x.uo_abc.B - prev.uo_abc.B, C: x.uo_abc.C - prev.uo_abc.C } : { A: 0, B: 0, C: 0 };
+    x.efecto_ub = prev ? { A: x.ub_abc.A - prev.ub_abc.A, B: x.ub_abc.B - prev.ub_abc.B, C: x.ub_abc.C - prev.ub_abc.C } : { A: 0, B: 0, C: 0 };
+    cambios.push(x); prev = x;
   }
 
   // ── indicadores ──
@@ -622,11 +783,11 @@ function calcular(insumos, opciones) {
     ['S6', 'ISN', 'Los pagos a la Secretaría de Finanzas se tratan como Impuesto sobre Nómina.'],
     ['S7', 'Conmet sin factura exacta', 'Los anticipos de Conmet sin factura del mismo monto toman el IVA de la proporción de las facturas del proveedor del proyecto.'],
     ['S8', 'Jeeves (D3)', 'IVA estimado: consumos de comercios mexicanos ÷ 1.16; comercios extranjeros quedan como están. Todo Jeeves va marcado «IVA estimado, sin CFDI». Un restaurante sin señal de otra ciudad se toma como de Monterrey.'],
-    ['S9', 'Payana (D2)', 'Factura con analítica de proyecto (plan 1/18) → costo; con analítica plan 2 sin proyecto, o de proveedor administrativo → gastos; lo demás → costo «por clasificar».'],
+    ['S9', 'Payana y Jeeves (R2)', 'Primero la analítica de la factura (en Jeeves, la factura con la que se concilió el consumo): proyecto (plan 1/18) → costo; común (plan 2) → gastos; mixta → se parte en la misma proporción. Sin analítica → reglas por proveedor (Payana) o por comercio (Jeeves), marcado «clasificado por regla, sin analítica». Sin regla → costo «sin clasificar».'],
     ['S10', 'CFDI', 'Un egreso se liga a factura si hay un pago en Odoo del mismo monto (±15 días) que apunta a un BILL, o una factura de proveedor con el mismo total (±15 días). Cada factura y cada pago se usan una vez.'],
     ['S11', 'Devoluciones', 'Un «SPEI DEVUELTO» anula el cargo con el mismo banco y la misma referencia de los 5 días previos.'],
     ['S13', 'Escrituras', 'El recálculo sólo escribe en bancos.er_calculos y bancos.partidas_identificadas (pendientes nuevas), con el rol bancos_er.'],
-    ['S14', 'Nómina de oficina (D1)', 'Se reconoce por nombre o por los últimos 4 dígitos de la cuenta en el concepto del banco. Las dispersiones masivas de la cuenta Nómina (sin beneficiario en el concepto) no se pueden separar y quedan en campo.'],
+    ['S14', 'Nómina (R1)', 'La cuenta Nómina casi sólo trae dispersiones masivas, así que la nómina total del mes del banco se reparte entre las personas en proporción a su peso de mano de obra (opción b). bancos.nomina_oficina queda sólo como corrección manual: la persona cuyo nombre coincide va 100 % a cuentas comunes.'],
     ['S15', 'Partidas por identificar (D5)', 'Cargo sin concepto ni CFDI desde ' + fmt(Math.round((P.umbral_partida_por_identificar_mxn || 0) * 100)) + ' pesos (parámetro editable), más los envíos a casa de cambio sin entrada equivalente.'],
     ['S16', 'Activo fijo (D6)', 'Compras de vehículos a activo fijo; depreciación ' + P.depreciacion_vehiculos_anual_pct + ' % anual en línea recta desde el mes de compra, prorrateada por mes, sobre el subtotal sin IVA.'],
     ['S17', 'Proyectos vendidos antes del año', 'Un costo es de un proyecto vendido antes de ' + ANIO + ' si todas las cuentas analíticas de proyecto de su factura se crearon antes del 1 de enero.'],
@@ -634,16 +795,24 @@ function calcular(insumos, opciones) {
       'En Odoo el costo cotizado de la SO11771 está vacío (costo por línea en cero y presupuesto de materiales y mano de obra en 1). Se usa margen cero (NIIF 15 párrafo 45): costo total estimado = contrato, y la venta reconocida iguala al costo incurrido. Cuando exista el estimado, se captura en er_parametros y el recálculo lo toma.'],
     ['S19', 'Conmet cobrado', 'El cobro de Conmet se muestra sin IVA (÷1.16) como informativo, contra lo reconocido.'],
     ['S20', 'Vista D', 'Los «últimos 10» se ordenan por fecha de operación y, dentro del día, por el renglón del estado (el banco no imprime hora).'],
+    ['S21', 'Ajustes de la línea de crédito de Jeeves', 'Los renglones de Jeeves marcados como ajuste de la línea de crédito se tratan como consumo (costo sin clasificar) hasta confirmar qué son.'],
+    ['S22', 'Peso de cada persona (R1)', 'Monto de Carga MO de la persona en los meses que existe (desde la semana 28); en los demás, sus horas de asistencia. El costo por hora de Odoo viene en muy pocas personas y no se usa.'],
+    ['S23', 'Persona-mes medida (R1)', 'Carga MO: % = monto a proyecto ÷ monto total. Asistencias: se toma como medida si al menos el ' + Math.round(UMBRAL_HORAS_MEDIDAS * 100) + ' % de sus horas tiene orden de venta (proyecto) o bolsa (común); % = horas a proyecto ÷ horas clasificadas. Si no, promedio simple de sus meses medidos («estimado por historial»); si nunca tuvo uno, el % global de horas clasificadas.'],
+    ['S24', 'Meses sin horas clasificadas (R1)', 'Enero a marzo no tienen ninguna hora con proyecto ni bolsa: su reparto sale del historial o del % global y el mes se marca «reparto de nómina estimado».'],
+    ['S25', 'Planes que no son ni proyecto ni común (R2)', 'El plan 20 (rubro) se ignora. Activos, combustible, inmuebles, flota y otros planes cuentan como «sin analítica» y van a las reglas.'],
+    ['S26', 'Conciliación contra BBVA (R3)', 'Jeeves y Payana no traen saldo en los insumos: se muestra la diferencia ACUMULADA entre fondeos desde BBVA y consumos o pagos. Si es negativa es «pendiente de fondear desde BBVA»; si es positiva, «diferencia contra BBVA» (saldo sin gastar o faltante por explicar). Nómina: fondeos − dispersiones − variación del saldo de la cuenta Nómina.'],
+    ['S27', 'Versión que no cuadra (R3)', 'Si el puente no cuadra al centavo en algún mes, el mes se marca en rojo y el recálculo no publica versión nueva ni sobrescribe el estado actual.'],
   ];
   const decisiones = [
-    'Llenar bancos.nomina_oficina con el personal de oficina (RH).',
+    'Opcional: forzar personas a cuentas comunes en bancos.nomina_oficina (corrección manual; la regla general es por horas).',
     'Decidir cada partida por identificar en bancos.partidas_identificadas.',
     'Capturar el costo total estimado de Conmet en bancos.er_parametros si se quiere reconocer margen por avance.',
     'Revisar la lista de reglas de Jeeves sin clasificar y ampliar bancos.reglas_edo_resultados.',
   ];
 
   const resultado = { A: A.lineas.map(l => ({ clave: l.clave, vals: l.vals })), B: B.lineas.map(l => ({ clave: l.clave, vals: l.vals })),
-    C: C.lineas.map(l => ({ clave: l.clave, vals: l.vals })), puente: pz.puente.map(l => ({ clave: l.clave, vals: l.vals })), cuadre: pz.cuadre };
+    C: C.lineas.map(l => ({ clave: l.clave, vals: l.vals })), puente: pz.puente.map(l => ({ clave: l.clave, vals: l.vals })), cuadre: pz.cuadre,
+    conciliacion: m.conciliacion, reparto: m.repartoNomina ? Object.fromEntries(MESES.map(p => [p, { N: m.repartoNomina[p].N, costo: m.repartoNomina[p].costo, comun: m.repartoNomina[p].comun, sin: m.repartoNomina[p].sin }])) : null };
   const huella = sha256(canon(resultado));
   const huellaInsumos = sha256(canon(ins));
 
@@ -655,6 +824,13 @@ function calcular(insumos, opciones) {
     partidas_por_identificar: partidas.filter(i => i.destino === 'partida_por_identificar').length, nomina_oficina_filas: (ins.nomina_oficina || []).length,
     utilidad_operacion: { A: A.tot.UO.acum, B: B.tot.UO.acum, C: C.tot.UO.acum },
     utilidad_operacion_partidas: { A: A.tot.UOP.acum, B: B.tot.UOP.acum, C: C.tot.UOP.acum },
+    reparto_nomina: m.repartoNomina ? MESES.map(p => { const r = m.repartoNomina[p]; return { periodo: p, pct_proyecto: pct(r.costo, r.N), pct_comun: pct(r.comun, r.N), pct_sin_horas: pct(r.sin, r.N),
+      estimado: r.estimado, base: r.base, personas: r.cuenta }; }) : null,
+    clasificacion_r2: (() => { const o = {}; for (const [k, pre] of [['jeeves', 'Jeeves'], ['payana', 'Payana']]) {
+      const xs = items.filter(i => i.cuenta.indexOf(pre) === 0 && i.destino.indexOf('info_') !== 0 && i.destino !== 'costo_jeeves_devolucion'), t = xs.reduce((a, i) => a + i.bruto, 0);
+      const g = v => xs.filter(i => (i.via || 'regla') === v).reduce((a, i) => a + i.bruto, 0);
+      o[k] = { por_analitica: pct(g('analitica'), t), por_regla: pct(g('regla'), t), sin_clasificar: pct(g('sin_clasificar'), t) }; } return o; })(),
+    conciliacion_bbva: Object.fromEntries(['jeeves', 'payana'].map(k => [k, MESES.map(p => ({ periodo: p, dif_mes: m.conciliacion[k][p].dif_mes, acumulado: m.conciliacion[k][p].acumulado }))])),
     parametros: P, insumos: { banco: (ins.banco || []).length, estados: (ins.estados || []).length, reglas: (ins.reglas || []).length,
       odoo: Object.fromEntries(Object.keys(ins.odoo || {}).sort().map(k => [k, (ins.odoo[k] || []).length])) },
   };
@@ -679,6 +855,7 @@ function calcular(insumos, opciones) {
 
   // ═══ archivos privados ═══
   const nv = out.decision.version || (opciones.ultima_version && opciones.ultima_version.version) || 1;
+  const etq = opciones.etiqueta ? String(opciones.etiqueta).replace(/[^0-9A-Za-z.]/g, '') : 'v' + nv;   // p. ej. «v1.1»; por omisión vN
   const colsV = COLS.concat(['acum']);
   const celdaCsv = (l, p) => l.es_pct ? (l.vals[p] === null ? '' : (l.vals[p] / 100).toFixed(2) + '%') : (l.vals[p] / 100).toFixed(2);
   const csvVista = V => csv([['concepto'].concat(colsV.map(nombreMes), ['movimientos', 'fuente'])].concat(V.lineas.map(l => [l.etiqueta].concat(colsV.map(p => celdaCsv(l, p)), [l.n == null ? '' : l.n, l.fuente || '']))));
@@ -693,25 +870,41 @@ function calcular(insumos, opciones) {
   const csvPartidas = csv([['movimiento_id', 'hash', 'periodo', 'fecha', 'cuenta', 'concepto', 'bruto_mxn', 'motivo', 'decision', 'archivo', 'pagina']]
     .concat(partidas.map(i => [i.mov_id, i.hash, i.periodo, i.fecha, i.cuenta + ' ' + i.mask, i.concepto, (i.bruto / 100).toFixed(2), i.motivo_partida || '', i.decidida || 'pendiente', i.archivo, i.pagina])));
 
+  const RN = m.repartoNomina;
+  const csvReparto = RN ? csv([['periodo', 'nomina_total_banco', 'a_proyectos', 'a_cuentas_comunes', 'sin_horas', 'pct_proyecto', 'base', 'mes_estimado', 'empleado_id', 'empleado', 'horas', 'peso', 'pct_proyecto_persona', 'fuente_pct']]
+    .concat(...MESES.map(p => RN[p].personas.map(x => [p, (RN[p].N / 100).toFixed(2), (RN[p].costo / 100).toFixed(2), (RN[p].comun / 100).toFixed(2), (RN[p].sin / 100).toFixed(2), (RN[p].pct_proyecto * 100).toFixed(2),
+      RN[p].base, RN[p].estimado ? 'si' : '', x.id, x.nombre, x.horas, Math.round(x.peso), (x.pct * 100).toFixed(2), x.fuente])))) : '';
+  const CQ = m.conciliacion;
+  const csvConc = csv([['intermediario', 'periodo', 'fondeos_desde_bbva', 'consumos_o_pagos', 'variacion_saldo', 'diferencia_mes', 'diferencia_acumulada', 'pendiente_de_fondear', 'diferencia_contra_bbva']]
+    .concat(...['jeeves', 'payana', 'nomina'].map(k => MESES.map(p => { const x = CQ[k][p]; const f = v => v == null ? '' : (v / 100).toFixed(2);
+      return [k, p, f(x.fondeos), f(x.consumos), f(x.var_saldo), f(x.dif_mes), f(x.acumulado), f(x.pendiente_fondear), f(x.diferencia)]; }))));
   const html = armarHTML({ A, B, C, pz, items, ventas, facturado, cobertura, supuestos, decisiones, partidas, conteos, baseC, sinC, huella, huellaInsumos,
-    opciones, COLS, MESES, MV, incompletos, cambios, vd, m, jeev, jSin, nv, decision: out.decision });
-  const cab = 'Estado de resultados ' + ANIO + ' v' + nv + ' · Servicios FTS SA de CV · sin IVA · pesos · huella ' + huella.slice(0, 16) + '\n';
+    opciones, COLS, MESES, MV, incompletos, cambios, vd, m, jeev, jSin, nv, etq, decision: out.decision });
+  const cab = 'Estado de resultados ' + ANIO + ' ' + etq + ' (versión ' + nv + ') · Servicios FTS SA de CV · sin IVA · pesos · huella ' + huella.slice(0, 16) + '\n';
   const base = [
     ['vista_A.csv', csvVista(A)], ['vista_B_sin_Conmet.csv', csvVista(B)], ['vista_C_facturado.csv', csvVista(C)],
-    ['puente.csv', csvPuente], ['movimientos.csv', csvMovs], ['ventas_y_facturas.csv', csvVentas], ['partidas_por_identificar.csv', csvPartidas]];
-  out.archivos = [{ nombre: 'ER_' + ANIO + '_actual.html', carpeta: '', tipo: 'text/html; charset=utf-8', contenido: html }];
-  if (out.decision.nueva_version) {
-    out.archivos.push({ nombre: 'ER_' + ANIO + '_v' + nv + '.html', carpeta: 'historial', tipo: 'text/html; charset=utf-8', contenido: html });
-    for (const [n, c] of base) out.archivos.push({ nombre: 'ER_' + ANIO + '_v' + nv + '_' + n, carpeta: 'historial', tipo: 'text/csv; charset=utf-8', contenido: cab + c });
+    ['puente.csv', csvPuente], ['movimientos.csv', csvMovs], ['ventas_y_facturas.csv', csvVentas], ['partidas_por_identificar.csv', csvPartidas],
+    ['reparto_nomina.csv', csvReparto], ['conciliacion_bbva.csv', csvConc]];
+  out.archivos = [];
+  if (pz.cuadraTodo) {            // R3: si el puente no cuadra no se sobrescribe el actual ni se crea versión (S27)
+    out.archivos.push({ nombre: 'ER_' + ANIO + '_actual.html', carpeta: '', tipo: 'text/html; charset=utf-8', contenido: html });
+    if (out.decision.nueva_version) {
+      out.archivos.push({ nombre: 'ER_' + ANIO + '_' + etq + '.html', carpeta: 'historial', tipo: 'text/html; charset=utf-8', contenido: html });
+      for (const [n, c] of base) out.archivos.push({ nombre: 'ER_' + ANIO + '_' + etq + '_' + n, carpeta: 'historial', tipo: 'text/csv; charset=utf-8', contenido: cab + c });
+    }
+    for (const [n, c] of base) out.archivos.push({ nombre: 'ER_' + ANIO + '_actual_' + n, carpeta: '', tipo: 'text/csv; charset=utf-8', contenido: cab + c });
   }
-  for (const [n, c] of base) out.archivos.push({ nombre: 'ER_' + ANIO + '_actual_' + n, carpeta: '', tipo: 'text/csv; charset=utf-8', contenido: cab + c });
   const f3 = k => [fmt(A.tot[k].acum), fmt(B.tot[k].acum), fmt(C.tot[k].acum)];
   out.correo = {
-    asunto: 'Estado de resultados ' + ANIO + ' v' + nv + (out.decision.motivos.length ? ' · ' + out.decision.motivos[0] : ''),
+    asunto: 'Estado de resultados ' + ANIO + ' ' + etq + (out.decision.motivos.length ? ' · ' + out.decision.motivos[0] : ''),
     renglones: [['Ventas'].concat(f3('V')), ['Costo de ventas'].concat(f3('C')), ['Utilidad bruta'].concat(f3('UB')), ['Gastos administrativos'].concat(f3('GA')),
       ['Utilidad de operación'].concat(f3('UO')), ['Partidas por identificar'].concat(f3('PI')), ['Utilidad de operación después de partidas'].concat(f3('UOP'))],
     motivos: out.decision.motivos, cambios: cambios.map(c => [c.paso, fmt(c.efecto_uo), fmt(c.efecto_uop)]),
+    cambios_v1: cambios.filter(c => c.grupo === 'v1').map(c => [c.paso, fmt(c.efecto_ub.A), fmt(c.efecto_ub.B), fmt(c.efecto_ub.C), fmt(c.efecto_abc.A), fmt(c.efecto_abc.B), fmt(c.efecto_abc.C)]),
     incompletos: incompletos.length ? incompletos.map(p => nombreMes(p) + ' (' + cobertura[p].estado.toLowerCase() + (cobertura[p].faltan.length ? ', faltan ' + cobertura[p].faltan.join(', ') : '') + ')').join('; ') : 'ninguno',
+    nomina_pct: RN ? MESES.map(p => [nombreMes(p), pct(RN[p].costo, RN[p].N), pct(RN[p].comun, RN[p].N), pct(RN[p].sin, RN[p].N), RN[p].estimado ? 'estimado' : 'medido']) : [],
+    conciliacion: ['jeeves', 'payana'].map(k => [k === 'jeeves' ? 'Jeeves' : 'Payana'].concat(MESES.map(p => fmt(CQ[k][p].acumulado)))),
+    meses: MESES.map(nombreMes), etiqueta: etq,
     vista_d: 'Vista D: descarga el HTML y ábrelo en el navegador; marca cargos, pon el % de costo financiero y verás la utilidad hipotética (subtotal = bruto ÷ 1.16).',
   };
   return out;
@@ -817,7 +1010,7 @@ function vistaDCliente() {
 
 // ═══ HTML privado, autocontenido ═══════════════════════════════════════════
 function armarHTML(z) {
-  const { A, B, C, pz, items, ventas, facturado, cobertura, supuestos, decisiones, partidas, COLS, MESES, MV, cambios, vd, m, jeev, jSin, nv } = z;
+  const { A, B, C, pz, items, ventas, facturado, cobertura, supuestos, decisiones, partidas, COLS, MESES, MV, cambios, vd, m, jeev, jSin, nv, etq } = z;
   const cols = COLS.concat(['acum']);
   const celda = (l, p) => l.es_pct ? (l.vals[p] === null ? '—' : (l.vals[p] / 100).toFixed(1) + '%') : fmt(l.vals[p]);
   const detalleItems = lista => '<div class="scroll"><table class="det"><tr><th>fecha</th><th>cuenta</th><th>concepto</th><th>proveedor / CFDI</th><th class="n">bruto</th><th class="n">sin IVA</th><th>origen</th></tr>' +
@@ -848,19 +1041,44 @@ function armarHTML(z) {
   for (const l of pz.puente) hp += '<tr class="' + (l.signo === '=' || l.clave === 'salidas' ? 'lv1' : 'lv2') + '"><td>' + esc(l.etiqueta) + '</td>' + mesesP.map(p => '<td class="n' + (p === 'acum' ? ' acum' : '') + '">' + fmt(l.vals[p]) + '</td>').join('') + '</tr>';
   hp += '<tr class="lv1 ' + (pz.cuadraTodo ? 'ok' : 'bad') + '"><td>Diferencia contra costo + gastos + partidas del estado</td>' + mesesP.map(p => '<td class="n">' + fmt(pz.cuadre[p]) + '</td>').join('') + '</tr></tbody></table></div>' +
     '<p class="' + (pz.cuadraTodo ? 'ok' : 'bad') + '">' + (pz.cuadraTodo ? 'El puente cuadra al centavo en todos los meses y en el acumulado.' : 'El puente NO cuadra; ver diferencias.') + '</p>';
-  const hCambios = '<h2 id="cambios">Qué cambió contra el v0 (Vista A, acumulado)</h2><div class="scroll"><table class="er"><tr><th>Decisión (se encienden una a una, en orden)</th><th class="n">Utilidad de operación</th><th class="n">Efecto</th><th class="n">Después de partidas</th><th class="n">Efecto</th></tr>' +
+  const c1 = cambios.filter(c => c.grupo === 'v1'), baseV1 = cambios.filter(c => c.grupo === 'v0').slice(-1)[0];
+  const hCambios = '<h2 id="cambios">Qué cambió contra el v1 (acumulado)</h2><p class="mut">R1 y R2 sólo mueven pesos entre costo de ventas y gastos administrativos: cambian la utilidad bruta y el margen, y dejan casi igual la utilidad de operación (las diferencias de centavos vienen de partir montos).</p>' +
+    '<div class="scroll"><table class="er"><tr><th>Ajuste (se encienden uno a uno)</th><th class="n">Efecto en utilidad bruta A</th><th class="n">B</th><th class="n">C</th><th class="n">Efecto en utilidad de operación A</th><th class="n">B</th><th class="n">C</th></tr>' +
+    '<tr class="lv1"><td>v1 (reglas D1–D7): utilidad bruta A ' + fmt(baseV1.ub_abc.A) + ' · utilidad de operación A ' + fmt(baseV1.uo) + '</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>' +
+    c1.map(c => '<tr><td>' + esc(c.paso) + '</td>' + ['A', 'B', 'C'].map(k => '<td class="n">' + fmt(c.efecto_ub[k]) + '</td>').join('') + ['A', 'B', 'C'].map(k => '<td class="n">' + fmt(c.efecto_abc[k]) + '</td>').join('') + '</tr>').join('') + '</table></div>' +
+    '<h2>Qué cambió contra el v0 (Vista A, acumulado)</h2><div class="scroll"><table class="er"><tr><th>Decisión (se encienden una a una, en orden)</th><th class="n">Utilidad de operación</th><th class="n">Efecto</th><th class="n">Después de partidas</th><th class="n">Efecto</th></tr>' +
     cambios.map((c, k) => '<tr' + (k === 0 ? ' class="lv1"' : '') + '><td>' + esc(c.paso) + '</td><td class="n">' + fmt(c.uo) + '</td><td class="n">' + (k ? fmt(c.efecto_uo) : '') + '</td><td class="n">' + fmt(c.uop) + '</td><td class="n">' + (k ? fmt(c.efecto_uop) : '') + '</td></tr>').join('') +
     '</table></div><p class="mut">El renglón v0 reproduce las reglas del v0 sobre los insumos de hoy (puede diferir del v0 publicado si llegaron datos nuevos).</p>';
+  // R1: reparto de nómina, con «¿de dónde sale?» por mes (nombres sólo en este HTML privado)
+  const RN = z.m.repartoNomina;
+  const hNomina = !RN ? '' : '<h2 id="nomina">Reparto de nómina por horas (R1) · ¿de dónde sale?</h2>' +
+    '<p class="mut">Nómina total del mes del banco (fondeos General → Nómina + pagos de nómina desde la General) repartida entre las personas en proporción a su peso (Carga MO desde la semana 28; horas de asistencia antes). A cada persona se le aplica su % a proyecto; el resto es cuentas comunes. La suma de los tres renglones es la nómina total del banco, al centavo.</p>' +
+    '<div class="scroll"><table class="er"><thead><tr><th>mes</th><th class="n">nómina total banco</th><th class="n">a proyectos</th><th class="n">a cuentas comunes</th><th class="n">sin horas</th><th class="n">% proyecto</th><th>base</th><th>personas: medidas · historial · % global · sin horas</th></tr></thead><tbody>' +
+    MESES.map(p => { const r = RN[p]; return '<tr' + (r.estimado ? ' class="inc"' : '') + '><td>' + esc(nombreMes(p)) + (r.estimado ? ' <span class="tag">reparto de nómina estimado</span>' : '') + '</td><td class="n">' + fmt(r.N) + '</td><td class="n">' + fmt(r.costo) + '</td><td class="n">' + fmt(r.comun) + '</td><td class="n">' + fmt(r.sin) +
+      '</td><td class="n">' + pct(r.costo, r.N) + '</td><td>' + esc(r.base) + '</td><td>' + r.cuenta.medido + ' · ' + r.cuenta.historial + ' · ' + r.cuenta.global + ' · ' + r.cuenta.sin_horas + '</td></tr>' +
+      '<tr class="dt"><td colspan="8"><details><summary>¿de dónde sale ' + esc(nombreMes(p)) + '? (' + r.personas.length + ' personas)</summary><div class="scroll"><table class="det"><tr><th>persona</th><th class="n">horas</th><th class="n">peso</th><th class="n">% a proyecto</th><th>cómo se obtuvo</th><th class="n">nómina asignada</th><th class="n">a proyecto</th></tr>' +
+      (() => { const W = r.personas.reduce((a, x) => a + x.peso, 0); return r.personas.map(x => { const asig = W ? r.N * x.peso / W : 0; return '<tr><td>' + esc(x.nombre) + '</td><td class="n">' + x.horas + '</td><td class="n">' + fmt(Math.round(x.peso)) + '</td><td class="n">' + (x.pct * 100).toFixed(1) + '%</td><td>' + esc(x.fuente) + '</td><td class="n">' + fmt(Math.round(asig)) + '</td><td class="n">' + fmt(Math.round(x.tipo === 'sin_horas' ? 0 : asig * x.pct)) + '</td></tr>'; }).join(''); })() +
+      '</table></div></details></td></tr>'; }).join('') + '</tbody></table></div><p class="mut">% global usado para quien no tiene ningún mes medido: ' + (RN.global * 100).toFixed(1) + ' %.</p>';
+  // R3: conciliación de intermediarios contra BBVA
+  const CQ = z.m.conciliacion;
+  const filaC = (et, k, campo, cls) => '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + et + '</td>' + MESES.map(p => { const v = CQ[k][p][campo]; return '<td class="n' + (v && campo === 'diferencia' ? ' bad' : '') + '">' + (v == null ? '—' : fmt(v)) + '</td>'; }).join('') + '</tr>';
+  const hConc = '<h2 id="bbva">Conciliación contra BBVA (R3): todo peso del estado sale de BBVA</h2><p class="mut">Sin saldo de Jeeves ni de Payana en los insumos: se muestra la diferencia ACUMULADA entre fondeos desde BBVA y consumos o pagos (S26). Negativa = pendiente de fondear desde BBVA; positiva = diferencia contra BBVA (saldo sin gastar o faltante por explicar). Nunca se reparte ni se esconde.</p>' +
+    '<div class="scroll"><table class="er"><thead><tr><th>Concepto</th>' + MESES.map(p => '<th class="n">' + esc(nombreMes(p)) + '</th>').join('') + '</tr></thead><tbody>' +
+    '<tr class="lv1"><td>Jeeves</td>' + MESES.map(() => '<td></td>').join('') + '</tr>' + filaC('fondeos desde BBVA', 'jeeves', 'fondeos') + filaC('consumos − devoluciones', 'jeeves', 'consumos') + filaC('diferencia del mes', 'jeeves', 'dif_mes') + filaC('pendiente de fondear desde BBVA (acumulado)', 'jeeves', 'pendiente_fondear') + filaC('Diferencia contra BBVA (acumulada)', 'jeeves', 'diferencia', 'lv1') +
+    '<tr class="lv1"><td>Payana</td>' + MESES.map(() => '<td></td>').join('') + '</tr>' + filaC('fondeos desde BBVA', 'payana', 'fondeos') + filaC('pagos', 'payana', 'consumos') + filaC('diferencia del mes', 'payana', 'dif_mes') + filaC('pendiente de fondear desde BBVA (acumulado)', 'payana', 'pendiente_fondear') + filaC('Diferencia contra BBVA (acumulada)', 'payana', 'diferencia', 'lv1') +
+    '<tr class="lv1"><td>Nómina</td>' + MESES.map(() => '<td></td>').join('') + '</tr>' + filaC('fondeos General → Nómina', 'nomina', 'fondeos') + filaC('dispersiones de la cuenta Nómina', 'nomina', 'consumos') + filaC('variación del saldo de la cuenta Nómina', 'nomina', 'var_saldo') +
+    filaC('Diferencia contra BBVA (fondeos − dispersiones − variación de saldo; — = sin estado de Nómina)', 'nomina', 'dif_mes', 'lv1') + '</tbody></table></div>' +
+    '<p class="mut">El auditor (#346) tomará esta conciliación como chequeo del Objetivo 2 cuando se active (documentado, no activado).</p>';
   const cob = '<div class="scroll"><table class="det"><tr><th>mes</th><th>estado</th><th>nota</th></tr>' + MESES.map(p => '<tr><td>' + esc(nombreMes(p)) + '</td><td class="' + (cobertura[p].estado === 'completo' ? 'ok' : 'bad') + '">' + esc(cobertura[p].estado) +
     '</td><td>' + esc(cobertura[p].nota || 'General, Nómina y USD validados') + '</td></tr>').join('') + (MV ? '<tr><td>' + esc(nombreMes(MV)) + '</td><td>sólo ventas</td><td>sin banco todavía</td></tr>' : '') + '</table></div>';
-  const alertaNomina = z.m.P && (z.opciones && false) ? '' : ((z.conteos.nomina_oficina || 0) === 0 && !(items.some(i => i.destino === 'nomina_oficina')) ?
-    '<p class="alerta">Pendiente: lista de personal de oficina de RH. Mientras bancos.nomina_oficina esté vacía, toda la nómina queda en costo (campo).</p>' : '');
+  const estimados = z.m.repartoNomina ? MESES.filter(p => z.m.repartoNomina[p].estimado) : [];
+  const alertaNomina = estimados.length ? '<p class="alerta">Reparto de nómina estimado en ' + estimados.map(nombreMes).join(', ') + ': esos meses no tienen horas con proyecto ni bolsa en Odoo; se usa el historial de cada persona o el % global (R1, S24).</p>' : '';
   const conmet = z.m.conmetMes, contr = z.m.contrato;
   const hConmet = '<h2 id="conmet">Conmet por avance de obra (D7)</h2><p>Contrato sin IVA ' + fmt(contr) + ' · costo total estimado ' + fmt(z.m.estimado) + (z.m.estimado === contr ? ' (margen cero: sin estimado en Odoo)' : '') + '</p><div class="scroll"><table class="det"><tr><th>mes</th><th class="n">costo incurrido acumulado</th><th class="n">% avance</th><th class="n">venta reconocida acumulada</th><th class="n">venta del mes</th><th class="n">cobrado acumulado sin IVA</th></tr>' +
     MESES.map(p => '<tr><td>' + nombreMes(p) + '</td><td class="n">' + fmt(conmet[p].costo_acum) + '</td><td class="n">' + (conmet[p].avance * 100).toFixed(2) + '%</td><td class="n">' + fmt(conmet[p].reconocido_acum) + '</td><td class="n">' + fmt(conmet[p].venta) + '</td><td class="n">' + fmt(conmet[p].cobrado_acum) + '</td></tr>').join('') + '</table></div>';
   const excl = ['excl_cubierto_fondeo_nomina', 'excl_traspaso', 'excl_fondeo_payana', 'excl_fondeo_jeeves', 'excl_financiamiento', 'excl_devolucion', 'activo_fijo', 'info_entrada_financiamiento', 'info_devolucion_recibida', 'info_fondeo_jeeves_odoo', 'info_anticipo_conmet_cobrado'];
   const hExcl = excl.map(d => { const l = ordenar(items.filter(i => i.destino === d), 'fecha', 'id'); return '<details><summary>' + esc(d) + ' · ' + l.length + ' mov. · ' + fmt(l.reduce((s, i) => s + i.bruto, 0)) + '</summary>' + detalleItems(l) + '</details>'; }).join('');
-  const pc = ordenar(items.filter(i => i.destino === 'costo_payana_por_clasificar'), 'fecha', 'id');
+  const pc = ordenar(items.filter(i => i.destino === 'costo_payana_sin_clasificar'), 'fecha', 'id');
   const jsin = ordenar(jSin, 'bruto').reverse().slice(0, 60);
   const hJeeves = '<p>Jeeves: ' + jeev.length + ' consumos; ' + jSin.length + ' sin clasificar (' + pct(jSin.reduce((s, i) => s + i.bruto, 0), jeev.reduce((s, i) => s + i.bruto, 0)) + ' del monto). Los 60 más grandes sin clasificar:</p>' + detalleItems(jsin);
   const vdHtml = '<h2 id="vD">Vista D · escenarios hipotéticos de utilidad retenida</h2>' +
@@ -885,22 +1103,22 @@ function armarHTML(z) {
     'table.det{font-size:12px;margin:6px 0 10px}summary{cursor:pointer;color:var(--acc);font-size:12px}nav a{margin-right:14px;color:var(--acc);white-space:nowrap;display:inline-block;overflow-wrap:normal}tr.vdsel td,tr.marcado td{background:var(--sel)}.vdbadge{font-size:11px;color:var(--acc);font-weight:600}' +
     '.vdctl{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:8px 0}.vdctl input,.vdctl select,.vdctl button{font:inherit}';
   const datos = JSON.stringify(vd).replace(/</g, '\\u003c');
-  return '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Estado de resultados ' + ANIO + ' v' + nv + '</title><style>' + css + '</style></head><body>' +
-    '<h1>Estado de resultados ' + ANIO + ' v' + nv + ' · preliminar</h1><div class="mut">Servicios FTS SA de CV · ' + esc(nombreMes(MESES[0])) + ' a ' + esc(nombreMes(MESES[MESES.length - 1])) + ' con banco' + (MV ? ', ' + esc(nombreMes(MV)) + ' sólo ventas' : '') + ' · pesos · <b>sin IVA</b> · privado<br>' +
+  return '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Estado de resultados ' + ANIO + ' ' + esc(etq) + '</title><style>' + css + '</style></head><body>' +
+    '<h1>Estado de resultados ' + ANIO + ' ' + esc(etq) + ' · preliminar</h1><div class="mut">Servicios FTS SA de CV · ' + esc(nombreMes(MESES[0])) + ' a ' + esc(nombreMes(MESES[MESES.length - 1])) + ' con banco' + (MV ? ', ' + esc(nombreMes(MV)) + ' sólo ventas' : '') + ' · pesos · <b>sin IVA</b> · privado<br>' +
     'Huella de resultados ' + esc(z.huella) + ' · huella de insumos ' + esc(z.huellaInsumos.slice(0, 16)) + '… · calcular.js ' + esc(VERSION) + (z.opciones.sha ? ' @ ' + esc(String(z.opciones.sha).slice(0, 7)) : '') + (z.opciones.generado_at ? ' · generado ' + esc(z.opciones.generado_at) + ' UTC' : '') + '</div>' +
-    '<nav style="margin:12px 0"><a href="#vA">Vista A</a><a href="#vB">Vista B</a><a href="#vC">Vista C</a><a href="#vD">Vista D</a><a href="#puente">Puente</a><a href="#cambios">Qué cambió</a><a href="#conmet">Conmet</a><a href="#cob">Meses</a><a href="#sup">Supuestos</a><a href="#pi">Partidas</a><a href="#tablas">Tablas editables</a></nav>' +
+    '<nav style="margin:12px 0"><a href="#vA">Vista A</a><a href="#vB">Vista B</a><a href="#vC">Vista C</a><a href="#vD">Vista D</a><a href="#puente">Puente</a><a href="#bbva">Conciliación BBVA</a><a href="#nomina">Reparto de nómina</a><a href="#cambios">Qué cambió</a><a href="#conmet">Conmet</a><a href="#cob">Meses</a><a href="#sup">Supuestos</a><a href="#pi">Partidas</a><a href="#tablas">Tablas editables</a></nav>' +
     alertaNomina + '<p>Costo sin CFDI ligado: <b>' + pct(z.sinC, z.baseC) + '</b> del costo sin nómina (' + pct(z.sinC, A.tot.C.acum) + ' del costo total). Jeeves sin clasificar: <b>' + jSin.length + '</b> consumos, ' + pct(jSin.reduce((s, i) => s + i.bruto, 0), jeev.reduce((s, i) => s + i.bruto, 0)) + ' del monto de Jeeves.</p>' +
     tablaVista(A, 'Vista A · ventas confirmadas, Conmet por avance de obra', 'vA', true) +
     tablaVista(B, 'Vista B · igual que A, sin Conmet (ni su venta ni sus costos)', 'vB', false, 'El detalle de cada renglón es el de la Vista A sin los movimientos de Conmet.') +
     tablaVista(C, 'Vista C · ventas = facturado en ' + ANIO + ', sin Conmet («lo ejecutado»)', 'vC', true, 'Mismos costos que la Vista B; cambia la venta.') +
-    vdHtml + hp + hCambios + hConmet +
+    vdHtml + hp + hConc + hNomina + hCambios + hConmet +
     '<h2 id="cob">Meses y cobertura bancaria</h2>' + cob +
     '<h2 id="sup">Supuestos</h2><div class="scroll"><table class="det">' + supuestos.map(s => '<tr><td>' + esc(s[0]) + '</td><td><b>' + esc(s[1]) + '</b></td><td>' + esc(s[2]) + '</td></tr>').join('') + '</table></div>' +
     '<h2 id="pi">Partidas por identificar (pendientes de Esteban)</h2><p>' + partidas.length + ' partidas, ' + fmt(partidas.reduce((s, i) => s + i.bruto, 0)) + '. Se deciden en bancos.partidas_identificadas.</p>' + detalleItems(partidas) +
-    '<h2>Payana por clasificar</h2><p>' + pc.length + ' pagos, ' + fmt(pc.reduce((s, i) => s + i.neto, 0)) + ' (dentro de costo).</p>' + detalleItems(pc) +
+    '<h2>Payana sin clasificar</h2><p>' + pc.length + ' pagos, ' + fmt(pc.reduce((s, i) => s + i.neto, 0)) + ' (dentro de costo).</p>' + detalleItems(pc) +
     '<h2>Jeeves sin clasificar</h2>' + hJeeves +
     '<h2 id="excl">Excluido del resultado (renglones informativos)</h2>' + hExcl +
-    '<h2 id="tablas">Tablas editables</h2><ul><li><b>bancos.nomina_oficina</b>: una fila por persona de oficina: beneficiario (como aparece en el concepto del banco) o cuenta_mask (últimos 4 dígitos), vigente_desde, vigente_hasta, nota.</li>' +
+    '<h2 id="tablas">Tablas editables</h2><ul><li><b>bancos.nomina_oficina</b> (corrección manual de R1): beneficiario = nombre de la persona como está en Odoo; esa persona va 100 % a cuentas comunes entre vigente_desde y vigente_hasta. Vacía = manda la regla de horas.</li>' +
     '<li><b>bancos.partidas_identificadas</b>: clasificacion = costo · pago_prestamo · devolucion_aportacion · traspaso_propio · otro, nota, fecha_decision.</li>' +
     '<li><b>bancos.reglas_edo_resultados</b>: reglas por patrón (concepto del banco, proveedor de Odoo, comercio de Jeeves).</li><li><b>bancos.er_parametros</b>: umbral de partidas, depreciación, costo estimado de Conmet.</li></ul>' +
     '<p class="mut">Cualquier cambio en estas tablas dispara el recálculo en los siguientes 30 minutos (7:00 a 21:00) y un correo a Esteban.</p>' +
