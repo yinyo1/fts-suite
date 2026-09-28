@@ -87,3 +87,13 @@ def test_sin_detalle_pero_el_resumen_dice_que_hubo_movimientos_se_rechaza():
     with pytest.raises(bbva.ErrorParser) as ex:
         bbva.parsear(pdf_estado(e))
     assert ex.value.codigo == "SIN_ENCABEZADO_COLUMNAS"
+
+
+def test_descripcion_que_sigue_en_la_pagina_siguiente_no_se_pierde():
+    e = escenario()["general_2026-03"]
+    extra = [Mov(21, "N03", ["TRASPASO CUENTAS PROPIAS", "CUENTA: 999 BNET Ref. PRUEBA01"], cargo=Decimal("10.00"), partir=True)]
+    e.movs = e.movs + extra
+    est = bbva.parsear(pdf_estado(e))
+    m = next(x for x in est.movimientos if x.codigo == "N03")
+    assert "CUENTA: 999 BNET" in m.descripcion and m.referencia == "PRUEBA01"
+    assert validar.v1(est)[0] and validar.v2(est)[0]

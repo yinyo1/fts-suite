@@ -260,6 +260,10 @@ def _movimientos(pdf, est: EstadoParseado) -> None:
                 if "cargo" in cols and "abono" in cols:
                     columnas = cols
                     header_top = linea[0].top
+                    if actual is not None and actual.pagina != n:
+                        # la descripción del último movimiento puede seguir justo debajo del
+                        # encabezado repetido de la página nueva
+                        ultimo_top = header_top
                     en_detalle = True
                     desc = next((p for p in linea if p.texto.upper().startswith("DESCRIP")), None)
                     x_desc = desc.x0 if desc else x_desc

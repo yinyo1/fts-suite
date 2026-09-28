@@ -381,13 +381,23 @@ def aceptacion(anio: str = "2026"):
                               count(*) FILTER (WHERE cv.par_traspaso_id IS NULL) AS sin_pareja,
                               sum(m.cargo) FILTER (WHERE cv.par_traspaso_id IS NULL) AS monto_sin_pareja
                        FROM bancos.movimientos m JOIN bancos.clasificacion_vigente cv ON cv.movimiento_id=m.id
-                       WHERE cv.es_traspaso_interno AND m.cargo>0 AND m.fecha_operacion >= %s
-                       GROUP BY cv.subcategoria ORDER BY cv.subcategoria""", (anio + "-01-01",))
+                       JOIN bancos.estados_vigentes e ON e.id=m.estado_id JOIN bancos.archivos a ON a.id=e.archivo_id AND a.estado='validado'
+                       WHERE cv.es_traspaso_interno AND m.cargo>0 AND m.fecha_operacion BETWEEN %s AND %s
+                       GROUP BY cv.subcategoria ORDER BY cv.subcategoria""", (anio + "-01-01", anio + "-12-31"))
         traspasos = cur.fetchall()
+        # el otro lado: abonos de traspaso interno sin pareja (llegaron, pero falta el estado que los mandó)
+        cur.execute("""SELECT cv.subcategoria, count(*) AS n, sum(m.abono) AS monto
+                       FROM bancos.movimientos m JOIN bancos.clasificacion_vigente cv ON cv.movimiento_id=m.id
+                       JOIN bancos.estados_vigentes e ON e.id=m.estado_id JOIN bancos.archivos a ON a.id=e.archivo_id AND a.estado='validado'
+                       WHERE cv.es_traspaso_interno AND m.abono>0 AND cv.par_traspaso_id IS NULL AND m.fecha_operacion BETWEEN %s AND %s
+                       GROUP BY cv.subcategoria ORDER BY cv.subcategoria""", (anio + "-01-01", anio + "-12-31"))
+        abonos_sin_pareja = cur.fetchall()
         cur.execute("""SELECT c.alias, m.fecha_operacion, m.cargo, m.abono, m.codigo, left(m.descripcion, 90) AS descripcion
                        FROM bancos.movimientos m JOIN bancos.cuentas c ON c.id=m.cuenta_id
-                       WHERE m.fecha_operacion >= %s AND (m.cargo >= 1000000 OR m.abono >= 1000000 OR (c.moneda='USD' AND (m.cargo>=100000 OR m.abono>=100000)))
-                       ORDER BY m.fecha_operacion""", (anio + "-01-01",))
+                       JOIN bancos.estados_vigentes e ON e.id=m.estado_id JOIN bancos.archivos a ON a.id=e.archivo_id AND a.estado='validado'
+                       WHERE m.fecha_operacion BETWEEN %s AND %s AND (m.cargo >= 1000000 OR m.abono >= 1000000 OR (c.moneda='USD' AND (m.cargo>=100000 OR m.abono>=100000)))
+                       ORDER BY m.fecha_operacion""", (anio + "-01-01", anio + "-12-31"))
         grandes = cur.fetchall()
     return json.loads(json.dumps({"anio": anio, "totales_validados": tot, "huecos": huecos, "saldos": saldos,
-                                  "traspasos": traspasos, "movimientos_grandes": grandes}, default=str))
+                                  "traspasos": traspasos, "abonos_traspaso_sin_pareja": abonos_sin_pareja,
+                                  "movimientos_grandes": grandes}, default=str))

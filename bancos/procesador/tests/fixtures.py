@@ -36,6 +36,7 @@ class Mov:
     cargo: Decimal = Decimal("0")
     abono: Decimal = Decimal("0")
     dia_liq: int | None = None
+    partir: bool = False   # la 2ª línea de la descripción cae en la página siguiente, bajo el encabezado
 
 
 @dataclass
@@ -158,7 +159,15 @@ def pdf_estado(e: Estado, encriptar: str | None = None) -> bytes:
             c.drawRightString(530, impreso and 530 or 530, m(impreso)) if False else c.drawRightString(530, y, m(impreso))
             liq = e.saldo_inicial + sum((z.abono - z.cargo for z in movs if (z.dia_liq or z.dia) <= x.dia), Decimal("0"))
             c.drawRightString(590, y, m(liq))
-        for extra in x.desc[1:]:
+        for j, extra in enumerate(x.desc[1:]):
+            if x.partir and j == 0:
+                pie()
+                c.showPage()
+                pagina[0] += 1
+                y = H - 60
+                encabezado_columnas(y)
+                c.setFont("Helvetica", 7)
+                y -= 3
             y -= 9
             c.drawString(130, y, extra)
         y -= 11
