@@ -1,0 +1,24 @@
+{
+ "fibra": {
+  "etiquetas": 44,
+  "hoja_mm": [
+   208,
+   174
+  ],
+  "modulo_qr_mm": [
+   0.571,
+   0.571
+  ]
+ },
+ "co2_diodo": {
+  "etiquetas": 44,
+  "hoja_mm": [
+   268,
+   210
+  ],
+  "modulo_qr_mm": [
+   0.762,
+   0.762
+  ]
+ }
+}

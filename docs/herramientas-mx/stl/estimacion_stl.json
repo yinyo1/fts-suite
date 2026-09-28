@@ -1,0 +1,287 @@
+[
+ {
+  "stl": "BASE-C6_ficha_FTS-BAS-01-C6-01_HDS-B_simplificado.stl",
+  "tipo": "ficha",
+  "cantidad": 1,
+  "caja_mm": [
+   108,
+   238,
+   23
+  ],
+  "volumen_cm3": 65.4,
+  "material_cm3": 65.4,
+  "gramos": 83,
+  "h_estandar": 4.8,
+  "h_rapida": 2.4,
+  "capa_mm": 0.2,
+  "relleno": "15 %",
+  "patron": "giroide",
+  "soportes": "no: el rebaje de dedo es un arco que se imprime sin soporte"
+ },
+ {
+  "stl": "BASE-C6_ficha_FTS-BAS-01-C6-02_PRES11_simplificado.stl",
+  "tipo": "ficha",
+  "cantidad": 1,
+  "caja_mm": [
+   287,
+   118,
+   18
+  ],
+  "volumen_cm3": 73.2,
+  "material_cm3": 73.2,
+  "gramos": 93,
+  "h_estandar": 5.4,
+  "h_rapida": 2.7,
+  "capa_mm": 0.2,
+  "relleno": "15 %",
+  "patron": "giroide",
+  "soportes": "no: el rebaje de dedo es un arco que se imprime sin soporte"
+ },
+ {
+  "stl": "BASE-C6_ficha_FTS-BAS-01-C6-03_EXTS_simplificado.stl",
+  "tipo": "ficha",
+  "cantidad": 1,
+  "caja_mm": [
+   268,
+   88,
+   18
+  ],
+  "volumen_cm3": 55.5,
+  "material_cm3": 55.5,
+  "gramos": 70,
+  "h_estandar": 4.1,
+  "h_rapida": 2.0,
+  "capa_mm": 0.2,
+  "relleno": "15 %",
+  "patron": "giroide",
+  "soportes": "no: el rebaje de dedo es un arco que se imprime sin soporte"
+ },
+ {
+  "stl": "BASE-C6_ficha_FTS-BAS-01-C6-04_PREC6_simplificado.stl",
+  "tipo": "ficha",
+  "cantidad": 1,
+  "caja_mm": [
+   198,
+   98,
+   18
+  ],
+  "volumen_cm3": 44.7,
+  "material_cm3": 44.7,
+  "gramos": 57,
+  "h_estandar": 3.3,
+  "h_rapida": 1.6,
+  "capa_mm": 0.2,
+  "relleno": "15 %",
+  "patron": "giroide",
+  "soportes": "no: el rebaje de dedo es un arco que se imprime sin soporte"
+ },
+ {
+  "stl": "BASE-C6_ficha_FTS-BAS-01-C6-05_ADAP_simplificado.stl",
+  "tipo": "ficha",
+  "cantidad": 1,
+  "caja_mm": [
+   78,
+   48,
+   18
+  ],
+  "volumen_cm3": 11.4,
+  "material_cm3": 11.4,
+  "gramos": 14,
+  "h_estandar": 0.8,
+  "h_rapida": 0.4,
+  "capa_mm": 0.2,
+  "relleno": "15 %",
+  "patron": "giroide",
+  "soportes": "no: el rebaje de dedo es un arco que se imprime sin soporte"
+ },
+ {
+  "stl": "BASE-C6_loseta0.stl",
+  "tipo": "loseta",
+  "cantidad": 1,
+  "caja_mm": [
+   198,
+   198,
+   2
+  ],
+  "volumen_cm3": 90.0,
+  "material_cm3": 90.0,
+  "gramos": 114,
+  "h_estandar": 6.6,
+  "h_rapida": 3.3,
+  "capa_mm": 0.2,
+  "relleno": "100 %",
+  "patron": "lineas (queda solida: 2.4 mm)",
+  "soportes": "no"
+ },
+ {
+  "stl": "BASE-C6_loseta1.stl",
+  "tipo": "loseta",
+  "cantidad": 1,
+  "caja_mm": [
+   213,
+   198,
+   2
+  ],
+  "volumen_cm3": 96.6,
+  "material_cm3": 96.6,
+  "gramos": 123,
+  "h_estandar": 7.1,
+  "h_rapida": 3.5,
+  "capa_mm": 0.2,
+  "relleno": "100 %",
+  "patron": "lineas (queda solida: 2.4 mm)",
+  "soportes": "no"
+ },
+ {
+  "stl": "BASE-C6_loseta2.stl",
+  "tipo": "loseta",
+  "cantidad": 1,
+  "caja_mm": [
+   198,
+   117,
+   2
+  ],
+  "volumen_cm3": 53.4,
+  "material_cm3": 53.4,
+  "gramos": 68,
+  "h_estandar": 3.9,
+  "h_rapida": 2.0,
+  "capa_mm": 0.2,
+  "relleno": "100 %",
+  "patron": "lineas (queda solida: 2.4 mm)",
+  "soportes": "no"
+ },
+ {
+  "stl": "BASE-C6_loseta3.stl",
+  "tipo": "loseta",
+  "cantidad": 1,
+  "caja_mm": [
+   213,
+   117,
+   2
+  ],
+  "volumen_cm3": 57.3,
+  "material_cm3": 57.3,
+  "gramos": 73,
+  "h_estandar": 4.2,
+  "h_rapida": 2.1,
+  "capa_mm": 0.2,
+  "relleno": "100 %",
+  "patron": "lineas (queda solida: 2.4 mm)",
+  "soportes": "no"
+ },
+ {
+  "stl": "bandeja_8420_cuadrante_0.stl",
+  "tipo": "cuadrante",
+  "cantidad": 1,
+  "caja_mm": [
+   215,
+   164,
+   10
+  ],
+  "volumen_cm3": 158.1,
+  "material_cm3": 126.9,
+  "gramos": 161,
+  "h_estandar": 9.3,
+  "h_rapida": 4.7,
+  "capa_mm": 0.2,
+  "relleno": "30 %",
+  "patron": "giroide",
+  "soportes": "no (costillas hacia arriba)"
+ },
+ {
+  "stl": "bandeja_8420_cuadrante_1.stl",
+  "tipo": "cuadrante",
+  "cantidad": 1,
+  "caja_mm": [
+   215,
+   164,
+   10
+  ],
+  "volumen_cm3": 158.1,
+  "material_cm3": 126.9,
+  "gramos": 161,
+  "h_estandar": 9.3,
+  "h_rapida": 4.7,
+  "capa_mm": 0.2,
+  "relleno": "30 %",
+  "patron": "giroide",
+  "soportes": "no (costillas hacia arriba)"
+ },
+ {
+  "stl": "bandeja_8420_cuadrante_2.stl",
+  "tipo": "cuadrante",
+  "cantidad": 1,
+  "caja_mm": [
+   215,
+   164,
+   10
+  ],
+  "volumen_cm3": 163.6,
+  "material_cm3": 131.3,
+  "gramos": 167,
+  "h_estandar": 9.6,
+  "h_rapida": 4.8,
+  "capa_mm": 0.2,
+  "relleno": "30 %",
+  "patron": "giroide",
+  "soportes": "no (costillas hacia arriba)"
+ },
+ {
+  "stl": "bandeja_8420_cuadrante_3.stl",
+  "tipo": "cuadrante",
+  "cantidad": 1,
+  "caja_mm": [
+   215,
+   164,
+   10
+  ],
+  "volumen_cm3": 163.6,
+  "material_cm3": 131.3,
+  "gramos": 167,
+  "h_estandar": 9.6,
+  "h_rapida": 4.8,
+  "capa_mm": 0.2,
+  "relleno": "30 %",
+  "patron": "giroide",
+  "soportes": "no (costillas hacia arriba)"
+ },
+ {
+  "stl": "bandeja_8420_placa_union_x4.stl",
+  "tipo": "union",
+  "cantidad": 4,
+  "caja_mm": [
+   60,
+   24,
+   4
+  ],
+  "volumen_cm3": 5.6,
+  "material_cm3": 22.6,
+  "gramos": 29,
+  "h_estandar": 1.7,
+  "h_rapida": 0.8,
+  "capa_mm": 0.2,
+  "relleno": "100 %",
+  "patron": "lineas",
+  "soportes": "no"
+ },
+ {
+  "stl": "bandeja_8420_poste_x4.stl",
+  "tipo": "poste",
+  "cantidad": 4,
+  "caja_mm": [
+   30,
+   30,
+   196
+  ],
+  "volumen_cm3": 49.6,
+  "material_cm3": 170.9,
+  "gramos": 217,
+  "h_estandar": 12.5,
+  "h_rapida": 6.3,
+  "capa_mm": 0.28,
+  "relleno": "25 %",
+  "patron": "giroide",
+  "soportes": "no (parado)"
+ }
+]
