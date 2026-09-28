@@ -150,17 +150,24 @@ def base(_cluster_del_modulo):
 def test_el_piloto_carga_y_sus_reglas_rechazan(base):
     import cargar_piloto as cp
     r = cp.cargar(base)
-    assert r["cuentas_cargadas"] == 9
-    assert len(r["huecos_no_cargados"]) == 4
+    # DIEZ, no nueve: International dejo de ser hueco en #340 -- su senal de 120 MDD
+    # llevaba documentada en `modulos-de-contactos.md` desde el 18-sep y el barrido
+    # anterior la perdio porque busco "International" y el repo la nombra "Navistar".
+    assert r["cuentas_cargadas"] == 10
+    assert len(r["huecos_no_cargados"]) == 3
     res = r["resumen"]
-    assert res["cuentas"] == 9
-    # OPCION C de #340: las nueve cuentas cargan, pero NO las nueve nacen abiertas.
-    # Coficab/Durango nace en `vencida_sin_trabajar`, asi que abiertas + vencidas
-    # tiene que dar las nueve -- y ninguna se pierde por el camino--.
-    assert res["tarjetas_vencidas_sin_trabajar"] == 1
-    assert res["tarjetas_abiertas"] == 8
+    assert res["cuentas"] == 10
+    # OPCION C de #340, y el numero SUBIO al fechar las senales: fechar LEGO, Ragasa
+    # y Bimbo las pone a caducar en 2024 y 2025, asi que nacen vencidas igual que
+    # Durango. Antes las tres traian "sin fecha" y el reloj arrancaba en HOY, que les
+    # daba una ventana que no tenian.
+    #
+    # El diseno de la tarjeta vencida lo habia anticipado: "cuando se regeneren las
+    # que tienen hueco, probablemente nazcan mas".
+    assert res["tarjetas_vencidas_sin_trabajar"] == 4
+    assert res["tarjetas_abiertas"] == 6
     assert (res["tarjetas_abiertas"] + res["tarjetas_cerradas"]
-            + res["tarjetas_vencidas_sin_trabajar"]) == 9
+            + res["tarjetas_vencidas_sin_trabajar"]) == 10
     assert res["vencidas_reabiertas"] == 0
     # CERO contactos: la semana 1 valida reglas, y las reglas no necesitan a nadie.
     assert res["contactos"] == 0
@@ -294,9 +301,11 @@ def test_opcionC_la_vista_vencidas_sin_trabajar_la_cuenta_con_su_fecha(base):
     cp.cargar(base)
     filas = base.json(
         "SELECT jsonb_agg(to_jsonb(v)) FROM motor3.vencidas_sin_trabajar v;")
-    assert filas and len(filas) == 1
-    f = filas[0]
-    assert f["empresa"] == "Coficab" and f["planta"] == "Durango"
+    assert filas and len(filas) == 4, "cambio el numero de vencidas al cargar"
+    quienes = sorted(x["empresa"] for x in filas)
+    assert quienes == ["Bimbo", "Coficab", "LEGO", "Ragasa"], quienes
+    f = next(x for x in filas if x["empresa"] == "Coficab")
+    assert f["planta"] == "Durango"
     # La caducidad que ya se le paso queda guardada, y con ella se puede decir
     # CUANTO lleva vencida. Sin ese dato nadie podria auditar de cuando era la
     # senal que la mato.
@@ -339,7 +348,8 @@ def test_opcionC_reabrir_una_vencida_recalcula_la_caducidad_desde_hoy(base):
     """
     import cargar_piloto as cp
     cp.cargar(base)
-    t_id = base.correr("SELECT id FROM motor3.tarjeta WHERE estado = "
+    # Son CUATRO desde que las senales se fecharon; se reabre UNA.
+    t_id = base.correr("SELECT min(id) FROM motor3.tarjeta WHERE estado = "
                        "'vencida_sin_trabajar';").strip()
     assert t_id
     original = base.correr(
@@ -355,9 +365,13 @@ def test_opcionC_reabrir_una_vencida_recalcula_la_caducidad_desde_hoy(base):
     # La original NO se borra: es el dato que hace auditable la reapertura.
     assert f["caducidad_original"] == original
     assert f["caduca_el"] > original
-    # Y la vista ya no la lista, porque ya no esta sin trabajar.
+    # Y la vista ya no LA lista, porque ya no esta sin trabajar. Las otras tres
+    # siguen ahi: reabrir una no toca a las demas.
     assert base.correr(
-        "SELECT count(*) FROM motor3.vencidas_sin_trabajar;").strip() == "0"
+        "SELECT count(*) FROM motor3.vencidas_sin_trabajar;").strip() == "3"
+    assert base.correr(
+        f"SELECT count(*) FROM motor3.vencidas_sin_trabajar WHERE tarjeta_id = "
+        f"{t_id};").strip() == "0"
 
 
 def test_el_indice_es_PARCIAL_y_por_eso_la_opcionC_funciona(base):

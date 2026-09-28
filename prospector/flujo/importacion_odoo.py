@@ -27,7 +27,7 @@ from __future__ import annotations
 import csv
 import io
 import os
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from .confianza import CONFIRMADO, SOLIDO, CANDIDATO
 from .paquete import armar as armar_paquete, CANALES_QUE_NO_EMITE
@@ -95,6 +95,30 @@ def fecha_de_caducidad(paquete: dict, hoy: date | None = None) -> str:
     return razon_de_caducidad(paquete, hoy)[0]
 
 
+def _a_fecha(bruto) -> date | None:
+    """Una fecha con la precision que traiga: dia, mes o anio.
+
+    La prensa fecha al MES -- «anunciada nov-2023», «arranque de obra marzo-2025»--
+    y `date.fromisoformat` no acepta "2023-11". `radar.dias_de_antiguedad` ya sabia
+    leer las tres precisiones; este modulo no, y por eso el reloj de caducidad se
+    caia a "hoy" en silencio.
+
+    SIEMPRE EL PRIMER DIA del mes o del anio: eso hace la senal mas VIEJA de lo que
+    podria ser, nunca mas fresca, y una ventana de caducidad que se equivoca tiene
+    que equivocarse del lado de cerrarse antes.
+    """
+    s = str(bruto or "").strip()
+    if not s:
+        return None
+    for forma, largo in (("%Y-%m-%d", 10), ("%Y-%m", 7), ("%Y", 4)):
+        if len(s) >= largo:
+            try:
+                return datetime.strptime(s[:largo], forma).date()
+            except ValueError:
+                continue
+    return None
+
+
 def razon_de_caducidad(paquete: dict,
                        hoy: date | None = None) -> tuple[str, str]:
     """(fecha, por que esa). El orden de precedencia es el del diseno §4b.
@@ -133,11 +157,25 @@ def razon_de_caducidad(paquete: dict,
     arranque, de_donde = hoy, "hoy"
     fs = sen.get("fecha_senal") or ""
     if fs:
-        try:
-            arranque = date.fromisoformat(str(fs)[:10])
+        # DEFECTO B5 de #340: esto solo parseaba `YYYY-MM-DD`. Una fecha con
+        # precision de MES -- «anunciada nov-2023», que es como la prensa la da--
+        # caia al `except` y el reloj arrancaba en HOY, asi que una senal de
+        # noviembre de 2023 salia caducando en enero de 2027: tres anios y dos meses
+        # de ventana inventada. Es la misma familia de #302 -- no reconocer la fecha
+        # ESCONDIA la antiguedad-- y aqui era peor, porque el `por_que` decia
+        # "contados desde hoy" y eso se lee igual que una senal sin fecha.
+        arranque_fs = _a_fecha(fs)
+        if arranque_fs is not None:
+            arranque = arranque_fs
             de_donde = f"la fecha de la senal ({arranque.isoformat()})"
-        except ValueError:
-            pass
+            if len(str(fs).strip()) < 10:
+                de_donde += (f", que se supo con precision de "
+                             f"{'mes' if len(str(fs).strip()) == 7 else 'anio'} "
+                             f"y se cuenta desde su primer dia -- nunca desde el "
+                             f"ultimo, que le regalaria ventana--")
+        else:
+            de_donde = (f"hoy PORQUE la fecha declarada '{fs}' no se pudo leer: NO "
+                        "es lo mismo que no tener fecha, y se dice distinto")
 
     tipo = sen.get("tipo") or paquete.get("tipo_de_senal") or ""
     if tipo in DIAS_POR_TIPO_DE_SENAL:

@@ -45,6 +45,32 @@ def _llave_de_corrida(c: dict) -> str:
     return f"{c['empresa']}/{c.get('planta') or '?'}"
 
 
+def _fecha_y_precision(declarada) -> tuple[str | None, str]:
+    """La fecha como la base la puede guardar, y con que precision se supo.
+
+    De las tres senales que se pudieron fechar en #340, una trae dia -- «anuncio
+    17-jul-2025»-- y dos traen solo mes -- «anunciada nov-2023», «arranque de obra
+    marzo-2025»--. Una columna `date` no acepta "2023-11", asi que el mes se
+    normaliza al DIA 1 y la precision queda declarada al lado.
+
+    AL DIA 1 Y NO AL 15: hace la senal hasta 30 dias mas VIEJA de lo que podria ser,
+    nunca mas fresca. Para la curva de frescura ese es el lado conservador, y una
+    fecha que solo se sabe al mes no deberia ganarle puntos a una que se sabe al dia.
+
+    El evaluador NO usa esto: `radar.dias_de_antiguedad` lee la cadena original con
+    su precision. Esta normalizacion es para la base, y por eso la declarada se
+    guarda tal cual al lado.
+    """
+    s = (str(declarada).strip() if declarada else "")
+    if not s:
+        return (None, "dia")
+    if len(s) == 4 and s.isdigit():
+        return (f"{s}-01-01", "anio")
+    if len(s) == 7:
+        return (f"{s}-01", "mes")
+    return (s, "dia")
+
+
 def cargar(b: Base, hoy: date | None = None, aplicar_esquema: bool = True) -> dict:
     hoy = hoy or date.today()
     with open(lb.RUTA, encoding="utf-8") as f:
@@ -84,11 +110,14 @@ def cargar(b: Base, hoy: date | None = None, aplicar_esquema: bool = True) -> di
                             "empata_padron": bool(c.get("en_padron_denue"))},
                            hoy=hoy)
         tipo, _ = radar.tipo_de_senal_de(c["fuente"], c.get("tipo") or "")
+        fecha, precision = _fecha_y_precision(c.get("fecha_senal"))
         senales.append({
             "id": i, "cuenta_id": i,
             "fuente": c["fuente"], "tipo": tipo,
             "texto": c["texto"],
-            "fecha_senal": c.get("fecha_senal"),
+            "fecha_senal": fecha,
+            "fecha_senal_precision": precision,
+            "fecha_senal_declarada": c.get("fecha_senal"),
             "fecha_de_cierre": None, "fecha_del_evento": None,
             "puntaje": ev["puntaje"], "veredicto": ev["veredicto"],
             "familia": ev["familia"],

@@ -15,7 +15,12 @@
       "fecha_documentada": false,
       "en_padron_denue": false,
       "documentado_en": "#306 y #310; la ficha regenerada de #323 lo trae en la linea de tiempo como 'Sin fecha - Confirmar el ano antes de citarlo'",
-      "nota": "La corrida real, 21 busquedas. La fecha de la nota NO esta documentada y la ficha lo declara."
+      "nota": "La corrida real, 21 busquedas. La fecha de la nota NO esta documentada y la ficha lo declara.",
+      "por_que_sigue_sin_fecha": "NO es que no se haya buscado: la propia corrida lo escribio. El registro de senal de `pesqueria.json` (corrida del 27-sep-2026) dice textualmente «nota de prensa sobre inversion, SIN FECHA EN EL REGISTRO». Inventarle una seria contradecir a la corrida que la levanto.",
+      "fecha_del_evento": "2026-08",
+      "fecha_del_evento_cita": "El mismo registro trae «arranque de linea ago-2026». Es fecha del EVENTO, no de la senal, y el evaluador no la usa: la curva de frescura mide cuanto hace que se SUPO, que es lo que dice si la decision ya se tomo. Un arranque de linea de hace un mes es mas relevante que una nota de hace un mes, y usarlo exigiria otra curva. Queda propuesto, no aplicado.",
+      "tercera_senal_en_el_registro": "ampliacion de nave 2018 -- historia, no senal--",
+      "barrido_2026_09_28_fechas": "buscada; la corrida declara que la nota no trae fecha"
     },
     {
       "empresa": "Coficab",
@@ -37,11 +42,20 @@
       "fuente": "prensa_industrial",
       "tipo": "ampliacion_de_capacidad",
       "texto": "inversion anunciada de 205 MDD",
-      "fecha_senal": null,
-      "fecha_documentada": false,
+      "fecha_senal": "2023-11",
+      "fecha_documentada": true,
       "en_padron_denue": null,
       "documentado_en": "metodo/modulos-de-contactos.md, rendimiento medido de M12 el 18-sep-2026",
-      "nota": "Una de las ocho senales calientes de M12. El MONTO esta documentado; la fecha de la nota no."
+      "nota": "Una de las ocho senales calientes de M12. El monto ya estaba documentado; la fecha se encontro el 28-sep. Y la fecha CAMBIA la conclusion: nov-2023 son casi tres anios, o sea 0 puntos de frescura en vez de los 2 que el respaldo de «sin fecha» le daba.",
+      "fecha_procedencia": "las fichas de la corrida del 18-sep-2026 (los ocho archivos `fichas/*.md` del espacio de trabajo de esa sesion). NO se copian al repo: llevan nombres, puestos y ligas de LinkedIn. Se cita la frase textual de la senal, que no lleva a nadie. En `fichas/lego.md`, seccion «Senal caliente».",
+      "fecha_cita": "«Expansion 205 MDD / 59,000 m2, nuevo edificio de empaque + ampliacion de almacen. Anunciada nov-2023, entrega 2025.»",
+      "fecha_precision": "mes",
+      "fecha_hallada_el": "2026-09-28 (barrido de fechas de #340)",
+      "segunda_senal_en_la_misma_ficha": {
+        "texto": "PTAR propia en Cienega de Flores: reusa 6,500 m3/mes",
+        "fecha_senal": "2024-02",
+        "por_que_no_se_usa": "Tambien pasa de 365 dias, asi que no cambia el veredicto. Queda escrita porque si manana hay una fase 2 de esa PTAR, esta es la historia contra la que se reabre."
+      }
     },
     {
       "empresa": "Ragasa",
@@ -49,12 +63,18 @@
       "giro": "aceites y grasas comestibles",
       "fuente": "prensa_industrial",
       "tipo": "ampliacion_de_capacidad",
-      "texto": "inversion anunciada de 633 MDP",
-      "fecha_senal": null,
-      "fecha_documentada": false,
+      "texto": "cogeneracion propia de 633 MDP: 19.20 MW electricos mas produccion de vapor, con sistema de recuperacion de vapor",
+      "fecha_senal": "2025-03",
+      "fecha_documentada": true,
       "en_padron_denue": true,
       "documentado_en": "metodo/modulos-de-contactos.md, M12 18-sep-2026; corrida e2e en #5 y revalidada en #8",
-      "nota": null
+      "nota": "La ficha la llamaba «LA MEJOR DE LAS OCHO» y el angulo es el mas directo: una cogeneracion nueva con recuperacion de vapor necesita agua de alimentacion tratada, que es justo lo que FTS vende. El TEXTO se corrigio el 28-sep: decia solo «inversion anunciada de 633 MDP» y la ficha trae la obra entera, con sus 19.2 MW -- que D6 ya sabe leer--.",
+      "fecha_procedencia": "las fichas de la corrida del 18-sep-2026 (los ocho archivos `fichas/*.md` del espacio de trabajo de esa sesion). NO se copian al repo: llevan nombres, puestos y ligas de LinkedIn. Se cita la frase textual de la senal, que no lleva a nadie. En `fichas/ragasa.md`, seccion «SENAL CALIENTE».",
+      "fecha_cita": "«arranque de obra marzo-2025, operacion prevista febrero-2026»",
+      "fecha_precision": "mes",
+      "fecha_hallada_el": "2026-09-28 (barrido de fechas de #340)",
+      "fecha_del_evento": "2026-02",
+      "fecha_del_evento_cita": "«operacion prevista febrero-2026». La ficha anade: «Hoy (sep-2026) eso significa PUESTA EN MARCHA O PRIMER ANIO DE OPERACION.»"
     },
     {
       "empresa": "Cuprum",
@@ -67,7 +87,9 @@
       "fecha_documentada": false,
       "en_padron_denue": true,
       "documentado_en": "metodo/modulos-de-contactos.md, M12 18-sep-2026; la corrida real de #24",
-      "nota": "La corrida de punta a punta de #24, 16 contactos."
+      "nota": "La corrida de punta a punta de #24, 16 contactos.",
+      "barrido_2026_09_28_fechas": "SIN FECHA. La ficha de la corrida documenta el monto y su historia -- «anunciada en 100 MDD y DESPUES DUPLICADA A 200 MDD», con el titular de Reforma «Duplica Cuprum apuesta en planta»-- pero NO la fecha de ninguno de los dos anuncios. El unico `oct-2025` del archivo es la fecha del directorio de LeadIQ, no de la nota.",
+      "que_faltaria_para_fecharla": "la fecha de la nota de Reforma «Duplica Cuprum apuesta en planta». Una consulta web dirigida al titular la da; es la mas barata de las tres que faltan porque el titular es literal."
     },
     {
       "empresa": "Bimbo",
@@ -76,11 +98,15 @@
       "fuente": "prensa_industrial",
       "tipo": "ampliacion_de_capacidad",
       "texto": "inversion anunciada de 2000 MDD",
-      "fecha_senal": null,
-      "fecha_documentada": false,
+      "fecha_senal": "2025-07-17",
+      "fecha_documentada": true,
       "en_padron_denue": true,
       "documentado_en": "metodo/modulos-de-contactos.md, M12 18-sep-2026",
-      "nota": "El caso al filo del padron: pasa las otras tres reglas y falla el umbral de sitios."
+      "nota": "El caso al filo del padron: pasa las otras tres reglas y falla el umbral de sitios. La fecha es EXACTA -- la unica de las tres-- y son 437 dias al 28-sep: pasa de 365, o sea 0 de frescura. Lo que la ficha si aporta, y no estaba en el texto, es QUE PLANTA: «parte va a MODERNIZAR LA PLANTA DE SALINAS VICTORIA, NL: subir capacidad y renovar tecnologia sustentable».",
+      "fecha_procedencia": "las fichas de la corrida del 18-sep-2026 (los ocho archivos `fichas/*.md` del espacio de trabajo de esa sesion). NO se copian al repo: llevan nombres, puestos y ligas de LinkedIn. Se cita la frase textual de la senal, que no lleva a nadie. En `fichas/bimbo.md`, seccion «Senal caliente».",
+      "fecha_cita": "«2,000 MDD en Mexico 2025-2028 (anuncio 17-jul-2025, Plan Mexico)»",
+      "fecha_precision": "dia",
+      "fecha_hallada_el": "2026-09-28 (barrido de fechas de #340)"
     },
     {
       "empresa": "Amazon",
@@ -93,7 +119,9 @@
       "fecha_documentada": false,
       "en_padron_denue": null,
       "documentado_en": "metodo/modulos-de-contactos.md, M12 18-sep-2026",
-      "nota": "Corrida flaca: 3 consultas, 11 entradas. Salio flaca porque se busco menos, no porque tenga menos gente."
+      "nota": "Corrida flaca: 3 consultas, 11 entradas. Salio flaca porque se busco menos, no porque tenga menos gente.",
+      "barrido_2026_09_28_fechas": "SIN FECHA, y en esta cuenta no hay ni una en todo el archivo de la corrida. Lo que si hay es el estado de la obra: «MEGACENTRO ESCOBEDO ... 500 MDP ... EN ETAPA FINAL DE CONSTRUCCION Y EQUIPAMIENTO» -- que es un estado, no una fecha--.",
+      "que_faltaria_para_fecharla": "la fecha del anuncio del megacentro de Escobedo. Y vale recordar la advertencia de encaje que la propia ficha escribio: Amazon en NL es LOGISTICA, no planta, y su consumo de agua y vapor de proceso es de otro orden. Fecharla no la vuelve mejor prospecto."
     },
     {
       "empresa": "Nemak",
@@ -106,7 +134,12 @@
       "fecha_documentada": false,
       "en_padron_denue": true,
       "documentado_en": "metodo/modulos-de-contactos.md, cruce C7 'la obra va adelante del equipo' y C8 'de prospecto a cliente'",
-      "nota": "El cruce C7 esta documentado con esta cuenta como ejemplo. La cuenta paso de prospecto a cliente (C8)."
+      "nota": "El cruce C7 esta documentado con esta cuenta como ejemplo. La cuenta paso de prospecto a cliente (C8).",
+      "monto_documentado": false,
+      "barrido_2026_09_28_monto": "SIN CIFRA. La ficha de la corrida del 18-sep dice «Nemak ANUNCIO LA EXPANSION DE SU PLANTA EN GARCIA, NL (Milenio)» y NO da monto. Lo que si documenta es la vacante abierta de «Ingeniero de Proyectos de Detalle» en Garcia, que es obra en curso, y siete vacantes mas de mantenimiento.",
+      "PISTA_FALSA_no_perseguir": "En la misma ficha aparece «FINSA invierte 220 MDD en un parque industrial nuevo en Garcia que integra TRATAMIENTO Y REUSO DE AGUA + 30,000 kVA». ESOS 220 MDD SON DE FINSA, NO DE NEMAK. Atribuirselos a Nemak seria inventarle el monto a una cuenta usando la inversion de otra empresa del mismo municipio, y el evaluador no tiene forma de notar la diferencia. Se deja escrito para que nadie lo haga.\nY de paso: ese parque de FINSA es una CUENTA NUEVA, no un dato de Nemak. Un parque con tratamiento y reuso de agua declarado y 30,000 kVA es exactamente el prospecto que el radar busca, y no esta en la lista de 13.",
+      "que_faltaria": "el monto del anuncio de expansion de Garcia, y su fecha. Sin monto, D6 no puede puntuar el tamano de la obra: el factor `capacidad` vale 0 y es el unico de las nueve cuentas al que le pasa.",
+      "lo_mas_barato": "una consulta dirigida a la nota de Milenio sobre la expansion de Nemak en Garcia. Una consulta web."
     },
     {
       "empresa": "Hershey",
@@ -173,17 +206,20 @@
       "empresa": "International",
       "planta": null,
       "giro": "camiones y tractocamiones; ensamble",
-      "fuente": null,
-      "tipo": null,
-      "texto": null,
+      "fuente": "prensa_industrial",
+      "tipo": "ampliacion_de_capacidad",
+      "texto": "120 MDD a tres anios para ampliar el area de pintura de cabinas en Escobedo, con meta declarada de reducir hasta 10% el uso de energia, agua y gas",
       "fecha_senal": null,
       "fecha_documentada": false,
       "en_padron_denue": null,
-      "documentado_en": "metodo/modulos-de-contactos.md: 4 consultas, 15 entradas, 3.75 de rendimiento",
-      "nota": "HUECO DECLARADO. Lo unico documentado es su rendimiento de consultas. Salio flaca porque se busco menos.",
-      "que_faltaria": "Un evento de mercado. Lo unico documentado es su rendimiento de consultas (4 consultas, 15 entradas, 3.75 -- el mas alto de las ocho--) y su patron de correo por dos directorios. El propio #20 dice que «salio flaca porque se busco menos», y eso habla del BARRIDO, no de la cuenta: no hay senal porque no se busco senal, no porque no exista.",
-      "lo_mas_barato": "una consulta dirigida de prensa. Es la cuenta de mayor rendimiento por consulta de las ocho, asi que es la mas barata de las cuatro para volver a tocar.",
-      "barrido_2026_09_28": "sin senal documentada; ver `barrido_de_huecos`"
+      "documentado_en": "metodo/modulos-de-contactos.md, M12 18-sep-2026: «120 MDD de Navistar» esta en la misma linea que los otros cinco montos. El detalle -- que es el area de pintura de cabinas y que la meta de agua es declarada por la propia empresa-- esta en `fichas/international.md` de esa corrida.",
+      "nota": null,
+      "que_faltaria": null,
+      "lo_mas_barato": null,
+      "barrido_2026_09_28": "sin senal documentada; ver `barrido_de_huecos`",
+      "CORRECCION_2026_09_28": "ESTA CUENTA NO ERA UN HUECO, y el barrido de #336 se equivoco. El monto -- 120 MDD-- lleva documentado en `metodo/modulos-de-contactos.md` desde el 18-sep, en la MISMA LINEA que los cinco montos que si se declararon. El barrido lo perdio por una razon que vale nombrar: busco «International» y el repo la nombra «Navistar». Una cuenta con dos nombres se pierde en una busqueda de texto, y esa es la leccion, no el descuido.",
+      "por_que_esta_senal_importa": "Es la mas especifica para FTS de las ocho. Un paint shop es el mayor consumidor de agua desmineralizada y el mayor generador de efluente de una armadora. Ampliarlo Y bajar 10% el agua a la vez solo se logra con reuso y recirculacion, y una empresa que PUBLICA una meta de reduccion de agua ya acepto el problema: no hay que vendserselo.",
+      "que_faltaria_para_fecharla": "la fecha del anuncio de los 120 MDD. Sin ella la senal cuenta con el respaldo de «sin fecha» y su techo no es alcanzable."
     }
   ],
   "casos_de_control": [
@@ -219,5 +255,29 @@
         "por_que_NO_es_senal": "Es de CUPRUM, que ya tiene senal declarada, y ademas es un punto de CONTACTO -- alguien pidio una cita-- no un evento de inversion. Como senal seria `camara`, y la cita no tiene fecha documentada."
       }
     ]
+  },
+  "barrido_de_fechas": {
+    "cuando": "2026-09-28, turno de madrugada (#340)",
+    "que_se_buscaba": "la fecha de la senal de las seis cuentas que no la traian: LEGO, Ragasa, Cuprum, Bimbo, Amazon y Coficab Pesqueria.",
+    "donde_se_busco": [
+      "HISTORIAL.md completo",
+      "metodo/*.md",
+      "datos/*.json (fuentes.json, consultas_senal.json, catalogo, padron)",
+      "los issues de fts-suite y de fts-mcp-odoo por busqueda semantica",
+      "LAS FICHAS DE LAS CORRIDAS: los ocho `fichas/*.md` del 18-sep-2026 y el `pesqueria.json` del 27-sep-2026. Ahi estaban."
+    ],
+    "resultado": "TRES de seis se pudieron fechar con procedencia y cita textual.",
+    "fechadas": {
+      "LEGO": "2023-11 — «Anunciada nov-2023, entrega 2025»",
+      "Ragasa": "2025-03 — «arranque de obra marzo-2025»",
+      "Bimbo": "2025-07-17 — «anuncio 17-jul-2025, Plan Mexico»"
+    },
+    "sin_fechar": {
+      "Cuprum": "la ficha trae el monto y el titular de Reforma, no la fecha",
+      "Amazon": "cero fechas en todo el archivo de la corrida",
+      "Coficab/Pesqueria": "la corrida MISMA escribio «nota de prensa sobre inversion, SIN FECHA EN EL REGISTRO». No es que no se buscara."
+    },
+    "donde_deberia_haber_quedado_anotada": "En el contrato de M12, que dice literalmente que su salida es «el gancho: proyecto, monto, FECHA, ventana». La fecha estaba en el contrato y no llego al registro: de las ocho senales se guardo el monto y se perdio la fecha. El renglon de `senales-documentadas.json` es donde tiene que vivir, y de ahi sale `fecha_senal` para el evaluador.",
+    "el_hallazgo_QUE_CAMBIA_LA_CONCLUSION": "Fechar NO subio el conteo: lo BAJO dos puntos por cuenta. Las tres que se pudieron fechar son de hace mas de un ano -- 1,050 dias LEGO, 574 Ragasa, 437 Bimbo-- asi que pasan de `FRESCURA_SIN_FECHA = 2` a 0. El radar no estaba ciego por falta de fecha: estaba siendo GENEROSO, regalandole dos puntos a una senal de hace tres anios.\nY el techo de esas tres deja de existir: la columna «pasaria si la senal estuviera fresca» no aplica cuando la senal ES vieja y ya se sabe. Lo que la lista de 13 necesita no es mejor puntuacion de senales viejas: es senal NUEVA."
   }
 }

@@ -13,41 +13,58 @@
 esta página se puede regenerar cuando el evaluador cambie. La convención de marcas
 es la de D7 (ver `motor1-radar-de-leads.md`).
 
+<!-- CALCULADO:inicio -->
+
 | | |
 |---|---|
 | Cuentas ya evaluadas | **13** |
-| Con señal documentada en el repo | **9** |
-| Huecos (nadie documentó su señal) | **4** |
-| **Pasan solas, hoy** | **3 de 9** |
-| Pasaban antes de la noche del 28-sep | **1 de 9** |
-| Pasarían si la señal estuviera fresca | **5 de 9** |
+| Con señal documentada en el repo | **10** |
+| Con **fecha** de señal documentada | **5** de 10 |
+| Huecos (nadie documentó su señal) | **3** |
+| **Pasan solas, hoy** | **3 de 10** |
+| Pasaban en la etapa `original` | 1 de 10 |
+| Pasaban en la etapa `con_d3_y_b` | 3 de 10 |
+| Pasaban en la etapa `con_d6` | 3 de 10 |
+| Pasarían si la señal estuviera fresca | 4 de 10 |
 
-### La evolución de la noche, cuenta por cuenta
+### La evolución, cuenta por cuenta
 
 ```
+  LINEA BASE DEL RADAR — corte 2026-09-28
+  13 cuentas ya evaluadas · 10 con senal documentada · 3 huecos
+
   LA EVOLUCION DE LA NOCHE, cuenta por cuenta
   cuenta                      original  con_d3_y_b      con_d6 veredicto  techo fecha?
   ------------------------------------------------------------------------------------
   Coficab/Pesqueria               22.7        64.9        64.9      pasa   87.9     NO
   Coficab/Durango                   12        66.4        76.4      pasa            si
-  LEGO                              10          20          30   archiva     53     NO
-  Ragasa                            18          18          28   archiva     51     NO
+  LEGO                               8          18          28   archiva            si
+  Ragasa                          22.6        22.6        32.6   archiva            si
   Cuprum                            18          28          38   archiva     61     NO
-  Bimbo                             18          43        45.5    guarda   68.5     NO
+  Bimbo                             16          41        43.5    guarda            si
   Amazon                            10        20.5        30.5   archiva   53.5     NO
   Nemak/Garcia                      18          28          28   archiva     51     NO
   Hershey/Escobedo                  83          83          83      pasa            si
   Coficab/Cd. Juarez                 —           —           —     HUECO
   Coficab/Silao                      —           —           —     HUECO
   Metalsa                            —           —           —     HUECO
-  International                      —           —           —     HUECO
+  International                     20          20          30   archiva     53     NO
   ------------------------------------------------------------------------------------
-  PASAN                              1           3           3      de 9
+  PASAN                              1           3           3     de 10
 
     original       antes de la noche del 28-sep: sin vocabulario de obra nueva, con el falso positivo de 'prensa', sin 'cable' en el catalogo, sin giro y sin dinero
     con_d3_y_b     con D3 -- obra nueva integral-- y con B1/B2/B3 corregidos
     con_d6         mas D6: el evaluador ya lee los montos de inversion
+
+  Pasarian si la senal estuviera fresca: 4 de 10
+  Huecos (sin senal documentada, NO se inventa): Coficab/Cd. Juarez, Coficab/Silao, Metalsa
+
+  CONTROL · senal fresca documentada: 33 -> 58 -> 68  (pasa)
 ```
+
+Pasan solas: **Coficab/Pesqueria, Coficab/Durango, Hershey/Escobedo**.
+
+<!-- CALCULADO:fin -->
 
 Las tres etapas se **recalculan** apagando cada mejora en la raíz, dentro de un
 contexto que restaura el estado al salir. El «original» es lo que el evaluador de
@@ -59,39 +76,92 @@ después.**
 ### Lo que D6 cambió, y lo que no
 
 D6 **no agregó ninguna `pasa` nueva** — y eso es informativo, no decepcionante.
-Subió a todas las que traen monto documentado, movió el techo de 4 a 5 cuentas, y
-sobre todo: **el control de señal fresca cruzó a `pasa`** (33 → 58 → **68**).
+Subió a todas las que traen monto documentado y, sobre todo: **el control de señal
+fresca cruzó a `pasa`** (33 → 58 → **68**).
 
-> **Ése es el hallazgo de la noche.** El radar sí funciona sobre señal fresca. Lo
-> que lastra la línea base no es el evaluador: es que **seis de las nueve señales
-> no tienen fecha anotada**, y sin fecha la frescura vale 2 de 25.
+> **El radar sí funciona sobre señal fresca.** Con una señal fresca y documentada
+> cruza el umbral con margen. Lo que lastra la línea base no es el evaluador.
+
+## ⚠️ Y el «seis sin fecha» resultó ser lo contrario de una palanca
+
+La conclusión de la primera noche fue *«lo que hunde la línea base es que seis de
+nueve señales no traen fecha; anotarla es la mejora con más palanca»*. **Se buscaron
+las fechas la madrugada siguiente, y esa conclusión estaba equivocada en su
+dirección.**
+
+De las seis, **tres se pudieron fechar** con procedencia y cita textual, y las tres
+son viejas:
+
+| cuenta | fecha | cita | días al 28-sep |
+|---|---|---|---:|
+| LEGO | **nov-2023** | *«Anunciada nov-2023, entrega 2025»* | ~1,050 |
+| Ragasa | **mar-2025** | *«arranque de obra marzo-2025»* | ~576 |
+| Bimbo | **17-jul-2025** | *«anuncio 17-jul-2025, Plan México»* | 438 |
+
+Las tres pasan de 365 días, o sea **0 puntos de frescura** — mientras que
+`FRESCURA_SIN_FECHA` vale **2**. Fecharlas les **bajó** dos puntos a cada una.
+
+> **El radar no estaba ciego por falta de fecha: estaba siendo generoso.** El
+> respaldo de «sin fecha» le regalaba dos puntos a una señal de hace tres años, y la
+> columna «techo» prometía un ascenso que esas tres nunca podrán tener: su señal no
+> va a volverse fresca.
+>
+> Lo que la lista de 13 necesita no es mejor puntuación de señales viejas. **Es
+> señal nueva.**
+
+Ragasa igual subió —de 28 a 32.6— y **no fue por la fecha**: al leer su ficha
+apareció que la señal era mucho más que «inversión anunciada de 633 MDP». Es una
+**cogeneración propia de 19.2 MW con recuperación de vapor**, y eso el evaluador
+sí lo puntúa. Medido, separando las dos causas:
+
+| | puntaje |
+|---|---:|
+| texto viejo, sin fecha | 28.0 |
+| texto viejo, con fecha mar-2025 | 26.0 |
+| texto nuevo, sin fecha | 34.6 |
+| **texto nuevo, con fecha mar-2025** | **32.6** |
+
+O sea: **+6.6 por el texto, −2 por la fecha.** La mejora vino de leer bien la
+señal, no de fecharla.
+
+Las otras tres siguen sin fecha, y cada una dice por qué. La de Pesquería es la que
+más vale leer: **la propia corrida escribió** *«nota de prensa sobre inversión, sin
+fecha en el registro»*. No es que nadie buscara.
 
 ## Cómo se lee esto, y las tres cosas que NO dice
 
-**1. «3 de 9» no es «el radar falla 6 veces».** Es *«de las cuentas que FTS ya
+**1. «3 de 10» no es «el radar falla 7 veces».** Es *«de las cuentas que FTS ya
 trabajó, el radar habría detonado 3 por sí solo»*. Las otras entraron por criterio
 del dueño, y eso sigue siendo una vía legítima — el punto de la métrica es saber
 cuánta del trabajo depende de que alguien se acuerde.
 
-**2. Los 4 huecos no son ceros.** Un cero diría «el radar la evaluó y la
+**2. Los 3 huecos no son ceros.** Un cero diría «el radar la evaluó y la
 descartó»; un hueco dice «nadie documentó su señal». Contarlos como ceros haría
 ver al radar peor de lo que es, y contarlos como pasa, mejor. Quedan fuera del
 denominador a propósito, y una prueba sostiene que nadie les inventó una fuente.
 
-**3. La columna «techo» es el costo de no haber anotado la fecha.** Seis de las
-nueve señales se midieron el 18-sep-2026 como «señales calientes» y su fecha no
-quedó escrita. Con el mínimo de frescura (2 de 25) se hunden por un dato que
-falta, no por una señal débil. El techo dice lo que valdrían con la señal fresca,
-y la diferencia entre las dos columnas — **hasta 23 puntos** — es exactamente lo
-que cuesta no anotar una fecha.
+**3. La columna «techo» sólo aparece cuando la fecha NO está.** Dice lo que la
+cuenta valdría *si* la señal fuera fresca, y es una hipótesis útil mientras la fecha
+sea desconocida. Cuando la fecha aparece, el techo **desaparece de la tabla**, y eso
+es deliberado: una señal que ya se sabe de nov-2023 no tiene un techo que alcanzar.
+Confundir «no sé si es fresca» con «podría ser fresca» es exactamente el error que
+la primera noche cometió.
 
 ---
 
-## El diagnóstico: por qué 6 de 9 no pasan
+## El diagnóstico: por qué 7 de 10 no pasan
 
-Las seis que no pasan son **todas** anuncios de inversión: LEGO 205 MDD · Ragasa
-633 MDP · Cuprum 200 MDD · Bimbo 2,000 MDD · Amazon 500 MDP · Nemak (inversión +
-vacantes). Y las seis tienen **su monto documentado**.
+Las que no pasan son **casi todas** anuncios de inversión: LEGO 205 MDD · Ragasa
+633 MDP · Cuprum 200 MDD · Amazon 500 MDP · International 120 MDD · Nemak
+(inversión + vacantes, **sin cifra**) — y Bimbo queda en `guarda` con 2,000 MDD.
+Todas menos Nemak tienen **su monto documentado**.
+
+> **International dejó de ser un hueco el 28-sep, y el error vale nombrarlo.** Sus
+> 120 MDD para el área de pintura de cabinas llevaban documentados en
+> `modulos-de-contactos.md` desde el 18-sep, en la misma línea que los otros cinco
+> montos. El barrido de huecos los perdió porque buscó **«International»** y el repo
+> la nombra **«Navistar»**. Una cuenta con dos nombres se pierde en una búsqueda de
+> texto — y ésa es la lección, no el descuido.
 
 > ### 🔴 El evaluador no puede leer ni uno de los seis montos.
 >
@@ -119,34 +189,32 @@ puede leer.
 
 ## ✅ D6 · Que el evaluador lea la magnitud de la inversión — **APLICADO**
 
-**Lo que se propone.** Que `magnitudes()` reconozca `MDD`, `MDP`, `MUSD`, `mdd`,
-`mdp`, `millones de dólares`, `millones de pesos` y `MW`, y que
+**Lo que se propuso y se aprobó.** Que `magnitudes()` reconozca `MDD`, `MDP`,
+`MUSD`, `millones de dólares`, `millones de pesos` y `MW`, y que
 `puntos_de_capacidad` los compare contra el rango donde FTS **sí** ha vendido.
 
-**Por qué no lo apliqué, aunque D3 autorizó arreglar el vocabulario.** D3 autorizó
-el vocabulario de **obra nueva**, que es una lista de palabras: agregar una palabra
-no cambia la escala de nada. Esto es distinto en dos cosas:
+**Lo que se derivó y lo que se declaró**, porque la diferencia es la mitad de la
+decisión:
 
-1. **Hay que elegir una escala, y eso es criterio.** ¿200 MDD vale lo mismo que
-   200 TR? El catálogo tiene rangos en TR porque ahí FTS vendió chillers. Para
-   pesos habría que derivar el rango de los importes de `sale.order.line`, y el
-   censo de cuentas los tiene **a propósito fuera** (`que_NO_lleva: «Ni una
-   persona y ni un importe»`). Derivar la escala exige decidir de dónde sale el
-   importe, y eso lo decides tú.
-2. **`puntos_de_capacidad` CORTA POR ARRIBA**, y con razón: «una señal de 1,500 TR
-   no es mejor que una de 200, es de otro tamaño de empresa y otro competidor».
-   Con inversión esa regla puede ser **al revés** o puede seguir valiendo: 2,000
-   MDD de Bimbo probablemente es un programa nacional de varios años y no una obra
-   que FTS pueda tomar, mientras 60 MDD de Coficab Durango es exactamente su
-   tamaño. Si es al revés, aplicarlo sin decidirlo metería a Bimbo arriba de
-   Coficab.
+| | valor | de dónde |
+|---|---|---|
+| Piso de inversión | 192,000 (el proyecto más chico de los 154 reales) | **derivado.** Es cota dura: un capex menor que el proyecto más chico de FTS no puede contener uno |
+| Corte de programa corporativo | 500 MDD | **declarado.** Anclas: 60 MDD de Coficab Durango es lo que FTS sí toma; 2,000 MDD de Bimbo es un programa nacional |
+| Tipo de cambio | 18.5 MXN/USD, sep-2026 | **declarado**, con alcance, con por qué no muerde y con fecha de revisión |
 
-**Mi recomendación:** aplicarlo, con la escala derivada del catálogo de proyectos
-y **con corte por arriba**, tratando un anuncio de más de ~500 MDD como *programa
-corporativo* y no como obra: le da `MAX_CAPACIDAD / 4`, igual que hoy trata una
-magnitud fuera de rango. Con eso, las cinco cuentas de inversión media suben ~10
-puntos y las dos que pasan no se mueven. **Pero es tu llamada, y hasta entonces el
-factor sigue valiendo 0 para todos — que es honesto: no lo sabe.**
+Lo que **no se puede derivar y no se inventó**: qué fracción del capex de un cliente
+se vuelve proyecto de FTS. Comparar 205 MDD contra el ticket de FTS sería un error de
+categoría, no un cálculo.
+
+**Resultado medido:** las cuentas de inversión media suben ~10 puntos, las que ya
+pasaban no se mueven, y la prueba de aceptación que importaba pasa —
+**Bimbo 43.5 contra Coficab Durango 76.4**. Un programa nacional de 2,000 MDD queda
+por debajo de una planta nueva de 60 MDD.
+
+> **D6 no agregó ninguna `pasa`.** Lo que movió fue el control de señal fresca
+> (33 → 58 → **68**) y el techo de las que no tienen fecha. Aplicar D6 no era para
+> subir el marcador de esta lista: era para que el factor deje de valer 0 en toda
+> señal que traiga monto, que es la mayoría de las de prensa.
 
 ---
 
@@ -212,6 +280,6 @@ Y el barrido de D7 encontró dos cosas más en el mismo documento:
 
 Es el **control** del lazo 1. Cuando las primeras 20 tarjetas cierren, la pregunta
 no va a ser «¿el radar sirve?» en abstracto: va a ser «¿estas tres que pasaron
-convirtieron, y las seis que no habrían convertido?». Sin una línea base escrita
+convirtieron, y las siete que no habrían convertido?». Sin una línea base escrita
 antes de ver los desenlaces, esa comparación se hace con la memoria — y la memoria
 se acomoda al resultado.

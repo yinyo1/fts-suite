@@ -270,12 +270,82 @@ def imprimir(r: dict) -> None:
     print()
 
 
+#: Marcas del doc entre las que vive lo CALCULADO. Lo de afuera es prosa que una
+#: persona escribe; lo de adentro lo escribe la herramienta y nadie lo edita.
+MARCA_INI = "<!-- CALCULADO:inicio -->"
+MARCA_FIN = "<!-- CALCULADO:fin -->"
+
+
+def bloque_calculado(r: dict) -> str:
+    """La parte del doc que sale de la medicion, en markdown.
+
+    POR QUE EXISTE. Es la SEPTIMA vez -- ahora la octava-- que un numero escrito a
+    mano en un doc de metodo no casa con el que el codigo produce. D7 puso la
+    convencion de marcas; esto quita la posibilidad: lo que esta entre las dos marcas
+    lo regenera `--actualizar-doc` y una prueba exige que el doc en disco sea igual a
+    lo que la herramienta produce hoy.
+    """
+    import io
+    from contextlib import redirect_stdout
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        imprimir(r)
+    tabla = buf.getvalue().strip("\n")
+    fechadas = sum(1 for f in r["filas"]
+                   if not f["hueco"] and f["fecha_documentada"])
+    L = [MARCA_INI, "",
+         "| | |", "|---|---|",
+         f"| Cuentas ya evaluadas | **{r['cuentas']}** |",
+         f"| Con señal documentada en el repo | **{r['con_senal_documentada']}** |",
+         f"| Con **fecha** de señal documentada | **{fechadas}** de "
+         f"{r['con_senal_documentada']} |",
+         f"| Huecos (nadie documentó su señal) | **{len(r['huecos'])}** |",
+         f"| **Pasan solas, hoy** | **{r['pasan_con_lo_documentado']} de "
+         f"{r['con_senal_documentada']}** |"]
+    for e in r["etapas"]:
+        L.append(f"| Pasaban en la etapa `{e['etapa']}` | "
+                 f"{e['pasan']} de {r['con_senal_documentada']} |")
+    L += [f"| Pasarían si la señal estuviera fresca | "
+          f"{r['pasarian_si_la_senal_estuviera_fresca']} de "
+          f"{r['con_senal_documentada']} |",
+          "", "### La evolución, cuenta por cuenta", "",
+          "```", tabla, "```", "",
+          f"Pasan solas: **{', '.join(r['pasan']) or 'ninguna'}**.",
+          "", MARCA_FIN]
+    return "\n".join(L)
+
+
+def actualizar_doc(ruta_md: str, r: dict) -> bool:
+    """Reescribe SOLO lo que esta entre las dos marcas. Devuelve si cambio."""
+    with open(ruta_md, encoding="utf-8") as f:
+        doc = f.read()
+    if MARCA_INI not in doc or MARCA_FIN not in doc:
+        raise SystemExit(
+            f"{ruta_md} no tiene las marcas {MARCA_INI} / {MARCA_FIN}. Sin ellas no "
+            "se sabe que parte del doc la escribe la herramienta y que parte una "
+            "persona, y editar a ciegas es como los numeros se separan del codigo.")
+    ini = doc.index(MARCA_INI)
+    fin = doc.index(MARCA_FIN) + len(MARCA_FIN)
+    nuevo = doc[:ini] + bloque_calculado(r) + doc[fin:]
+    if nuevo == doc:
+        return False
+    with open(ruta_md, "w", encoding="utf-8") as f:
+        f.write(nuevo)
+    return True
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--actualizar-doc", dest="doc", default=None,
+                    help="reescribe el bloque CALCULADO de un .md con la medicion "
+                         "de hoy. El resto del documento no se toca.")
     a = ap.parse_args()
     r = linea_base()
+    if a.doc:
+        cambio = actualizar_doc(a.doc, r)
+        print(f"  {'ACTUALIZADO' if cambio else 'sin cambios'}: {a.doc}")
     if a.json:
         print(json.dumps(r, ensure_ascii=False, indent=2))
-    else:
+    elif not a.doc:
         imprimir(r)

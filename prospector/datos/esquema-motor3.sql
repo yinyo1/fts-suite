@@ -162,7 +162,27 @@ CREATE TABLE senal (
     -- Mezclar los dos ejes es lo que dejo muerta la tabla de caducidad (H2).
     tipo              text,
     texto             text,                     -- [operativo] el hallazgo
-    fecha_senal       date,                     -- [operativo] la del evento
+    -- [operativo] CUANDO SE SUPO. Es lo que la curva de frescura mide, y no es lo
+    -- mismo que `fecha_del_evento`: una nota de hace un mes sobre un arranque del
+    -- ano pasado es senal fresca de un hecho viejo, y al reves tambien pasa.
+    --
+    -- LA PRECISION ES VARIABLE Y SE DECLARA (#340). De las tres senales que se
+    -- pudieron fechar, una trae dia -- «anuncio 17-jul-2025»-- y dos traen solo mes
+    -- -- «anunciada nov-2023», «arranque de obra marzo-2025»--. Una columna `date`
+    -- no puede guardar "2023-11", asi que el mes se normaliza al DIA 1 y la
+    -- precision queda escrita al lado.
+    --
+    -- Normalizar al dia 1 y no al 15 ni al ultimo es una decision: hace la senal
+    -- hasta 30 dias MAS VIEJA de lo que podria ser, nunca mas fresca. Para la curva
+    -- de frescura eso es el lado conservador -- nunca sobreestima la ventana-- y una
+    -- fecha que solo se sabe al mes no deberia poder ganarle puntos a una que se
+    -- sabe al dia.
+    fecha_senal       date,
+    fecha_senal_precision text NOT NULL DEFAULT 'dia'
+        CHECK (fecha_senal_precision IN ('dia', 'mes', 'anio')),
+    -- [operativo] La fecha TAL COMO LA DIJO LA FUENTE, sin normalizar. Es lo que
+    -- se cita cuando alguien pregunta de donde salio.
+    fecha_senal_declarada text,
     fecha_de_cierre   date,                     -- [operativo] convocatorias
     fecha_del_evento  date,                     -- [operativo] camaras y congresos
     -- [operativo] El veredicto del evaluador, completo.
