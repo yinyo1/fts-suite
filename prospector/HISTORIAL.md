@@ -1247,3 +1247,112 @@ infraestructura de n8n y del conector de Odoo**, y esa parte no se movió de
 **Fuera del proyecto de prospección, y no se tocaron:** **#1** (multi-token
 read-only para BI) y **#2** (sonda de `autocomplete_by_name`, que es del conector
 de Odoo).
+
+---
+
+# #330 · Turno nocturno: las cinco decisiones aplicadas y el piloto en pie
+
+**28-sep-2026, 01:09 a 05:xx CST** · *Turno autónomo. Esteban dormía.*
+
+Las cinco decisiones de #329 llegaron aprobadas y el turno las aplicó. Lo que no
+estaba previsto es que **D3 destapara tres defectos del evaluador**, y uno de ellos
+llevaba tiempo inflando puntajes.
+
+## Lo que se aplicó
+
+| | |
+|---|---|
+| **D1** → (b) | La ficha **avisa** cuando la cuenta no trae expediente de señal. No bloquea. Y **no va en el aviso rojo**: que falte el expediente no se cae en ninguna llamada, y meterlo ahí pondría vocabulario interno en la capa que #322 dejó libre de él |
+| **D2** | Los cuatro números (20 por celda · 1 rebote · 3 por patrón · 10 por tipo) quedan con una prueba que truena si alguien los mueve |
+| **D3** → (a) | Tipo nuevo `obra_nueva_integral`, 25 términos, y **peso derivado**: la suma de las participaciones de las seis familias que la obra necesita, escalada contra la mayor. Sale **44.4**, casi 3× el tope de una familia individual |
+| **D4** | No se tocó. Una prueba recorre todo el código buscando cualquier vía de escritura a Odoo |
+| **D5** | Estricto. Una prueba sostiene que `ejemplo.mx` **no** está permitido por dominio |
+
+## Los tres defectos que D3 destapó, y los tres eran el mismo
+
+**El evaluador no leía lo que tenía enfrente.**
+
+**B1 — «prensa» era un falso positivo sistemático.** En una línea de venta de Odoo
+«prensa» es la máquina; en el texto de una señal, *«prensa reporta…»* es el medio.
+Medido: **Coficab Pesquería puntuaba 12.7 puntos de proceso por la palabra «prensa»
+de «prensa reporta»**, y con ellos cruzaba el umbral de `pasa`.
+
+> **Un umbral cruzado por un falso positivo es peor que un umbral no cruzado.**
+
+**B2 — el catálogo no conocía la palabra «cable».** Tiene el proceso
+`arneses_cableado` con proyectos reales, y su vocabulario no lo incluía. La cuenta
+más trabajada del proyecto es de cable automotriz y puntuaba **cero** en proceso.
+
+**B3 — el giro de la cuenta no entraba al evaluador.** `puntos_de_proceso` existe
+para puntuar el proceso **del cliente** y sólo recibía el texto de la señal, que es
+un titular de prensa: **se le estaba pidiendo al encabezado de una nota que dijera a
+qué se dedica la empresa.** `Corrida.giro` existe desde siempre y nadie lo conectaba.
+
+Con los tres arreglados, Coficab Pesquería pasa de **22.7 (`archiva`) a 64.9
+(`pasa`)** — y ahora por un match de proceso real en vez de por el falso positivo.
+
+## La línea base del radar: 3 de 9
+
+`datos/senales-documentadas.json` + `herramientas/linea_base_radar.py`. El «antes»
+**no está guardado a mano**: se recalcula desactivando D3 y B1/B2/B3 en un contexto
+que restaura el estado al salir.
+
+| | |
+|---|---|
+| Cuentas ya evaluadas | 13 |
+| Con señal documentada | 9 · **4 huecos declarados** |
+| **Pasan solas** | **3 de 9** (Pesquería 64.9 · Durango 66.4 · Hershey 83.0) |
+| Subieron con D3 | 7 de 9 |
+
+**Un hueco no es un cero.** Un cero dice «el radar la evaluó y la descartó»; un
+hueco dice «nadie documentó su señal». Coficab Cd. Juárez es el caso más tentador
+—tiene **tres proyectos declarados**— y sigue siendo hueco: entró por historia en
+Odoo, no por una señal.
+
+## Lo que no se aplicó, y por qué
+
+| | |
+|---|---|
+| **D6** | El evaluador **no puede leer ninguno de los seis montos documentados**. `magnitudes()` lee TR y kVA; 60 MDD, 205 MDD, 633 MDP, 2000 MDD, 500 MDP y 19.2 MW devuelven lista vacía. No se aplicó porque exige **elegir una escala**, y `puntos_de_capacidad` corta por arriba — con inversión esa regla puede ser al revés, y aplicarla sin decidirlo metería los 2,000 MDD de Bimbo arriba de los 60 MDD de Coficab Durango |
+| **D7** | El ejemplo trabajado del §3d de `motor1-radar-de-leads.md` calcula **59 a mano** y el código nunca produjo ese número: los **seis** factores difieren. La conclusión de §3d sigue en pie, pero es la séptima vez que un número escrito a mano en un documento de diseño no coincide con lo que el código calcula |
+| **D8** | Los cuatro contactos de una tarjeta reciben su toque #1 **el mismo día**, por cuatro canales. Desde la planta no se ve como cadencia: se ve como enjambre. Hay una prueba que **documenta** el comportamiento actual en vez de exigir el corregido |
+
+## El piloto de la semana 1, en pie
+
+`flujo/base_motor3.py` habla con Postgres por `psql`. Cargadas 9 cuentas, 9 señales
+con expediente y 9 tarjetas abiertas; **cero contactos y cero cierres**, los dos a
+propósito. Las cuatro reglas verificadas **contra los datos reales del piloto**.
+
+Las tres compuertas dicen **`SIN_DATOS`**, no `prematuro`. La diferencia no es
+cosmética: `prematuro` es «hay datos y no alcanzan», `sin_datos` es «no hay ni uno».
+
+**Coficab/Durango abre con caducidad ya vencida** (dic-2025 + 120 días). No se
+cierra sola: un cierre sin un solo toque sería un expediente inventado y entraría a
+los tres lazos como un desenlace real. **Ensuciar el aprendizaje para que el tablero
+quede limpio es el peor de los dos males.**
+
+## Etapa 1, y un tercer veredicto de entrega
+
+Nueve tarjetas en un CSV —**no diez**: sólo hay nueve con señal documentada, y la
+décima habría que inventársela. Las tres reglas duras, medidas en el archivo: dos
+correos retenidos por candidato (**Hershey sale con `email_from` vacío aunque tenga
+cuatro contactos**), cero en revisión, `phone` vacía en las nueve.
+
+Subidos en **base64 con `expectedBytes`**, no como texto: el CSV lleva saltos de
+línea dentro de campos entrecomillados y ahí es donde una transcripción falla.
+
+Y eso destapó un hueco en el vocabulario que este mismo proyecto construyó el día
+anterior: `entregar` no tenía cómo registrarlo. No es `mismo_tamano_sin_hash` —el
+servidor **rechaza** lo que no decodifique a la longitud exacta— y no es
+`identico_por_relectura` —confirma la longitud, no el contenido—. Veredicto nuevo
+**`longitud_confirmada_en_base64`**.
+
+> **Forzar una verificación al veredicto que no le corresponde es el mismo pecado
+> en las dos direcciones.** Subvaluarla esconde trabajo hecho; sobrevaluarla es lo
+> que `--sha256-releido` existe para no cometer.
+
+## Restricciones del turno
+
+Cero escrituras a Odoo · **cero consultas a Odoo** · cero Lusha · purga no
+ejecutada · `fts-mcp-odoo` intacto · sin datos personales en ningún archivo · cero
+consultas web (ninguna tarea las exigió). **853 pruebas**, versión **0.13.0**.
