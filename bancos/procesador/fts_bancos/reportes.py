@@ -166,10 +166,12 @@ def leeme_md(con, generado: str) -> str:
         huecos = cur.fetchall()
         cur.execute("""SELECT d.*, a.nombre_original, b.nombre_canonico AS original
                        FROM bancos.duplicados_logicos d JOIN bancos.estados_vigentes e ON e.id=d.estado_id JOIN bancos.archivos a ON a.id=e.archivo_id
-                       JOIN bancos.estados_vigentes e2 ON e2.id=d.duplicado_de JOIN bancos.archivos b ON b.id=e2.archivo_id ORDER BY d.id""")
+                       JOIN bancos.estados e2 ON e2.id=d.duplicado_de JOIN bancos.archivos b ON b.id=e2.archivo_id ORDER BY d.id""")
         dups = cur.fetchall()
+        # la copia canónica que el propio sistema dejó en su carpeta no es un duplicado
         cur.execute("""SELECT v.nombre, a.nombre_canonico, a.nombre_original FROM bancos.avistamientos v JOIN bancos.archivos a ON a.id=v.archivo_id
-                       WHERE v.id NOT IN (SELECT min(id) FROM bancos.avistamientos GROUP BY archivo_id) ORDER BY v.id""")
+                       WHERE v.id NOT IN (SELECT min(id) FROM bancos.avistamientos GROUP BY archivo_id)
+                         AND v.nombre IS DISTINCT FROM a.nombre_canonico ORDER BY v.id""")
         exactos = cur.fetchall()
     L = ["# 00 LEEME · Inventario y reglas", "",
          f"_Generado automáticamente por fts-bancos el {generado}. No editar a mano: se reescribe en cada corrida._", "",

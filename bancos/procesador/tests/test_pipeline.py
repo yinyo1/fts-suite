@@ -238,3 +238,28 @@ def test_hueco_de_continuidad_que_ya_no_descuadra_se_resuelve(base_limpia):
     with conexion() as con, con.cursor() as cur:
         cur.execute("SELECT resuelto_en FROM bancos.huecos WHERE motivo='continuidad'")
         assert all(r["resuelto_en"] is not None for r in cur.fetchall())
+
+
+def test_hueco_resuelto_por_error_se_reabre_si_el_mes_sigue_faltando(base_limpia):
+    correr(lote())
+    with conexion() as con, con.cursor() as cur:
+        cur.execute("UPDATE bancos.huecos SET resuelto_en=now() WHERE periodo='2026-07' AND motivo='faltante' RETURNING id")
+        ids = [r["id"] for r in cur.fetchall()]
+    assert ids
+    correr({})
+    with conexion() as con, con.cursor() as cur:
+        cur.execute("SELECT resuelto_en FROM bancos.huecos WHERE id = ANY(%s)", (ids,))
+        assert all(r["resuelto_en"] is None for r in cur.fetchall())
+
+
+def test_leeme_no_lista_la_copia_canonica_como_duplicado(base_limpia):
+    E = escenario()
+    pdf = pdf_estado(E["nomina_2026-03"])
+    _, items, _ = correr({"nom03.pdf": pdf})
+    canonico = items["nom03.pdf"][0]["nombre_destino"]
+    correr({canonico: pdf})            # el inventario vuelve a ver la copia que el sistema dejó
+    correr({"otra copia.pdf": pdf})    # y alguien sube otra copia al buzón
+    with conexion() as con:
+        md = reportes.leeme_md(con, "hoy")
+    dups = md.split("## Duplicados detectados")[1].split("## Rechazados")[0]
+    assert "otra copia.pdf" in dups and f"`{canonico}` es copia" not in dups

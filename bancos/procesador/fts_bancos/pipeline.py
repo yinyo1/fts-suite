@@ -604,9 +604,13 @@ def _hueco(cur, cuenta_id, periodo, motivo, dif, detalle):
     cur.execute("""INSERT INTO bancos.huecos (cuenta_id, periodo, motivo, monto_diferencia, detalle)
                    VALUES (%s,%s,%s,%s,%s)
                    ON CONFLICT (cuenta_id, periodo, motivo) DO UPDATE
-                   SET monto_diferencia=EXCLUDED.monto_diferencia, detalle=EXCLUDED.detalle
+                   SET monto_diferencia=EXCLUDED.monto_diferencia, detalle=EXCLUDED.detalle,
+                       resuelto_en=NULL, resuelto_por_estado_id=NULL
                    WHERE bancos.huecos.monto_diferencia IS DISTINCT FROM EXCLUDED.monto_diferencia
-                      OR bancos.huecos.detalle IS DISTINCT FROM EXCLUDED.detalle""",
+                      OR bancos.huecos.detalle IS DISTINCT FROM EXCLUDED.detalle
+                      -- un hueco que se dio por resuelto y el mes vuelve a faltar (p. ej. el estado que
+                      -- lo cubría era de otra cuenta y se reidentificó) se REABRE
+                      OR bancos.huecos.resuelto_en IS NOT NULL""",
                 (cuenta_id, periodo, motivo, dif, _j(detalle)))
 
 
