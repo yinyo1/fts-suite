@@ -1,0 +1,1566 @@
+[
+ {
+  "numero_parte": "3650-20",
+  "numero_parte_corregido": "3650-20",
+  "marca": "MILWAUKEE",
+  "descripcion_normalizada": "Atornillador de impacto 1/4 hex compacto sin escobillas M18 (solo herramienta)",
+  "tipo_energia": "inalambrica_M18",
+  "L_mm": 112,
+  "A_mm": 53,
+  "H_mm": 196,
+  "peso_kg": 0.771,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm",
+    "valor_original": "4.4 in",
+    "url": "https://www.milwaukeetool.com/products/details/m18-compact-brushless-1-4-hex-impact-driver/3650-20",
+    "tipo_fuente": "fabricante (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "A_mm",
+    "valor_original": "2.1 in",
+    "url": "https://www.milwaukeetool.com/products/details/m18-compact-brushless-1-4-hex-impact-driver/3650-20",
+    "tipo_fuente": "fabricante (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "peso_kg",
+    "valor_original": "1.7 lbs (sin bateria)",
+    "url": "https://www.milwaukeetool.com/products/details/m18-compact-brushless-1-4-hex-impact-driver/3650-20",
+    "tipo_fuente": "fabricante (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "L_mm/A_mm/peso",
+    "valor_original": "titulo: 4.4 in Length, 2.1 in Width, 1.7 lbs",
+    "url": "https://www.amazon.com/3650-20-Milwaukee-Power-Impact-Drivers/dp/B0GT2GJJ6G",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "H_mm",
+    "valor_original": "7.7 in",
+    "url": "https://www.homedepot.com/p/Milwaukee-M18-18V-Lithium-Ion-Brushless-Cordless-1-4-in-Compact-Impact-Driver-Tool-Only-3650-20/325842820",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Peso y dimensiones sin bateria. H 7.7 in solo de un resumen de buscador generico (1 fuente). Con bateria CP2.0 sumar ~0.45 kg y ~25 mm de alto.",
+  "validacion": "2 fuentes"
+ },
+ {
+  "numero_parte": "285420",
+  "numero_parte_corregido": "2854-20",
+  "marca": "MILWAUKEE",
+  "descripcion_normalizada": "Llave de impacto compacta 3/8 M18 FUEL con anillo de friccion (solo herramienta)",
+  "tipo_energia": "inalambrica_M18",
+  "L_mm": 122,
+  "A_mm": 65,
+  "H_mm": 202,
+  "peso_kg": 1.089,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm",
+    "valor_original": "4.8 in",
+    "url": "https://www.milwaukeetool.com/products/details/m18-fuel-3-8-compact-impact-wrench-w-friction-ring-bare-tool/2854-20",
+    "tipo_fuente": "fabricante (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "L_mm/A_mm/H_mm/peso",
+    "valor_original": "titulo: Length 4.8 in Width 2.5 in Height 7.9 in Weight 2.4 lbs",
+    "url": "https://www.amazon.com/2854-20-Milwaukee-Impact-Wrench-Friction/dp/B0HBV6R88W",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "L_mm/A_mm/H_mm/peso",
+    "valor_original": "titulo: Length 4.8 in Width 2.56 in Height 7.95 in Weight 3.9 lb",
+    "url": "https://www.amazon.com/2854-20-Milwaukee-Brushless-Cordless-Impact/dp/B0HCC8FYXF",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Verificado: 285420 = Milwaukee 2854-20 (M18 FUEL 3/8 compact impact wrench), coincide con la descripcion 'pistola de impacto 3/8'. Peso en conflicto: 2.4 lb vs 3.9 lb entre listados Amazon (3.9 lb probablemente con bateria o con empaque). Se toma 2.4 lb (1.09 kg) como herramienta sola; CONFIRMAR pesando. L=4.8 in confirmado por fabricante + tienda.",
+  "validacion": "2 fuentes"
+ },
+ {
+  "numero_parte": "3602-20",
+  "numero_parte_corregido": "3602-20",
+  "marca": "MILWAUKEE",
+  "descripcion_normalizada": "Rotomartillo/taladro percutor 1/2 compacto sin escobillas M18 (solo herramienta)",
+  "tipo_energia": "inalambrica_M18",
+  "L_mm": 147,
+  "A_mm": null,
+  "H_mm": 202,
+  "peso_kg": 1.043,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm",
+    "valor_original": "5.8 in",
+    "url": "https://www.milwaukeetool.com/products/details/m18-compact-brushless-1-2-hammer-drill-driver/3602-20",
+    "tipo_fuente": "fabricante (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "peso_kg",
+    "valor_original": "2.3 lbs sin bateria",
+    "url": "https://www.milwaukeetool.com/products/details/m18-compact-brushless-1-2-hammer-drill-driver/3602-20",
+    "tipo_fuente": "fabricante (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "H_mm/peso",
+    "valor_original": "7.95 in; 2.3 lbs",
+    "url": "https://www.plumbersstock.com/milwaukee-3602-20.html",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Ancho no encontrado; Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g).",
+  "validacion": "2 fuentes"
+ },
+ {
+  "numero_parte": "5375-20",
+  "numero_parte_corregido": "5375-20",
+  "marca": "MILWAUKEE",
+  "descripcion_normalizada": "Taladro rotomartillo alambrico 1/2 7.5 A",
+  "tipo_energia": "electrica_alambrica",
+  "L_mm": 292,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": 2.73,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm",
+    "valor_original": "perfil compacto de 11.5 in",
+    "url": "https://milwaukeestore.com.mx/products/rotomartillo-milwaukee-5375-20",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "peso_kg",
+    "valor_original": "2.73 kg",
+    "url": "https://www.casamyers.com.mx/5375-20-rotomartillo-1-20-2700rpm",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Fabricante no dio L/peso en buscador. El buscador atribuyo L y peso a listados de tiendas MX (atribucion por URL aproximada). Descripcion inventario dice 'taladro alambrico rotomartillo'; es 7.5 A (no 7.0). A y H: Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g). MEDIDA CRITICA (>250 mm o >2 kg): NO VALIDADO hasta medicion fisica (regla de validacion triple).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "5485-21",
+  "numero_parte_corregido": "5485-21",
+  "marca": "MILWAUKEE",
+  "descripcion_normalizada": "Rotomartillo SDS-Plus 7/8 800 W (con estuche)",
+  "tipo_energia": "electrica_alambrica",
+  "L_mm": 335,
+  "A_mm": 75,
+  "H_mm": 195,
+  "peso_kg": 3.034,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm/A_mm/H_mm/peso",
+    "valor_original": "19.5 x 33.5 x 7.5 cm; 3.034 kg",
+    "url": "https://www.homedepot.com.mx/p/milwaukee-rotomartillo-sds-plus-1500-rpm-800-watts-milwaukee-5485-21-141961",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Home Depot MX no aclara si son medidas de herramienta o de empaque; 33.5 cm de largo es coherente con un rotomartillo SDS-Plus 7/8 (herramienta). Kit -21 incluye estuche: medir estuche aparte. MEDIDA CRITICA (>250 mm o >2 kg): NO VALIDADO hasta medicion fisica (regla de validacion triple).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "516940 B2",
+  "numero_parte_corregido": null,
+  "marca": "MILWAUKEE",
+  "descripcion_normalizada": "Mango lateral (accesorio, probablemente del rotomartillo 5485-21 o esmeriladora)",
+  "tipo_energia": "mano",
+  "L_mm": null,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": null,
+  "fuentes": [],
+  "foto_url": null,
+  "notas": "No se identifico el numero 516940 en ninguna fuente Milwaukee; parece etiqueta/serie interna, no numero de parte. Candidatos segun herramienta: 49-15-0310 (esmeriladora), 43-62-5316 / 49-15-0265 (taladro). Revisar estampado del mango y Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g).",
+  "validacion": "no encontrado"
+ },
+ {
+  "numero_parte": "613033",
+  "numero_parte_corregido": "6130-33",
+  "marca": "MILWAUKEE",
+  "descripcion_normalizada": "Mini esmeriladora angular alambrica 4-1/2 in 7 A",
+  "tipo_energia": "electrica_alambrica",
+  "L_mm": 259,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": 1.588,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm/peso",
+    "valor_original": "10.2 in long, 3.5 lbs",
+    "url": "https://www.milwaukeetool.com/products/details/7-0-amp-4-1-2-small-angle-grinder/6130-33",
+    "tipo_fuente": "fabricante (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "L_mm/peso",
+    "valor_original": "10.2 in, 3.5 lbs",
+    "url": "https://www.platt.com/p/0833894/milwaukee/7-amp-4-1-2-small-angle-grinder/045242195732/mil613033",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Confirmado 613033 = 6130-33. A/H (ancho de guarda ~4.5 in disco): Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g). MEDIDA CRITICA (>250 mm o >2 kg): NO VALIDADO hasta medicion fisica (regla de validacion triple).",
+  "validacion": "2 fuentes"
+ },
+ {
+  "numero_parte": "2648-20",
+  "numero_parte_corregido": "2648-20",
+  "marca": "MILWAUKEE",
+  "descripcion_normalizada": "Lijadora orbital aleatoria 5 in M18 (solo herramienta)",
+  "tipo_energia": "inalambrica_M18",
+  "L_mm": 267,
+  "A_mm": 125,
+  "H_mm": 146,
+  "peso_kg": 0.907,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm/A_mm/H_mm/peso",
+    "valor_original": "L 10.50 in, W 4.92 in, H 5.74 in, 2 lbs",
+    "url": "https://www.acmetools.com/milwaukee-m18-random-orbit-sander-bare-tool-2648-20/045242520961.html",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Resumen agregado de varios distribuidores; no se aislo el valor del fabricante. MEDIDA CRITICA (>250 mm o >2 kg): NO VALIDADO hasta medicion fisica (regla de validacion triple).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "2874-22HD",
+  "numero_parte_corregido": "2874-22HD (herramienta 2874-20)",
+  "marca": "MILWAUKEE",
+  "descripcion_normalizada": "Roscadora de tubo M18 FUEL con ONE-KEY, kit con 2 baterias HD12.0, cargador, brazo de soporte y estuche",
+  "tipo_energia": "inalambrica_M18",
+  "L_mm": 668,
+  "A_mm": 122,
+  "H_mm": 216,
+  "peso_kg": 10.115,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm/A_mm/H_mm",
+    "valor_original": "26.3 in L x 4.8 in W x 8-1/2 in D",
+    "url": "https://www.hanessupply.com/milwaukee-2874-22hd",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "L_mm/A_mm/H_mm",
+    "valor_original": "26.3 in L x 4.8 in W x 8-1/2 in D",
+    "url": "https://empirerigging.com/milwaukee-2874-22hd",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "peso_kg",
+    "valor_original": "22.3 lbs",
+    "url": "https://www.linenplus.com/en/milwaukee-m18-fueltm-pipe-threader-kit-1-8-2-41-rpm-22-3-lbs-each-2874-22hd.html",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Dimensiones corresponden a la herramienta 2874-20 (26.3 in de largo) segun resumen; peso 22.3 lb probablemente herramienta con bateria. Las dos fuentes de dimension parecen compartir el mismo feed de datos (no independientes). ESTUCHE del kit: dimensiones NO encontradas -> medir fisicamente (es lo que ocupa espacio). Rebajado a 1 fuente: Hanes y Empire Rigging repiten el mismo feed de datos (no independientes). MEDIDA CRITICA (>250 mm o >2 kg): NO VALIDADO hasta medicion fisica (regla de validacion triple).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "0970-20",
+  "numero_parte_corregido": "0970-20",
+  "marca": "MILWAUKEE",
+  "descripcion_normalizada": "Aspiradora humedo/seco 2.5 gal M18 FUEL PACKOUT (solo herramienta)",
+  "tipo_energia": "inalambrica_M18",
+  "L_mm": 434,
+  "A_mm": 267,
+  "H_mm": 325,
+  "peso_kg": 5.126,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm/A_mm/H_mm/peso",
+    "valor_original": "Height 12.8, Width 10.5, Length 17.1 (el resumen dijo 'mm', es evidentemente pulgadas); 11.3 lbs",
+    "url": "https://www.acmetools.com/milwaukee-m18-fuel-packout-25-gallon-wet-dry-vacuum-bare-tool-0970-20/045242567591.html",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Unidad corregida: el resumen del buscador decia mm, los valores son pulgadas (una aspiradora de 2.5 gal no mide 17 mm). Huella PACKOUT estandar. Confirmar con fabricante. MEDIDA CRITICA (>250 mm o >2 kg): NO VALIDADO hasta medicion fisica (regla de validacion triple).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "2729-20",
+  "numero_parte_corregido": "2729-20",
+  "marca": "MILWAUKEE",
+  "descripcion_normalizada": "Sierra cinta de corte profundo 5 in M18 FUEL (solo herramienta)",
+  "tipo_energia": "inalambrica_M18",
+  "L_mm": 533,
+  "A_mm": 287,
+  "H_mm": 130,
+  "peso_kg": 6.804,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm/peso",
+    "valor_original": "21 in; 15 lbs",
+    "url": "https://www.amazon.com/Milwaukee-2729-20-FUEL-Deep-Model/dp/B013P2ZGK8",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "L_mm/peso",
+    "valor_original": "21 in; 15 lbs",
+    "url": "https://www.supplyhouse.com/Milwaukee-2729-20-M18-Fuel-Deep-Cut-Band-Saw-Bare-Tool-Only",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "A_mm/H_mm",
+    "valor_original": "Height 5.1 in, Width 11.3 in",
+    "url": "https://www.milwaukeetool.com/products/details/m18-fuel-deep-cut-band-saw-tool-only/2729-20",
+    "tipo_fuente": "fabricante (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "A/H de un solo resumen (URL de atribucion aproximada). El estuche de la sierra (inventario menciona 'su estuche') NO se identifico: si es el 48-55-0080? no verificado -> medir fisicamente. MEDIDA CRITICA (>250 mm o >2 kg): NO VALIDADO hasta medicion fisica (regla de validacion triple).",
+  "validacion": "2 fuentes"
+ },
+ {
+  "numero_parte": "2677-23",
+  "numero_parte_corregido": "2677-23",
+  "marca": "MILWAUKEE",
+  "descripcion_normalizada": "Kit perforador de chapa (knockout) M18 FORCE LOGIC 6 T 1/2-4 in con punzones/dados y estuche",
+  "tipo_energia": "inalambrica_M18",
+  "L_mm": 297,
+  "A_mm": 59,
+  "H_mm": 114,
+  "peso_kg": 1.95,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm/A_mm",
+    "valor_original": "11.7 in; 2.31 in",
+    "url": "https://www.plumbersstock.com/milwaukee-2677-20.html",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "L_mm/A_mm/H_mm/peso",
+    "valor_original": "11.7 x 2.31 x 4.49 in; 4.3 lbs (el resumen lo llamo 'case', es la herramienta)",
+    "url": "https://www.acmetools.com/milwaukee-m18-force-logic-6t-knockout-tool-1-2-in-4-in-2677-23/045242501311.html",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Es el modelo 6 toneladas (no 10 T, ese es 2676-23). Valores = herramienta sola. Dimensiones del ESTUCHE del kit NO encontradas -> medir fisicamente (pedido explicito del encargo). MEDIDA CRITICA (>250 mm o >2 kg): NO VALIDADO hasta medicion fisica (regla de validacion triple).",
+  "validacion": "2 fuentes"
+ },
+ {
+  "numero_parte": "6509-31",
+  "numero_parte_corregido": "6509-31",
+  "marca": "MILWAUKEE",
+  "descripcion_normalizada": "Sierra sable Sawzall alambrica 12 A con estuche",
+  "tipo_energia": "electrica_alambrica",
+  "L_mm": 483,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": 3.221,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm/peso",
+    "valor_original": "19 in; 7.1 lbs",
+    "url": "https://www.supplyhouse.com/Milwaukee-6509-31-3-4-Stroke-Sawzall-Reciprocating-Saw-w-Case-12-Amp",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "estuche",
+    "valor_original": "titulo: 22.4 x 11.1 x 22.4 in",
+    "url": "https://www.amazon.com/MILWAUKEE-ELECTRIC-6509-31-Milwaukee-Sawzall/dp/B075TJFJ31",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Estuche/empaque segun titulo Amazon 22.4x11.1x22.4 in: dato NO confiable (repite 22.4 dos veces) -> no se usa; medir estuche. MEDIDA CRITICA (>250 mm o >2 kg): NO VALIDADO hasta medicion fisica (regla de validacion triple).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "48-59-1806",
+  "numero_parte_corregido": "48-59-1806",
+  "marca": "MILWAUKEE",
+  "descripcion_normalizada": "Cargador secuencial M18 de 6 bahias",
+  "tipo_energia": "electrica_alambrica",
+  "L_mm": 254,
+  "A_mm": 198,
+  "H_mm": 214,
+  "peso_kg": null,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm/A_mm/H_mm",
+    "valor_original": "L 10 in, W 7.8 in, H 8.43 in",
+    "url": "https://www.redtoolstore.com/products/milwaukee-48-59-1806-m18-six-pack-sequential-charger-2",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Ojo: 48-59-1806 es el Six Pack SEQUENTIAL (no el PACKOUT 48-59-1809). Dimensiones dudosas (un cargador lineal de 6 bahias suele medir ~17-18 in de largo): VERIFICAR midiendo. Peso no encontrado. MEDIDA CRITICA (>250 mm o >2 kg): NO VALIDADO hasta medicion fisica (regla de validacion triple).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "48111820",
+  "numero_parte_corregido": "48-11-1820",
+  "marca": "MILWAUKEE",
+  "descripcion_normalizada": "Bateria M18 REDLITHIUM CP2.0",
+  "tipo_energia": "inalambrica_M18",
+  "L_mm": null,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": 0.431,
+  "dim_tipo": "empaque",
+  "fuentes": [
+   {
+    "campo": "peso_kg",
+    "valor_original": "0.95 lbs",
+    "url": "https://www.redtoolstore.com/products/milwaukee-cyber-deal-48-11-1820-m18-redlithium-2-0-compact-battery-pack",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "peso_kg",
+    "valor_original": "1.09 lb",
+    "url": "https://www.rshughes.com/p/Milwaukee-M18-CP2-0-Battery-Pack-48-11-1820-2-0-Ah/045242_29304/",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "dim",
+    "valor_original": "titulo: 3.3 x 6 x 5.6 in (empaque)",
+    "url": "https://www.amazon.com/MILWAUKEE-ELECTRIC-48-11-1820-Lithium-Compact/dp/B00CLUCQDG",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Peso 0.43-0.49 kg segun fuente (se toma 0.95 lb=0.431 kg). Dimensiones encontradas son de EMPAQUE y contradictorias (7.56x3.62x2.56 vs 6.77x2.75x3.4 vs 3.3x6x5.6 in) -> L/A/H en null; medir una bateria. Diferencia de peso entre fuentes: 0.431 vs 0.494 kg (0.063 kg, 14.7%).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "2955-20",
+  "numero_parte_corregido": "2955-20",
+  "marca": "MILWAUKEE",
+  "descripcion_normalizada": "Bocina Bluetooth de obra M12 compatible PACKOUT (solo herramienta)",
+  "tipo_energia": "inalambrica_M12",
+  "L_mm": 99,
+  "A_mm": 104,
+  "H_mm": 249,
+  "peso_kg": 0.816,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm/A_mm/H_mm",
+    "valor_original": "titulo: Length 3.9 in Width 4.1 in Height 9.8 in",
+    "url": "https://us.amazon.com/2955-20-Milwaukee-PACKOUT-Cordless-Bluetooth/dp/B0GDXGW76C",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "peso_kg",
+    "valor_original": "1.8 lb",
+    "url": "https://www.redtoolstore.com/products/milwaukee-2955-20-m12-bluetooth-jobsite-speaker-w-packout-compatibility-bare",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Conflicto: otra fuente da 10.59 x 4.53 x 4.21 in y 2.29 lb; un resumen dio '23 lb' (error evidente). Inventario lo lista en seccion M18 pero es M12. Confirmar midiendo.",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "48225110",
+  "numero_parte_corregido": "48-22-5110",
+  "marca": "MILWAUKEE",
+  "descripcion_normalizada": "Nivel torpedo billet 6.5 in con seguro para tubo (magnetico)",
+  "tipo_energia": "medicion",
+  "L_mm": 165,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm",
+    "valor_original": "6.5 in (nominal)",
+    "url": "https://www.milwaukeetool.com/products/details/6-5-pipe-lock-billet-torpedo-level/48-22-5110",
+    "tipo_fuente": "fabricante (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Solo largo nominal. A/H/peso: Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "48-22-2606",
+  "numero_parte_corregido": "48-22-2606",
+  "marca": "MILWAUKEE",
+  "descripcion_normalizada": "Juego 6 desarmadores de precision con estuche",
+  "tipo_energia": "mano",
+  "L_mm": 279,
+  "A_mm": 152,
+  "H_mm": 51,
+  "peso_kg": null,
+  "dim_tipo": "empaque",
+  "fuentes": [
+   {
+    "campo": "L_mm/A_mm/H_mm/peso",
+    "valor_original": "11 x 6 x 2 in; 4.7 lbs",
+    "url": "https://www.amazon.com/Milwaukee-48-22-2606-6-Piece-Precision-Screwdriver/dp/B011DFF71C",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Probablemente dimensiones de empaque/estuche. Peso 4.7 lb es inverosimil para 6 desarmadores de precision (se deja null). Medir estuche. MEDIDA CRITICA (>250 mm o >2 kg): NO VALIDADO hasta medicion fisica (regla de validacion triple).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "48-22-6105",
+  "numero_parte_corregido": "48-22-6105",
+  "marca": "MILWAUKEE",
+  "descripcion_normalizada": "Mini pinza de corte al ras",
+  "tipo_energia": "mano",
+  "L_mm": 127,
+  "A_mm": 51,
+  "H_mm": 13,
+  "peso_kg": 0.059,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm/A_mm/H_mm/peso",
+    "valor_original": "5 in, 2 in, 0.5 in, 0.13 lbs",
+    "url": "https://www.toolnut.com/products/milwaukee-48-22-6105-mini-flush-cutters",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Otra fuente (Groves) dice 8 in OAL -> conflicto; confirmar midiendo.",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "48223531",
+  "numero_parte_corregido": "48-22-3531",
+  "marca": "MILWAUKEE",
+  "descripcion_normalizada": "Prensa/pinza de presion tipo C TORQUE LOCK 11 in mordaza regular",
+  "tipo_energia": "mano",
+  "L_mm": 279,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": 0.85,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm",
+    "valor_original": "11 in nominal",
+    "url": "https://www.milwaukeetool.com/products/details/11-torque-lock-locking-c-clamp-regular-jaws/48-22-3531",
+    "tipo_fuente": "fabricante (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "peso_kg",
+    "valor_original": "30 oz",
+    "url": "https://www.tenaquip.com/product/milwaukee-torque-lock-locking-pliers-with-regular-jaws-11-length-c-clamp-48-22-3531-uau126",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Es C-clamp (no pinza mordaza curva). A/H: Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g). MEDIDA CRITICA (>250 mm o >2 kg): NO VALIDADO hasta medicion fisica (regla de validacion triple).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "48-22-3532",
+  "numero_parte_corregido": "48-22-3532",
+  "marca": "MILWAUKEE",
+  "descripcion_normalizada": "Prensa/pinza de presion tipo C TORQUE LOCK 6 in",
+  "tipo_energia": "mano",
+  "L_mm": 152,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm",
+    "valor_original": "6 in; apertura 2 in; garganta 2.125 in",
+    "url": "https://www.rshughes.com/p/Milwaukee-TORQUE-LOCK-Locking-C-Clamp-48-22-3532-6-In-2-In-Capacity-2-125-In-Throat-400-Lb-Pressure/045242_32507/",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Peso no encontrado. Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "302+",
+  "numero_parte_corregido": "302+",
+  "marca": "FLUKE",
+  "descripcion_normalizada": "Pinza amperimetrica digital 400 A AC",
+  "tipo_energia": "medicion",
+  "L_mm": 207,
+  "A_mm": 75,
+  "H_mm": 34,
+  "peso_kg": 0.265,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm/A_mm/H_mm/peso",
+    "valor_original": "(207 x 75 x 34) mm; 265 g",
+    "url": "https://www.itm.com/pdfs/cache/www.itm.com/302--em-esp/datasheet/302--em-esp-datasheet.pdf",
+    "tipo_fuente": "fabricante (datasheet) (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "L_mm/A_mm/H_mm/peso",
+    "valor_original": "207 x 75 x 34 mm; 265 g",
+    "url": "https://www.manualslib.com/manual/2131172/Fluke-302Plus.html",
+    "tipo_fuente": "fabricante (manual) (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Datasheet y manual de usuario Fluke (espejos en ITM/ManualsLib).",
+  "validacion": "2 fuentes"
+ },
+ {
+  "numero_parte": "MT-8200-49A",
+  "numero_parte_corregido": "MT-8200-49A",
+  "marca": "FLUKE NETWORKS",
+  "descripcion_normalizada": "Probador de cableado MicroMapper",
+  "tipo_energia": "medicion",
+  "L_mm": 125,
+  "A_mm": 52,
+  "H_mm": 30,
+  "peso_kg": 0.13,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm",
+    "valor_original": "125 mm (titulo)",
+    "url": "https://uk.farnell.com/fluke-networks/mt-8200-49a/tester-lan-lcd-10-100-1000/dp/9808639",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "L_mm/A_mm/H_mm/peso",
+    "valor_original": "4.9 x 2 x 1.2 in; 125 x 52 x 30 mm; 4.59 oz",
+    "url": "https://www.tequipment.net/FlukeNetworksMT-8200-49A.html",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Unidad remota de wiremap no incluida en medida. Hay 2 unidades en inventario (E8, Q2).",
+  "validacion": "2 fuentes"
+ },
+ {
+  "numero_parte": "Gll 12-22 g",
+  "numero_parte_corregido": "GLL 12-22 G (0 601 065 320)",
+  "marca": "BOSCH",
+  "descripcion_normalizada": "Nivel laser de lineas cruzadas verde 12 m con soporte giratorio",
+  "tipo_energia": "medicion",
+  "L_mm": 100,
+  "A_mm": 64,
+  "H_mm": 100,
+  "peso_kg": 0.35,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm/A_mm/H_mm/peso",
+    "valor_original": "10 x 6.4 x 10 cm; 0.35 kg",
+    "url": "https://www.homedepot.com.mx/p/bosch-nivelador-laser-verde-bosch-gll-12-22-g-221419",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "peso_kg",
+    "valor_original": "~0.35 kg (atribuido a la version roja GLL 12-22)",
+    "url": "https://www.bosch-professional.com/eg/en/products/gll-12-22-g-0601065320",
+    "tipo_fuente": "fabricante (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Incluye estuche segun HD MX (medir estuche). Peso Bosch no confirmado para la version G.",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "Js481lg",
+  "numero_parte_corregido": "JS481LG",
+  "marca": "RYOBI",
+  "descripcion_normalizada": "Sierra caladora alambrica 4.8 A orbital velocidad variable",
+  "tipo_energia": "electrica_alambrica",
+  "L_mm": 236,
+  "A_mm": 79,
+  "H_mm": 279,
+  "peso_kg": 2.191,
+  "dim_tipo": "empaque",
+  "fuentes": [
+   {
+    "campo": "dim/peso",
+    "valor_original": "3.1 x 9.3 x 11 in; 4.83 lbs",
+    "url": "https://www.homedepot.com/p/RYOBI-4-8-Amp-Corded-Variable-Speed-Orbital-Jig-Saw-JS481LG/205105611",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Probablemente dimensiones/peso de producto ensamblado segun Home Depot US; 11 in de 'ancho' sugiere caja -> se marca empaque por precaucion. Medir. MEDIDA CRITICA (>250 mm o >2 kg): NO VALIDADO hasta medicion fisica (regla de validacion triple).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "36475",
+  "numero_parte_corregido": "36475 (12-R, set 1/2-2 in NPT)",
+  "marca": "RIDGID",
+  "descripcion_normalizada": "Juego de tarrajas 12-R matraca expuesta, 6 cabezales 1/2-2 in con estuche",
+  "tipo_energia": "mano",
+  "L_mm": null,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": 15.762,
+  "dim_tipo": "estuche",
+  "fuentes": [
+   {
+    "campo": "peso_kg",
+    "valor_original": "34-3/4 lbs (15.8 kg)",
+    "url": "https://cf-t.com/ridgid-36475-12-r-exposed-ratchet-threader-set-npt-12-2",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Las filas O1-O6 del inventario son los 6 cabezales del MISMO set 36475 (no 6 partes distintas). Peso del set completo con estuche (otra fuente dice 44 lb). Dimensiones del estuche no encontradas -> medir. MEDIDA CRITICA (>250 mm o >2 kg): NO VALIDADO hasta medicion fisica (regla de validacion triple).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "32985",
+  "numero_parte_corregido": "32985 (set 7 pzas)",
+  "marca": "WIHA",
+  "descripcion_normalizada": "Juego 7 piezas herramienta aislada 1000 V (2 planos, 2 Phillips, 3 pinzas) con estuche de cinturon 91205",
+  "tipo_energia": "mano",
+  "L_mm": null,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": 1.134,
+  "dim_tipo": "estuche",
+  "fuentes": [
+   {
+    "campo": "contenido",
+    "valor_original": "32012, 32023, 32101, 32102, 32926, 32930, 32933 + pouch 91205",
+    "url": "https://www.transcat.com/wiha-quality-tool-32985-32985-288923",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "peso_kg",
+    "valor_original": "2.5 lbs",
+    "url": "https://www.wihatools.com/products/insulated-industrial-pliers-cutters-and-screwdrivers-7-piece-set",
+    "tipo_fuente": "fabricante (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "CORRECCION: 32985 NO es un numero falso: es el set Wiha 7 pzas cuyos componentes coinciden 1:1 con las filas A2,A3,A8,A9,A10,A11,A12. Peso = set completo. Dimensiones del estuche no encontradas -> medir.",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "32985",
+  "numero_parte_corregido": "32101",
+  "marca": "WIHA",
+  "descripcion_normalizada": "Desarmador aislado Phillips #1 x 80 mm (fila A2)",
+  "tipo_energia": "mano",
+  "L_mm": null,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": null,
+  "fuentes": [
+   {
+    "campo": "numero_parte",
+    "valor_original": "32101",
+    "url": "https://www.transcat.com/wiha-quality-tool-32985-32985-288923",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Largo de hoja nominal en descripcion; largo total con mango no encontrado. Equivalente europeo de Z 05/Z 12: items 38857/38861 (blister). Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g).",
+  "validacion": "no encontrado"
+ },
+ {
+  "numero_parte": "32985",
+  "numero_parte_corregido": "32102",
+  "marca": "WIHA",
+  "descripcion_normalizada": "Desarmador aislado Phillips #2 x 100 mm (fila A3)",
+  "tipo_energia": "mano",
+  "L_mm": null,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": null,
+  "fuentes": [
+   {
+    "campo": "numero_parte",
+    "valor_original": "32102",
+    "url": "https://www.transcat.com/wiha-quality-tool-32985-32985-288923",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Largo de hoja nominal en descripcion; largo total con mango no encontrado. Equivalente europeo de Z 05/Z 12: items 38857/38861 (blister). Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g).",
+  "validacion": "no encontrado"
+ },
+ {
+  "numero_parte": "32985",
+  "numero_parte_corregido": "32012",
+  "marca": "WIHA",
+  "descripcion_normalizada": "Desarmador aislado plano 3.0 x 100 mm (0.5x3.0x100) (fila A11/A12)",
+  "tipo_energia": "mano",
+  "L_mm": null,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": null,
+  "fuentes": [
+   {
+    "campo": "numero_parte",
+    "valor_original": "32012",
+    "url": "https://www.transcat.com/wiha-quality-tool-32985-32985-288923",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Largo de hoja nominal en descripcion; largo total con mango no encontrado. Equivalente europeo de Z 05/Z 12: items 38857/38861 (blister). Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g).",
+  "validacion": "no encontrado"
+ },
+ {
+  "numero_parte": "32985",
+  "numero_parte_corregido": "32023",
+  "marca": "WIHA",
+  "descripcion_normalizada": "Desarmador aislado plano 4.5 x 100 mm (1.0x4.5x100) (fila A11/A12)",
+  "tipo_energia": "mano",
+  "L_mm": null,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": null,
+  "fuentes": [
+   {
+    "campo": "numero_parte",
+    "valor_original": "32023",
+    "url": "https://www.transcat.com/wiha-quality-tool-32985-32985-288923",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Largo de hoja nominal en descripcion; largo total con mango no encontrado. Equivalente europeo de Z 05/Z 12: items 38857/38861 (blister). Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g).",
+  "validacion": "no encontrado"
+ },
+ {
+  "numero_parte": "32985",
+  "numero_parte_corregido": "32926",
+  "marca": "WIHA",
+  "descripcion_normalizada": "Pinza de punta aislada industrial 6.3 in (160 mm) = Z 05 0 09 160 (fila A10)",
+  "tipo_energia": "mano",
+  "L_mm": 160,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "numero_parte",
+    "valor_original": "32926",
+    "url": "https://www.transcat.com/wiha-quality-tool-32985-32985-288923",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "L_mm",
+    "valor_original": "160 mm nominal (6.3 in / 8 in)",
+    "url": "https://www.transcat.com/wiha-quality-tool-32985-32985-288923",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Largo = medida nominal de la pinza. Equivalente europeo de Z 05/Z 12: items 38857/38861 (blister). Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "32985",
+  "numero_parte_corregido": "32933",
+  "marca": "WIHA",
+  "descripcion_normalizada": "Pinza de corte diagonal aislada industrial 6.3 in (160 mm) = Z 12 0 09 160 (fila A8)",
+  "tipo_energia": "mano",
+  "L_mm": 160,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "numero_parte",
+    "valor_original": "32933",
+    "url": "https://www.transcat.com/wiha-quality-tool-32985-32985-288923",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "L_mm",
+    "valor_original": "160 mm nominal (6.3 in / 8 in)",
+    "url": "https://www.transcat.com/wiha-quality-tool-32985-32985-288923",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Largo = medida nominal de la pinza. Equivalente europeo de Z 05/Z 12: items 38857/38861 (blister). Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "32985",
+  "numero_parte_corregido": "32930",
+  "marca": "WIHA",
+  "descripcion_normalizada": "Pinza combinada aislada industrial 8 in (200 mm) = Z 01 0 09 200 (fila A9)",
+  "tipo_energia": "mano",
+  "L_mm": 200,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "numero_parte",
+    "valor_original": "32930",
+    "url": "https://www.transcat.com/wiha-quality-tool-32985-32985-288923",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "L_mm",
+    "valor_original": "200 mm nominal (6.3 in / 8 in)",
+    "url": "https://www.transcat.com/wiha-quality-tool-32985-32985-288923",
+    "tipo_fuente": "distribuidor (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Largo = medida nominal de la pinza. Equivalente europeo de Z 05/Z 12: items 38857/38861 (blister). Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "73126",
+  "numero_parte_corregido": "73126 (HD MX SKU 128368)",
+  "marca": "HUSKY",
+  "descripcion_normalizada": "Llave stillson para tubo 14 in",
+  "tipo_energia": "mano",
+  "L_mm": 325,
+  "A_mm": 83,
+  "H_mm": 32,
+  "peso_kg": null,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm/A_mm/H_mm",
+    "valor_original": "32.5 x 8.3 x 3.2 cm",
+    "url": "https://www.homedepot.com.mx/p/husky-llave-para-tubo-de-14-pulgadas-acero-husky-73126-128368",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Coherente con 14 in (355 mm nominal a mordaza abierta). Peso no encontrado -> pesar. 2 unidades. MEDIDA CRITICA (>250 mm o >2 kg): NO VALIDADO hasta medicion fisica (regla de validacion triple).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "BUSCAR EN FACTURA",
+  "numero_parte_corregido": "HD MX SKU 709207 (modelo Husky no publicado)",
+  "marca": "HUSKY",
+  "descripcion_normalizada": "Pinza de presion 7 in mordaza recta",
+  "tipo_energia": "mano",
+  "L_mm": 178,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm",
+    "valor_original": "7 pulgadas nominal",
+    "url": "https://pro.homedepot.com.mx/pro/herramientas/herramientas-manuales/herramientas-de-corte-y-desbaste/pinza-de-presion-de-mordaza-recta-de-7-709207",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Pagina HD MX encontrada (SKU 709207 / 709207P) pero el buscador no expuso numero de modelo del fabricante ni medidas. La fila L4 tiene SKU 709208 (probable error de captura; mismo producto). Nominal 7 in; Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "709204",
+  "numero_parte_corregido": "709204 (HD MX SKU)",
+  "marca": "HUSKY",
+  "descripcion_normalizada": "Pinza de presion mordaza curva 10 in",
+  "tipo_energia": "mano",
+  "L_mm": 254,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm",
+    "valor_original": "25.4 cm",
+    "url": "https://www.homedepot.com.mx/p/husky-pinzas-de-presion-de-mordaza-curva-husky-709204-709204",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Peso/A/H no encontrados. MEDIDA CRITICA (>250 mm o >2 kg): NO VALIDADO hasta medicion fisica (regla de validacion triple).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "709195",
+  "numero_parte_corregido": "709195 (HD MX SKU)",
+  "marca": "HUSKY",
+  "descripcion_normalizada": "Pinza de electricista alto apalancamiento 9 in (22.9 cm)",
+  "tipo_energia": "mano",
+  "L_mm": 250,
+  "A_mm": 50,
+  "H_mm": 15,
+  "peso_kg": 0.515,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm/A_mm/H_mm/peso",
+    "valor_original": "25 x 5 x 1.5 cm; .515 kg",
+    "url": "https://www.homedepot.com.mx/p/husky-pinzas-de-electricista-de-229-cm-en-acero-husky-709195-709195",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Posiblemente medidas con blister (25 cm vs 22.9 nominal).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "903465",
+  "numero_parte_corregido": "903465 (HD MX SKU)",
+  "marca": "HUSKY",
+  "descripcion_normalizada": "Pinza de corte diagonal alto apalancamiento 7 in (17.8 cm)",
+  "tipo_energia": "mano",
+  "L_mm": 178,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm",
+    "valor_original": "17.8 cm (nominal en titulo)",
+    "url": "https://www.homedepot.com.mx/p/husky-pinzas-en-diagonal-de-178-cm-acero-husky-903465-903465",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Solo largo nominal.",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "17018",
+  "numero_parte_corregido": "17018 (HD MX SKU 128380)",
+  "marca": "HUSKY",
+  "descripcion_normalizada": "Llave ajustable (perica) doble velocidad 12 in",
+  "tipo_energia": "mano",
+  "L_mm": 300,
+  "A_mm": 78,
+  "H_mm": 20,
+  "peso_kg": null,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm/A_mm/H_mm",
+    "valor_original": "7.8 x 30 x 2 cm",
+    "url": "https://www.homedepot.com.mx/p/husky-llave-ajustable-de-12-pulgadas-acero-husky-17018-128380",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Peso no encontrado. 3 unidades. MEDIDA CRITICA (>250 mm o >2 kg): NO VALIDADO hasta medicion fisica (regla de validacion triple).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "17016",
+  "numero_parte_corregido": "17016 (HD MX SKU 128377)",
+  "marca": "HUSKY",
+  "descripcion_normalizada": "Llave ajustable (perica) doble velocidad 8 in",
+  "tipo_energia": "mano",
+  "L_mm": 203,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm",
+    "valor_original": "8 pulgadas nominal; apertura 1-1/8 in",
+    "url": "https://homedepot.com.mx/p/husky-llave-ajustable-de-8-pulgadas-acero-husky-17016-128377",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Solo nominal. 3 unidades.",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "Hrrw7pcsaemx",
+  "numero_parte_corregido": "HRRW7PCSAEMX (HD MX SKU 165760)",
+  "marca": "HUSKY",
+  "descripcion_normalizada": "Juego 7 llaves combinadas matraca reversible SAE 3/8-3/4 con organizador",
+  "tipo_energia": "mano",
+  "L_mm": 245,
+  "A_mm": 175,
+  "H_mm": 45,
+  "peso_kg": null,
+  "dim_tipo": "estuche",
+  "fuentes": [
+   {
+    "campo": "L_mm/A_mm/H_mm",
+    "valor_original": "17.5 x 24.5 x 4.5 cm (en el titulo)",
+    "url": "https://www.homedepot.com.mx/p/husky-juego-de-llaves-combinadas-de-trinquete-reversible-175-x-245-x-45-cm-de-acero-husky-7-piezas-hrrw7pcsaemx-165760",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Medidas del juego con charola organizadora.",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "10790",
+  "numero_parte_corregido": "10790 (HD MX SKU 840933)",
+  "marca": "HUSKY",
+  "descripcion_normalizada": "Nivel torpedo magnetico plastico 9 in",
+  "tipo_energia": "medicion",
+  "L_mm": 230,
+  "A_mm": 45,
+  "H_mm": 16,
+  "peso_kg": null,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm/A_mm/H_mm",
+    "valor_original": "23 x 4.5 x 1.6 cm",
+    "url": "https://www.homedepot.com.mx/p/husky-nivel-magnetico-plastico-huski-10790-840933",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "2 unidades.",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "14388",
+  "numero_parte_corregido": "14388 / CALDI-6MP",
+  "marca": "TRUPER",
+  "descripcion_normalizada": "Calibrador vernier digital 6 in acero inoxidable",
+  "tipo_energia": "medicion",
+  "L_mm": 237,
+  "A_mm": 16,
+  "H_mm": null,
+  "peso_kg": 0.205,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm/A_mm/peso",
+    "valor_original": "23.7 x 1.6 cm; 205 g",
+    "url": "https://www.truper.com/ficha_merca/ficha-print.php?code=14388",
+    "tipo_fuente": "fabricante (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Ancho de 1.6 cm parece espesor; el ancho real con mordazas ~7-8 cm -> verificar. Estuche aparte.",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "11442",
+  "numero_parte_corregido": "11442 / J-MATA-40",
+  "marca": "TRUPER",
+  "descripcion_normalizada": "Juego 40 piezas machuelos y tarrajas con maneral y estuche plastico",
+  "tipo_energia": "mano",
+  "L_mm": null,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": null,
+  "fuentes": [
+   {
+    "campo": "contenido",
+    "valor_original": "juego 40 pzas con estuche",
+    "url": "https://www.truper.com/ficha_merca/ficha-print.php?code=11442",
+    "tipo_fuente": "fabricante (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Identificado, pero ficha no expuso medidas en buscador. Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g). (medir estuche cerrado)",
+  "validacion": "no encontrado"
+ },
+ {
+  "numero_parte": "EXT-5",
+  "numero_parte_corregido": "14512 / EXT-5",
+  "marca": "TRUPER",
+  "descripcion_normalizada": "Juego 5 extractores de tornillos tipo espiral con estuche",
+  "tipo_energia": "mano",
+  "L_mm": 180,
+  "A_mm": 130,
+  "H_mm": 20,
+  "peso_kg": 0.13,
+  "dim_tipo": "empaque",
+  "fuentes": [
+   {
+    "campo": "empaque",
+    "valor_original": "18 x 13 x 2 cm; 0.13 kg (peso producto 100 g)",
+    "url": "https://www.truper.com/ficha_merca/ficha-print.php?code=14512",
+    "tipo_fuente": "fabricante (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "CORRECCION de descripcion: EXT-5 son extractores de TORNILLOS (no de poleas). Peso producto 0.10 kg; se reporta empaque.",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "4212",
+  "numero_parte_corregido": "4216",
+  "marca": "URREA",
+  "descripcion_normalizada": "Juego extractor quijada recta tipo B 6 t 20 piezas sin caja",
+  "tipo_energia": "mano",
+  "L_mm": 300,
+  "A_mm": 160,
+  "H_mm": 50,
+  "peso_kg": 3.7,
+  "dim_tipo": "empaque",
+  "fuentes": [
+   {
+    "campo": "peso/dim",
+    "valor_original": "3.70 kg; 30 x 16 x 5 cm",
+    "url": "https://urrea.com/extractor-quijada-recta-tipo-b6-ton-20-piezas-4216",
+    "tipo_fuente": "fabricante (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "CORRECCION: la descripcion '6 ton 20 piezas sin caja' corresponde al Urrea 4216; el 4212 (4212SJ/4212SJB) es de 14-15 piezas. Confirmar con la factura. Dimensiones probablemente de empaque (el juego no trae caja). MEDIDA CRITICA (>250 mm o >2 kg): NO VALIDADO hasta medicion fisica (regla de validacion triple).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "Mh-16",
+  "numero_parte_corregido": "16931 / MH-16",
+  "marca": "TRUPER",
+  "descripcion_normalizada": "Mazo de hule 16 oz mango de madera",
+  "tipo_energia": "mano",
+  "L_mm": 340,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm",
+    "valor_original": "largo de mango 13-1/2 in (34 cm); cara 2-1/8 in",
+    "url": "https://www.truper.com/ficha_merca/ficha-print.php?code=16931",
+    "tipo_fuente": "fabricante (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Peso de cabeza 16 oz (0.45 kg) nominal; peso total no publicado. MEDIDA CRITICA (>250 mm o >2 kg): NO VALIDADO hasta medicion fisica (regla de validacion triple).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "Ma-16f",
+  "numero_parte_corregido": "19710 / MA-16F",
+  "marca": "TRUPER",
+  "descripcion_normalizada": "Martillo una curva 16 oz mango fibra de vidrio",
+  "tipo_energia": "mano",
+  "L_mm": 340,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": 0.707,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "L_mm/peso",
+    "valor_original": "34 cm; 0.707 kg",
+    "url": "https://www.truper.com/ficha_merca/ficha-print.php?code=19710",
+    "tipo_fuente": "fabricante (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "2 unidades. MEDIDA CRITICA (>250 mm o >2 kg): NO VALIDADO hasta medicion fisica (regla de validacion triple).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "17036",
+  "numero_parte_corregido": "17036 / NP-24",
+  "marca": "TRUPER",
+  "descripcion_normalizada": "Nivel profesional aluminio 24 in con proteccion ABS",
+  "tipo_energia": "medicion",
+  "L_mm": 630,
+  "A_mm": 60,
+  "H_mm": 30,
+  "peso_kg": 0.41,
+  "dim_tipo": "empaque",
+  "fuentes": [
+   {
+    "campo": "empaque",
+    "valor_original": "3 x 63 x 6 cm; 0.41 kg",
+    "url": "https://www.truper.com/ficha_merca/ficha-print.php?code=17036",
+    "tipo_fuente": "fabricante (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Largo nominal 24 in (610 mm). Medidas de empaque de la ficha Truper. MEDIDA CRITICA (>250 mm o >2 kg): NO VALIDADO hasta medicion fisica (regla de validacion triple).",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "30-615",
+  "numero_parte_corregido": "30-615",
+  "marca": "STANLEY",
+  "descripcion_normalizada": "Flexometro Global Plus 5 m x 19 mm",
+  "tipo_energia": "medicion",
+  "L_mm": 70,
+  "A_mm": 40,
+  "H_mm": 60,
+  "peso_kg": 0.25,
+  "dim_tipo": "herramienta",
+  "fuentes": [
+   {
+    "campo": "dim/peso",
+    "valor_original": "7 x 4 x 6 cm; 0.3 kg",
+    "url": "https://www.claroshop.com/producto/1726290/flexometro-stanley-30-615-de-5-metros",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   },
+   {
+    "campo": "peso_kg",
+    "valor_original": "0.25 kg",
+    "url": "https://www.ferrepat.com/sku/flexometro-cinta-metrica-stanley-global-plus-30615m-5m/25157",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Peso 0.25-0.30 kg segun tienda. 3 unidades.",
+  "validacion": "1 fuente"
+ },
+ {
+  "numero_parte": "Dwa0870",
+  "numero_parte_corregido": "DWA0870 (HD MX SKU 119665)",
+  "marca": "DEWALT",
+  "descripcion_normalizada": "Juego 15 piezas brocas y cinceles SDS-Plus con maletin",
+  "tipo_energia": "mano",
+  "L_mm": null,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": null,
+  "fuentes": [
+   {
+    "campo": "dim",
+    "valor_original": "65.3 x 24.2 x 103.2 cm (titulo HD MX)",
+    "url": "https://www.homedepot.com.mx/p/dewalt-juego-de-brocas-y-cinceles-sds-plus-653-x-242-x-1032-cm-acero-dewalt-15-piezas-dwa0870-119665",
+    "tipo_fuente": "tienda (valor leido del resumen del buscador WebSearch; la pagina NO se pudo abrir: host bloqueado por el proxy)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "foto_url": null,
+  "notas": "Dimension publicada por HD MX es ERRONEA (1 m de alto para un maletin de brocas); se descarta. Probablemente mm o error de captura. Medir maletin.",
+  "validacion": "no encontrado"
+ },
+ {
+  "numero_parte": "Hbcw10xls",
+  "numero_parte_corregido": null,
+  "marca": null,
+  "descripcion_normalizada": "Juego 10 llaves combinadas Husky BITE estandar",
+  "tipo_energia": "mano",
+  "L_mm": null,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": null,
+  "fuentes": [],
+  "foto_url": null,
+  "notas": "No investigado en este time-box (item chico o de baja prioridad de espacio). Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g). SKU HD MX: 217405",
+  "validacion": "no encontrado"
+ },
+ {
+  "numero_parte": "Hfhk3pcsetmx",
+  "numero_parte_corregido": null,
+  "marca": null,
+  "descripcion_normalizada": "Juego llaves Torx/hex tipo navaja",
+  "tipo_energia": "mano",
+  "L_mm": null,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": null,
+  "fuentes": [],
+  "foto_url": null,
+  "notas": "No investigado en este time-box (item chico o de baja prioridad de espacio). Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g). SKU HD MX: 149798",
+  "validacion": "no encontrado"
+ },
+ {
+  "numero_parte": "48-22-8485",
+  "numero_parte_corregido": null,
+  "marca": null,
+  "descripcion_normalizada": "Placa de montaje PACKOUT (x16)",
+  "tipo_energia": "mano",
+  "L_mm": null,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": null,
+  "fuentes": [],
+  "foto_url": null,
+  "notas": "No investigado en este time-box (item chico o de baja prioridad de espacio). Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g).",
+  "validacion": "no encontrado"
+ },
+ {
+  "numero_parte": "1445070000",
+  "numero_parte_corregido": null,
+  "marca": null,
+  "descripcion_normalizada": "Pinza crimpeadora Weidmuller",
+  "tipo_energia": "mano",
+  "L_mm": null,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": null,
+  "fuentes": [],
+  "foto_url": null,
+  "notas": "No investigado en este time-box (item chico o de baja prioridad de espacio). Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g).",
+  "validacion": "no encontrado"
+ },
+ {
+  "numero_parte": "Ce100821",
+  "numero_parte_corregido": null,
+  "marca": null,
+  "descripcion_normalizada": "Pinza pelacables Commercial Electric",
+  "tipo_energia": "mano",
+  "L_mm": null,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": null,
+  "fuentes": [],
+  "foto_url": null,
+  "notas": "No investigado en este time-box (item chico o de baja prioridad de espacio). Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g). SKU HD MX: 127734",
+  "validacion": "no encontrado"
+ },
+ {
+  "numero_parte": "15407",
+  "numero_parte_corregido": null,
+  "marca": null,
+  "descripcion_normalizada": "Escuadra magnetica 4 in para soldar Truper",
+  "tipo_energia": "mano",
+  "L_mm": null,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": null,
+  "fuentes": [],
+  "foto_url": null,
+  "notas": "No investigado en este time-box (item chico o de baja prioridad de espacio). Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g).",
+  "validacion": "no encontrado"
+ },
+ {
+  "numero_parte": "C-7/8x10 / C-5/16x6",
+  "numero_parte_corregido": null,
+  "marca": null,
+  "descripcion_normalizada": "Cinceles de corte frio Truper (25.1 x 2.3 x 2 cm y 15.1 x 0.8 x 1.1 cm segun descripcion del inventario)",
+  "tipo_energia": "mano",
+  "L_mm": null,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": null,
+  "fuentes": [],
+  "foto_url": null,
+  "notas": "No investigado en este time-box (item chico o de baja prioridad de espacio). Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g).",
+  "validacion": "no encontrado"
+ },
+ {
+  "numero_parte": "H3d6p*mmmx / 1065xx",
+  "numero_parte_corregido": null,
+  "marca": null,
+  "descripcion_normalizada": "Dados cuadro 3/8 Husky (10-19 mm y 5/16-1 in) - representativo",
+  "tipo_energia": "mano",
+  "L_mm": null,
+  "A_mm": null,
+  "H_mm": null,
+  "peso_kg": null,
+  "dim_tipo": null,
+  "fuentes": [],
+  "foto_url": null,
+  "notas": "No investigado en este time-box (item chico o de baja prioridad de espacio). Medir fisicamente: largo/ancho/alto maximos en mm con flexometro o vernier y pesar en bascula (g). SKU HD MX: 129318..129326, 106482..106515",
+  "validacion": "no encontrado"
+ }
+]
