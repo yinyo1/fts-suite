@@ -37,7 +37,7 @@ def cotejar(con, corrida_id: int, lineas_odoo: list[dict], desde: str, hasta: st
         cuentas = {r["journal_odoo"]: r for r in cur.fetchall()}
         cur.execute("""SELECT m.id, m.cuenta_id, m.fecha_operacion, m.descripcion, m.referencia, m.cargo, m.abono, m.pagina,
                               a.nombre_canonico, e.periodo, cu.journal_odoo
-                       FROM bancos.movimientos m JOIN bancos.estados e ON e.id=m.estado_id
+                       FROM bancos.movimientos m JOIN bancos.estados_vigentes e ON e.id=m.estado_id
                        JOIN bancos.archivos a ON a.id=e.archivo_id JOIN bancos.cuentas cu ON cu.id=m.cuenta_id
                        WHERE a.estado='validado' AND m.fecha_operacion BETWEEN %s AND %s AND cu.journal_odoo IS NOT NULL
                        ORDER BY m.cuenta_id, m.fecha_operacion, m.id""", (desde, hasta))

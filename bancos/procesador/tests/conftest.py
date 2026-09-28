@@ -9,7 +9,7 @@ import pytest
 AQUI = Path(__file__).resolve().parent
 sys.path.insert(0, str(AQUI.parent))
 sys.path.insert(0, str(AQUI))
-MIGRACION = AQUI.parents[2] / "db" / "migrations" / "bancos" / "bancos_0001_fundacion.sql"
+MIGRACIONES = sorted((AQUI.parents[2] / "db" / "migrations" / "bancos").glob("bancos_*.sql"))
 PG = os.environ.get("BANCOS_TEST_PG", "host=/tmp port=5433 user=postgres")
 
 
@@ -20,11 +20,12 @@ def _psql(db, *args):
 
 @pytest.fixture
 def base_limpia(monkeypatch):
-    """Una base NUEVA por prueba, con la migración aplicada tal cual está en el repo."""
+    """Una base NUEVA por prueba, con las migraciones aplicadas tal cual está en el repo."""
     from fixtures import CUENTAS_JSON
     nombre = "t_" + uuid.uuid4().hex[:10]
     _psql("postgres", "-c", f"CREATE DATABASE {nombre}")
-    _psql(nombre, "-1", "-f", str(MIGRACION))
+    for m in MIGRACIONES:
+        _psql(nombre, "-1", "-f", str(m))
     monkeypatch.setenv("DATABASE_URL", f"{PG} dbname={nombre}")
     monkeypatch.setenv("BANCOS_DB_ROLE", "bancos_app")
     monkeypatch.setenv("BANCOS_CUENTAS_JSON", CUENTAS_JSON)

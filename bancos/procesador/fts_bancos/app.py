@@ -106,13 +106,14 @@ async def procesar(req: Request):
 @app.post("/procesar-raw")
 async def procesar_raw(req: Request, nombre: str, corrida_id: int | None = None, graph_item_id: str | None = None,
                        graph_drive_id: str | None = None, ruta: str | None = None, subido_por: str | None = None,
-                       subido_at: str | None = None, origen: str = "buzon", solo_estados: int = 0):
+                       subido_at: str | None = None, origen: str = "buzon", solo_estados: int = 0,
+                       reprocesar: int = 0):
     """Mismo contrato que /procesar, pero el cuerpo son los bytes del archivo (n8n manda el binario tal cual)."""
     contenido = await req.body()
     if not contenido:
         raise HTTPException(400, "cuerpo vacío")
     meta = {"origen": origen, "graph_item_id": graph_item_id, "graph_drive_id": graph_drive_id, "ruta": ruta,
-            "subido_por": subido_por, "subido_at": subido_at}
+            "subido_por": subido_por, "subido_at": subido_at, "reprocesar": bool(reprocesar)}
     if solo_estados:
         with conexion() as con:
             cat = pipeline.catalogo_db(con)
@@ -201,6 +202,15 @@ def diag_token_roles(req: Request):
     ahora = int(time.time())
     return {"ok": True, "roles": sorted(d.get("roles", [])), "emitido_utc": datetime.fromtimestamp(d.get("iat", 0), timezone.utc).isoformat(),
             "vence_utc": datetime.fromtimestamp(d.get("exp", 0), timezone.utc).isoformat(), "segundos_para_vencer": d.get("exp", 0) - ahora}
+
+
+@app.get("/archivos")
+def listar_archivos():
+    with conexion() as con, con.cursor() as cur:
+        cur.execute("""SELECT a.id, a.sha256, a.nombre_original, a.nombre_canonico, a.estado, a.motivo, a.periodo, a.tipo_detectado,
+                              a.origen, c.alias, c.numero_mask, a.zip_origen_id
+                       FROM bancos.archivos a LEFT JOIN bancos.cuentas c ON c.id=a.cuenta_id ORDER BY a.id""")
+        return json.loads(json.dumps(cur.fetchall(), default=str))
 
 
 @app.get("/diag/estructura/{sha}")
@@ -341,7 +351,7 @@ def resumen():
         arch = cur.fetchall()
         cur.execute("""SELECT c.alias, c.numero_mask, e.periodo, e.v1_ok, e.v2_ok, e.num_movimientos, e.num_saldos_impresos,
                               (SELECT resultado FROM bancos.validaciones_v3 v WHERE v.estado_id=e.id ORDER BY v.id DESC LIMIT 1) AS v3
-                       FROM bancos.estados e JOIN bancos.cuentas c ON c.id=e.cuenta_id JOIN bancos.archivos a ON a.id=e.archivo_id
+                       FROM bancos.estados_vigentes e JOIN bancos.cuentas c ON c.id=e.cuenta_id JOIN bancos.archivos a ON a.id=e.archivo_id
                        WHERE a.estado='validado' ORDER BY c.id, e.periodo""")
         ests = cur.fetchall()
         cur.execute("SELECT id, origen, iniciada_at, terminada_at, leidos, validados, rechazados, duplicados, graph_ok FROM bancos.corridas ORDER BY id DESC LIMIT 5")
@@ -355,13 +365,13 @@ def aceptacion(anio: str = "2026"):
     los números reales no viven en el repo; se comparan en el issue."""
     with conexion() as con, con.cursor() as cur:
         cur.execute("""SELECT count(*) AS estados, sum(e.num_movimientos) AS movimientos, sum(e.num_saldos_impresos) AS saldos
-                       FROM bancos.estados e JOIN bancos.archivos a ON a.id=e.archivo_id
+                       FROM bancos.estados_vigentes e JOIN bancos.archivos a ON a.id=e.archivo_id
                        WHERE a.estado='validado' AND e.periodo LIKE %s AND e.v1_ok AND e.v2_ok""", (anio + "-%",))
         tot = cur.fetchone()
         cur.execute("""SELECT c.alias, h.periodo, h.motivo, h.monto_diferencia FROM bancos.huecos h JOIN bancos.cuentas c ON c.id=h.cuenta_id
                        WHERE h.resuelto_en IS NULL AND h.periodo LIKE %s ORDER BY c.id, h.periodo""", (anio + "-%",))
         huecos = cur.fetchall()
-        cur.execute("""SELECT c.alias, e.periodo, e.saldo_inicial, e.saldo_final FROM bancos.estados e
+        cur.execute("""SELECT c.alias, e.periodo, e.saldo_inicial, e.saldo_final FROM bancos.estados_vigentes e
                        JOIN bancos.cuentas c ON c.id=e.cuenta_id JOIN bancos.archivos a ON a.id=e.archivo_id
                        WHERE a.estado='validado' AND e.periodo LIKE %s ORDER BY c.id, e.periodo""", (anio + "-%",))
         saldos = cur.fetchall()

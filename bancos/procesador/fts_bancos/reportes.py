@@ -52,7 +52,7 @@ SELECT m.id, cu.banco, cu.alias, cu.numero_mask, cu.moneda, e.periodo, m.fecha_o
        e.v1_ok, e.v2_ok, (SELECT resultado FROM bancos.validaciones_v3 v WHERE v.estado_id=e.id ORDER BY v.id DESC LIMIT 1) AS v3,
        a.nombre_canonico, m.pagina, m.renglon, m.hash
 FROM bancos.movimientos m
-JOIN bancos.estados e ON e.id = m.estado_id
+JOIN bancos.estados_vigentes e ON e.id = m.estado_id
 JOIN bancos.archivos a ON a.id = e.archivo_id
 JOIN bancos.cuentas cu ON cu.id = m.cuenta_id
 LEFT JOIN bancos.clasificacion_vigente c ON c.movimiento_id = m.id
@@ -158,15 +158,15 @@ def leeme_md(con, generado: str) -> str:
         cuentas = cur.fetchall()
         cur.execute("""SELECT a.*, e.v1_ok, e.v2_ok, e.saldo_inicial, e.saldo_final,
                          (SELECT resultado FROM bancos.validaciones_v3 v WHERE v.estado_id=e.id ORDER BY v.id DESC LIMIT 1) AS v3
-                       FROM bancos.archivos a LEFT JOIN bancos.estados e ON e.archivo_id=a.id
+                       FROM bancos.archivos a LEFT JOIN bancos.estados_vigentes e ON e.archivo_id=a.id
                        ORDER BY a.cuenta_id NULLS LAST, a.periodo NULLS LAST, a.id""")
         archivos = cur.fetchall()
         cur.execute("""SELECT h.*, c.alias, c.banco, c.numero_mask FROM bancos.huecos h JOIN bancos.cuentas c ON c.id=h.cuenta_id
                        WHERE h.resuelto_en IS NULL ORDER BY c.id, h.periodo""")
         huecos = cur.fetchall()
         cur.execute("""SELECT d.*, a.nombre_original, b.nombre_canonico AS original
-                       FROM bancos.duplicados_logicos d JOIN bancos.estados e ON e.id=d.estado_id JOIN bancos.archivos a ON a.id=e.archivo_id
-                       JOIN bancos.estados e2 ON e2.id=d.duplicado_de JOIN bancos.archivos b ON b.id=e2.archivo_id ORDER BY d.id""")
+                       FROM bancos.duplicados_logicos d JOIN bancos.estados_vigentes e ON e.id=d.estado_id JOIN bancos.archivos a ON a.id=e.archivo_id
+                       JOIN bancos.estados_vigentes e2 ON e2.id=d.duplicado_de JOIN bancos.archivos b ON b.id=e2.archivo_id ORDER BY d.id""")
         dups = cur.fetchall()
         cur.execute("""SELECT v.nombre, a.nombre_canonico, a.nombre_original FROM bancos.avistamientos v JOIN bancos.archivos a ON a.id=v.archivo_id
                        WHERE v.id NOT IN (SELECT min(id) FROM bancos.avistamientos GROUP BY archivo_id) ORDER BY v.id""")
@@ -251,7 +251,7 @@ def html_estados(con, generado: str) -> str:
                               x.v1_ok, x.v2_ok, x.paginas, a.nombre_canonico,
                               (SELECT resultado FROM bancos.validaciones_v3 v WHERE v.estado_id=x.id ORDER BY v.id DESC LIMIT 1) AS v3,
                               (SELECT diferencia FROM bancos.validaciones_v3 v WHERE v.estado_id=x.id ORDER BY v.id DESC LIMIT 1) AS v3_dif
-                       FROM bancos.estados x JOIN bancos.archivos a ON a.id=x.archivo_id JOIN bancos.cuentas c ON c.id=x.cuenta_id
+                       FROM bancos.estados_vigentes x JOIN bancos.archivos a ON a.id=x.archivo_id JOIN bancos.cuentas c ON c.id=x.cuenta_id
                        WHERE a.estado='validado' ORDER BY c.id, x.periodo""")
         ests = cur.fetchall()
         cur.execute("""SELECT c.banco, c.alias, c.numero_mask, h.periodo, h.motivo, h.monto_diferencia, h.detalle
@@ -260,7 +260,7 @@ def html_estados(con, generado: str) -> str:
         cur.execute("""SELECT c.alias AS origen, m.fecha_operacion, m.cargo, cv.subcategoria, cv.par_traspaso_id IS NOT NULL AS con_pareja,
                               a.nombre_canonico, m.pagina
                        FROM bancos.movimientos m JOIN bancos.clasificacion_vigente cv ON cv.movimiento_id=m.id
-                       JOIN bancos.cuentas c ON c.id=m.cuenta_id JOIN bancos.estados x ON x.id=m.estado_id JOIN bancos.archivos a ON a.id=x.archivo_id
+                       JOIN bancos.cuentas c ON c.id=m.cuenta_id JOIN bancos.estados_vigentes x ON x.id=m.estado_id JOIN bancos.archivos a ON a.id=x.archivo_id
                        WHERE cv.es_traspaso_interno AND m.cargo>0 AND a.estado='validado' ORDER BY m.fecha_operacion""")
         trasp = cur.fetchall()
     css = """body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:24px;color:#1b1f23;background:#fff}h1{font-size:20px}h2{font-size:16px;margin-top:26px}

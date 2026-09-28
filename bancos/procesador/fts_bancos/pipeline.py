@@ -214,7 +214,7 @@ def procesar_archivo(con, contenido: bytes, nombre: str, meta: dict, corrida_id:
 def _procesar(con, contenido, nombre, meta, corrida_id, catalogo, reglas, items, zip_origen_id, ruta_en_zip):
     sha = sha256_bytes(contenido)
     fila, nuevo = _upsert_archivo(con, sha, contenido, nombre, meta, zip_origen_id, ruta_en_zip, corrida_id)
-    if not nuevo and fila["estado"] != "recibido":
+    if not nuevo and fila["estado"] != "recibido" and not _toca_reprocesar(con, fila, meta):
         it = _item_desde_archivo_existente(con, fila, nombre, ruta_en_zip, catalogo)
         it.es_pieza_de_zip = zip_origen_id is not None
         items.append(it)
@@ -251,6 +251,37 @@ def _procesar(con, contenido, nombre, meta, corrida_id, catalogo, reglas, items,
     item.ruta_en_zip = ruta_en_zip
     item.es_pieza_de_zip = zip_origen_id is not None
     items.append(item)
+
+
+def _toca_reprocesar(con, fila, meta) -> bool:
+    """Reproceso explícito (inventario de originales): un archivo ya visto se vuelve a leer
+    sólo si no tiene estado con el parser actual. El estado anterior se queda (regla 2);
+    un duplicado subido al buzón nunca entra aquí porque el buzón no pide reproceso."""
+    if not meta.get("reprocesar") or fila["estado"] == "sospechoso":
+        return False
+    if fila["tipo_detectado"] == "zip":
+        return True   # se vuelve a abrir; cada pieza decide por su cuenta
+    with con.cursor() as cur:
+        cur.execute("SELECT 1 FROM bancos.estados WHERE archivo_id=%s AND parser_version=%s", (fila["id"], bbva.PARSER_VERSION))
+        return cur.fetchone() is None
+
+
+def identificar_cuenta(est, catalogo: Catalogo):
+    """La cuenta sale del ENCABEZADO: primero el 'No. de Cuenta' / CLABE que leyó el parser,
+    después el texto de la pág. 1 ANTES del detalle de movimientos. Nunca del detalle: ahí
+    aparecen cuentas propias en los traspasos (un estado de Nómina menciona la General)."""
+    num = re.sub(r"\D", "", est.numero_cuenta or "")
+    if num:
+        for c in catalogo.cuentas:
+            if num == c.numero or num.lstrip("0") == c.numero.lstrip("0"):
+                return c
+    if est.clabe:
+        for c in catalogo.cuentas:
+            if c.clabe and c.clabe == est.clabe:
+                return c
+    t = est.texto_encabezado
+    corte = re.search(r"Detalle\s+de\s+Movimientos", t, re.I)
+    return catalogo.identificar(t[:corte.start()] if corte else t[:1500])
 
 
 def _orden_pieza(p) -> int:
@@ -335,7 +366,7 @@ def _procesar_documento(con, fila, contenido, nombre, meta, corrida_id, catalogo
         return _rechazo(con, fila, nombre, "bbva_estado", "rechazado", f"no se pudo leer el estado: {e.mensaje}",
                         "Revisen que sea el PDF original del portal BBVA (no una impresión parcial). Si lo es, avisen a Esteban: el formato cambió.",
                         corrida_id, e.codigo)
-    cuenta = catalogo.identificar(est.texto_encabezado)
+    cuenta = identificar_cuenta(est, catalogo)
     periodo = est.periodo
     avisos = list(est.avisos) + _aviso_nombre(nombre, periodo)
     if cuenta is None:
@@ -441,7 +472,7 @@ def emparejar_db(con, corrida_id, catalogo: Catalogo) -> int:
         cur.execute("""SELECT m.*, c.categoria, c.subcategoria, c.contraparte, c.es_traspaso_interno, c.regla, c.origen_regla,
                               c.confianza, c.version, c.par_traspaso_id
                        FROM bancos.movimientos m JOIN bancos.clasificacion_vigente c ON c.movimiento_id=m.id
-                       JOIN bancos.estados e ON e.id=m.estado_id JOIN bancos.archivos a ON a.id=e.archivo_id
+                       JOIN bancos.estados_vigentes e ON e.id=m.estado_id JOIN bancos.archivos a ON a.id=e.archivo_id
                        WHERE c.es_traspaso_interno AND c.par_traspaso_id IS NULL AND a.estado='validado'
                        ORDER BY m.fecha_operacion, m.cuenta_id, m.renglon, m.id""")
         filas = cur.fetchall()
@@ -492,7 +523,7 @@ def v3_y_huecos(con, corrida_id, catalogo: Catalogo, hoy: date | None = None) ->
             if c.tipo != "cuenta":
                 continue
             cur.execute("""SELECT DISTINCT ON (e.periodo) e.id, e.periodo, e.saldo_inicial, e.saldo_final, a.nombre_canonico
-                           FROM bancos.estados e JOIN bancos.archivos a ON a.id=e.archivo_id
+                           FROM bancos.estados_vigentes e JOIN bancos.archivos a ON a.id=e.archivo_id
                            WHERE e.cuenta_id=%s AND a.estado='validado' ORDER BY e.periodo, e.id""", (c.id,))
             ests = {r["periodo"]: r for r in cur.fetchall()}
             esperados = rango_periodos(inicio, limite)

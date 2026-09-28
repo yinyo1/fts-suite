@@ -125,7 +125,8 @@ def test_dos_bases_desde_cero_dan_el_mismo_csv(base_limpia, monkeypatch):
         x1 = reportes.xlsx_bytes(reportes.filas_base(con))
     otra = "t_" + uuid.uuid4().hex[:10]
     conftest._psql("postgres", "-c", f"CREATE DATABASE {otra}")
-    conftest._psql(otra, "-1", "-f", str(conftest.MIGRACION))
+    for m in conftest.MIGRACIONES:
+        conftest._psql(otra, "-1", "-f", str(m))
     monkeypatch.setenv("DATABASE_URL", f"{conftest.PG} dbname={otra}")
     from fts_bancos.cuentas import cargar_de_entorno
     with conexion() as con:
@@ -175,3 +176,43 @@ def test_mes_cerrado_se_pide_desde_el_dia_3():
     assert pipeline.periodo_limite(date(2026, 9, 29)) == "2026-08"
     assert pipeline.periodo_limite(date(2026, 10, 2)) == "2026-08"
     assert pipeline.periodo_limite(date(2026, 10, 3)) == "2026-09"
+
+
+def test_estado_de_nomina_que_menciona_la_general_se_identifica_como_nomina(base_limpia):
+    E = escenario()
+    # el estado de Nómina trae en su pág. 1 un traspaso con el número de la General
+    _, items, _ = correr({"nom03.pdf": pdf_estado(E["nomina_2026-03"])})
+    assert items["nom03.pdf"][0]["cuenta"]["clave"] == "nomina"
+
+
+def test_reproceso_con_parser_nuevo_deja_historia_y_un_solo_vigente(base_limpia, monkeypatch):
+    from fts_bancos import bbva
+    E = escenario()
+    pdf = pdf_estado(E["nomina_2026-03"])
+    actual = bbva.PARSER_VERSION
+    bbva.PARSER_VERSION = "bbva-vieja"
+    try:
+        correr({"nom03.pdf": pdf})
+    finally:
+        bbva.PARSER_VERSION = actual
+    # el buzón NO reprocesa: el mismo archivo es un duplicado exacto
+    _, items, _ = correr({"otra vez.pdf": pdf})
+    assert items["otra vez.pdf"][0]["estado"] == "duplicado"
+    # el inventario de originales sí, porque no hay estado con el parser actual
+    with conexion() as con:
+        cid = pipeline.abrir_corrida(con, "fixture")
+        cat, reglas = pipeline.catalogo_db(con), pipeline.reglas_db(con)
+        it = [i.dict() for i in pipeline.procesar_archivo(con, pdf, "nom03.pdf", {"origen": "fixture", "reprocesar": True},
+                                                          cid, cat, reglas)]
+    assert it[0]["estado"] == "validado" and it[0]["cuenta"]["clave"] == "nomina"
+    with conexion() as con, con.cursor() as cur:
+        cur.execute("SELECT parser_version FROM bancos.estados ORDER BY id")
+        assert [r["parser_version"] for r in cur.fetchall()] == ["bbva-vieja", bbva.PARSER_VERSION]
+        cur.execute("SELECT parser_version FROM bancos.estados_vigentes")
+        assert [r["parser_version"] for r in cur.fetchall()] == [bbva.PARSER_VERSION]
+    # y una segunda pasada de reproceso ya no hace nada nuevo
+    with conexion() as con:
+        cat, reglas = pipeline.catalogo_db(con), pipeline.reglas_db(con)
+        it2 = [i.dict() for i in pipeline.procesar_archivo(con, pdf, "nom03.pdf", {"origen": "fixture", "reprocesar": True},
+                                                           None, cat, reglas)]
+    assert it2[0]["estado"] == "duplicado"

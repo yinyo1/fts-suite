@@ -22,7 +22,7 @@ def _linea(h, k_cat, k_sub, trasp, par_hash):
 def huella_db(con) -> tuple[str, int]:
     with con.cursor() as cur:
         cur.execute("""SELECT m.hash, c.categoria, c.subcategoria, c.es_traspaso_interno, p.hash AS par_hash
-                       FROM bancos.movimientos m JOIN bancos.estados e ON e.id=m.estado_id JOIN bancos.archivos a ON a.id=e.archivo_id
+                       FROM bancos.movimientos m JOIN bancos.estados_vigentes e ON e.id=m.estado_id JOIN bancos.archivos a ON a.id=e.archivo_id
                        LEFT JOIN bancos.clasificacion_vigente c ON c.movimiento_id=m.id
                        LEFT JOIN bancos.movimientos p ON p.id=c.par_traspaso_id
                        WHERE a.estado='validado' AND e.parser_version=%s ORDER BY m.hash""", (bbva.PARSER_VERSION,))
@@ -34,7 +34,7 @@ def huella_reconstruida(con, catalogo, reglas) -> dict:
     with con.cursor() as cur:
         cur.execute("""SELECT a.id, a.sha256, a.cuenta_id, b.contenido, e.huella
                        FROM bancos.archivos a JOIN bancos.blobs b ON b.sha256=a.sha256
-                       JOIN bancos.estados e ON e.archivo_id=a.id AND e.parser_version=%s
+                       JOIN bancos.estados_vigentes e ON e.archivo_id=a.id AND e.parser_version=%s
                        WHERE a.estado='validado' ORDER BY a.id""", (bbva.PARSER_VERSION,))
         filas = cur.fetchall()
     por_id = {c.id: c for c in catalogo.cuentas}
