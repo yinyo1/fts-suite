@@ -694,6 +694,11 @@ def main(argv=None) -> int:
             s.add_argument("--cierres", default="",
                            help="el JSON con los expedientes de cierre. Sin el, "
                                 "el reporte sale vacio y lo dice")
+            s.add_argument("--socket", default="",
+                           help="el socket de la base del motor 3. Con esto el "
+                                "reporte lee los cierres DE LA BASE en vez de un "
+                                "archivo")
+            s.add_argument("--puerto", default="5440")
         if nombre == "conectores":
             for k in CONECTORES:
                 s.add_argument(f"--{k}", default=None,
@@ -1038,13 +1043,40 @@ def main(argv=None) -> int:
 
         if a.cmd == "aprendizaje":
             from .aprendizaje import los_tres_lazos
-            cierres = []
-            if a.cierres:
+            cierres, de_donde = [], "nada"
+            if a.socket:
+                # De la BASE. `SinPostgres` NO se atrapa para devolver una lista
+                # vacia: un reporte que dice "cero cierres" cuando lo que pasa es
+                # que la base no contesta es indistinguible de uno correcto, y es
+                # justo la clase de silencio que este proyecto persigue.
+                from .base_motor3 import Base, cierres_para_el_aprendizaje
+                b = Base(socket=a.socket, puerto=a.puerto)
+                cierres = cierres_para_el_aprendizaje(b)
+                de_donde = f"la base ({a.socket})"
+                from .base_motor3 import resumen_del_piloto
+                res = resumen_del_piloto(b)
+                print(f"\n  BASE DEL MOTOR 3 — {res['cuentas']} cuenta(s), "
+                      f"{res['tarjetas_abiertas']} tarjeta(s) abierta(s), "
+                      f"{res['toques']} toque(s), {res['cierres']} cierre(s)")
+                if res.get("senales_incompletas"):
+                    print(f"     {res['senales_incompletas']} senal(es) "
+                          "incompleta(s): ver la vista `senal_incompleta`")
+            elif a.cierres:
                 with open(a.cierres, encoding="utf-8") as f:
                     cargado = json.load(f)
                 cierres = cargado if isinstance(cargado, list) else [cargado]
+                de_donde = a.cierres
             r = los_tres_lazos(cierres)
-            print(f"\n  LOS TRES LAZOS — {r['cierres_leidos']} cierre(s)")
+            print(f"\n  LOS TRES LAZOS — {r['cierres_leidos']} cierre(s) "
+                  f"leidos de {de_donde}")
+            if not cierres:
+                # La diferencia entre `sin_datos` y `prematuro` no es cosmetica:
+                # `prematuro` dice "hay datos y no alcanzan", `sin_datos` dice "no
+                # hay ni uno". En la semana 1 del piloto lo correcto es lo segundo.
+                print("     Ninguna tarjeta ha cerrado todavia, asi que las "
+                      "compuertas van a decir SIN_DATOS y no PREMATURO:")
+                print("     `prematuro` significa 'hay datos y no alcanzan'; "
+                      "`sin_datos` significa 'no hay ni uno'.")
             if r["cierres_sin_expediente_de_senal"]:
                 print(f"  De esos, {r['cierres_sin_expediente_de_senal']} SIN "
                       "expediente de senal: no cuentan para los lazos 1 y 3.")
