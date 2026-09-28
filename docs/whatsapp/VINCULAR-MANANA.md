@@ -137,6 +137,17 @@ Manda un mensaje de texto y una foto en el grupo de proyecto. En n8n, corre **`m
 | D5 | Abrir Azure para la copia fuera de Railway y el frío. Hasta entonces el video original vive en `frio/` del mismo bucket |
 | — | Motores: **siguen inactivos** hasta resolver la capacidad de n8n (`CAPACIDAD-N8N.md`) |
 
+## ⚠️ Al mergear el PR #327
+
+El receptor y el mantenimiento bajan su código **por SHA de commit** de la rama del PR:
+`RECEPTOR_URL` en `memoria-receptor` y `MANT_SCRIPT_URL` en `memoria-mantenimiento`. Si el PR se
+integra con **squash** y la rama se borra (`delete_branch_on_merge` está activo), esos commits
+quedan sin rama y GitHub los puede recolectar. El siguiente reinicio fallaría con `HTTP 404`.
+
+Después del merge, apunta las dos variables al **mismo archivo en el commit de `main`** y
+actualiza sus `*_SHA256`. El contenido no cambia, así que el sha256 es el mismo. Mientras no se
+mergee, no hay que hacer nada.
+
 ## Si algo sale mal
 
 | síntoma | qué hacer |
