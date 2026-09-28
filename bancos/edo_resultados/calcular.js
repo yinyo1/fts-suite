@@ -11,7 +11,7 @@
  * ═══════════════════════════════════════════════════════════════════════════ */
 'use strict';
 
-const VERSION = 'er-2026-v0.2';
+const VERSION = 'er-2026-v0.3';
 const MESES = ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08'];
 const MES_VENTAS_SIN_BANCO = '2026-09';
 const NOMBRE_MES = { '01': 'ene', '02': 'feb', '03': 'mar', '04': 'abr', '05': 'may', '06': 'jun', '07': 'jul', '08': 'ago', '09': 'sep' };
@@ -390,6 +390,8 @@ function calcular(insumos, opciones) {
     'Confirmar la lista de administrativo literal (tabla bancos.reglas_edo_resultados): renta, contabilidad y legal no tienen proveedor identificado todavía.',
     'Conmet: reconocer la venta por avance de obra en lugar del contrato completo en julio.',
     'Qué hacer con lo sin CFDI: buscar las facturas, o aceptar el costo bruto.',
+    'Los pagos SPEI grandes sin concepto ni factura (lista "Revisar"): confirmar si son costo, pago de préstamo o devolución de aportaciones. Hoy están en costo.',
+    'Compras de vehículos y pagos a Monex: hoy en costo; decidir si van a activo fijo o son traspasos propios.',
   ];
 
   const resultado = { vistaA: A.lineas.map(l => ({ clave: l.clave, vals: l.vals })), vistaB: B.lineas.map(l => ({ clave: l.clave, vals: l.vals })),
