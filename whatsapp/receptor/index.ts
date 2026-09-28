@@ -22,7 +22,7 @@ import { SQL } from "bun";
 import { createHmac, createHash, timingSafeEqual, randomUUID } from "node:crypto";
 
 const env = Bun.env;
-const VERSION = "receptor-2026.09.28-2";
+const VERSION = "receptor-2026.09.28-3";
 const PORT = Number(env.PORT || 8080);
 const SECRETO = env.MEMORIA_HMAC_SECRET || "";
 const PIMIENTA = env.MEMORIA_PIMIENTA || "";
@@ -182,11 +182,20 @@ export async function procesar(n: Normalizado) {
     return { status: 400, cuerpo: { ok: false, error: "EVENTO_INCOMPLETO" } };
   // Fecha: sólo ISO real. 'infinity', 'epoch' y compañía los aceptaría Postgres y caerían en
   // la partición default, que después bloquea crear la partición de ese mes (revisión, hallazgo 1).
-  const t = Date.parse(n.ocurrido_en);
-  if (!/^\d{4}-\d{2}-\d{2}T/.test(n.ocurrido_en) || !Number.isFinite(t) || t < Date.UTC(2000, 0, 1))
+  // ISO con zona obligatoria (Z o ±hh:mm): sin zona, JS y Postgres la leen distinto.
+  // A Postgres se le manda la fecha YA normalizada, no el texto del cliente (revisión 2, hallazgo 9).
+  const t = typeof n.ocurrido_en === "string" ? Date.parse(n.ocurrido_en) : NaN;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,9})?)?(Z|[+-]\d{2}:\d{2})$/.test(String(n.ocurrido_en))
+      || !Number.isFinite(t) || t < Date.UTC(2015, 0, 1))
+    return { status: 400, cuerpo: { ok: false, error: "FECHA_INVALIDA" } };
+  // JS convierte 30-feb en 2-mar sin avisar: la fecha del calendario tiene que sobrevivir la vuelta.
+  if (String(n.ocurrido_en).endsWith("Z") && new Date(t).toISOString().slice(0, 10) !== String(n.ocurrido_en).slice(0, 10))
     return { status: 400, cuerpo: { ok: false, error: "FECHA_INVALIDA" } };
   let ajusteFecha: string | null = null;
   if (t > Date.now() + FUTURO_MAX_MS) { ajusteFecha = n.ocurrido_en; n = { ...n, ocurrido_en: new Date().toISOString() }; }
+  else n = { ...n, ocurrido_en: new Date(t).toISOString() };
+  if (n.media && typeof n.media.base64 !== "string")
+    return { status: 400, cuerpo: { ok: false, error: "MEDIA_INVALIDA" } };
   const canal = await asegurarCanal(n.fuente, n.canal.id_externo, n.canal.nombre ?? null);
   if (canal.estado_captura !== "capturando") {
     await sql`UPDATE memoria.canal SET ultimo_evento = now() WHERE id = ${canal.id}`;
@@ -240,7 +249,7 @@ export async function procesar(n: Normalizado) {
   }
   const id = randomUUID();
   let insertado = false;
-  await sql.begin(async (tx) => {
+  try { await sql.begin(async (tx) => {
     const h = await tx`INSERT INTO memoria.huella (huella, evento_id, ocurrido_en)
                        VALUES (${huella}, ${id}, ${n.ocurrido_en}) ON CONFLICT (huella) DO NOTHING RETURNING huella`;
     if (!h.length) return;
@@ -248,7 +257,12 @@ export async function procesar(n: Normalizado) {
              VALUES (${id}, ${n.ocurrido_en}, ${n.fuente}, ${n.tipo}, ${canal.id}, ${autorRef}, ${n.texto ?? null},
                      ${archivo}, ${eventoRef}, ${meta}, ${huella})`;
     insertado = true;
-  });
+  }); } catch (e) {
+    // memoria_0007: la partición default rechaza. Mes sin partición = histórico sin preparar.
+    if (String((e as Error).message).includes("FUERA_DE_PARTICION"))
+      return { status: 422, cuerpo: { ok: false, error: "FUERA_DE_PARTICION", mes: n.ocurrido_en.slice(0, 7) } };
+    throw e;
+  }
   await sql`UPDATE memoria.canal SET ultimo_evento = now() WHERE id = ${canal.id}`;
   return { status: 200, cuerpo: { ok: true, duplicado: !insertado, evento_id: insertado ? id : null, archivo_sha256: archivo } };
 }

@@ -101,3 +101,83 @@ y este diseño.
 Alternativa sin n8n: el semáforo (`ops/watchdog-semaforo`) puede sumar
 `SELECT * FROM memoria.v_senales_watchdog WHERE estado = 'alerta'` a su correo diario. Eso
 requiere editar ese workflow, así que es decisión de Esteban.
+
+---
+
+## 3. Evidencia para comercial (D6): `memoria.api_evidencia_so` y `api_evidencia_lead`
+
+Una sola captura, en la memoria. Comercial **cita**; no copia ni lee la bitácora.
+Ninguna de estas funciones toca el esquema `comercial`.
+
+### 3.1 Llamada
+
+```sql
+-- Rol: memoria_lector (o memoria_admin). Sólo lectura (STABLE, SECURITY DEFINER, dueño memoria_admin).
+SELECT memoria.api_evidencia_so('SO11771');                 -- evidencia de una SO
+SELECT memoria.api_evidencia_lead('<id del crm.lead>');       -- evidencia de un lead
+SELECT memoria.api_evidencia_so('SO11771', false, 200);       -- (incluir_prueba, límite ≤ 1000)
+```
+
+La SO sale del vínculo **canal → SO** (grupo de proyecto) o **evento → SO** (vínculo directo). El lead sale del
+vínculo `canal|evento → odoo:crm.lead`, que se da de alta desde la bandeja o por un motor. `memoria.v_evento_destino`
+tiene los dos.
+
+### 3.2 Respuesta (contrato `memoria.evidencia v1`)
+
+```json
+{
+  "contrato": "memoria.evidencia v1",
+  "destino": { "tipo": "odoo:sale.order", "id": "SO11771" },
+  "incluye_prueba": false,
+  "eventos": [
+    { "evento_seq": 123, "evento_id": "…", "ocurrido_en": "…", "tipo": "imagen",
+      "texto": "…", "archivo_sha256": "…", "autor_employee_id": 112, "via": "canal",
+      "cita": { "evento_seq": 123, "ocurrido_en": "…", "tipo": "imagen", "fragmento": "…" } }
+  ],
+  "archivos": [
+    { "sha256": "…", "mime": "image/jpeg", "bytes": 123456, "rol": "original", "deriva_de": null,
+      "clase": "evidencia_acta", "evidencia_acta": true,
+      "ubicacion": { "proveedor": "railway_bucket", "contenedor": "…", "ruta": "caliente/ab/…", "nivel": "caliente" } }
+  ],
+  "derivados": [
+    { "sha256": "…", "tipo": "descripcion_imagen", "proveedor": "simulado", "version": "v0",
+      "contenido": "…", "confianza": null, "es_simulado": true }
+  ],
+  "nota": "Sólo eventos aprobados para publicar (D11). Citar siempre por evento_seq."
+}
+```
+
+### 3.3 Garantías (cada una es un caso de `prueba_motores()`)
+
+| garantía | caso |
+|---|---|
+| Sólo eventos con una propuesta `publicar` aprobada o corregida (D11). Lo interno no sale | `R2_evidencia_so_solo_publicable`, `R2_evidencia_nada_interno` |
+| Nunca sale el teléfono ni el nombre de WhatsApp. Sólo `autor_employee_id` cuando la identidad está ligada | `R2_evidencia_sin_telefono_ni_nombre` |
+| Los datos de prueba no salen salvo que se pidan | `R2_evidencia_excluye_prueba_por_omision` |
+| Archivos: el original citado y sus versiones de consulta, con la marca de evidencia de acta | `R2_evidencia_archivos_derivados_acta` |
+| Leads igual que SO | `R2_evidencia_lead` |
+| Cualquier otro destino se rechaza | `R2_destino_invalido` |
+
+### 3.4 Qué hace comercial con esto
+
+- **Cotizador (#127):** guarda en su renglón **sólo** `evento_seq` y `archivo_sha256`, nunca el texto copiado. Cuando
+  necesita mostrarlo, lo vuelve a pedir.
+- **Descargar un archivo:** el bucket es privado. La descarga pasa por un endpoint de la memoria que firma una URL
+  temporal. Se construye cuando comercial lo pida; no es parte de v1.
+- **Si falta evidencia:** la respuesta `eventos: []` significa *«no hay nada aprobado para publicar»*, **no** *«no
+  pasó nada»* (§20 #11 de CLAUDE.md). Para saber si hay material pendiente de aprobar, la bandeja lo muestra.
+
+---
+
+## 4. Reporte de avance y acta de entrega (R3): motor `avance`
+
+- `memoria.correr_motor('avance')` (dueño `memoria_motor`) → `motor_avance_simulado(ayer, 7 días)`.
+  Workflow `memoria/motor-avance` (`w3enXBwj8fUL7FtP`), **inactivo**.
+- **Entrada: sólo `v_evento_publicable`.** Lo que no se aprobó para publicar no puede aparecer, ni en el texto ni en
+  las citas (`R3_reporte_sin_interno`).
+- **Propuesta `reporte_avance`** por SO y semana. Destino `cliente`, citas obligatorias. La clave incluye el último
+  `seq`: si se aprueban más eventos, sale un reporte nuevo; si no, re-correr no duplica (`R3_avance_rerun_sin_duplicar`).
+- **Propuesta `acta`** sólo si hay fotos aprobadas **y** marcadas `evidencia_acta` (`R3_acta_solo_evidencia_marcada`).
+  Cada foto queda ligada al acta (`vinculo archivo → memoria:acta`), y la retención la marca `NO_MOVER`
+  (`R3_foto_acta_nunca_se_mueve`).
+- Nada se envía. Las dos propuestas esperan decisión humana (D11); el envío al cliente es otro paso, sin construir.

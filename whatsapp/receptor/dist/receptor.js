@@ -168,7 +168,7 @@ var init_autoprueba = __esm(() => {
 var {SQL } = globalThis.Bun;
 import { createHmac as createHmac2, createHash as createHash2, timingSafeEqual, randomUUID as randomUUID2 } from "crypto";
 var env = Bun.env;
-var VERSION = "receptor-2026.09.28-2";
+var VERSION = "receptor-2026.09.28-3";
 var PORT = Number(env.PORT || 8080);
 var SECRETO = env.MEMORIA_HMAC_SECRET || "";
 var PIMIENTA = env.MEMORIA_PIMIENTA || "";
@@ -316,14 +316,19 @@ async function guardarArchivo(m, tipo) {
 async function procesar(n) {
   if (!n?.canal?.id_externo || !n.id_origen || !n.tipo || !n.ocurrido_en || !n.autor?.id_externo)
     return { status: 400, cuerpo: { ok: false, error: "EVENTO_INCOMPLETO" } };
-  const t = Date.parse(n.ocurrido_en);
-  if (!/^\d{4}-\d{2}-\d{2}T/.test(n.ocurrido_en) || !Number.isFinite(t) || t < Date.UTC(2000, 0, 1))
+  const t = typeof n.ocurrido_en === "string" ? Date.parse(n.ocurrido_en) : NaN;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,9})?)?(Z|[+-]\d{2}:\d{2})$/.test(String(n.ocurrido_en)) || !Number.isFinite(t) || t < Date.UTC(2015, 0, 1))
+    return { status: 400, cuerpo: { ok: false, error: "FECHA_INVALIDA" } };
+  if (String(n.ocurrido_en).endsWith("Z") && new Date(t).toISOString().slice(0, 10) !== String(n.ocurrido_en).slice(0, 10))
     return { status: 400, cuerpo: { ok: false, error: "FECHA_INVALIDA" } };
   let ajusteFecha = null;
   if (t > Date.now() + FUTURO_MAX_MS) {
     ajusteFecha = n.ocurrido_en;
     n = { ...n, ocurrido_en: new Date().toISOString() };
-  }
+  } else
+    n = { ...n, ocurrido_en: new Date(t).toISOString() };
+  if (n.media && typeof n.media.base64 !== "string")
+    return { status: 400, cuerpo: { ok: false, error: "MEDIA_INVALIDA" } };
   const canal = await asegurarCanal(n.fuente, n.canal.id_externo, n.canal.nombre ?? null);
   if (canal.estado_captura !== "capturando") {
     await sql`UPDATE memoria.canal SET ultimo_evento = now() WHERE id = ${canal.id}`;
@@ -379,16 +384,22 @@ async function procesar(n) {
   }
   const id = randomUUID2();
   let insertado = false;
-  await sql.begin(async (tx) => {
-    const h = await tx`INSERT INTO memoria.huella (huella, evento_id, ocurrido_en)
+  try {
+    await sql.begin(async (tx) => {
+      const h = await tx`INSERT INTO memoria.huella (huella, evento_id, ocurrido_en)
                        VALUES (${huella}, ${id}, ${n.ocurrido_en}) ON CONFLICT (huella) DO NOTHING RETURNING huella`;
-    if (!h.length)
-      return;
-    await tx`INSERT INTO memoria.evento (id, ocurrido_en, fuente, tipo, canal_id, autor_ref, texto, archivo_sha256, evento_ref, metadatos, huella)
+      if (!h.length)
+        return;
+      await tx`INSERT INTO memoria.evento (id, ocurrido_en, fuente, tipo, canal_id, autor_ref, texto, archivo_sha256, evento_ref, metadatos, huella)
              VALUES (${id}, ${n.ocurrido_en}, ${n.fuente}, ${n.tipo}, ${canal.id}, ${autorRef}, ${n.texto ?? null},
                      ${archivo}, ${eventoRef}, ${meta}, ${huella})`;
-    insertado = true;
-  });
+      insertado = true;
+    });
+  } catch (e) {
+    if (String(e.message).includes("FUERA_DE_PARTICION"))
+      return { status: 422, cuerpo: { ok: false, error: "FUERA_DE_PARTICION", mes: n.ocurrido_en.slice(0, 7) } };
+    throw e;
+  }
   await sql`UPDATE memoria.canal SET ultimo_evento = now() WHERE id = ${canal.id}`;
   return { status: 200, cuerpo: { ok: true, duplicado: !insertado, evento_id: insertado ? id : null, archivo_sha256: archivo } };
 }

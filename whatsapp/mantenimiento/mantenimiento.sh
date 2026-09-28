@@ -18,6 +18,7 @@
 #   S3_BUCKET S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY S3_ENDPOINT  ← ${{memoria-respaldos.*}}
 # ═══════════════════════════════════════════════════════════════════════════
 set -u
+trap '' PIPE      # si el psql de la instantánea muere antes de tiempo, el script sigue y lo reporta (revisión 2, #13)
 INICIO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 log() { echo "[mantenimiento] $*"; }
 q()   { psql -X -v ON_ERROR_STOP=1 -qAt "$@"; }
@@ -75,17 +76,20 @@ if [ -n "$SNAP" ]; then log "instantánea $SNAP"; SNAP_SQL="SET TRANSACTION SNAP
 else log "sin instantánea compartida: $(head -c 200 /tmp/snap.err)"; SNAP_SQL=""; DUMP_SNAP=""; fi
 
 # Manifiesto: conteo EXACTO por tabla de usuario (base chica; si crece, se muestrea).
-q -c "BEGIN ISOLATION LEVEL REPEATABLE READ" -c "$SNAP_SQL SELECT 1" -c "SELECT coalesce(json_object_agg(n.nspname||'.'||c.relname,
+q -c "BEGIN ISOLATION LEVEL REPEATABLE READ" -c "$SNAP_SQL SELECT 1" -c "SELECT coalesce(json_object_agg(format('%I.%I', n.nspname, c.relname),
         (xpath('/row/c/text()', query_to_xml(format('SELECT count(*) AS c FROM %I.%I', n.nspname, c.relname), false, true, '')))[1]::text::bigint
         ORDER BY 1), '{}')
       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
       WHERE c.relkind IN ('r','p') AND NOT c.relispartition
-        AND n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname NOT LIKE 'pg_toast%'" -c "COMMIT" > "$MANIF.raw" 2>/tmp/manif.err \
+        AND n.nspname NOT IN ('pg_catalog','information_schema','memoria_pasarela') AND n.nspname NOT LIKE 'pg_toast%'" -c "COMMIT" > "$MANIF.raw" 2>/tmp/manif.err \
   && grep '^{' "$MANIF.raw" | tail -1 > "$MANIF" \
   || { log "manifiesto FALLO: $(head -c 300 /tmp/manif.err)"; echo '{}' > "$MANIF"; }
 
 ok_dump=false; err=""
-if pg_dump -Fc -Z 6 $DUMP_SNAP -f "$DUMP" 2>/tmp/dump.err; then
+# memoria_pasarela (sesión de WhatsApp de Evolution) NO se respalda: son las llaves con las
+# que se suplanta el teléfono vinculado, y fts_admin puede ni siquiera leerlas. Si se pierden,
+# se vuelve a escanear el QR (revisión 2, #2).
+if pg_dump -Fc -Z 6 --exclude-schema=memoria_pasarela $DUMP_SNAP -f "$DUMP" 2>/tmp/dump.err; then
   BYTES=$(wc -c < "$DUMP"); SHA=$(sha256sum "$DUMP" | cut -d' ' -f1)
   if s3put "$DUMP" "$CLAVE" >/dev/null 2>/tmp/put.err; then ok_dump=true; else err="subida: $(head -c 300 /tmp/put.err)"; fi
 else BYTES=0; SHA=""; err="pg_dump: $(head -c 300 /tmp/dump.err)"; fi
