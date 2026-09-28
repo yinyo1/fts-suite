@@ -292,6 +292,20 @@ Pendiente F4: usar este mapeo al guardar planes operativos.
 
 ## 9. Información sensible
 
+- 🔴 **Este repo es PÚBLICO: ningún dato personal va al repo ni a sus issues (regla dura, 2026-09-28).** Nunca se suben, ni en archivos, ni en commits, ni en comentarios de issues o PRs:
+  - nombres ligados a asistencia, horarios, ubicación o rotación de una persona;
+  - nómina, salarios, préstamos, descuentos o cualquier monto por persona;
+  - teléfonos, correos personales, direcciones, CURP/RFC/NSS o cuentas bancarias;
+  - nombres de contactos de clientes o de proveedores que sean personas físicas.
+
+  **Dónde va cada cosa:**
+  - **Datos crudos** (asistencia por persona, exportes de Odoo con nombres): SharePoint, en la carpeta del proyecto (por ejemplo `fts.mx/Documentos compartidos/Proyecto Herramientas MX`).
+  - **El repo** solo guarda resultados **agregados** (conteos por día, por planta, por rol) o **anonimizados** como `emp-<id>-<rol>` (por ejemplo `emp-75-supervisor_sr`).
+  - **En issues** se habla de roles, no de personas.
+
+  Antes de cada commit con datos, correr un grep de los nombres de la plantilla sobre el diff y exigir 0 coincidencias. **Borrar un dato del archivo no lo borra del historial:** si se commiteó, se trata como filtración y la rama se rehace limpia.
+
+  **Origen:** issue #325. La Fase 3 subió a una rama pública la asistencia diaria de 5 meses con el nombre de cada empleado, y las tasas de cambio de planta por persona quedaron en un comentario. Hubo que rehacer la rama `herramientas-mx` desde `main` con un solo commit anonimizado y editar los comentarios.
 - **Nunca** commitear API keys, tokens, ni credenciales en el repo.
 - Si se detecta una credencial hardcoded, **alertar inmediatamente** y mover a env var de n8n.
 - 🟡 **`ir.rule` 815 — bloqueo del PAID manual, A PRUEBA (2026-08-19). NO confirmada.** Sustituye a la 814 con el discriminador corregido: `['|',('journal_id','!=',61),('origin_payment_id','=',False)]`, global, solo `perm_create`, sobre `account.move`. **Verificado:** bloquea el PAID manual (probado sobre BILL3206 con el mensaje correcto) · cero asientos del journal 61 tienen `statement_line_id` **y** `origin_payment_id` a la vez, así que la captura no deberia tocarla. **LO QUE FALTA — y sin esto NO está confirmada:** disparar la captura **en horario con transacciones esperando** y exigir **`intentadas > 0` E `insertadas == intentadas`**. La 814 tambien paso la prueba del bloqueo y **rompio la captura cuatro dias**; el bloqueo demostrado no dice nada sobre la captura. Si el CBRUN trae `insertadas:0` con `intentadas>0`, o `rechazadas>0` con error de acceso → **desactivar de inmediato**. **VÁLVULA (copiar y pegar en la consola de Odoo, F12):** `await fetch('/web/dataset/call_kw',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:"2.0",method:"call",params:{model:"ir.rule",method:"write",args:[[815],{active:false}],kwargs:{}}})}).then(r=>r.json()).then(console.log)`. **Nota de método:** se predijo que `origin_payment_id` estaria vacio al crear el move (por la herencia delegada de `account.payment`) y **la prediccion fallo**: si esta poblado. El mismo razonamiento acierta con `statement_line_id` y falla aqui — **el momento del enlace no se deduce del perfil del campo ni del patron de herencia, solo se comprueba probando.**

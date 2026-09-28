@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 508 484" width="813" font-family="Arial, sans-serif">
+<rect x="0" y="0" width="508" height="484" fill="#ffffff"/>
+<text x="46" y="18" font-size="13" font-weight="bold">FTS · Modulo ELE · Cajon C1 · 48-22-8444 · vista superior (mm)</text>
+<rect x="46" y="46" width="416" height="322" fill="#2b2b2b" stroke="#000" stroke-width="3"/>
+<line x1="46" y1="32" x2="462" y2="32" stroke="#333" stroke-width="1"/>
+<line x1="46" y1="26" x2="46" y2="38" stroke="#333"/><line x1="462" y1="26" x2="462" y2="38" stroke="#333"/>
+<text x="254.0" y="28" font-size="11" text-anchor="middle">416 mm</text>
+<line x1="32" y1="46" x2="32" y2="368" stroke="#333"/>
+<line x1="26" y1="46" x2="38" y2="46" stroke="#333"/><line x1="26" y1="368" x2="38" y2="368" stroke="#333"/>
+<text x="28" y="207.0" font-size="11" text-anchor="middle" transform="rotate(-90 28 207.0)">322 mm</text>
+<text x="254.0" y="382" font-size="10" text-anchor="middle" fill="#555">FRENTE DEL CAJON</text>
+<rect x="52" y="52" width="70" height="200" rx="4" fill="#FFE08A" stroke="#111" stroke-width="1.2"/>
+<text x="87.0" y="150.8" font-size="6.0" text-anchor="middle" font-weight="bold">FTS-ELE-01-C1-01 R</text>
+<text x="87.0" y="158.0" font-size="5.1" text-anchor="middle">Amperimetro Extech MA44</text>
+<text x="54" y="250" font-size="5.0" fill="#333">200x70x40</text>
+<rect x="134" y="52" width="25" height="155" rx="4" fill="#FFE08A" stroke="#111" stroke-width="1.2"/>
+<text x="146.5" y="128.3" font-size="6.0" text-anchor="middle" font-weight="bold">FTS-ELE-01-C1-02 R</text>
+<text x="146.5" y="135.5" font-size="5.1" text-anchor="middle">Detector</text>
+<text x="136" y="205" font-size="5.0" fill="#333">155x25x25</text>
+<rect x="194" y="52" width="207" height="75" rx="4" fill="#FFE08A" stroke="#111" stroke-width="1.2"/>
+<text x="297.5" y="87.3" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-ELE-01-C1-03</text>
+<text x="297.5" y="100.5" font-size="9.3" text-anchor="middle">Pinza amperimetrica Fluke 302+</text>
+<text x="196" y="125" font-size="7.7" fill="#333">207x75x34</text>
+<rect x="194" y="139" width="250" height="100" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
+<text x="319.0" y="186.8" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-ELE-01-C1-04</text>
+<text x="319.0" y="200.0" font-size="9.3" text-anchor="middle">3 desarmadores Husky 1/4</text>
+<text x="196" y="237" font-size="7.7" fill="#333">250x100x32</text>
+<rect x="194" y="251" width="250" height="100" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
+<text x="319.0" y="298.8" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-ELE-01-C1-05</text>
+<text x="319.0" y="312.0" font-size="9.3" text-anchor="middle">3 desarmadores Husky 1/4, 3/16</text>
+<text x="196" y="349" font-size="7.7" fill="#333">250x100x32</text>
+<rect x="52" y="264" width="130" height="90" rx="4" fill="#FFE08A" stroke="#111" stroke-width="1.2"/>
+<text x="117.0" y="307.14285714285717" font-size="9.3" text-anchor="middle" font-weight="bold">FTS-ELE-01-C1-06</text>
+<text x="117.0" y="318.2857142857143" font-size="7.9" text-anchor="middle">3 sacabocados Dogo 7, 13 y </text>
+<text x="54" y="352" font-size="6.5" fill="#333">130x90x40</text>
+<text x="46" y="400" font-size="11" fill="#000">Modulo ELE · caja 48-22-8444 · cajon C1 · alto interior 61 mm, util 51 mm</text>
+<text x="46" y="414" font-size="11" fill="#000">Ocupacion en planta 71.0 % · peso 1.79 kg de 11 kg</text>
+<text x="46" y="428" font-size="11" fill="#000">Medidas no validadas: confirmar con vernier antes de imprimir</text>
+</svg>
