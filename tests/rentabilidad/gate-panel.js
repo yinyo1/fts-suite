@@ -100,7 +100,9 @@ function asserts() {
      golden del contrato 1, que no trae nada de esto. Si fueran incondicionales,
      el gate dejaría de poder medir la línea base — y la línea base es su razón
      de ser. */
-  const esV101 = sobre._meta && sobre._meta.contrato_version === '1.01';
+  const cv = (sobre._meta && sobre._meta.contrato_version) || '1.00';
+  const esV101 = cv >= '1.01';   /* NO '=== 1.01': con 1.02 el bloque se saltaba solo */
+  const esV102 = cv >= '1.02';
   if (esV101) {
     const k2 = D.querySelectorAll('#kpis2 .kpi');
     t('v1.01 · la segunda fila de tarjetas se pintó', k2.length >= 4, k2.length + ' tarjetas');
@@ -132,6 +134,35 @@ function asserts() {
       despues === sobre.datos.resumen.semaforo_rojo && despues < antes,
       despues + ' filas en rojo, esperadas ' + sobre.datos.resumen.semaforo_rojo + ' (de ' + antes + ')');
     t('v1.01 · el filtro se restauró', D.querySelectorAll('#tabla tbody tr').length === antes);
+  }
+
+  /* ── v1.02 · la etiqueta de empresa ────────────────────────────────────────
+     El defecto que esto vigila no se veía: el panel decía «FTS MX» a 30 de 222
+     proyectos que no lo son, y como la aritmética estaba bien, nada fallaba.
+     Por eso el invariante se comprueba contra el ID, no contra el rótulo. */
+  if (esV102) {
+    const filas = sobre.datos.filas;
+    const rotos = filas.filter(f => (f.empresa === 'FTS MX') !== (f.empresa_id === 1));
+    t('v1.02 · «FTS MX» aparece si y sólo si empresa_id es 1', rotos.length === 0,
+      rotos.length + ' filas con el rótulo y el id en desacuerdo');
+    const sinId = filas.filter(f => f.empresa_id === null);
+    t('v1.02 · un proyecto sin empresa se rotula «sin empresa», no se inventa una',
+      sinId.every(f => f.empresa === 'sin empresa'), sinId.length + ' sin empresa_id');
+    t('v1.02 · ninguna fila se queda sin etiqueta de empresa',
+      filas.every(f => typeof f.empresa === 'string' && f.empresa.length > 0));
+    /* El conteo por etiqueta tiene que cuadrar con el total: si una fila se
+       cuenta dos veces o ninguna, el desglose miente y nadie lo nota. */
+    const porEmp = sobre.datos.resumen.proyectos_por_empresa || {};
+    const suma = Object.keys(porEmp).reduce((a, k) => a + porEmp[k], 0);
+    t('v1.02 · el desglose por empresa suma el total', suma === filas.length,
+      suma + ' de ' + filas.length);
+    /* Subsidio simétrico: las dos lecturas existen y la deduplicación nunca
+       puede dar más únicas que la suma de las dos. */
+    const m = sobre._meta;
+    t('v1.02 · la deduplicación del subsidio es coherente',
+      m.n_lineas_subsidio_unicas <= (m.n_lineas_cross_company + m.n_lineas_empresa_ajena) &&
+      m.n_lineas_subsidio_unicas >= Math.max(m.n_lineas_cross_company, m.n_lineas_empresa_ajena),
+      m.n_lineas_cross_company + ' + ' + m.n_lineas_empresa_ajena + ' → ' + m.n_lineas_subsidio_unicas + ' únicas');
   }
 
   t('cero errores de consola', errores.length === 0, errores.slice(0, 3).join(' | '));
