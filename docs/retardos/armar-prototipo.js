@@ -15,7 +15,7 @@ const pdfjs = fs.readFileSync(path.join(R, 'retardos', 'lib', 'pdf.js'), 'utf8')
 const FIX = path.join(R, 'retardos', 'hojas', 'tests', 'fixtures');
 let apiP = api.replace(/FIX \+ '([0-9a-z-]+\.jpg)'/g, (_, f) => "'data:image/jpeg;base64," + fs.readFileSync(path.join(FIX, f)).toString('base64') + "'");
 if (/FIX \+ '/.test(apiP)) throw new Error('Quedó una hoja sin incrustar');
-const out = '<title>Retardos v2</title>\n<meta name="description" content="Prototipo del ciclo de retardos: deteccion, hoja a RH, recoleccion de firma, lector de hojas con confirmacion de RH, reincidencia y alertas de modo.">\n' +
+const out = '<title>Retardos v2</title>\n<meta name="description" content="Prototipo de retardos y jornada semanal FTS: tolerancia de 15 minutos, semana viernes a jueves, avisos, hoja a RH, lector de hojas y medidas retenidas.">\n' +
   '<style>\n' + css + '\n' + intro.split('<!--CSS-->')[1] + '\n</style>\n' +
   cuerpo.replace('<div class="wrap hid" id="app">', intro.split('<!--CSS-->')[2] + '\n<div class="wrap hid" id="app">') +
   '<script>\nwindow.RET_FORZAR_DEMO = true;\nwindow.SuiteAuth = { login: async function () { return { ok: false, mensaje: "En el prototipo solo hay datos de ejemplo." }; }, isValid: function () { return false; }, tieneScope: function () { return false; }, logout: function () {}, getToken: function () { return null; }, getSession: function () { return null; } };\n</script>\n' +

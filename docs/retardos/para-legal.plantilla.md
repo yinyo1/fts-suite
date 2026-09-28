@@ -10,8 +10,8 @@ Hoy el sistema funciona en **modo sombra**: detecta y arma todo, pero ningún co
 
 **Sí hace:**
 
-- Revisa dos veces al día la primera checada de cada persona en el kiosko y la compara con su hora de entrada registrada más 20 minutos de tolerancia.
-- Cuenta los retardos de cada persona en el mes, de lunes a viernes. No cuentan los días de permiso, vacaciones, incapacidad, trabajo fuera o feriado, ni los días donde la checada está en disputa o hubo un olvido de entrada registrado.
+- Revisa dos veces al día la primera checada de cada persona en el kiosko y la compara con su hora de entrada registrada más **15 minutos de tolerancia, al segundo**: llegar 15:00 después no es retardo, 15:01 sí. Todo en hora del centro (CST).
+- Cuenta los retardos de cada persona en el mes, de lunes a viernes. **Sábado y domingo nunca son retardo.** No cuentan los días de permiso, vacaciones, incapacidad, trabajo fuera o feriado, ni los días donde la checada está en disputa o hubo un olvido de entrada registrado.
 - Cuando alguien llega a cierto número de retardos en el mes, abre un **caso con folio** (por ejemplo RET-2026-0041).
 - En el aviso (nivel 1) le manda un correo informativo a la persona.
 - En carta compromiso y acta **le manda la hoja a Recursos Humanos** (con copia al jefe directo) para que **RH cite a la persona y recolecte la firma** en papel. A la persona le llega un **aviso informativo** con la misma hoja en PDF, para que la conozca antes de la cita; no tiene que contestarlo.
@@ -41,6 +41,35 @@ Hoy el sistema funciona en **modo sombra**: detecta y arma todo, pero ningún co
 Si una persona ya firmó un documento y vuelve a llegar tarde dentro de los 30 días siguientes, el nuevo caso sube directo al siguiente nivel (reincidencia).
 
 Los números están medidos contra datos reales en el issue #334 (Tarea 3). Con las horas de entrada que hoy tiene Odoo, una de cada cuatro personas llegaría cada mes al nivel de suspensión. Por eso RH está revisando primero la hora de entrada de cada quien.
+
+## 2b. Jornada semanal (nuevo, reglas del 28-sep-2026)
+
+Además de los retardos, el sistema revisa la **jornada semanal**: 48 horas efectivas de **viernes a jueves**, en hora del centro, ya descontados 30 minutos de comida por cada día trabajado. Sábado y domingo no son retardo, pero sus horas sí cuentan para la semana.
+
+- Un feriado, permiso, incapacidad, vacaciones o día que RH marcó como que no cuenta **baja 9.6 horas** lo que se exige esa semana.
+- Si los datos están incompletos (entrada sin salida, una asistencia de más de 16 horas, una incidencia abierta), **no sale ningún aviso**: la semana va a RH para que la revise.
+- Si una semana queda abajo, sale un **aviso** a la persona con copia a RH y al jefe, con el día a día y un plazo para corregir si fue olvido de checada. Al **tercer aviso** dentro de 90 días, la persona recibe una hoja con QR que RH imprime y recolecta, igual que la carta compromiso, y se abre una **propuesta de medida** (descuento de tiempo no laborado) que **queda retenida**: no se aplica ni se manda a Nómina.
+- Todos los textos de jornada están marcados **"pendiente de validación de RH"**.
+
+**Primer y segundo aviso, a la persona (copia a RH y al jefe)**
+
+@@CORREO_JOR_1@@
+
+**Tercer aviso, a la persona**
+
+@@CORREO_JOR_3@@
+
+**Tercer aviso, a RH para recolectar la hoja**
+
+@@CORREO_JOR_RH@@
+
+**Hoja del tercer aviso**
+
+@@HOJA_JOR3@@
+
+**Comunicado de arranque a toda la plantilla** (lo manda RH una vez, antes del 1 de octubre)
+
+@@CORREO_COMUNICADO@@
 
 ## 3. Los textos tal como salen hoy
 
@@ -178,3 +207,6 @@ Los textos nuevos **no citan el art. 47**. El acta cita los artículos 20 y 134 
 11. **Correo personal:** 13 de 29 personas tienen registrado un correo personal (no de la empresa). ¿Se les puede notificar ahí o sólo al correo de la empresa o en papel?
 12. **Párrafo de reincidencia** (carta y acta, sección 3.3): ¿se queda, se cambia o se quita?
 13. **Antecedentes al activar suspensiones:** el día que se activen, ¿las actas firmadas antes de esa fecha cuentan como antecedente para una suspensión por reincidencia? Hoy el sistema dice que **no**, y no aplica ninguna suspensión por retardos anteriores a la activación.
+14. **Descontar tiempo no laborado (arts. 107 y 110 LFT):** el art. 107 prohíbe multas al trabajador y el 110 limita los descuentos al salario a casos específicos. ¿Descontar las horas de una semana incompleta es pagar sólo el tiempo trabajado (permitido) o un descuento que el 110 no prevé? ¿Hace falta firma de la persona, una cláusula en el contrato o en el Reglamento? Mientras Legal no conteste, la propuesta de medida **queda retenida** y no llega a Nómina.
+15. **Comida en fin de semana:** hoy se descuentan 30 minutos de comida el sábado o domingo sólo si la persona trabajó 6 horas o más ese día. ¿Es correcto, o la comida debe descontarse siempre, o nunca, en fin de semana?
+16. **Calendario contra regla:** los horarios de Odoo son de 10 horas de presencia por día (9.5 efectivas), o sea 47.5 horas a la semana. La regla de 48 pide 10.1 horas de presencia diaria. ¿Qué manda si difieren: el calendario firmado o la regla?

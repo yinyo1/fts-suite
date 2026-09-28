@@ -38,7 +38,8 @@ n8n retardos/detectar  ── L-V 12:15 y 19:15 ──►  retardos.ingestar()  
 n8n retardos/enviar    ── cada 20 min ──────────►  retardos.por_enviar()  ─► Graph sendMail desde sales@fts.mx
 n8n retardos/lector    ── cada 15 min ──────────►  retardos.registrar_respuesta()   (apagado sin buzón)
 n8n retardos/verificar ── L-V 09:05 ────────────►  retardos.verificar()   plazos, recordatorios, escalamiento
-n8n retardos/resumen-semanal ── lunes 08:10 ───►  retardos.resumen_semanal()
+n8n retardos/jornada  ── viernes 08:00 ─────────►  retardos.jornada_corte()   semana FTS viernes a jueves (§11)
+n8n retardos/resumen-semanal ── viernes 10:00 ─►  retardos.resumen_semanal()
 n8n retardos/latido    ── 10:40 y 20:40 ────────►  retardos.salud()  ─► alerta directa por Graph
 n8n retardos/error     ── cuando falla cualquiera de los anteriores ─► corrida con error + alerta
 n8n retardos/panel     ── webhook POST ─────────►  retardos.panel_seguro()   ◄── panel RH (modulos/rh/retardos)
@@ -62,9 +63,9 @@ Reglas de la arquitectura:
 | Regla | Valor propuesto | Origen |
 |---|---|---|
 | Hora esperada | `hr.employee.x_studio_hora_entrada` (configurable a calendario) | recuperado del sistema anterior |
-| Tolerancia | 20 minutos, estricta (21 sí es retardo) | recuperado |
-| Qué checada cuenta | La primera del día, en hora de Monterrey | recuperado |
-| Días | Lunes a viernes, menos festivos registrados | recuperado + festivos nuevos |
+| Tolerancia | 15 minutos al segundo: 15:00 no es retardo, 15:01 sí (§11) | regla de Esteban, 28-sep-2026 |
+| Qué checada cuenta | La primera del día, en hora del centro (CST, UTC-6), convertida en un solo lugar | recuperado |
+| Días | Lunes a viernes, menos feriados. Sábado y domingo nunca son retardo | recuperado + §11 |
 | Periodo | Mes calendario | **propuesto** (antes: ventana móvil de 30 días) |
 | Empresas | Sólo `company_id = 1` | por filtro de empresa |
 | Contar desde | Configurable. Nada anterior abre casos. | nuevo |
@@ -147,7 +148,7 @@ el comentario de cierre de #334.
 
 1. **Escalera:** umbrales 1/3/5/7 y qué documento corresponde a cada nivel.
 2. **Periodo:** mes calendario contra ventana móvil de 30 días.
-3. **Tolerancia:** 20 minutos.
+3. **Tolerancia:** 15 minutos al segundo (§11, `confirmado = false` hasta que RH lo confirme).
 4. **Hora de entrada:** la ficha (`x_studio_hora_entrada`) contra el calendario. Hoy 6 de 11
    personas de oficina tienen las dos distintas: hay que corregir una u otra en Odoo antes de
    pasar a real.
@@ -259,3 +260,91 @@ acierto del lector sale en el resumen semanal.
 - una alerta **recomienda** cambiar de modo, pero nunca lo cambia.
 
 Cómo y cuándo cambiar: `MODO_SUSPENSION.md`.
+
+## 11. Reglas definitivas (reglas R3, 28-sep-2026)
+
+Decisiones de Esteban. Donde choquen con lo anterior, manda esta sección. Migraciones
+`retardos_0007` y `retardos_0008`. Todos los valores nacen `confirmado = false`.
+
+### 11.1 Retardo
+
+- **Hora del centro (CST, UTC-6 todo el año).** Toda conversión vive en `retardos.a_local` y
+  `retardos.seg_local`. Probado en los bordes del día: una checada de las 23:59:59 CST no se
+  corre al día siguiente.
+- **15 minutos al segundo.** Llegar 15:00 después de la hora de entrada no es retardo; 15:01 sí.
+  La comparación es en segundos, no en minutos redondeados. Clave `tolerancia_min`.
+- **Lunes a viernes.** Sábado y domingo nunca son retardo, aunque la clave `dias_habiles` diga
+  otra cosa: el sistema intersecta con lunes a viernes. Sus horas sí cuentan para la jornada.
+- **Feriados del artículo 74 de la LFT** de 2026 y 2027 sembrados (`creado_por =
+  semilla_lft_art74`). Dirección agrega o quita los de la empresa en Configuración.
+
+### 11.2 Jornada semanal FTS
+
+- **Semana de viernes 00:00 a jueves 23:59:59 CST**, con la misma numeración que Nómina
+  (jueves 23-jul-2026 = S30, sin reinicio en enero). Una asistencia que cruza el corte se
+  parte en dos.
+- **Horas efectivas** = horas registradas menos 30 minutos de comida por día trabajado, sin
+  duplicar una comida que Odoo ya haya registrado (`jornada_comida_min`). En fin de semana la
+  comida se descuenta sólo si trabajó al menos 6 horas (`jornada_comida_fin_de_semana =
+  desde_horas`); ver la pregunta a Legal en `PARA_LEGAL.md`.
+- **Umbral 48 horas.** Si el calendario de la persona en Odoo difiere en más de 0.5 horas
+  efectivas, se usa el suyo y se marca en Calidad de datos. Hoy aplica a las 2 personas con el
+  calendario de FTS USA (50.5 horas). Los calendarios de oficina y operaciones dan 10 horas de
+  presencia por día, 9.5 efectivas: **47.5 a la semana, media hora abajo de 48** (ver §11.5).
+- **Prorrateo: 9.6 horas menos por día hábil cubierto** (feriado, permiso, incapacidad,
+  vacaciones, día que no cuenta, disputa, o lo que Nómina · Incidencias declare para esa
+  semana). Máximo 5 días. Si un día se cuenta dos veces, el umbral baja de más: es el error
+  tolerable, nunca el de exigir horas de un día de vacaciones.
+- **Datos incompletos van a "Jornada por revisar", no a aviso:** entrada sin salida, salida sin
+  leer, asistencia de más de 16 horas, incidencia abierta en Odoo, o semana sin ninguna
+  asistencia. RH confirma, corrige o marca que no aplica; eso queda en la bitácora.
+- **Corte el viernes 08:00** (`retardos/jornada`), idempotente: correrlo dos veces no duplica
+  nada, y una semana que RH ya revisó o que ya abrió aviso no se recalcula.
+- **Avisos**, folio `JOR-AAAA-NNNN`, dentro de una ventana de 90 días:
+  1. primer aviso por correo a la persona, con copia a RH y al jefe;
+  2. segundo aviso igual;
+  3. tercer aviso con hoja con QR que RH imprime y recolecta, y una **propuesta de medida**
+     (descuento de tiempo no laborado) que queda **retenida** (`modo_medidas_jornada`).
+  Cada aviso da `jornada_plazo_correccion_dias` (3) para corregir un olvido de checada.
+- **Arranque:** `jornada_desde = 2026-10-02`. Las semanas anteriores se calculan y no abren
+  avisos. `jornada_envio = inmediato` manda el aviso el viernes del corte; `lunes` espera al
+  lunes, por si Nómina todavía captura.
+- **Verificación con Nómina:** cuando `modo_medidas_jornada = habilitadas`, `retardos/verificar`
+  busca el descuento en `nom_semana_persona` (tipo `jornada_tipo_nomina_descuento`) y alerta a
+  RH si no está.
+
+### 11.3 Textos
+
+Todas las plantillas nuevas y la del aviso de retardo llevan `estado_texto =
+pendiente_validacion_rh`. Cómo reemplazarlas: `PLANTILLAS.md`.
+
+### 11.4 Simulación con datos reales (28-sep-2026, sólo lectura, consola TMP)
+
+**Retardos** (escalera 1/3/5/7, 29 activos):
+
+| Mes | Hora | Retardos | Personas | Correos a personas, escenario F | Retenidos en F |
+|---|---|---|---|---|---|
+| ago | ficha | 138 (antes 115 con 20 min) | 19 | 31 | 19 |
+| sep | ficha | 141 (antes 124) | 21 | 35 | 21 |
+| ago | sugerida | 40 (antes 29) | 15 | 18 | 2 |
+| sep | sugerida | 53 (antes 52) | 18 | 28 | 4 |
+
+**Jornada**, últimas 8 semanas FTS (S32 a S39/2026), con las declaraciones de Nómina:
+
+- 232 semanas-persona: **117 abajo de 48** (50%), 85 cumplen, 30 a revisión.
+- 27 de 29 personas quedan abajo al menos una semana; 15 en 4 o más; 3 en las 8.
+- Horas efectivas promedio por día trabajado: 9.0 a 9.4 (hacen falta 9.6).
+- En un día completo la presencia promedio es 9.98 horas; 401 de 880 días completos quedan
+  abajo de las 10.1 que pide la regla.
+- Con escalera de 90 días saldrían **66 terceros avisos a 20 personas** en 8 semanas.
+
+### 11.5 Lectura
+
+- **El faltante casi no es la media hora del calendario:** con umbral de 47.5 sólo 7 de 117
+  semanas pasarían a cumplir.
+- **Es sobre todo días sin checada:** 89% de las horas faltantes (987 de 1,107.5) están en
+  semanas con un día hábil sin ninguna asistencia o con un día de menos de 6 horas. Eso es olvido
+  de checar o ausencia sin registrar, no jornada corta.
+- **48 no es realista hoy como se mide.** Antes de mandar avisos a personas, RH tiene que
+  limpiar olvidos y ausencias, y decidir si el calendario de Odoo se ajusta a 10.1 horas.
+

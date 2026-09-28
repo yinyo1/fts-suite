@@ -16,7 +16,7 @@ endobj
 << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 6 0 R >>
 endobj
 6 0 obj
-<< /Length 11368 >>
+<< /Length 11371 >>
 stream
 36 756 12 12 re f
 36 36 12 12 re f
@@ -462,7 +462,7 @@ BT /F2 9 Tf 300 516 Td (Hora de entrada) Tj ET
 BT /F2 9 Tf 430 516 Td (Minutos tarde) Tj ET
 0.5 w 60 510 m 550 510 l S
 BT /F1 9 Tf 60 498 Td (01/09/2026) Tj ET
-BT /F1 9 Tf 170 498 Td (07:31) Tj ET
+BT /F1 9 Tf 170 498 Td (07:31:12) Tj ET
 BT /F1 9 Tf 300 498 Td (07:00) Tj ET
 BT /F1 9 Tf 430 498 Td (31) Tj ET
 BT /F1 8 Tf 280 40 Td (Página 1 de 1) Tj ET
@@ -480,5 +480,5 @@ xref
 trailer
 << /Size 7 /Root 1 0 R >>
 startxref
-11877
+11880
 %%EOF

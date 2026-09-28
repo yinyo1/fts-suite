@@ -10,8 +10,8 @@ Hoy el sistema funciona en **modo sombra**: detecta y arma todo, pero ningún co
 
 **Sí hace:**
 
-- Revisa dos veces al día la primera checada de cada persona en el kiosko y la compara con su hora de entrada registrada más 20 minutos de tolerancia.
-- Cuenta los retardos de cada persona en el mes, de lunes a viernes. No cuentan los días de permiso, vacaciones, incapacidad, trabajo fuera o feriado, ni los días donde la checada está en disputa o hubo un olvido de entrada registrado.
+- Revisa dos veces al día la primera checada de cada persona en el kiosko y la compara con su hora de entrada registrada más **15 minutos de tolerancia, al segundo**: llegar 15:00 después no es retardo, 15:01 sí. Todo en hora del centro (CST).
+- Cuenta los retardos de cada persona en el mes, de lunes a viernes. **Sábado y domingo nunca son retardo.** No cuentan los días de permiso, vacaciones, incapacidad, trabajo fuera o feriado, ni los días donde la checada está en disputa o hubo un olvido de entrada registrado.
 - Cuando alguien llega a cierto número de retardos en el mes, abre un **caso con folio** (por ejemplo RET-2026-0041).
 - En el aviso (nivel 1) le manda un correo informativo a la persona.
 - En carta compromiso y acta **le manda la hoja a Recursos Humanos** (con copia al jefe directo) para que **RH cite a la persona y recolecte la firma** en papel. A la persona le llega un **aviso informativo** con la misma hoja en PDF, para que la conozca antes de la cita; no tiene que contestarlo.
@@ -42,6 +42,115 @@ Si una persona ya firmó un documento y vuelve a llegar tarde dentro de los 30 d
 
 Los números están medidos contra datos reales en el issue #334 (Tarea 3). Con las horas de entrada que hoy tiene Odoo, una de cada cuatro personas llegaría cada mes al nivel de suspensión. Por eso RH está revisando primero la hora de entrada de cada quien.
 
+## 2b. Jornada semanal (nuevo, reglas del 28-sep-2026)
+
+Además de los retardos, el sistema revisa la **jornada semanal**: 48 horas efectivas de **viernes a jueves**, en hora del centro, ya descontados 30 minutos de comida por cada día trabajado. Sábado y domingo no son retardo, pero sus horas sí cuentan para la semana.
+
+- Un feriado, permiso, incapacidad, vacaciones o día que RH marcó como que no cuenta **baja 9.6 horas** lo que se exige esa semana.
+- Si los datos están incompletos (entrada sin salida, una asistencia de más de 16 horas, una incidencia abierta), **no sale ningún aviso**: la semana va a RH para que la revise.
+- Si una semana queda abajo, sale un **aviso** a la persona con copia a RH y al jefe, con el día a día y un plazo para corregir si fue olvido de checada. Al **tercer aviso** dentro de 90 días, la persona recibe una hoja con QR que RH imprime y recolecta, igual que la carta compromiso, y se abre una **propuesta de medida** (descuento de tiempo no laborado) que **queda retenida**: no se aplica ni se manda a Nómina.
+- Todos los textos de jornada están marcados **"pendiente de validación de RH"**.
+
+**Primer y segundo aviso, a la persona (copia a RH y al jefe)**
+
+**Asunto:** [JOR-2026-0003] Aviso 1 de jornada semanal: semana del 18/09/2026 al 24/09/2026
+
+Hola Laura Demo:
+
+En FTS la jornada se cuenta por semana, del viernes al jueves, y es de **48:00 horas efectivas**, ya descontados 30 minutos de comida por cada día que trabajas. Cumplirla es cuidar el tiempo de tus compañeros, que cuentan con tu parte del trabajo.
+
+Semana del **viernes 18/09/2026 al jueves 24/09/2026** (hora del centro, CST):
+
+| Día | Registradas | Comida | Efectivas | Nota |
+|---|---|---|---|---|
+| Vie 18/09 | 10:06 | 0:30 | 9:36 |  |
+| Sáb 19/09 | 0:00 | 0:00 | 0:00 |  |
+| Dom 20/09 | 0:00 | 0:00 | 0:00 |  |
+| Lun 21/09 | 10:00 | 0:30 | 9:30 |  |
+| Mar 22/09 | 0:00 | 0:00 | 0:00 | no checó |
+| Mié 23/09 | 10:06 | 0:30 | 9:36 |  |
+| Jue 24/09 | 9:54 | 0:30 | 9:24 |  |
+
+Horas efectivas registradas: **38:06**. Jornada de la semana: **48:00**. Faltante: **9:54**.
+
+Este es el aviso número **1**. Si hay un error (una checada que no se registró, un permiso o un día en campo), pide la corrección a Recursos Humanos a más tardar el **01/10/2026**.
+
+Recursos Humanos  
+SERVICIOS FTS SA DE CV
+
+**Tercer aviso, a la persona**
+
+**Asunto:** [JOR-2026-0003] Tercer aviso de jornada semanal: semana del 18/09/2026 al 24/09/2026
+
+Hola Laura Demo:
+
+Este es el **tercer aviso** de jornada semanal incompleta dentro del periodo que revisa Recursos Humanos. Te lo decimos con claridad porque el tiempo que falta lo cubren tus compañeros.
+
+Semana del **viernes 18/09/2026 al jueves 24/09/2026** (hora del centro, CST):
+
+| Día | Registradas | Comida | Efectivas | Nota |
+|---|---|---|---|---|
+| Vie 18/09 | 10:06 | 0:30 | 9:36 |  |
+| Sáb 19/09 | 0:00 | 0:00 | 0:00 |  |
+| Dom 20/09 | 0:00 | 0:00 | 0:00 |  |
+| Lun 21/09 | 10:00 | 0:30 | 9:30 |  |
+| Mar 22/09 | 0:00 | 0:00 | 0:00 | no checó |
+| Mié 23/09 | 10:06 | 0:30 | 9:36 |  |
+| Jue 24/09 | 9:54 | 0:30 | 9:24 |  |
+
+Horas efectivas registradas: **38:06**. Jornada de la semana: **48:00**. Faltante: **9:54**.
+
+Te adjuntamos la hoja. Recursos Humanos te va a citar para revisarla contigo; en la hoja hay un espacio para que escribas tu versión. Si hay un error en tus horas, pide la corrección a Recursos Humanos a más tardar el **01/10/2026**.
+
+Recursos Humanos  
+SERVICIOS FTS SA DE CV
+
+**Tercer aviso, a RH para recolectar la hoja**
+
+**Asunto:** [JOR-2026-0003] Recolectar firma: tercer aviso de jornada de Laura Demo
+
+Hola:
+
+Se abrió el folio **JOR-2026-0003**: **tercer aviso de jornada incompleta** para **Laura Demo** (Técnica de campo, Operaciones), semana del 18/09/2026 al 24/09/2026 (hora del centro, CST).
+
+| Día | Registradas | Comida | Efectivas | Nota |
+|---|---|---|---|---|
+| Vie 18/09 | 10:06 | 0:30 | 9:36 |  |
+| Sáb 19/09 | 0:00 | 0:00 | 0:00 |  |
+| Dom 20/09 | 0:00 | 0:00 | 0:00 |  |
+| Lun 21/09 | 10:00 | 0:30 | 9:30 |  |
+| Mar 22/09 | 0:00 | 0:00 | 0:00 | no checó |
+| Mié 23/09 | 10:06 | 0:30 | 9:36 |  |
+| Jue 24/09 | 9:54 | 0:30 | 9:24 |  |
+
+Horas efectivas: **38:06** de **48:00**. Faltante: **9:54**.
+
+Adjuntamos la hoja lista para imprimir. Por favor cita a la persona, recolecta su firma (o la negativa con dos testigos) y súbela al panel de Retardos. Plazo: **01/10/2026**. Correo a la persona: laura.demo@ejemplo.com.
+
+En el panel queda una **propuesta de medida** (descuento del tiempo no laborado u otra). La decide Recursos Humanos y queda retenida hasta que Legal confirme el procedimiento: el sistema no aplica nada.
+
+Con copia al jefe directo.
+
+**Hoja del tercer aviso**
+
+**TERCER AVISO DE JORNADA SEMANAL INCOMPLETA**
+
+La jornada semanal en FTS es de horas efectivas de viernes a jueves, ya descontada la comida de cada día trabajado. Este es el tercer aviso de jornada incompleta en el periodo que revisa Recursos Humanos. Cumplirla es respetar el tiempo de los compañeros, que cubren lo que falta. Antes de firmar, el trabajador puede escribir su versión en el espacio de comentarios. Recursos Humanos decide cualquier medida; ninguna se aplica de forma automática.
+
+**Comunicado de arranque a toda la plantilla** (lo manda RH una vez, antes del 1 de octubre)
+
+**Asunto:** Puntualidad y jornada semanal en FTS
+
+Hola equipo:
+
+A partir del **1 de octubre de 2026** el control de asistencia de FTS funciona con estas reglas. La idea central es sencilla: **llegar a tiempo y cumplir la jornada es respetar el tiempo de tus compañeros**.
+
+1. **Hora de entrada y tolerancia.** Tu hora de entrada es la de tu ficha. La tolerancia es de 15 minutos: llegar a los 15 minutos exactos no es retardo; un segundo después, sí. Sólo cuentan lunes a viernes.
+1. **Retardos.** Con el primer retardo del mes recibes un aviso informativo. A partir de 3 retardos en el mes, Recursos Humanos te cita para firmar una carta compromiso.
+1. **Jornada semanal.** La semana va del viernes al jueves y son 48:00 horas efectivas, ya descontados 30 minutos de comida por cada día trabajado. Si una semana queda corta, recibes un aviso con el detalle por día.
+1. **Correcciones.** Si una checada no se registró o tenías un permiso, pide la corrección a Recursos Humanos. Todas las horas se expresan en hora del centro, CST.Recursos Humanos  
+SERVICIOS FTS SA DE CV
+
 ## 3. Los textos tal como salen hoy
 
 ### 3.1 Correos a la persona
@@ -56,11 +165,15 @@ Cada correo sale de `sales@fts.mx`. El folio va entre corchetes en el asunto par
 
 Hola Laura Demo:
 
-El control de asistencia registró retardos en el periodo 2026-09. Este correo es un **aviso informativo** y no requiere respuesta.
+Llegar a tiempo es una forma de respetar el tiempo de tus compañeros: cuando alguien llega tarde, el equipo arranca incompleto. Por eso te compartimos este **aviso informativo**. No requiere respuesta.
+
+En el periodo 2026-09 el control de asistencia registró estos retardos (hora del centro, CST):
 
 | Fecha | Hora de llegada | Hora de entrada | Minutos tarde |
 |---|---|---|---|
-| 01/09/2026 | 07:31 | 07:00 | 31 |
+| 01/09/2026 | 07:31:12 | 07:00 | 31 |
+
+Tu hora de entrada es la que aparece en la tabla. La tolerancia es de **15 minutos**: llegar a los 15 minutos exactos no es retardo; un segundo después, sí. Llevas **1** en el mes. A partir de **3 retardos** en el mes, Recursos Humanos te cita para firmar una carta compromiso.
 
 Si alguno de estos días tenías permiso, estabas en campo o hubo un error en la checada, avisa a Recursos Humanos o a tu supervisor para corregirlo.
 
@@ -77,9 +190,9 @@ En el periodo 2026-09 acumulaste 3 retardos:
 
 | Fecha | Hora de llegada | Hora de entrada | Minutos tarde |
 |---|---|---|---|
-| 01/09/2026 | 07:31 | 07:00 | 31 |
-| 03/09/2026 | 07:24 | 07:00 | 24 |
-| 08/09/2026 | 07:47 | 07:00 | 47 |
+| 01/09/2026 | 07:31:12 | 07:00 | 31 |
+| 03/09/2026 | 07:15:01 | 07:00 | 15 |
+| 08/09/2026 | 07:47:40 | 07:00 | 47 |
 
 Te adjuntamos una **carta compromiso**. Por favor imprímela, fírmala y **responde a este mismo correo** con la hoja firmada (PDF o foto clara desde el celular) a más tardar el **01/10/2026**. No cambies el asunto: el folio RET-2026-0041 nos ayuda a encontrar tu caso.
 
@@ -98,11 +211,11 @@ En el periodo 2026-09 acumulaste 5 retardos:
 
 | Fecha | Hora de llegada | Hora de entrada | Minutos tarde |
 |---|---|---|---|
-| 01/09/2026 | 07:31 | 07:00 | 31 |
-| 03/09/2026 | 07:24 | 07:00 | 24 |
-| 08/09/2026 | 07:47 | 07:00 | 47 |
-| 10/09/2026 | 07:26 | 07:00 | 26 |
-| 14/09/2026 | 08:05 | 07:00 | 65 |
+| 01/09/2026 | 07:31:12 | 07:00 | 31 |
+| 03/09/2026 | 07:15:01 | 07:00 | 15 |
+| 08/09/2026 | 07:47:40 | 07:00 | 47 |
+| 10/09/2026 | 07:26:05 | 07:00 | 26 |
+| 14/09/2026 | 08:05:33 | 07:00 | 65 |
 
 Se levanta un **acta administrativa** (adjunta). Preséntate con Recursos Humanos para firmarla ante dos testigos, o responde a este correo con la hoja firmada a más tardar el **01/10/2026**, sin cambiar el asunto.
 
@@ -121,13 +234,13 @@ En el periodo 2026-09 acumulaste 7 retardos, después de haber firmado documento
 
 | Fecha | Hora de llegada | Hora de entrada | Minutos tarde |
 |---|---|---|---|
-| 01/09/2026 | 07:31 | 07:00 | 31 |
-| 03/09/2026 | 07:24 | 07:00 | 24 |
-| 08/09/2026 | 07:47 | 07:00 | 47 |
-| 10/09/2026 | 07:26 | 07:00 | 26 |
-| 14/09/2026 | 08:05 | 07:00 | 65 |
-| 17/09/2026 | 07:22 | 07:00 | 22 |
-| 22/09/2026 | 07:38 | 07:00 | 38 |
+| 01/09/2026 | 07:31:12 | 07:00 | 31 |
+| 03/09/2026 | 07:15:01 | 07:00 | 15 |
+| 08/09/2026 | 07:47:40 | 07:00 | 47 |
+| 10/09/2026 | 07:26:05 | 07:00 | 26 |
+| 14/09/2026 | 08:05:33 | 07:00 | 65 |
+| 17/09/2026 | 07:22:19 | 07:00 | 22 |
+| 22/09/2026 | 07:38:50 | 07:00 | 38 |
 
 Recursos Humanos te citará para escucharte antes de decidir una medida disciplinaria conforme al Reglamento Interior de Trabajo y a la Ley Federal del Trabajo. Adjuntamos el documento. Responde a este correo con la hoja firmada a más tardar el **01/10/2026**, sin cambiar el asunto.
 
@@ -146,11 +259,11 @@ Se abrió el folio **RET-2026-0041**: **Acta administrativa** para **Laura Demo*
 
 | Fecha | Hora de llegada | Hora de entrada | Minutos tarde |
 |---|---|---|---|
-| 01/09/2026 | 07:31 | 07:00 | 31 |
-| 03/09/2026 | 07:24 | 07:00 | 24 |
-| 08/09/2026 | 07:47 | 07:00 | 47 |
-| 10/09/2026 | 07:26 | 07:00 | 26 |
-| 14/09/2026 | 08:05 | 07:00 | 65 |
+| 01/09/2026 | 07:31:12 | 07:00 | 31 |
+| 03/09/2026 | 07:15:01 | 07:00 | 15 |
+| 08/09/2026 | 07:47:40 | 07:00 | 47 |
+| 10/09/2026 | 07:26:05 | 07:00 | 26 |
+| 14/09/2026 | 08:05:33 | 07:00 | 65 |
 
 Adjuntamos la hoja lista para imprimir. Por favor:
 
@@ -173,11 +286,11 @@ En el periodo 2026-09 el control de asistencia registró 5 retardos:
 
 | Fecha | Hora de llegada | Hora de entrada | Minutos tarde |
 |---|---|---|---|
-| 01/09/2026 | 07:31 | 07:00 | 31 |
-| 03/09/2026 | 07:24 | 07:00 | 24 |
-| 08/09/2026 | 07:47 | 07:00 | 47 |
-| 10/09/2026 | 07:26 | 07:00 | 26 |
-| 14/09/2026 | 08:05 | 07:00 | 65 |
+| 01/09/2026 | 07:31:12 | 07:00 | 31 |
+| 03/09/2026 | 07:15:01 | 07:00 | 15 |
+| 08/09/2026 | 07:47:40 | 07:00 | 47 |
+| 10/09/2026 | 07:26:05 | 07:00 | 26 |
+| 14/09/2026 | 08:05:33 | 07:00 | 65 |
 
 Por esto se emitió una **Acta administrativa**, que te adjuntamos para que la conozcas. **No necesitas contestar este correo.** Recursos Humanos te va a citar para revisarla contigo y firmarla. En la hoja hay un espacio para que escribas tu versión: tienes derecho a ser escuchado.
 
@@ -204,11 +317,11 @@ El folio **RET-2026-0041** (Acta administrativa de Laura Demo, periodo 2026-09) 
 
 | Fecha | Hora de llegada | Hora de entrada | Minutos tarde |
 |---|---|---|---|
-| 01/09/2026 | 07:31 | 07:00 | 31 |
-| 03/09/2026 | 07:24 | 07:00 | 24 |
-| 08/09/2026 | 07:47 | 07:00 | 47 |
-| 10/09/2026 | 07:26 | 07:00 | 26 |
-| 14/09/2026 | 08:05 | 07:00 | 65 |
+| 01/09/2026 | 07:31:12 | 07:00 | 31 |
+| 03/09/2026 | 07:15:01 | 07:00 | 15 |
+| 08/09/2026 | 07:47:40 | 07:00 | 47 |
+| 10/09/2026 | 07:26:05 | 07:00 | 26 |
+| 14/09/2026 | 08:05:33 | 07:00 | 65 |
 
 Se escala a Dirección para que se defina con Recursos Humanos cómo se atiende.
 
@@ -224,9 +337,9 @@ Laura Demo no tiene un correo válido registrado. Te pedimos imprimir el documen
 
 | Fecha | Hora de llegada | Hora de entrada | Minutos tarde |
 |---|---|---|---|
-| 01/09/2026 | 07:31 | 07:00 | 31 |
-| 03/09/2026 | 07:24 | 07:00 | 24 |
-| 08/09/2026 | 07:47 | 07:00 | 47 |
+| 01/09/2026 | 07:31:12 | 07:00 | 31 |
+| 03/09/2026 | 07:15:01 | 07:00 | 15 |
+| 08/09/2026 | 07:47:40 | 07:00 | 47 |
 
 Recursos Humanos  
 SERVICIOS FTS SA DE CV
@@ -287,10 +400,11 @@ Recuadros de firma: trabajador, Recursos Humanos, jefe directo, y dos testigos. 
 
 **Muestras en PDF con datos inventados:**
 
-- [muestra-aviso.pdf](muestras/muestra-aviso.pdf): aviso (12,082 bytes)
-- [muestra-carta-compromiso.pdf](muestras/muestra-carta-compromiso.pdf): carta compromiso (12,696 bytes)
-- [muestra-acta.pdf](muestras/muestra-acta.pdf): acta administrativa (13,521 bytes)
-- [muestra-suspension.pdf](muestras/muestra-suspension.pdf): suspensión (14,485 bytes)
+- [muestra-aviso.pdf](muestras/muestra-aviso.pdf): aviso (12,085 bytes)
+- [muestra-carta-compromiso.pdf](muestras/muestra-carta-compromiso.pdf): carta compromiso (12,705 bytes)
+- [muestra-acta.pdf](muestras/muestra-acta.pdf): acta administrativa (13,536 bytes)
+- [muestra-suspension.pdf](muestras/muestra-suspension.pdf): suspensión (14,506 bytes)
+- [muestra-aviso-jornada-3.pdf](muestras/muestra-aviso-jornada-3.pdf): tercer aviso de jornada semanal (15,014 bytes)
 
 ## 4. Derecho de audiencia
 
@@ -346,3 +460,6 @@ Los textos nuevos **no citan el art. 47**. El acta cita los artículos 20 y 134 
 11. **Correo personal:** 13 de 29 personas tienen registrado un correo personal (no de la empresa). ¿Se les puede notificar ahí o sólo al correo de la empresa o en papel?
 12. **Párrafo de reincidencia** (carta y acta, sección 3.3): ¿se queda, se cambia o se quita?
 13. **Antecedentes al activar suspensiones:** el día que se activen, ¿las actas firmadas antes de esa fecha cuentan como antecedente para una suspensión por reincidencia? Hoy el sistema dice que **no**, y no aplica ninguna suspensión por retardos anteriores a la activación.
+14. **Descontar tiempo no laborado (arts. 107 y 110 LFT):** el art. 107 prohíbe multas al trabajador y el 110 limita los descuentos al salario a casos específicos. ¿Descontar las horas de una semana incompleta es pagar sólo el tiempo trabajado (permitido) o un descuento que el 110 no prevé? ¿Hace falta firma de la persona, una cláusula en el contrato o en el Reglamento? Mientras Legal no conteste, la propuesta de medida **queda retenida** y no llega a Nómina.
+15. **Comida en fin de semana:** hoy se descuentan 30 minutos de comida el sábado o domingo sólo si la persona trabajó 6 horas o más ese día. ¿Es correcto, o la comida debe descontarse siempre, o nunca, en fin de semana?
+16. **Calendario contra regla:** los horarios de Odoo son de 10 horas de presencia por día (9.5 efectivas), o sea 47.5 horas a la semana. La regla de 48 pide 10.1 horas de presencia diaria. ¿Qué manda si difieren: el calendario firmado o la regla?

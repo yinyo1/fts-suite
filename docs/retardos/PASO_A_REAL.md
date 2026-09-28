@@ -17,10 +17,12 @@ Dónde correrlas: en la consola de consultas de Postgres de Railway (servicio `f
 
 | # | Condición | Cómo se comprueba |
 |---|---|---|
-| 1 | PR #344 mergeado y el panel V1.02 o posterior visible en Pages | Recarga dura del panel |
+| 1 | PR #344 mergeado y el panel V1.03 o posterior visible en Pages | Recarga dura del panel |
 | 2 | Permisos `retardos:read` y `retardos:write` asignados a RH | RH entra al panel |
 | 3 | RH revisó la hora de entrada de cada persona (pestaña Calidad de datos) | Consulta 0.a |
 | 4 | Legal confirmó escalera, textos y Reglamento | Comentario en #334 |
+| 4b | RH validó cada texto de correo (`estado_texto = validado_rh`) y el de la hoja del tercer aviso de jornada | Read-back 1: `textos_sin_validar` en `null` |
+| 4c | RH limpió olvidos y ausencias de las semanas recientes en Jornada por revisar, y se decidió qué hacer con el calendario de 10 horas contra la regla de 10.1 (PROPUESTA.md §11.5) | Pestaña Jornada semanal |
 | 5 | Buzón receptor autorizado en Graph y escrito en `buzon_receptor` | Consulta 0.a |
 | 6 | `rh_destinatarios` y `alertas_destinatarios` con los buzones reales | Consulta 0.a |
 | 7 | El sistema está sano | Consulta 0.a: `salud.ok = true` |
@@ -63,7 +65,9 @@ UPDATE retardos.escalera SET umbral = 6, activo = true,  confirmado = true WHERE
 UPDATE retardos.escalera SET umbral = 9, activo = true,  confirmado = true WHERE nivel = 4;   -- suspensión
 
 -- Reglas. Cambia el valor sólo si se acordó otro; confirmado=true en todos los casos.
-UPDATE retardos.config SET valor = '20'::jsonb,            confirmado = true, actualizado_por = 'quien.ejecuta', actualizado_at = now() WHERE clave = 'tolerancia_min';
+-- Reglas R3 (28-sep-2026): 15 minutos al segundo, lunes a viernes, hora del centro.
+UPDATE retardos.config SET valor = '15'::jsonb,            confirmado = true, actualizado_por = 'quien.ejecuta', actualizado_at = now() WHERE clave = 'tolerancia_min';
+UPDATE retardos.config SET confirmado = true, actualizado_por = 'quien.ejecuta', actualizado_at = now() WHERE clave = 'zona_horaria';
 UPDATE retardos.config SET valor = '"hora_entrada"'::jsonb, confirmado = true, actualizado_por = 'quien.ejecuta', actualizado_at = now() WHERE clave = 'hora_fuente';
 UPDATE retardos.config SET valor = '"mes"'::jsonb,          confirmado = true, actualizado_por = 'quien.ejecuta', actualizado_at = now() WHERE clave = 'periodo';
 UPDATE retardos.config SET valor = '30'::jsonb,            confirmado = true, actualizado_por = 'quien.ejecuta', actualizado_at = now() WHERE clave = 'reincidencia_dias';
@@ -82,6 +86,22 @@ UPDATE retardos.config SET confirmado = true, actualizado_por = 'quien.ejecuta',
 -- Obsoletas desde retardos_0006 (ya no se leen): se confirman para que no aparezcan como pendientes.
 UPDATE retardos.config SET confirmado = true, actualizado_por = 'quien.ejecuta', actualizado_at = now()
  WHERE clave IN ('nivel_maximo_habilitado', 'suspensiones_habilitadas');
+-- Jornada semanal FTS (PROPUESTA.md §11). Cambia el valor sólo si se acordó otro.
+-- jornada_desde: primera semana FTS (viernes) que abre avisos. Arranque recomendado: 2026-10-02.
+UPDATE retardos.config SET valor = '"2026-10-02"'::jsonb, confirmado = true, actualizado_por = 'quien.ejecuta', actualizado_at = now() WHERE clave = 'jornada_desde';
+UPDATE retardos.config SET valor = '48'::jsonb,           confirmado = true, actualizado_por = 'quien.ejecuta', actualizado_at = now() WHERE clave = 'jornada_umbral_horas';
+UPDATE retardos.config SET valor = '30'::jsonb,           confirmado = true, actualizado_por = 'quien.ejecuta', actualizado_at = now() WHERE clave = 'jornada_comida_min';
+-- Comida en fin de semana: pregunta 15 de PARA_LEGAL.md. 'desde_horas' | 'siempre' | 'nunca'.
+UPDATE retardos.config SET valor = '"desde_horas"'::jsonb, confirmado = true, actualizado_por = 'quien.ejecuta', actualizado_at = now() WHERE clave = 'jornada_comida_fin_de_semana';
+-- 'inmediato' (viernes del corte) o 'lunes' (espera a que Nómina termine de capturar).
+UPDATE retardos.config SET valor = '"inmediato"'::jsonb,  confirmado = true, actualizado_por = 'quien.ejecuta', actualizado_at = now() WHERE clave = 'jornada_envio';
+-- Medidas del 3er aviso: se quedan 'retenidas' hasta que Legal conteste la pregunta 14 (arts. 107 y 110 LFT).
+UPDATE retardos.config SET valor = '"retenidas"'::jsonb,  confirmado = true, actualizado_por = 'quien.ejecuta', actualizado_at = now() WHERE clave = 'modo_medidas_jornada';
+UPDATE retardos.config SET confirmado = true, actualizado_por = 'quien.ejecuta', actualizado_at = now()
+ WHERE clave IN ('jornada_comida_fds_min_horas', 'jornada_usar_calendario', 'jornada_tolerancia_calendario_h', 'jornada_horas_max_asistencia',
+                 'jornada_ventana_dias', 'jornada_plazo_correccion_dias', 'jornada_tipos_nomina_prorrateo', 'jornada_tipo_nomina_descuento');
+-- Comunicado de arranque: sólo si se va a mandar desde el sistema (PLANTILLAS.md §5). Si RH lo manda desde su buzón, confirmar vacío.
+UPDATE retardos.config SET confirmado = true, actualizado_por = 'quien.ejecuta', actualizado_at = now() WHERE clave = 'comunicado_destinatarios';
 -- Destinatarios, buzón, días hábiles y latido: confirmar SÓLO después de revisar en 0.a que tienen el valor real.
 UPDATE retardos.config SET confirmado = true, actualizado_por = 'quien.ejecuta', actualizado_at = now()
  WHERE clave IN ('rh_destinatarios', 'alertas_destinatarios', 'sombra_destinatarios', 'buzon_receptor', 'dias_habiles', 'latido_dias_sin_retardos');
@@ -93,10 +113,12 @@ COMMIT;
 ```sql
 SELECT (SELECT jsonb_agg(clave ORDER BY clave) FROM retardos.config WHERE NOT confirmado) AS config_sin_confirmar,
        (SELECT jsonb_agg(nivel) FROM retardos.escalera WHERE NOT confirmado) AS escalera_sin_confirmar,
-       (SELECT jsonb_object_agg(nivel, retardos.nivel_habilitado(nivel)) FROM retardos.escalera) AS niveles_que_se_notifican;
+       (SELECT jsonb_object_agg(nivel, retardos.nivel_habilitado(nivel)) FROM retardos.escalera) AS niveles_que_se_notifican,
+       (SELECT jsonb_agg(nivel) FROM retardos.escalera_jornada WHERE NOT confirmado) AS avisos_jornada_sin_confirmar,
+       (SELECT jsonb_agg(clave ORDER BY clave) FROM retardos.plantilla WHERE estado_texto <> 'validado_rh') AS textos_sin_validar;
 ```
 
-Lo esperado es que `config_sin_confirmar` sólo liste `antecedentes_previos_cuentan`, `contar_desde`, `modo_suspension_desde` y `real_desde`. Las de fecha se escriben en el paso 2; las dos de suspensión se quedan sin confirmar a propósito, porque las escribe `MODO_SUSPENSION.md`. `escalera_sin_confirmar` debe salir `null`.
+Lo esperado es que `config_sin_confirmar` sólo liste `antecedentes_previos_cuentan`, `contar_desde`, `modo_suspension_desde` y `real_desde`. Las de fecha se escriben en el paso 2; las dos de suspensión se quedan sin confirmar a propósito, porque las escribe `MODO_SUSPENSION.md`. `escalera_sin_confirmar` debe salir `null`. `avisos_jornada_sin_confirmar` se confirma con `UPDATE retardos.escalera_jornada SET confirmado = true WHERE nivel IN (1,2,3);` cuando RH acuerde los tres avisos. `textos_sin_validar` debe salir `null` antes de pasar a real: cada texto se valida con `PLANTILLAS.md`.
 
 ## 2. El cambio: una sola transacción
 

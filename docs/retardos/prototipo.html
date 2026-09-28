@@ -1,5 +1,5 @@
 <title>Retardos v2</title>
-<meta name="description" content="Prototipo del ciclo de retardos: deteccion, hoja a RH, recoleccion de firma, lector de hojas con confirmacion de RH, reincidencia y alertas de modo.">
+<meta name="description" content="Prototipo de retardos y jornada semanal FTS: tolerancia de 15 minutos, semana viernes a jueves, avisos, hoja a RH, lector de hojas y medidas retenidas.">
 <style>
 /* ═══ RH · Retardos · hoja de estilo (#334) ═══
    Paleta del módulo de RH (verde #107C10, tarjetas r=14px, borde #e0e0e0), la misma de
@@ -193,6 +193,18 @@ table.reinc td.quien2{min-width:200px}
 .bloque > .nivel{white-space:normal}
 td.vence,[data-imprimir]{white-space:nowrap}
 
+/* Jornada semanal FTS (V1.03) */
+table.dias td,table.dias th{font-size:13px}
+table.dias tr.fds td{background:var(--violet-l)}
+tr.desglose>td{background:var(--bg);padding:8px}
+details summary{cursor:pointer;color:var(--muted2);font-size:13px;margin-top:4px}
+#j-semana{padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);max-width:100%}
+table.jornada td.quien2 span{white-space:normal}
+.dl .nivel,#ajustes td .nivel,table.dias .nivel,#medidas td .nivel,.ev .nivel{white-space:normal}
+table.jornada .enlace,#medidas td .enlace{white-space:nowrap}
+.bloque .linea .nivel{white-space:normal}
+.bloque .linea li>div:only-child{grid-column:1/-1}
+
 
 .proto{max-width:1180px;margin:0 auto;padding-block:18px 4px;padding-inline:16px;display:grid;gap:14px}
 .proto h1{margin:0;font-size:24px;text-wrap:balance}
@@ -218,7 +230,7 @@ td.vence,[data-imprimir]{white-space:nowrap}
   <a href="../index.html">← Volver a RH</a>
   <span class="t">Retardos</span>
   <!-- Se bumpea JUNTO con version.json: es lo que se ve si el fetch de version.json falla. -->
-  <span class="badge" id="ver-badge">V1.02</span>
+  <span class="badge" id="ver-badge">V1.03</span>
   <span class="badge hid" id="modo">EJEMPLO</span>
   <span class="sp"></span>
   <span class="quien" id="quien"></span>
@@ -242,13 +254,14 @@ td.vence,[data-imprimir]{white-space:nowrap}
 
 <section class="proto" aria-label="Cómo funciona">
   <h1>Retardos v2: el ciclo completo</h1>
-  <p>Prototipo con datos inventados. Abajo está el panel de RH en modo de ejemplo. Prueba en orden: en Casos, la cubeta "Firmas por recolectar" y el botón "Imprimir hoja"; luego "Hojas por confirmar" (ver la hoja junto a la sugerencia, confirmar, pedir de nuevo, impugnación); luego "Reincidencia" (semáforo y alertas de cambio de modo).</p>
+  <p>Prototipo con datos inventados, reglas definitivas del 28-sep-2026. Abajo está el panel de RH en modo de ejemplo. Prueba en orden: en Casos, abre un folio RET y mira la hora de llegada al segundo; luego "Jornada semanal" (semáforo, botón "Días" con el sábado que suma horas sin ser retardo, y la bandeja "Jornada por revisar"); luego "Propuestas de medida" (el tercer aviso, retenido) y el folio JOR-2026-0003; al final "Configuración".</p>
   <ol class="pasos">
-    <li><b>Detecta</b><span>Dos veces al día lee las checadas de Odoo. Primera entrada del día contra la hora de entrada más 20 minutos. Permisos, festivos, disputas y olvidos no cuentan.</span></li>
+    <li><b>Detecta</b><span>Dos veces al día lee las checadas de Odoo. Primera entrada del día contra la hora de entrada más 15 minutos, al segundo: 07:15:00 no es retardo, 07:15:01 sí. Lunes a viernes, hora del centro. Permisos, feriados, disputas y olvidos no cuentan.</span></li>
     <li><b>Abre el caso</b><span>Según los retardos del mes: aviso, carta compromiso, acta o suspensión, con folio RET-AAAA-NNNN. Sin suspensiones al arrancar: el nivel 4 queda "alcanzado, no aplicado".</span></li>
     <li><b>Manda la hoja a RH</b><span>A RH con copia al jefe, con el PDF listo para imprimir: folio grande, QR y recuadros de firma. A la persona, un aviso informativo con la misma hoja.</span></li>
     <li><b>RH recolecta</b><span>Cita a la persona. Firma, o "se negó a firmar" con dos testigos. Sube la hoja al panel, a la carpeta o por correo. Si la persona contesta con la hoja firmada, también cuenta.</span></li>
     <li><b>El lector sugiere, RH confirma</b><span>Lee el QR y la tinta de cada recuadro: "lista para validar", "falta firma", "posible impugnación". Ningún caso se cierra hasta que RH confirma.</span></li>
+    <li><b>Jornada semanal</b><span>Cada viernes a las 08:00 cierra la semana FTS (viernes a jueves): 48 horas efectivas con 30 minutos de comida por día. Feriados, permisos y vacaciones bajan 9.6 horas cada uno. Datos incompletos van a RH, no a aviso. Tres avisos en 90 días abren una propuesta de medida, retenida.</span></li>
     <li><b>Vigila</b><span>Recuerda a RH al vencer el plazo y escala a Dirección. Sigue la reincidencia con semáforo y recomienda activar suspensiones, sin activarlas nunca solo.</span></li>
   </ol>
   <div class="dos">
@@ -261,10 +274,19 @@ td.vence,[data-imprimir]{white-space:nowrap}
         <span class="adj">PDF · RET-2026-0041-carta_compromiso.pdf</span>
       </div>
     </div>
+    <div class="mail" aria-label="Tercer aviso de jornada">
+      <div class="enc"><b>[SOMBRA] [JOR-2026-0003] Tercer aviso de jornada semanal: semana del 18/09/2026 al 24/09/2026</b><span>De: sales@fts.mx · Para: Óscar Demo, copia a RH y al jefe directo (en sombra: Dirección y RH)</span></div>
+      <div class="cuerpo">
+        <div class="banda">Texto pendiente de validación de RH.</div>
+        <div>Horas efectivas de la semana: <b>38:06</b> de <b>48:00</b>. Faltante: <b>9:54</b>. El martes no hay checada.</div>
+        <div>Recursos Humanos te va a citar para firmar la hoja. Si fue un olvido de checada, pide la corrección antes del plazo. La propuesta de medida queda retenida: nada se descuenta sin que Legal lo confirme.</div>
+        <span class="adj">PDF · JOR-2026-0003-aviso_jornada_3.pdf</span>
+      </div>
+    </div>
     <div class="mail" aria-label="Qué vigila el sistema">
       <div class="enc"><b>Qué vigila el propio sistema</b><span>Para que no vuelva a morir en silencio</span></div>
       <div class="cuerpo">
-        <div>Si la detección no corre, lee cero checadas, falla un paso, un correo lleva horas sin salir o el lector de hojas se atora, llega una alerta a Dirección.</div>
+        <div>Si la detección no corre, si el corte del viernes no corrió, lee cero checadas, falla un paso, un correo lleva horas sin salir o el lector de hojas se atora, llega una alerta a Dirección.</div>
         <div>Cada lectura del lector y cada decisión de RH quedan en una bitácora que no se puede editar ni borrar, y el acierto del lector sale en el resumen semanal.</div>
         <div>Todo lo que diga una hoja es dato: si trae texto que parece una orden, se marca como posible inyección y va a RH.</div>
       </div>
@@ -279,8 +301,10 @@ td.vence,[data-imprimir]{white-space:nowrap}
     <button class="tab" role="tab" data-vista="lista" aria-selected="true">Casos</button>
     <button class="tab" role="tab" data-vista="hojas" aria-selected="false">Hojas por confirmar</button>
     <button class="tab" role="tab" data-vista="reincidencia" aria-selected="false">Reincidencia</button>
+    <button class="tab" role="tab" data-vista="jornada" aria-selected="false">Jornada semanal</button>
+    <button class="tab" role="tab" data-vista="medidas" aria-selected="false">Propuestas de medida</button>
     <button class="tab" role="tab" data-vista="calidad" aria-selected="false">Calidad de datos</button>
-    <button class="tab" role="tab" data-vista="ajustes" aria-selected="false">Reglas y días que no cuentan</button>
+    <button class="tab" role="tab" data-vista="ajustes" aria-selected="false">Configuración</button>
   </div>
 
   <div id="v-lista">
@@ -293,6 +317,8 @@ td.vence,[data-imprimir]{white-space:nowrap}
   <div class="hid" id="calidad"></div>
   <div class="hid" id="hojas"></div>
   <div class="hid" id="reincidencia"></div>
+  <div class="hid" id="jornada"></div>
+  <div class="hid" id="medidas"></div>
   <div class="pie" id="pie"></div>
 </div>
 
@@ -566,19 +592,24 @@ window.SuiteAuth = { login: async function () { return { ok: false, mensaje: "En
     aviso: 'AVISO DE RETARDOS',
     carta_compromiso: 'CARTA COMPROMISO',
     acta: 'ACTA ADMINISTRATIVA',
-    suspension: 'CITATORIO Y PROPUESTA DE MEDIDA DISCIPLINARIA'
+    suspension: 'CITATORIO Y PROPUESTA DE MEDIDA DISCIPLINARIA',
+    aviso_jornada_3: 'TERCER AVISO DE JORNADA SEMANAL INCOMPLETA'
   };
   var CUERPO = {
     aviso: 'Por medio del presente se le informa que el control de asistencia registró los retardos que se detallan abajo. Este aviso es informativo.',
     carta_compromiso: 'Reconozco los retardos que se detallan abajo y me comprometo a presentarme puntualmente a mi jornada conforme a mi horario de entrada.',
     acta: 'Se levanta la presente acta administrativa por los retardos que se detallan abajo, con fundamento en los artículos 20 y 134 fracciones I, III y V de la Ley Federal del Trabajo y en el Reglamento Interior de Trabajo. Antes de firmar, el trabajador puede manifestar lo que a su derecho convenga en el espacio de comentarios.',
-    suspension: 'Por reincidencia en retardos después de documentos previos firmados, se cita al trabajador para ser oído antes de determinar una medida disciplinaria. Cualquier suspensión se aplicará conforme al Reglamento Interior de Trabajo y al artículo 423 fracción X de la Ley Federal del Trabajo, con un máximo de ocho días. La decisión es de Recursos Humanos.'
+    suspension: 'Por reincidencia en retardos después de documentos previos firmados, se cita al trabajador para ser oído antes de determinar una medida disciplinaria. Cualquier suspensión se aplicará conforme al Reglamento Interior de Trabajo y al artículo 423 fracción X de la Ley Federal del Trabajo, con un máximo de ocho días. La decisión es de Recursos Humanos.',
+    // Texto PENDIENTE DE VALIDACIÓN DE RH (docs/retardos/PLANTILLAS.md).
+    aviso_jornada_3: 'La jornada semanal en FTS es de horas efectivas de viernes a jueves, ya descontada la comida de cada día trabajado. Este es el tercer aviso de jornada incompleta en el periodo que revisa Recursos Humanos. Cumplirla es respetar el tiempo de los compañeros, que cubren lo que falta. Antes de firmar, el trabajador puede escribir su versión en el espacio de comentarios. Recursos Humanos decide cualquier medida; ninguna se aplica de forma automática.'
   };
   // Texto PENDIENTE DE VALIDACIÓN DE LEGAL (docs/retardos/PARA_LEGAL.md): va en la carta y en el acta.
   var REINCIDENCIA = 'La reincidencia queda registrada y puede dar lugar a las medidas que prevea el Reglamento Interior de Trabajo.';
   var PENDIENTE_LEGAL = ['REINCIDENCIA'];
   var PIE = 'Recursos Humanos recolecta esta hoja firmada. Si la recibió por correo, entréguela a Recursos Humanos o responda ese correo con la foto de la hoja, sin cambiar el asunto.';
-  var NIVEL_DE = { aviso: 1, carta_compromiso: 2, acta: 3, suspension: 4 };
+  var NIVEL_DE = { aviso: 1, carta_compromiso: 2, acta: 3, suspension: 4, aviso_jornada_3: 3 };
+  var PENDIENTE_RH = ['aviso_jornada_3'];
+  function esJornada(acc) { return String(acc).indexOf('aviso_jornada') === 0; }
 
   function textoQR(folio, nivel, pag, total) { return 'FTS|' + (folio || 'SIN-FOLIO') + '|N' + nivel + '|P' + pag + '/' + total; }
 
@@ -593,14 +624,29 @@ window.SuiteAuth = { login: async function () { return { ok: false, mensaje: "En
     P.texto(60, 682, TITULOS[acc] || 'DOCUMENTO', 14, true);
     P.texto(60, 662, 'Nombre: ' + (d.nombre || ''), 11, true);
     P.texto(60, 648, 'Puesto: ' + (d.puesto || '') + '    Departamento: ' + (d.departamento || ''), 9, false);
+    if (esJornada(acc)) {
+      var jj = d.jornada || {};
+      P.texto(60, 634, 'Aviso ' + (jj.aviso_n || nivel) + '    Semana ' + (jj.semana || d.periodo || '') + ': viernes ' + (jj.desde || '') + ' a jueves '
+        + (jj.hasta || '') + ' (hora del centro, CST)', 9, false);
+      return;
+    }
     P.texto(60, 634, 'Nivel ' + nivel + '    Periodo: ' + (d.periodo || '') + '    Retardos en el periodo: ' + (d.retardos_n == null ? '' : d.retardos_n)
       + (d.motivo_apertura === 'reincidencia' ? '    Motivo: reincidencia' : ''), 9, false);
   }
-  function cabeceraTabla(P, y) {
-    P.texto(60, y, 'Fecha', 9, true); P.texto(170, y, 'Hora de llegada', 9, true); P.texto(300, y, 'Hora de entrada', 9, true); P.texto(430, y, 'Minutos tarde', 9, true);
+  function cabeceraTabla(P, y, j) {
+    if (j) {
+      P.texto(60, y, 'Día', 9, true); P.texto(200, y, 'Horas registradas', 9, true); P.texto(320, y, 'Comida descontada', 9, true); P.texto(440, y, 'Horas efectivas', 9, true);
+    } else {
+      P.texto(60, y, 'Fecha', 9, true); P.texto(170, y, 'Hora de llegada', 9, true); P.texto(300, y, 'Hora de entrada', 9, true); P.texto(430, y, 'Minutos tarde', 9, true);
+    }
     P.linea(60, y - 6, 550);
   }
-  function fila(P, y, r) {
+  function fila(P, y, r, j) {
+    if (j) {
+      P.texto(60, y, (r.dia || '') + ' ' + (r.fecha || '') + (r.nota ? ' (' + r.nota + ')' : ''), 9, false);
+      P.texto(200, y, String(r.brutas || ''), 9, false); P.texto(320, y, String(r.comida || ''), 9, false); P.texto(440, y, String(r.efectivas || ''), 9, false);
+      return;
+    }
     P.texto(60, y, r.fecha, 9, false); P.texto(170, y, r.llegada, 9, false); P.texto(300, y, r.esperada, 9, false); P.texto(430, y, String(r.minutos), 9, false);
   }
 
@@ -609,7 +655,8 @@ window.SuiteAuth = { login: async function () { return { ok: false, mensaje: "En
     var acc = d.accion || 'aviso';
     var nivel = d.nivel || NIVEL_DE[acc] || 1;
     var firma = acc !== 'aviso';
-    var rs = d.retardos || [];
+    var esJ = esJornada(acc);
+    var rs = esJ ? ((d.jornada && d.jornada.dias) || []) : (d.retardos || []);
     var porPag1 = firma ? LAYOUT.tabla_filas : 26, porPagN = 40;
     var resto = Math.max(0, rs.length - porPag1), total = 1 + (resto > 0 ? Math.ceil(resto / porPagN) : 0);
     var paginas = [];
@@ -626,10 +673,13 @@ window.SuiteAuth = { login: async function () { return { ok: false, mensaje: "En
       y -= 4;
     }
     if (y < 526) throw new Error('HOJA_TEXTO_DEMASIADO_LARGO');
-    cabeceraTabla(P, 516);
+    cabeceraTabla(P, 516, esJ);
     var yf = 498;
-    for (var i = 0; i < Math.min(rs.length, porPag1); i++) { fila(P, yf, rs[i]); yf -= 12; }
-    if (resto > 0) P.texto(60, yf - 2, 'Continúa en la página 2: ' + resto + ' retardos más.', 9, true);
+    for (var i = 0; i < Math.min(rs.length, porPag1); i++) { fila(P, yf, rs[i], esJ); yf -= 12; }
+    if (esJ) {
+      var jt = d.jornada || {};
+      P.texto(60, yf - 2, 'Horas efectivas: ' + (jt.horas_efectivas || '') + ' de ' + (jt.umbral || '') + '. Faltante: ' + (jt.faltante || '') + '. Horas en formato horas:minutos.', 9, true);
+    } else if (resto > 0) P.texto(60, yf - 2, 'Continúa en la página 2: ' + resto + ' retardos más.', 9, true);
 
     if (firma) {
       var C = LAYOUT.cajas;
@@ -653,7 +703,7 @@ window.SuiteAuth = { login: async function () { return { ok: false, mensaje: "En
       encabezado(Q, d, acc, nivel, pg, total);
       cabeceraTabla(Q, 660);
       var y2 = 642, desde = porPag1 + (pg - 2) * porPagN;
-      for (var j = desde; j < Math.min(rs.length, desde + porPagN); j++) { fila(Q, y2, rs[j]); y2 -= 12; }
+      for (var j = desde; j < Math.min(rs.length, desde + porPagN); j++) { fila(Q, y2, rs[j], esJ); y2 -= 12; }
       paginas.push(Q.ops);
     }
 
@@ -661,7 +711,7 @@ window.SuiteAuth = { login: async function () { return { ok: false, mensaje: "En
     return { base64: b64(bin), nombre: (d.folio || 'retardos') + '-' + acc + '.pdf', bytes: bin.length, binario: bin, paginas: total };
   }
 
-  var api = { hoja: hoja, LAYOUT: LAYOUT, textoQR: textoQR, PENDIENTE_LEGAL: PENDIENTE_LEGAL, _qr: qrMatriz, _aLatin1: aLatin1, _b64: b64 };
+  var api = { hoja: hoja, LAYOUT: LAYOUT, textoQR: textoQR, PENDIENTE_LEGAL: PENDIENTE_LEGAL, PENDIENTE_RH: PENDIENTE_RH, _qr: qrMatriz, _aLatin1: aLatin1, _b64: b64 };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else raiz.RetardosPDF = api;
 })(typeof window !== 'undefined' ? window : this);
@@ -730,7 +780,18 @@ window.SuiteAuth = { login: async function () { return { ok: false, mensaje: "En
     correo_modo: { valor: 'preferente', confirmado: false, descripcion: 'preferente: correo de empresa; si no hay, el personal. ambos: a los dos.' },
     hojas_carpeta: { valor: null, confirmado: false, descripcion: 'Carpeta de OneDrive o SharePoint donde RH deja hojas escaneadas. Vacía: sólo se suben desde el panel.' },
     real_desde: { valor: null, confirmado: false, descripcion: 'Fecha del paso a real. Sin ella no se evalúan las alertas globales.' },
-    tolerancia_min: { valor: 20, confirmado: false, descripcion: 'Minutos de gracia después de la hora de entrada.' },
+    tolerancia_min: { valor: 15, confirmado: false, descripcion: 'Minutos de gracia después de la hora de entrada, al segundo: 15:00 no es retardo, 15:01 sí.' },
+    dias_habiles: { valor: [1, 2, 3, 4, 5], confirmado: false, descripcion: 'Días en que se cuenta retardo: lunes a viernes. Sábado y domingo nunca son retardo, pero sus horas cuentan para la jornada.' },
+    zona_horaria: { valor: 'America/Monterrey', confirmado: false, descripcion: 'Hora del centro (CST, UTC-6 todo el año). Toda fecha y hora se convierte en un solo lugar.' },
+    jornada_umbral_horas: { valor: 48, confirmado: false, descripcion: 'Horas efectivas de la semana FTS (viernes 00:00 a jueves 23:59:59). Si el calendario de la persona dice otra cosa, se usa el suyo y se marca en Calidad.' },
+    jornada_comida_min: { valor: 30, confirmado: false, descripcion: 'Minutos de comida que se descuentan por día trabajado, sin duplicar una comida que Odoo ya haya registrado.' },
+    jornada_comida_fin_de_semana: { valor: 'desde_horas', confirmado: false, descripcion: 'Sábado y domingo: siempre, nunca, o sólo si trabajó al menos jornada_comida_fds_min_horas.' },
+    jornada_comida_fds_min_horas: { valor: 6, confirmado: false, descripcion: 'Horas mínimas trabajadas en fin de semana para descontar comida.' },
+    jornada_ventana_dias: { valor: 90, confirmado: false, descripcion: 'Ventana en que se cuentan los avisos de jornada para llegar al tercero.' },
+    jornada_plazo_correccion_dias: { valor: 3, confirmado: false, descripcion: 'Días que tiene la persona para corregir un olvido de checada después del aviso.' },
+    jornada_desde: { valor: '2026-10-02', confirmado: false, descripcion: 'Primera semana FTS que puede abrir avisos de jornada. Las anteriores se calculan y no abren casos.' },
+    jornada_envio: { valor: 'inmediato', confirmado: false, descripcion: 'inmediato: el aviso sale el viernes del corte. lunes: espera al lunes, por si Nómina todavía captura.' },
+    modo_medidas_jornada: { valor: 'retenidas', confirmado: false, descripcion: 'retenidas: la propuesta de medida del tercer aviso se registra y no se aplica. habilitadas: RH la registra y se verifica contra Nómina.' },
     hora_fuente: { valor: 'hora_entrada', confirmado: false, descripcion: 'De dónde sale la hora esperada: la ficha o el calendario.' },
     periodo: { valor: 'mes', confirmado: false, descripcion: 'Ventana en la que se cuentan los retardos.' },
     reincidencia_dias: { valor: 30, confirmado: false, descripcion: 'Días después de cerrar un caso en que un retardo nuevo sube de nivel.' },
@@ -750,9 +811,9 @@ window.SuiteAuth = { login: async function () { return { ok: false, mensaje: "En
     var out = [], dia = 1;
     for (var i = 0; i < n; i++) {
       dia += (i % 3 === 2) ? 3 : 1;
-      var min = [24, 31, 47, 22, 65, 38, 29, 112, 26][(base + i) % 9];
+      var min = [16, 31, 47, 22, 65, 38, 29, 112, 26][(base + i) % 9], sg = (base * 7 + i * 13) % 60;
       var h = 7 * 60 + min;
-      out.push({ fecha: ('0' + dia).slice(-2) + '/09/2026', llegada: ('0' + Math.floor(h / 60)).slice(-2) + ':' + ('0' + h % 60).slice(-2), esperada: '07:00', minutos: min });
+      out.push({ fecha: ('0' + dia).slice(-2) + '/09/2026', llegada: ('0' + Math.floor(h / 60)).slice(-2) + ':' + ('0' + h % 60).slice(-2) + ':' + ('0' + sg).slice(-2), esperada: '07:00', minutos: min });
     }
     return out;
   }
@@ -883,6 +944,97 @@ window.SuiteAuth = { login: async function () { return { ok: false, mensaje: "En
       evidencia: { personas_en_acta_o_mas: 5, activos: 29, pct: 17.2 }, estado: 'pospuesta', posponer_hasta: '2026-10-12', motivo: 'Esperar la corrección de horas de entrada (ejemplo)', atendida_por: 'rh.demo', creado_at: iso(-9) }
   ];
   var sinSustituir = {};
+  // ── Jornada semanal FTS de EJEMPLO (viernes a jueves, hora del centro) ──
+  var ESCALERA_J = [
+    { nivel: 1, accion: 'aviso_jornada_1', nombre: 'Primer aviso de jornada incompleta', requiere_firma: false, propone_medida: false, confirmado: false, nota: 'Correo a la persona con copia a RH y al jefe.' },
+    { nivel: 2, accion: 'aviso_jornada_2', nombre: 'Segundo aviso de jornada incompleta', requiere_firma: false, propone_medida: false, confirmado: false, nota: 'Correo a la persona con copia a RH y al jefe.' },
+    { nivel: 3, accion: 'aviso_jornada_3', nombre: 'Tercer aviso de jornada incompleta', requiere_firma: true, propone_medida: true, confirmado: false, nota: 'Hoja con QR que RH imprime y recolecta. Abre una propuesta de medida que queda retenida.' }
+  ];
+  var FESTIVOS = [
+    { fecha: '2026-09-16', nombre: 'Día de la Independencia (LFT art. 74)', creado_por: 'semilla_lft_art74' },
+    { fecha: '2026-11-16', nombre: 'Revolución Mexicana, tercer lunes de noviembre (LFT art. 74)', creado_por: 'semilla_lft_art74' },
+    { fecha: '2026-12-25', nombre: 'Navidad (LFT art. 74)', creado_por: 'semilla_lft_art74' }
+  ];
+  var PLANTILLAS = ['notificacion_aviso', 'jornada_aviso', 'jornada_aviso_3', 'jornada_rh_recolectar', 'jornada_por_revisar', 'jornada_sin_correo', 'comunicado_arranque'].map(function (k) {
+    return { clave: k, asunto: '', estado_texto: 'pendiente_validacion_rh', variables: [] };
+  });
+  // Día a día de una semana: [brutas, comida descontada] de viernes a jueves; null = no checó.
+  function dias(desde, hs, extra) {
+    var d0 = new Date(desde + 'T12:00:00Z'), out = [];
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(d0.getTime() + i * 86400000), dow = ((d.getUTCDay() + 6) % 7) + 1, b = hs[i];
+      var com = b == null || b === 0 ? 0 : (dow >= 6 ? (b >= 6 ? 0.5 : 0) : 0.5);
+      var x = { fecha: d.toISOString().slice(0, 10), dow: dow, laborable: dow <= 5, brutas: b || 0, comida: com, efectivas: b ? Math.round((b - com) * 100) / 100 : 0, prorrateo: null, motivos: [] };
+      if (extra && extra[i]) Object.assign(x, extra[i]);
+      out.push(x);
+    }
+    return out;
+  }
+  function semanaFila(p, sem, desde, hs, extra, estadoForzado, umbral) {
+    var ds = dias(desde, hs, extra), ef = 0, br = 0, com = 0, pr = 0;
+    ds.forEach(function (x) { ef += x.efectivas; br += x.brutas; com += x.comida; if (x.prorrateo) pr += 1; });
+    var um = Math.round(((umbral || 48) - pr * 9.6) * 100) / 100; ef = Math.round(ef * 100) / 100;
+    var est = estadoForzado || (ef >= um ? 'cumple' : 'incumple');
+    var h = new Date(new Date(desde + 'T12:00:00Z').getTime() + 6 * 86400000).toISOString().slice(0, 10);
+    return { employee_id: p.employee_id, nombre: p.nombre, departamento: p.departamento, semana: sem, desde: desde, hasta: h,
+      horas_brutas: Math.round(br * 100) / 100, comida_h: com, horas_efectivas: Math.round(ef * 100) / 100, umbral_persona: umbral || 48,
+      umbral_fuente: umbral ? 'calendario' : 'config', dias_prorrateo: pr, umbral: um, faltante: est === 'incumple' ? Math.round((um - ef) * 100) / 100 : 0,
+      estado: est, motivos_revision: est === 'revisar' ? ds.filter(function (x) { return x.motivos.length; }).map(function (x) { return { fecha: x.fecha, motivos: x.motivos }; }) : [],
+      desglose: ds, folio: null, caso_estado: null, aviso_n: null, incumple_8s: 0, avisos_ventana: 0, revisado_por: null };
+  }
+  var S1 = 'S39/2026', D1 = '2026-09-18', S0 = 'S38/2026', D0 = '2026-09-11';
+  var JSEM = [
+    // Laura: cumple con un sábado trabajado (el sábado nunca es retardo; sus horas sí cuentan).
+    semanaFila(P[0], S1, D1, [10.1, 4.5, null, 10.2, 10, 10.1, 10.2]),
+    // Óscar: tercer aviso en la ventana, falta un día completo.
+    Object.assign(semanaFila(P[1], S1, D1, [10.1, null, null, 10, null, 10.1, 9.9]), { folio: 'JOR-2026-0003', caso_estado: 'ESPERANDO_FIRMA', aviso_n: 3, incumple_8s: 3, avisos_ventana: 3 }),
+    // Irene: 47:59, un minuto abajo. El umbral es exacto.
+    Object.assign(semanaFila(P[2], S1, D1, [10.1, null, null, 10.1, 10.1, 10.1, 10.0833]), { folio: 'JOR-2026-0002', caso_estado: 'NOTIFICADO', aviso_n: 1, avisos_ventana: 1 }),
+    // Tomás: festivo del miércoles 16 no aplica en esta semana; semana con vacaciones de Nómina.
+    semanaFila(P[3], S1, D1, [10.1, null, null, 10.1, 10.1, null, null], { 5: { prorrateo: 'nomina:vacaciones' }, 6: { prorrateo: 'nomina:vacaciones' } }),
+    // Rebeca: entrada sin salida el martes: a revisión, no a aviso.
+    semanaFila(P[4], S1, D1, [10.1, null, null, 10.1, 0, 10.1, 10.1], { 4: { motivos: ['sin_salida'] } }, 'revisar'),
+    // Héctor: una asistencia de 19 horas: a revisión.
+    semanaFila(P[5], S1, D1, [10.1, null, null, 19.2, 10.1, 10.1, 10.1], { 3: { motivos: ['asistencia_mas_de_max'] } }, 'revisar'),
+    // Noemí: calendario de 50.5 horas en vez de 48 (se marca en Calidad).
+    semanaFila(P[6], S1, D1, [10.1, null, null, 10.1, 10.1, 10.1, 10.1], null, null, 50.5),
+    semanaFila(P[7], S1, D1, [10.3, null, null, 10.2, 10.1, 10.4, 10.2]),
+    // Semana anterior, con el festivo del 16 prorrateado.
+    semanaFila(P[0], S0, D0, [10.1, null, null, 10.1, 10.1, 0, 10.1], { 5: { prorrateo: 'festivo' } }),
+    Object.assign(semanaFila(P[1], S0, D0, [10.1, null, null, 8.2, 10.1, 0, 7.5], { 5: { prorrateo: 'festivo' } }), { folio: 'JOR-2026-0001', caso_estado: 'NOTIFICADO', aviso_n: 2 })
+  ];
+  JSEM.forEach(function (x) { if (x.estado === 'incumple' || x.estado === 'revisar') x.incumple_8s = x.incumple_8s || 1; });
+  function semaforoJ(x) { return x.estado === 'revisar' ? 'gris' : ((x.aviso_n || 0) >= 3 || x.incumple_8s >= 3) ? 'rojo' : (x.estado === 'incumple' || x.avisos_ventana > 0) ? 'amarillo' : 'verde'; }
+  function jornadaDemo(sem) {
+    var s = sem || S1, desde = s === S0 ? D0 : D1;
+    var ps = JSEM.filter(function (x) { return x.semana === s; }).map(function (x) { return Object.assign({}, x, { semaforo: semaforoJ(x) }); });
+    var ord = { revisar: 0, incumple: 1, cumple: 2 };
+    ps.sort(function (a, b) { return (a.estado in ord ? ord[a.estado] : 3) - (b.estado in ord ? ord[b.estado] : 3) || (a.nombre < b.nombre ? -1 : 1); });
+    return { ok: true, semana: s, desde: desde, hasta: ps.length ? ps[0].hasta : desde, semanas: [D1, D0], avisos_desde: '2026-10-02', personas: ps,
+      por_revisar: JSEM.filter(function (x) { return x.estado === 'revisar' && !x.revisado_por; }).map(function (x) {
+        return { employee_id: x.employee_id, nombre: x.nombre, semana: x.semana, desde: x.desde, horas_efectivas: x.horas_efectivas, umbral: x.umbral, motivos: x.motivos_revision, desglose: x.desglose }; }),
+      reglas: { umbral: 48, comida_min: 30, comida_fds: 'desde_horas', comida_fds_min_horas: 6, ventana_dias: 90, modo_medidas: 'retenidas' } };
+  }
+  var MEDIDAS = [
+    { id: 1, caso_id: 900, employee_id: 502, nombre: 'Óscar Demo', departamento: 'Operaciones', folio: 'JOR-2026-0003', caso_estado: 'ESPERANDO_FIRMA', semana: S1,
+      propuesta: 'descuento_tiempo_no_laborado', horas_propuestas: JSEM[1].faltante, estado: 'propuesta', decision: null, decidido_por: null, creado_at: iso(-0.1) }
+  ];
+
+  (function () {
+    var j = caso(P[1], 3, 'ESPERANDO_FIRMA', 0, 0, 3);
+    var js = JSEM[1];
+    function hm(h) { var m = Math.round(h * 60); return Math.floor(m / 60) + ':' + ('0' + m % 60).slice(-2); }
+    Object.assign(j, { folio: 'JOR-2026-0003', tipo: 'jornada', accion: 'aviso_jornada_3', nombre_nivel: 'Tercer aviso de jornada incompleta', periodo: S1, retardos: [],
+      requiere_testigos: false, dias_suspension: null,
+      jornada: { semana: S1, desde: '18/09/2026', hasta: '24/09/2026', aviso_n: 3, horas_brutas: hm(js.horas_brutas), comida: hm(js.comida_h),
+        horas_efectivas: hm(js.horas_efectivas), umbral: hm(js.umbral), faltante: hm(js.faltante),
+        dias: js.desglose.map(function (x) { var D = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+          return { dia: D[x.dow], fecha: x.fecha.slice(8, 10) + '/' + x.fecha.slice(5, 7), brutas: hm(x.brutas), comida: hm(x.comida), efectivas: hm(x.efectivas), nota: x.brutas ? '' : (x.laborable ? 'no checó' : '') }; }) } });
+    j.bitacora = [{ at: j.abierto_at, evento: 'apertura', de: null, a: 'DETECTADO', actor: 'sistema', motivo: 'Semana ' + S1 + ' abajo de 48 horas efectivas (aviso 3 de 3)' },
+      { at: j.abierto_at, evento: 'transicion', de: 'DETECTADO', a: 'ESPERANDO_FIRMA', actor: 'sistema', motivo: 'RH imprime la hoja con QR y la recolecta' }];
+    j.envios = [{ tipo: 'aviso_trabajador', estado: 'enviado', modo: 'sombra', enviado_at: j.abierto_at, asunto: '[SOMBRA] [' + j.folio + '] Tercer aviso de jornada semanal incompleta' }];
+    CASOS.push(j);
+  })();
   function listaFila(c) {
     return { folio: c.folio, employee_id: c.employee_id, nombre: c.nombre, nivel: c.nivel, accion: c.accion, estado: c.estado, periodo: c.periodo,
              retardos_n: c.retardos_n, abierto_at: c.abierto_at, vence_at: c.vence_at, ruta: c.ruta, modo_al_abrir: c.modo_al_abrir,
@@ -899,12 +1051,42 @@ window.SuiteAuth = { login: async function () { return { ok: false, mensaje: "En
       if (d.accion === 'listar') {
         return { ok: true, casos: CASOS.filter(function (c) { return d.incluir_cerrados || (c.estado !== 'CERRADO' && c.estado !== 'CANCELADO_POR_RH'); }).map(listaFila), salud: saludDemo() };
       }
-      if (d.accion === 'config') return { ok: true, config: CONFIG, escalera: ESCALERA, exclusiones: EXCL.filter(function (x) { return x.activo; }) };
+      if (d.accion === 'config') return { ok: true, config: CONFIG, escalera: ESCALERA, escalera_jornada: ESCALERA_J, exclusiones: EXCL.filter(function (x) { return x.activo; }), festivos: FESTIVOS, plantillas: PLANTILLAS };
+      if (d.accion === 'jornada') return jornadaDemo(d.semana);
+      if (d.accion === 'medidas') return { ok: true, modo_medidas_jornada: 'retenidas', medidas: MEDIDAS };
+      if (d.accion === 'jornada_revisar') {
+        if (String(d.motivo || '').trim().length < 5) return { ok: false, error: 'MOTIVO_OBLIGATORIO' };
+        var jr = JSEM.filter(function (x) { return x.employee_id === Number(d.employee_id) && x.semana === d.semana; })[0];
+        if (!jr) return { ok: false, error: 'SEMANA_INEXISTENTE' };
+        var hh = d.decision === 'corregir' ? Number(d.horas_efectivas) : jr.horas_efectivas;
+        if (d.decision === 'no_aplica') jr.estado = 'no_aplica';
+        else if (d.decision === 'confirmar' || d.decision === 'corregir') { if (!(hh >= 0 && hh <= 168)) return { ok: false, error: 'HORAS_INVALIDAS' }; jr.horas_corregidas = d.decision === 'corregir' ? hh : null; jr.estado = hh >= jr.umbral ? 'cumple' : 'incumple'; jr.faltante = jr.estado === 'incumple' ? Math.round((jr.umbral - hh) * 100) / 100 : 0; }
+        else return { ok: false, error: 'DECISION_INVALIDA' };
+        jr.revisado_por = actor; jr.revision_nota = d.motivo;
+        return { ok: true, estado: jr.estado, folio: null };
+      }
+      if (d.accion === 'medida_decidir') {
+        if (String(d.motivo || '').trim().length < 5) return { ok: false, error: 'MOTIVO_OBLIGATORIO' };
+        var md = MEDIDAS.filter(function (x) { return x.id === Number(d.medida_id); })[0];
+        if (!md) return { ok: false, error: 'MEDIDA_INEXISTENTE' };
+        if (md.estado !== 'propuesta' && md.estado !== 'retenida') return { ok: false, error: 'MEDIDA_YA_DECIDIDA' };
+        if (d.decision === 'descuento' && !(Number(d.horas) > 0 && Number(d.horas) <= md.horas_propuestas)) return { ok: false, error: 'HORAS_INVALIDAS' };
+        if (['descuento', 'otra', 'ninguna'].indexOf(d.decision) < 0) return { ok: false, error: 'DECISION_INVALIDA' };
+        md.estado = d.decision === 'ninguna' ? 'descartada' : 'retenida'; md.decidido_por = actor;
+        md.decision = { decision: d.decision, horas: d.horas || null, detalle: d.detalle || null, motivo: d.motivo, modo_medidas_jornada: 'retenidas' };
+        return { ok: true, estado: md.estado, nota: md.estado === 'retenida' ? 'Decisión registrada. La medida queda RETENIDA: no se aplica ni se manda a Nómina hasta que Legal confirme.' : null };
+      }
+      if (d.accion === 'festivo_agregar' || d.accion === 'festivo_quitar') {
+        if (String(d.motivo || d.nombre || '').trim().length < 3) return { ok: false, error: 'MOTIVO_OBLIGATORIO' };
+        FESTIVOS = FESTIVOS.filter(function (f) { return f.fecha !== d.fecha; });
+        if (d.accion === 'festivo_agregar') { FESTIVOS.push({ fecha: d.fecha, nombre: d.nombre, creado_por: actor }); FESTIVOS.sort(function (a, b) { return a.fecha < b.fecha ? -1 : 1; }); }
+        return { ok: true };
+      }
       if (d.accion === 'exclusion_agregar') {
         EXCL.unshift({ id: 10 + EXCL.length, employee_id: d.employee_id ? Number(d.employee_id) : null, desde: d.desde, hasta: d.hasta, tipo: d.tipo, motivo: d.motivo, activo: true });
         return { ok: true, caso: null };
       }
-      if (d.accion === 'calidad') return { ok: true, personas: CALIDAD, tolerancia_min: 20, regla_sugerida: 'Primer horario en punto o y media con el que habría llegado tarde en no más del 20% de sus días hábiles de los últimos 90.' };
+      if (d.accion === 'calidad') return { ok: true, personas: CALIDAD, tolerancia_min: 15, regla_sugerida: 'Primer horario en punto o y media con el que habría llegado tarde en no más del 20% de sus días hábiles de los últimos 90.' };
       if (d.accion === 'calidad_revisar') { CALIDAD.forEach(function (x) { if (x.employee_id === Number(d.employee_id)) { x.revisado = !!d.revisado; x.nota = d.nota; x.revisado_por = actor; } }); return { ok: true }; }
       if (d.accion === 'hojas') return { ok: true, lecturas: LECT, hojas_en_proceso: ENPROCESO, metrica: METRICA };
       if (d.accion === 'hoja_ver') {
@@ -1036,7 +1218,9 @@ window.SuiteAuth = { login: async function () { return { ok: false, mensaje: "En
     CERRADO: ['Cerrado', 'e-cerrado'], CANCELADO_POR_RH: ['Cancelado por RH', 'e-otro'],
     RETENIDO: ['Nivel de suspensión alcanzado, no aplicado', 'e-retenido']
   };
-  var NIVEL = { aviso: 'Aviso', carta_compromiso: 'Carta compromiso', acta: 'Acta administrativa', suspension: 'Suspensión' };
+  var NIVEL = { aviso: 'Aviso', carta_compromiso: 'Carta compromiso', acta: 'Acta administrativa', suspension: 'Suspensión',
+    aviso_jornada_1: 'Jornada: 1er aviso', aviso_jornada_2: 'Jornada: 2do aviso', aviso_jornada_3: 'Jornada: 3er aviso' };
+  function esJor(c) { return String(c.folio || '').indexOf('JOR-') === 0 || c.tipo === 'jornada'; }
   var CUBETAS = [
     { id: 'recolectar', t: 'Firmas por recolectar', q: 'Imprimir, citar y subir la hoja. Por vencimiento', clase: '', estados: ['ESPERANDO_FIRMA', 'VENCIDO', 'ESCALADO', 'DETECTADO', 'NOTIFICADO'] },
     { id: 'rh', t: 'Casos con hoja recibida', q: 'Confírmala en Hojas por confirmar', clase: 'rh', estados: ['FIRMA_RECIBIDA'] },
@@ -1044,7 +1228,7 @@ window.SuiteAuth = { login: async function () { return { ok: false, mensaje: "En
     { id: 'resolver', t: 'Por resolver', q: 'Negativa, impugnación o validado', clase: '', estados: ['SE_NEGO_A_FIRMAR', 'IMPUGNADO', 'VALIDADO_RH', 'ACCION_PROGRAMADA'] },
     { id: 'retenidos', t: 'Suspensión alcanzada, no aplicada', q: 'Modo sin suspensión: cuenta como antecedente', clase: 'ret', estados: ['RETENIDO'] }
   ];
-  var st = { casos: [], salud: null, filtro: 'todos', vista: 'lista', folio: null, editor: false, cerrados: false, hojas: [], reinc: null };
+  var st = { casos: [], salud: null, filtro: 'todos', vista: 'lista', folio: null, editor: false, cerrados: false, hojas: [], reinc: null, jor: null, jSem: null, medidas: [] };
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function chip(estado) { var e = E[estado] || [estado, 'e-otro']; return '<span class="chip ' + e[1] + '">' + esc(e[0]) + '</span>'; }
@@ -1074,7 +1258,9 @@ window.SuiteAuth = { login: async function () { return { ok: false, mensaje: "En
       LECTURA_YA_DECIDIDA: 'Esa hoja ya la resolvió alguien más. Recarga.', SIN_CASO_LIGADO: 'La hoja no está ligada a un caso: corrige el folio primero.',
       CASO_NO_ESPERA_HOJA: 'El caso ya no espera hoja. Recarga para ver su estado.', FOLIO_INEXISTENTE: 'Ese folio no existe.',
       MAXIMO_10_ARCHIVOS: 'Sube máximo 10 archivos a la vez.', TIPO_NO_ACEPTADO: 'Sólo PDF o fotos (JPG, PNG).', ARCHIVO_DEMASIADO_GRANDE: 'El archivo pesa demasiado.',
-      SEMANAS_INVALIDAS: 'Pospón entre 1 y 26 semanas.', DECISION_INVALIDA: 'Elige cambiar, posponer o descartar.'
+      SEMANAS_INVALIDAS: 'Pospón entre 1 y 26 semanas.', DECISION_INVALIDA: 'Elige una de las opciones.',
+      HORAS_INVALIDAS: 'Revisa las horas: van de 0 a 168 y el descuento no puede pasar del faltante.', SEMANA_INEXISTENTE: 'Esa semana ya no está en la lista. Recarga.',
+      YA_TIENE_CASO: 'Esa semana ya abrió un aviso: se atiende desde el caso.', MEDIDA_INEXISTENTE: 'Esa propuesta ya no existe. Recarga.', MEDIDA_YA_DECIDIDA: 'Esa propuesta ya se decidió. Recarga.'
     };
     return M[r.error] || ('El servidor no aceptó la acción (' + esc(r.error || 'sin código') + ').');
   }
@@ -1157,7 +1343,7 @@ window.SuiteAuth = { login: async function () { return { ok: false, mensaje: "En
         return '<tr class="fila" tabindex="0" data-folio="' + esc(c.folio) + '"><td class="folio">' + esc(c.folio) + '</td>' +
           '<td class="quien2"><b>' + esc(c.nombre || ('Empleado ' + c.employee_id)) + '</b><span>' + esc(c.periodo) + (c.ruta === 'supervisor' ? ' · entrega por supervisor' : '') + '</span></td>' +
           '<td class="nivel"><i>' + c.nivel + '</i>' + esc(NIVEL[c.accion] || c.accion) + '</td>' +
-          '<td class="n">' + c.retardos_n + '</td><td>' + chip(c.estado) + '</td>' +
+          '<td class="n">' + (esJor(c) ? '<span class="nivel">jornada</span>' : c.retardos_n) + '</td><td>' + chip(c.estado) + '</td>' +
           '<td class="num vence">' + (c.vence_at ? fechaDia(c.vence_at) : '') + '</td><td class="n">' + (c.dias_abierto == null ? '' : c.dias_abierto) + '</td>' +
           (imprimir ? '<td><button class="btn" data-imprimir="' + esc(c.folio) + '">Imprimir hoja</button></td>' : '') + '</tr>';
       }).join('') + '</tbody></table></div>';
@@ -1193,6 +1379,14 @@ window.SuiteAuth = { login: async function () { return { ok: false, mensaje: "En
     if (s !== 'CERRADO' && s !== 'CANCELADO_POR_RH' && s !== 'ACCION_VERIFICADA') a.push(['cancelar', 'Cancelar caso', 'peligro']);
     return a;
   }
+  function bloqueJornadaCaso(c) {
+    var j = c.jornada || {};
+    return '<section class="caja bloque"><h2>Semana ' + esc(j.semana || c.periodo) + ': ' + esc(j.horas_efectivas || '') + ' de ' + esc(j.umbral || '') + ' horas efectivas</h2>' +
+      '<div class="nivel">Viernes ' + esc(j.desde || '') + ' a jueves ' + esc(j.hasta || '') + ', hora del centro (CST). Aviso ' + esc(j.aviso_n || c.nivel) + ' de 3. Faltante: ' + esc(j.faltante || '') + '.</div>' +
+      '<div class="tabla-wrap"><table><thead><tr><th>Día</th><th class="num">Registradas</th><th class="num">Comida</th><th class="num">Efectivas</th><th>Nota</th></tr></thead><tbody>' +
+      (j.dias || []).map(function (x) { return '<tr><td>' + esc(x.dia) + ' ' + esc(x.fecha) + '</td><td class="n">' + esc(x.brutas) + '</td><td class="n">' + esc(x.comida) + '</td><td class="n">' + esc(x.efectivas) + '</td><td class="nivel">' + esc(x.nota || '') + '</td></tr>'; }).join('') +
+      '</tbody></table></div></section>';
+  }
   function pintarDetalle(r) {
     var c = r.caso || {}, evs = r.evidencias || [], bit = r.bitacora || [], env = r.envios || [];
     var acts = st.editor ? acciones(c, evs) : [];
@@ -1202,9 +1396,11 @@ window.SuiteAuth = { login: async function () { return { ok: false, mensaje: "En
     var h = '<button class="btn volver-lista" id="volver">← Volver a la lista</button>' +
       '<div class="cab"><div><h1>' + esc(c.nombre) + '</h1><div class="sub"><span class="folio">' + esc(c.folio) + '</span> · ' + esc(c.nombre_nivel) + ' · periodo ' + esc(c.periodo) + '</div></div><span class="sp"></span>' + chip(c.estado) + '</div>' +
       '<div class="detalle"><div style="display:grid;gap:14px;min-width:0">' +
+      (esJor(c) ? bloqueJornadaCaso(c) :
       '<section class="caja bloque"><h2>' + esc(c.retardos_n) + ' retardos en el periodo</h2>' +
         (c.motivo_apertura === 'reincidencia' ? '<div class="aviso mal" style="margin:0"><div><b>Reincidencia</b>Ya tenía un documento firmado y validado en los últimos días. Por eso sube de nivel.</div></div>' : '') +
-        '<div class="tabla-wrap"><table><thead><tr><th>Fecha</th><th>Llegó</th><th>Entrada</th><th class="num">Minutos tarde</th></tr></thead><tbody>' + retardos + '</tbody></table></div></section>' +
+        '<div class="nivel">Hora del centro (CST). Tolerancia de ' + esc(c.tolerancia_min == null ? 15 : c.tolerancia_min) + ' minutos al segundo: llegar a los 15:00 no es retardo, a los 15:01 sí.</div>' +
+        '<div class="tabla-wrap"><table><thead><tr><th>Fecha</th><th>Llegó</th><th>Entrada</th><th class="num">Minutos tarde</th></tr></thead><tbody>' + retardos + '</tbody></table></div></section>') +
       (acts.length ? '<section class="caja bloque"><h2>Qué sigue</h2><div class="acciones">' + acts.map(function (a) {
         return '<button class="btn ' + (a[2] || '') + '" data-accion="' + a[0] + '">' + esc(a[1]) + '</button>'; }).join('') + '</div><div id="form-accion"></div></section>' : '') +
       '<section class="caja bloque"><h2>Hojas y constancias</h2>' + (evs.length ? evs.map(function (e) {
@@ -1307,15 +1503,31 @@ window.SuiteAuth = { login: async function () { return { ok: false, mensaje: "En
     try { r = await pedir({ accion: 'config' }); } catch (e) { return; }
     if (!r || r.ok !== true) { $('#ajustes').innerHTML = '<div class="caja vacio">' + mensajeError(r || {}) + '</div>'; return; }
     var cfg = r.config || {}, esc2 = r.escalera || [], ex = r.exclusiones || [];
-    var claves = ['modo', 'modo_sanciones', 'dias_recoleccion_rh', 'correo_modo', 'tolerancia_min', 'hora_fuente', 'periodo', 'reincidencia_dias', 'contar_desde', 'dias_validacion_rh', 'hojas_carpeta', 'buzon_receptor', 'real_desde'];
+    var claves = ['modo', 'modo_sanciones', 'tolerancia_min', 'dias_habiles', 'zona_horaria', 'hora_fuente', 'periodo', 'reincidencia_dias', 'contar_desde', 'dias_recoleccion_rh', 'correo_modo', 'dias_validacion_rh', 'hojas_carpeta', 'buzon_receptor', 'real_desde'];
+    var clavesJ = ['jornada_umbral_horas', 'jornada_comida_min', 'jornada_comida_fin_de_semana', 'jornada_comida_fds_min_horas', 'jornada_usar_calendario', 'jornada_tolerancia_calendario_h', 'jornada_horas_max_asistencia', 'jornada_ventana_dias', 'jornada_plazo_correccion_dias', 'jornada_desde', 'jornada_envio', 'modo_medidas_jornada', 'jornada_tipo_nomina_descuento'];
+    var escJ = r.escalera_jornada || [], fest = r.festivos || [], pls = r.plantillas || [];
     function val(v) { return v == null ? 'sin definir' : (typeof v === 'object' ? JSON.stringify(v) : String(v)); }
+    function dl(ks) { return ks.filter(function (k) { return cfg[k]; }).map(function (k) {
+      return '<dt>' + esc(k.replace(/_/g, ' ')) + '</dt><dd><b class="num">' + esc(val(cfg[k].valor)) + '</b> ' + (cfg[k].confirmado ? '' : '<span class="chip e-espera">por confirmar</span>') + '<br><span class="nivel">' + esc(cfg[k].descripcion || '') + '</span></dd>'; }).join(''); }
     $('#ajustes').innerHTML =
       '<div class="aviso demo"><div><b>Valores por confirmar</b>Lo marcado "por confirmar" salió de la reconstrucción del sistema anterior o es una propuesta. Dirección y RH los confirman antes de pasar a modo real.</div></div>' +
       '<div class="detalle"><section class="caja bloque"><h2>Escalera de medidas</h2><div class="tabla-wrap"><table><thead><tr><th>Nivel</th><th>Medida</th><th class="num">Desde</th><th class="num">Plazo firma</th><th>Testigos</th><th>Estado</th></tr></thead><tbody>' +
         esc2.map(function (e) { return '<tr><td class="n">' + e.nivel + '</td><td>' + esc(e.nombre) + (e.dias_suspension ? ' (' + e.dias_suspension + ' día)' : '') + '</td><td class="n">' + e.umbral + ' retardos</td><td class="n">' + (e.dias_plazo_firma ? e.dias_plazo_firma + ' días háb.' : 'no firma') + '</td><td>' + (e.requiere_testigos ? 'dos' : 'no') + '</td><td>' + (e.confirmado ? '<span class="chip e-validado">confirmado</span>' : '<span class="chip e-espera">por confirmar</span>') + ' <span class="nivel">' + esc(e.origen) + '</span></td></tr>'; }).join('') +
         '</tbody></table></div></section>' +
-      '<section class="caja bloque"><h2>Reglas</h2><dl class="dl">' + claves.filter(function (k) { return cfg[k]; }).map(function (k) {
-        return '<dt>' + esc(k.replace(/_/g, ' ')) + '</dt><dd><b class="num">' + esc(val(cfg[k].valor)) + '</b> ' + (cfg[k].confirmado ? '' : '<span class="chip e-espera">por confirmar</span>') + '<br><span class="nivel">' + esc(cfg[k].descripcion || '') + '</span></dd>'; }).join('') + '</dl></section></div>' +
+      '<section class="caja bloque"><h2>Reglas de retardo</h2><dl class="dl">' + dl(claves) + '</dl></section></div>' +
+      '<div class="detalle" style="margin-top:14px"><section class="caja bloque"><h2>Jornada semanal FTS</h2>' +
+        '<div class="nivel">Semana de viernes 00:00 a jueves 23:59:59, hora del centro. Una asistencia que cruza el corte se parte en dos. El corte corre el viernes a las 08:00.</div>' +
+        '<dl class="dl">' + dl(clavesJ) + '</dl></section>' +
+      '<section class="caja bloque"><h2>Avisos de jornada</h2><ul class="linea">' +
+        escJ.map(function (e) { return '<li><div><b>' + e.nivel + '. ' + esc(e.nombre) + '</b> ' + (e.confirmado ? '<span class="chip e-validado">confirmado</span>' : '<span class="chip e-espera">por confirmar</span>') + '<br><span class="nivel">' + esc(e.nota || '') + '</span></div></li>'; }).join('') +
+        '</ul><div class="nivel">La propuesta de medida del tercer aviso queda retenida mientras modo medidas jornada sea "retenidas".</div></section></div>' +
+      '<div class="detalle" style="margin-top:14px"><section class="caja bloque"><h2>Días feriados</h2><div class="nivel">Toda la empresa. No cuentan como retardo y bajan 9.6 horas el umbral de la semana. Sembrados los del artículo 74 de la LFT; Dirección agrega los que decida la empresa.</div>' +
+        '<div class="tabla-wrap"><table><thead><tr><th>Fecha</th><th>Nombre</th><th></th></tr></thead><tbody>' +
+        (fest.length ? fest.map(function (f) { return '<tr><td class="num">' + esc(f.fecha) + '</td><td>' + esc(f.nombre) + '</td><td>' + (st.editor ? '<button class="btn" data-quitar-festivo="' + esc(f.fecha) + '">Quitar</button>' : '') + '</td></tr>'; }).join('') : '<tr><td colspan="3" class="vacio">Ninguno.</td></tr>') +
+        '</tbody></table></div>' +
+        (st.editor ? '<div class="form"><div class="fila2"><label>Fecha<input type="date" id="f-fecha"></label><label>Nombre<input id="f-nombre"></label></div><button class="btn pri" id="f-agregar">Agregar feriado</button><div id="f-err" class="err"></div></div>' : '') + '</section>' +
+      '<section class="caja bloque"><h2>Textos de los correos</h2><div class="nivel">Todos dicen "texto pendiente de validación de RH" hasta que RH los apruebe. Cómo se reemplazan: docs/retardos/PLANTILLAS.md.</div><ul class="linea">' +
+        pls.map(function (t) { return '<li><div><b>' + esc(t.clave) + '</b> ' + (t.estado_texto === 'validado_rh' ? '<span class="chip e-validado">validado por RH</span>' : '<span class="chip e-espera">pendiente de RH</span>') + '</div></li>'; }).join('') + '</ul></section></div>' +
       '<section class="caja bloque" style="margin-top:14px"><h2>Días que no cuentan</h2><div class="nivel">Permisos, vacaciones, viajes o trabajo en campo de una persona. Un retardo en estos días no cuenta. Los días feriados de toda la empresa los agrega Dirección aparte.</div>' +
         '<div class="tabla-wrap"><table><thead><tr><th>Quién</th><th>Desde</th><th>Hasta</th><th>Tipo</th><th>Motivo</th><th></th></tr></thead><tbody>' +
         (ex.length ? ex.map(function (x) { return '<tr><td>' + 'Empleado ' + esc(x.employee_id) + '</td><td class="num">' + esc(x.desde) + '</td><td class="num">' + esc(x.hasta) + '</td><td>' + esc(x.tipo) + '</td><td>' + esc(x.motivo) + '</td><td>' + (st.editor ? '<button class="btn" data-quitar="' + esc(x.id) + '">Quitar</button>' : '') + '</td></tr>'; }).join('') : '<tr><td colspan="6" class="vacio">Ninguno.</td></tr>') +
@@ -1338,6 +1550,143 @@ window.SuiteAuth = { login: async function () { return { ok: false, mensaje: "En
     var r; try { r = await pedir({ accion: 'exclusion_quitar', id: Number(id), motivo: 'Quitado desde el panel' }); } catch (e) { return; }
     if (!r || r.ok !== true) { toast(mensajeError(r || {})); return; }
     toast('Quitado.'); ajustes();
+  }
+
+  async function festivo(accion, fecha, boton) {
+    var d = { accion: accion, fecha: fecha };
+    if (accion === 'festivo_agregar') {
+      d.nombre = ($('#f-nombre').value || '').trim();
+      if (!d.fecha || d.nombre.length < 3) { $('#f-err').textContent = 'Escribe la fecha y el nombre del feriado.'; return; }
+    } else d.motivo = 'Quitado desde el panel';
+    if (boton) boton.disabled = true;
+    var r; try { r = await pedir(d); } catch (e) { return; } finally { if (boton) boton.disabled = false; }
+    if (!r || r.ok !== true) { toast(mensajeError(r || {})); return; }
+    toast(accion === 'festivo_agregar' ? 'Feriado agregado.' : 'Feriado quitado.'); ajustes();
+  }
+
+  // ── Jornada semanal FTS (reglas R3) ──
+  var DIA = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  var ESTJ = { cumple: ['Cumple', 'e-validado'], incumple: ['Incumple', 'e-vencido'], revisar: ['Por revisar', 'e-espera'], exento: ['Exento', 'e-otro'], no_aplica: ['No aplica', 'e-otro'] };
+  var SEMJ = { rojo: ['Rojo', 'e-vencido'], amarillo: ['Amarillo', 'e-espera'], verde: ['Verde', 'e-validado'], gris: ['Revisar datos', 'e-otro'] };
+  var MOTJ = { sin_salida: 'Entrada sin salida', salida_no_leida: 'Salida sin leer', asistencia_mas_de_max: 'Asistencia de más de 16 horas', incidencia_pendiente: 'Incidencia abierta en Odoo', en_disputa: 'Horario en disputa', sin_asistencias: 'Sin ninguna asistencia en la semana' };
+  function hm(h) {
+    if (h == null || h === '') return '';
+    var m = Math.round(Number(h) * 60), neg = m < 0; m = Math.abs(m);
+    return (neg ? '-' : '') + Math.floor(m / 60) + ':' + ('0' + (m % 60)).slice(-2);
+  }
+  // Numeración de Nómina: jueves 23-jul-2026 = S30, sin reinicio en enero; el año es el del jueves.
+  function semId(desde) {
+    var v = Date.UTC(+desde.slice(0, 4), +desde.slice(5, 7) - 1, +desde.slice(8, 10)) + 6 * 86400000;
+    return 'S' + (30 + Math.round((v - Date.UTC(2026, 6, 23)) / (7 * 86400000))) + '/' + new Date(v).getUTCFullYear();
+  }
+  function fDia(iso) { var p = String(iso || '').split('-'); return p.length === 3 ? p[2] + '/' + p[1] : esc(iso); }
+  function chipJ(m, k) { var e = m[k] || [k, 'e-otro']; return '<span class="chip ' + e[1] + '">' + esc(e[0]) + '</span>'; }
+  function motivosTxt(ms) { return (ms || []).map(function (m) { return esc(MOTJ[m] || m); }).join(', '); }
+  function tablaDias(ds) {
+    return '<div class="tabla-wrap"><table class="dias"><thead><tr><th>Día</th><th class="num">Registradas</th><th class="num">Comida</th><th class="num">Efectivas</th><th>Nota</th></tr></thead><tbody>' +
+      (ds || []).map(function (x) {
+        var nota = x.prorrateo ? 'Cubierto: ' + String(x.prorrateo).replace('nomina:', 'Nómina, ').replace(/_/g, ' ') : (x.motivos && x.motivos.length ? motivosTxt(x.motivos) : (!x.laborable && x.brutas ? 'Fin de semana: suma horas, nunca es retardo' : (x.laborable && !x.brutas ? 'No checó' : '')));
+        return '<tr class="' + (x.laborable ? '' : 'fds') + '"><td>' + DIA[x.dow] + ' ' + fDia(x.fecha) + '</td><td class="n">' + hm(x.brutas) + '</td><td class="n">' + hm(x.comida) + '</td><td class="n">' + hm(x.efectivas) + '</td><td class="nivel">' + nota + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+  async function jornada(sem) {
+    st.vista = 'jornada'; mostrarVista();
+    $('#jornada').innerHTML = '<div class="caja vacio">Cargando…</div>';
+    var r; try { r = await pedir({ accion: 'jornada', semana: sem || st.jSem || undefined }); } catch (e) { return; }
+    if (!r || r.ok !== true) { $('#jornada').innerHTML = '<div class="caja vacio">' + mensajeError(r || {}) + '</div>'; return; }
+    st.jor = r; st.jSem = r.semana;
+    var ps = r.personas || [], pr = r.por_revisar || [], cuenta = { rojo: 0, amarillo: 0, verde: 0, gris: 0 };
+    ps.forEach(function (p) { cuenta[p.semaforo] = (cuenta[p.semaforo] || 0) + 1; });
+    var rg = r.reglas || {};
+    var opciones = (r.semanas || []).map(function (d) { return '<option value="' + esc(d) + '"' + (d === r.desde ? ' selected' : '') + '>Semana del viernes ' + fDia(d) + '</option>'; }).join('');
+    $('#jornada').innerHTML =
+      '<div class="aviso sombra"><div><b>Jornada semanal FTS: ' + esc(rg.umbral) + ' horas efectivas de viernes a jueves</b>' +
+        'Se descuentan ' + esc(rg.comida_min) + ' minutos de comida por día trabajado. Sábado y domingo nunca son retardo, pero sus horas cuentan. Un feriado, permiso, incapacidad, vacaciones o día que no cuenta baja 9.6 horas el umbral. ' +
+        'Los avisos abren desde la semana del ' + esc(r.avisos_desde || 'sin definir') + '. Las medidas del tercer aviso quedan ' + esc(rg.modo_medidas === 'habilitadas' ? 'habilitadas' : 'retenidas') + '.</div></div>' +
+      '<div class="cab"><h1>Semana ' + esc(r.semana) + '</h1><span class="nivel">viernes ' + fDia(r.desde) + ' a jueves ' + fDia(r.hasta) + '</span><span class="sp"></span>' +
+        (opciones ? '<select id="j-semana" aria-label="Semana">' + opciones + '</select>' : '') + '</div>' +
+      '<div class="resumen"><div class="cubeta"><span class="n sem-rojo">' + cuenta.rojo + '</span><span class="l">Rojo</span><span class="q">3er aviso o 3 semanas cortas en 8</span></div>' +
+        '<div class="cubeta"><span class="n sem-amarillo">' + cuenta.amarillo + '</span><span class="l">Amarillo</span><span class="q">Semana corta o aviso en la ventana</span></div>' +
+        '<div class="cubeta"><span class="n sem-verde">' + cuenta.verde + '</span><span class="l">Verde</span><span class="q">Cumplió</span></div>' +
+        '<div class="cubeta rh"><span class="n">' + pr.length + '</span><span class="l">Jornada por revisar</span><span class="q">Datos incompletos: no sale aviso</span></div></div>' +
+      '<section class="caja bloque" style="margin-bottom:14px"><h2>Jornada por revisar</h2><div class="nivel">Entrada sin salida, asistencias de más de 16 horas, incidencias abiertas o una semana sin asistencias. Aquí no sale ningún aviso hasta que RH confirma, corrige o marca que no aplica.</div>' +
+        (pr.length ? pr.map(function (x) {
+          var id = x.employee_id + '|' + x.semana;
+          return '<div class="ev alerta"><div><b>' + esc(x.nombre || ('Empleado ' + x.employee_id)) + '</b> · semana ' + esc(x.semana) + ' · ' + hm(x.horas_efectivas) + ' de ' + hm(x.umbral) + ' horas<br><span class="nivel">' +
+            (x.motivos || []).map(function (m) { return (m.fecha ? fDia(m.fecha) + ': ' : '') + motivosTxt(m.motivos); }).join(' · ') + '</span>' +
+            '<details><summary>Ver los días</summary>' + tablaDias(x.desglose) + '</details></div>' +
+            (st.editor ? '<div class="acciones"><button class="btn" data-jrev="' + esc(id) + '" data-decision="confirmar">Confirmar horas</button><button class="btn" data-jrev="' + esc(id) + '" data-decision="corregir">Corregir horas</button><button class="btn" data-jrev="' + esc(id) + '" data-decision="no_aplica">No aplica</button></div>' : '') +
+            '<div id="jf-' + esc(id.replace(/[^A-Za-z0-9]/g, '_')) + '" class="alerta-form"></div></div>';
+        }).join('') : '<div class="nivel">Nada por revisar.</div>') + '</section>' +
+      '<div class="caja"><div class="tabla-wrap"><table class="jornada"><thead><tr><th>Persona</th><th>Semáforo</th><th>Estado</th><th class="num">Efectivas</th><th class="num">Umbral</th><th class="num">Faltante</th><th>Aviso</th><th></th></tr></thead><tbody>' +
+      (ps.length ? ps.map(function (p) {
+        var k = 'jd-' + p.employee_id;
+        return '<tr><td class="quien2"><b>' + esc(p.nombre || ('Empleado ' + p.employee_id)) + '</b><span>' + esc(p.departamento || '') + (p.umbral_fuente === 'calendario' ? ' · umbral de su calendario' : '') + (p.dias_prorrateo ? ' · ' + p.dias_prorrateo + (Number(p.dias_prorrateo) === 1 ? ' día cubierto' : ' días cubiertos') : '') + '</span></td>' +
+          '<td>' + chipJ(SEMJ, p.semaforo) + '</td><td>' + chipJ(ESTJ, p.estado) + '</td><td class="n">' + hm(p.horas_corregidas != null ? p.horas_corregidas : p.horas_efectivas) + '</td><td class="n">' + hm(p.umbral) + '</td><td class="n">' + (p.faltante ? hm(p.faltante) : '') + '</td>' +
+          '<td>' + (p.folio ? '<button class="enlace" data-folio="' + esc(p.folio) + '">' + esc(p.folio) + '</button> <span class="nivel">aviso ' + esc(p.aviso_n) + '</span>' : '') + '</td>' +
+          '<td><button class="btn" data-desglose="' + k + '" aria-expanded="false">Días</button></td></tr>' +
+          '<tr class="hid desglose" id="' + k + '"><td colspan="8">' + tablaDias(p.desglose) + '</td></tr>';
+      }).join('') : '<tr><td colspan="8" class="vacio">Esta semana todavía no tiene corte.</td></tr>') + '</tbody></table></div></div>';
+  }
+  function formJornada(id, decision) {
+    var box = $('#jf-' + id.replace(/[^A-Za-z0-9]/g, '_'));
+    var x = ((st.jor || {}).por_revisar || []).filter(function (q) { return q.employee_id + '|' + q.semana === id; })[0] || {};
+    var T = {
+      confirmar: '<div class="nivel">Se toman las ' + hm(x.horas_efectivas) + ' horas calculadas. Si quedan abajo del umbral y la semana ya abre avisos, sale el aviso.</div>',
+      corregir: '<label>Horas efectivas correctas (decimal, por ejemplo 47.5)<input id="jf-horas" inputmode="decimal"></label>',
+      no_aplica: '<div class="nivel">La semana no se evalúa. Queda en la bitácora con el motivo.</div>'
+    };
+    box.innerHTML = '<div class="form" style="margin-top:8px">' + T[decision] + '<label>Motivo (queda en la bitácora)<input id="jf-motivo"></label><button class="btn pri" data-jrev-enviar="' + esc(id) + '" data-decision="' + decision + '">Guardar</button><div id="jf-err" class="err"></div></div>';
+  }
+  async function enviarJornada(id, decision, boton) {
+    var pz = id.split('|'), d = { accion: 'jornada_revisar', employee_id: Number(pz[0]), semana: pz[1], decision: decision, motivo: ($('#jf-motivo').value || '').trim() };
+    if (decision === 'corregir') { d.horas_efectivas = Number(String($('#jf-horas').value).replace(',', '.')); if (!(d.horas_efectivas >= 0)) { $('#jf-err').textContent = 'Escribe las horas.'; return; } }
+    if (d.motivo.length < 5) { $('#jf-err').textContent = 'Escribe el motivo (al menos 5 letras).'; return; }
+    boton.disabled = true;
+    var r; try { r = await pedir(d); } catch (e) { return; } finally { boton.disabled = false; }
+    if (!r || r.ok !== true) { $('#jf-err').textContent = mensajeError(r || {}); return; }
+    toast('Guardado: la semana queda ' + ((ESTJ[r.estado] || [r.estado])[0]).toLowerCase() + (r.folio ? ', aviso ' + r.folio : '') + '.');
+    jornada(st.jSem);
+  }
+
+  // ── Propuestas de medida (3er aviso de jornada) ──
+  var ESTM = { propuesta: ['Propuesta, sin decidir', 'e-vencido'], retenida: ['Retenida', 'e-retenido'], por_aplicar: ['Por aplicar en Nómina', 'e-programada'], verificada: ['Verificada en Nómina', 'e-verificada'], descartada: ['Descartada', 'e-otro'] };
+  async function medidas() {
+    st.vista = 'medidas'; mostrarVista();
+    $('#medidas').innerHTML = '<div class="caja vacio">Cargando…</div>';
+    var r; try { r = await pedir({ accion: 'medidas' }); } catch (e) { return; }
+    if (!r || r.ok !== true) { $('#medidas').innerHTML = '<div class="caja vacio">' + mensajeError(r || {}) + '</div>'; return; }
+    st.medidas = r.medidas || [];
+    var ret = r.modo_medidas_jornada !== 'habilitadas';
+    $('#medidas').innerHTML =
+      '<div class="aviso ' + (ret ? 'sombra' : 'mal') + '"><div><b>Medidas ' + (ret ? 'retenidas' : 'habilitadas') + '</b>' +
+        (ret ? 'El tercer aviso de jornada abre una propuesta. RH decide y la decisión queda en la bitácora, pero la medida no se aplica ni se manda a Nómina hasta que Legal confirme.' : 'Un descuento registrado se verifica contra Nómina · Incidencias antes del corte. RH lo captura en Nómina.') + '</div></div>' +
+      '<div class="caja"><div class="tabla-wrap"><table><thead><tr><th>Persona</th><th>Folio</th><th>Semana</th><th class="num">Faltante</th><th>Estado</th><th>Decisión</th><th></th></tr></thead><tbody>' +
+      (st.medidas.length ? st.medidas.map(function (m) {
+        var dd = m.decision ? esc(m.decision.decision) + (m.decision.horas ? ' ' + hm(m.decision.horas) + ' h' : '') + ' · ' + esc(m.decision.motivo || '') + ' <span class="nivel">(' + esc(m.decidido_por || '') + ')</span>' : '';
+        return '<tr><td class="quien2"><b>' + esc(m.nombre || ('Empleado ' + m.employee_id)) + '</b><span>' + esc(m.departamento || '') + '</span></td><td><button class="enlace" data-folio="' + esc(m.folio) + '">' + esc(m.folio) + '</button></td><td>' + esc(m.semana) + '</td>' +
+          '<td class="n">' + hm(m.horas_propuestas) + '</td><td>' + chipJ(ESTM, m.estado) + '</td><td>' + dd + '</td>' +
+          '<td>' + (st.editor && (m.estado === 'propuesta' || m.estado === 'retenida') ? '<button class="btn" data-medida="' + m.id + '">Decidir</button>' : '') + '</td></tr>' +
+          '<tr class="hid" id="mf-' + m.id + '"><td colspan="7"></td></tr>';
+      }).join('') : '<tr><td colspan="7" class="vacio">No hay propuestas.</td></tr>') + '</tbody></table></div></div>';
+  }
+  function formMedida(id) {
+    var m = st.medidas.filter(function (x) { return String(x.id) === String(id); })[0] || {};
+    var fila = $('#mf-' + id); fila.classList.remove('hid');
+    fila.firstChild.innerHTML = '<div class="form"><div class="nivel">Faltante de la semana: ' + hm(m.horas_propuestas) + ' horas. La decisión es de RH; ninguna medida se aplica sola.</div>' +
+      '<div class="fila2"><label>Decisión<select id="mf-dec"><option value="descuento">Descuento de tiempo no laborado</option><option value="otra">Otra medida</option><option value="ninguna">Ninguna</option></select></label>' +
+      '<label>Horas a descontar (hasta ' + hm(m.horas_propuestas) + ')<input id="mf-horas" inputmode="decimal"></label></div>' +
+      '<label>Detalle (si es otra medida)<input id="mf-detalle"></label><label>Motivo (queda en la bitácora)<input id="mf-motivo"></label>' +
+      '<button class="btn pri" data-medida-enviar="' + m.id + '">Guardar decisión</button><div id="mf-err" class="err"></div></div>';
+  }
+  async function enviarMedida(id, boton) {
+    var d = { accion: 'medida_decidir', medida_id: Number(id), decision: $('#mf-dec').value, detalle: ($('#mf-detalle').value || '').trim(), motivo: ($('#mf-motivo').value || '').trim() };
+    if (d.decision === 'descuento') d.horas = Number(String($('#mf-horas').value).replace(',', '.'));
+    if (d.motivo.length < 5) { $('#mf-err').textContent = 'Escribe el motivo (al menos 5 letras).'; return; }
+    boton.disabled = true;
+    var r; try { r = await pedir(d); } catch (e) { return; } finally { boton.disabled = false; }
+    if (!r || r.ok !== true) { $('#mf-err').textContent = mensajeError(r || {}); return; }
+    toast(r.nota || 'Decisión registrada.'); medidas();
   }
 
   // ── Calidad de datos (retardos_0005) ──
@@ -1583,6 +1932,8 @@ window.SuiteAuth = { login: async function () { return { ok: false, mensaje: "En
     $('#calidad').classList.toggle('hid', st.vista !== 'calidad');
     $('#hojas').classList.toggle('hid', st.vista !== 'hojas');
     $('#reincidencia').classList.toggle('hid', st.vista !== 'reincidencia');
+    $('#jornada').classList.toggle('hid', st.vista !== 'jornada');
+    $('#medidas').classList.toggle('hid', st.vista !== 'medidas');
     document.querySelectorAll('[data-vista]').forEach(function (t) { t.setAttribute('aria-selected', String(t.dataset.vista === st.vista || (t.dataset.vista === 'lista' && st.vista === 'detalle'))); });
     window.scrollTo(0, 0);
   }
@@ -1596,9 +1947,17 @@ window.SuiteAuth = { login: async function () { return { ok: false, mensaje: "En
     if (t.id === 'ver-todos') { st.filtro = 'todos'; pintarResumen(); return pintarLista(); }
     if (t.id === 'cerrados') { st.cerrados = !st.cerrados; t.textContent = st.cerrados ? 'Ocultar cerrados' : 'Incluir cerrados'; st.filtro = 'todos'; return cargar(); }
     if (t.id === 'x-agregar') return agregarExclusion();
+    if (t.id === 'f-agregar') return festivo('festivo_agregar', $('#f-fecha').value, t);
+    if (t.dataset.quitarFestivo) return festivo('festivo_quitar', t.dataset.quitarFestivo, t);
+    if (t.dataset.desglose) { var fd = document.getElementById(t.dataset.desglose); var ab = fd.classList.toggle('hid'); t.setAttribute('aria-expanded', String(!ab)); return; }
+    if (t.dataset.jrev) return formJornada(t.dataset.jrev, t.dataset.decision);
+    if (t.dataset.jrevEnviar) return enviarJornada(t.dataset.jrevEnviar, t.dataset.decision, t);
+    if (t.dataset.medida) return formMedida(t.dataset.medida);
+    if (t.dataset.medidaEnviar) return enviarMedida(t.dataset.medidaEnviar, t);
     if (t.dataset.vista) {
       if (t.dataset.vista === 'ajustes') return ajustes(); if (t.dataset.vista === 'calidad') return calidad();
       if (t.dataset.vista === 'hojas') return hojas(); if (t.dataset.vista === 'reincidencia') return reincidencia();
+      if (t.dataset.vista === 'jornada') return jornada(); if (t.dataset.vista === 'medidas') return medidas();
       st.vista = 'lista'; mostrarVista(); return cargar();
     }
     if (t.dataset.imprimir) return imprimir(t.dataset.imprimir);
@@ -1617,6 +1976,7 @@ window.SuiteAuth = { login: async function () { return { ok: false, mensaje: "En
     if (t.dataset.ver) return ver(t.dataset.ver);
     if (t.dataset.quitar) return quitarExclusion(t.dataset.quitar);
   });
+  document.addEventListener('change', function (ev) { if (ev.target && ev.target.id === 'j-semana') jornada(semId(ev.target.value)); });
   document.addEventListener('keydown', function (ev) {
     if (ev.key === 'Enter' && ev.target.matches && ev.target.matches('tr.fila')) abrir(ev.target.dataset.folio);
     if (ev.key === 'Enter' && ev.target.id === 'p') entrar();

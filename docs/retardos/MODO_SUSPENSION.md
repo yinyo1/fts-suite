@@ -83,10 +83,29 @@ no ha revisado.
 2. **No confirmar `alerta_disparadores` hasta que RH termine la pestaña Calidad de datos.**
    Si se pasa a real antes, esperar ruido de alertas el segundo mes y descartarlas con el
    motivo "hora de entrada sin revisar".
-3. Repetir esta calibración después de la revisión, con la misma consulta:
+3. Repetir esta calibración después de la revisión, con la misma consulta (ver abajo la
+   recalibración con la tolerancia de 15 minutos):
    ```sql
    SELECT retardos.simular_alertas('{"desde":"2026-08-01","hasta":"2026-09-30","hora":"actual"}'::jsonb);
    ```
+
+### 3b. Recalibración con tolerancia de 15 minutos (reglas R3)
+
+Corrida el 28-sep-2026 en producción con la misma función, ya con `tolerancia_min = 15` al segundo,
+sábado y domingo fuera y los feriados del artículo 74 sembrados (consola TMP, ejecución 116893).
+Sólo agregados.
+
+| Mes | Hora | En acta o más | % plantilla | Suspensión 2 meses | 2 actas | Reincide tras acta |
+|---|---|---|---|---|---|---|
+| ago | ficha | 9 | 31.0 | 0 | 0 | 0 |
+| sep | ficha | 12 | 41.4 | 6 | 9 | 9 |
+| ago | sugerida | 0 | 0.0 | 0 | 0 | 0 |
+| sep | sugerida | 2 | 6.9 | 0 | 0 | 0 |
+
+**Lectura.** Bajar de 20 a 15 minutos sube los retardos con hora de ficha de 115 a 138 en agosto y
+de 124 a 141 en septiembre, y el global del 15 % suena aún más fuerte (31 y 41 %). Con la hora
+sugerida sigue sin sonar nada. La recomendación no cambia: los disparadores se quedan como están y
+**no se confirman hasta que RH termine Calidad de datos**; con 15 minutos, esa revisión pesa más.
 
 ## 4. Checklist antes de cambiar
 

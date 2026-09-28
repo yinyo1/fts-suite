@@ -111,8 +111,9 @@ comprobó que lo reconstruido es idéntico a lo desplegado, salvo los escapes un
 |---|---|---|
 | `retardos/detectar` | `q6JkF2l0l73hK3oi` | L-V 12:15 y 19:15 (Monterrey) |
 | `retardos/enviar` | `UqhsvXDZjOmatEql` | cada 20 min, L-V 7 a 20 |
-| `retardos/verificar` | `bAsUnSWeZuiABTBH` | L-V 09:05 |
-| `retardos/resumen-semanal` | `BaqYNzeHm08TkNo3` | lunes 08:10 |
+| `retardos/verificar` | `bAsUnSWeZuiABTBH` | L-V 09:05; también cruza descuentos de jornada con `nom_semana_persona` |
+| `retardos/jornada` | `m4S4Cm0zrUG7rLMn` | viernes 08:00: corte de la semana FTS que cerró (viernes a jueves). El latido alerta `JORNADA_SIN_CORTE` si no corrió |
+| `retardos/resumen-semanal` | `BaqYNzeHm08TkNo3` | viernes 10:00, después del corte |
 | `retardos/latido` | `FxLo4CVLO6ZL1LM0` | 10:40 y 20:40 todos los días |
 | `retardos/lector` | `fIlzbfLCSHS4nHrx` | cada 15 min, L-V 7 a 21 (no hace nada sin buzón) |
 | `retardos/panel` | `03tPk8lM3cFIs7lF` | webhook POST `/webhook/retardos/panel` |
