@@ -96,8 +96,8 @@ export async function autoprueba(ctx: Ctx) {
 
   // 3. Dedupe de archivo: la foto 0 del canal A, reenviada al canal B.
   const img0 = bytesSinteticos(1000, 2048, JPG);
-  const rB = await postEvo(evo(CANAL_B, "PRB-IMG-B-0", 0, { imageMessage: { caption: "Ticket sintético (misma foto)", mimetype: "image/jpeg" }, base64: b64(img0) }));
-  anota("misma_foto_en_B_mismo_sha", sha256(img0), rB.json?.resultados?.[0]?.archivo_sha256 ?? rB.json?.resultados?.[0]?.duplicado);
+  const rB = await postEvo(evo(CANAL_B, `PRB-IMG-B-${corrida}`, 0, { imageMessage: { caption: "Ticket sintético (misma foto)", mimetype: "image/jpeg" }, base64: b64(img0) }));
+  anota("misma_foto_en_B_mismo_sha", sha256(img0), rB.json?.resultados?.[0]?.archivo_sha256 ?? null);
 
   // 4. Canal pendiente: se registra pero no se captura.
   const rP = await postEvo(evo(CANAL_P, "PRB-PEN-0", 0, { conversation: "Mensaje en grupo pendiente (sintético)" }));

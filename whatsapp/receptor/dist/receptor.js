@@ -103,8 +103,8 @@ async function autoprueba(ctx) {
   }
   anota("reenvio_20_textos_todos_duplicados", 20, dup);
   const img0 = bytesSinteticos(1000, 2048, JPG);
-  const rB = await postEvo(evo(CANAL_B, "PRB-IMG-B-0", 0, { imageMessage: { caption: "Ticket sint\xE9tico (misma foto)", mimetype: "image/jpeg" }, base64: b64(img0) }));
-  anota("misma_foto_en_B_mismo_sha", sha256(img0), rB.json?.resultados?.[0]?.archivo_sha256 ?? rB.json?.resultados?.[0]?.duplicado);
+  const rB = await postEvo(evo(CANAL_B, `PRB-IMG-B-${corrida}`, 0, { imageMessage: { caption: "Ticket sint\xE9tico (misma foto)", mimetype: "image/jpeg" }, base64: b64(img0) }));
+  anota("misma_foto_en_B_mismo_sha", sha256(img0), rB.json?.resultados?.[0]?.archivo_sha256 ?? null);
   const rP = await postEvo(evo(CANAL_P, "PRB-PEN-0", 0, { conversation: "Mensaje en grupo pendiente (sint\xE9tico)" }));
   anota("canal_pendiente_no_captura", "CANAL_PENDIENTE", rP.json?.resultados?.[0]?.motivo);
   let rehashOk = 0;
@@ -168,12 +168,13 @@ var init_autoprueba = __esm(() => {
 var {SQL } = globalThis.Bun;
 import { createHmac as createHmac2, createHash as createHash2, timingSafeEqual, randomUUID as randomUUID2 } from "crypto";
 var env = Bun.env;
-var VERSION = "receptor-2026.09.28-1";
+var VERSION = "receptor-2026.09.28-2";
 var PORT = Number(env.PORT || 8080);
 var SECRETO = env.MEMORIA_HMAC_SECRET || "";
 var PIMIENTA = env.MEMORIA_PIMIENTA || "";
 var VENTANA_MS = 5 * 60 * 1000;
 var MAX_BYTES = 64 * 1024 * 1024;
+var FUTURO_MAX_MS = 24 * 60 * 60 * 1000;
 function configOk() {
   const faltan = [];
   if (SECRETO.length < 32 || SECRETO.includes("${{"))
@@ -268,7 +269,7 @@ async function asegurarCanal(fuente, idExt, nombre) {
   return (await sql`SELECT id, estado_captura FROM memoria.canal WHERE fuente = ${fuente} AND id_externo = ${idExt}`)[0];
 }
 async function guardarArchivo(m, tipo) {
-  const bytes = Uint8Array.from(Buffer.from(m.base64, "base64"));
+  const bytes = Buffer.from(m.base64, "base64");
   if (bytes.length === 0)
     throw new Error("MEDIA_VACIA");
   if (bytes.length > MAX_BYTES)
@@ -286,30 +287,43 @@ async function guardarArchivo(m, tipo) {
              VALUES (${h}, ${bytes.length}, ${m.mime || "application/octet-stream"}, ${m.nombre || null}, ${clase}, ${frio ? "frio" : "caliente"})
              ON CONFLICT (sha256) DO NOTHING`;
     await tx`INSERT INTO memoria.archivo_ubicacion (sha256, proveedor, contenedor, ruta, nivel, evento)
-             VALUES (${h}, 'railway_bucket', ${CONTENEDOR}, ${clave}, 'caliente', 'alta')`;
+             VALUES (${h}, 'railway_bucket', ${CONTENEDOR}, ${clave}, ${frio ? "frio" : "caliente"}, 'alta')
+             ON CONFLICT DO NOTHING`;
   });
-  if (frio && m.miniatura_base64) {
-    const mb = Uint8Array.from(Buffer.from(m.miniatura_base64, "base64"));
-    if (mb.length) {
-      const mh = sha2562(mb);
-      const mk = `caliente/${mh.slice(0, 2)}/${mh}`;
-      const e = await sql`SELECT 1 FROM memoria.archivo WHERE sha256 = ${mh}`;
-      if (!e.length) {
-        await subir(mk, mb, "image/jpeg");
-        await sql.begin(async (tx) => {
-          await tx`INSERT INTO memoria.archivo (sha256, bytes, mime, clase, rol, deriva_de, nivel_objetivo)
+  if (frio && m.miniatura_base64)
+    try {
+      const mb = Buffer.from(m.miniatura_base64, "base64");
+      if (mb.length) {
+        const mh = sha2562(mb);
+        const mk = `caliente/${mh.slice(0, 2)}/${mh}`;
+        const e = await sql`SELECT 1 FROM memoria.archivo WHERE sha256 = ${mh}`;
+        if (!e.length) {
+          await subir(mk, mb, "image/jpeg");
+          await sql.begin(async (tx) => {
+            await tx`INSERT INTO memoria.archivo (sha256, bytes, mime, clase, rol, deriva_de, nivel_objetivo)
                    VALUES (${mh}, ${mb.length}, 'image/jpeg', 'video', 'miniatura', ${h}, 'caliente') ON CONFLICT DO NOTHING`;
-          await tx`INSERT INTO memoria.archivo_ubicacion (sha256, proveedor, contenedor, ruta, nivel, evento)
-                   VALUES (${mh}, 'railway_bucket', ${CONTENEDOR}, ${mk}, 'caliente', 'alta')`;
-        });
+            await tx`INSERT INTO memoria.archivo_ubicacion (sha256, proveedor, contenedor, ruta, nivel, evento)
+                   VALUES (${mh}, 'railway_bucket', ${CONTENEDOR}, ${mk}, 'caliente', 'alta')
+                   ON CONFLICT DO NOTHING`;
+          });
+        }
       }
+    } catch (e) {
+      console.warn(`[miniatura] no guardada: ${String(e.message).slice(0, 120)}`);
     }
-  }
   return h;
 }
 async function procesar(n) {
   if (!n?.canal?.id_externo || !n.id_origen || !n.tipo || !n.ocurrido_en || !n.autor?.id_externo)
     return { status: 400, cuerpo: { ok: false, error: "EVENTO_INCOMPLETO" } };
+  const t = Date.parse(n.ocurrido_en);
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(n.ocurrido_en) || !Number.isFinite(t) || t < Date.UTC(2000, 0, 1))
+    return { status: 400, cuerpo: { ok: false, error: "FECHA_INVALIDA" } };
+  let ajusteFecha = null;
+  if (t > Date.now() + FUTURO_MAX_MS) {
+    ajusteFecha = n.ocurrido_en;
+    n = { ...n, ocurrido_en: new Date().toISOString() };
+  }
   const canal = await asegurarCanal(n.fuente, n.canal.id_externo, n.canal.nombre ?? null);
   if (canal.estado_captura !== "capturando") {
     await sql`UPDATE memoria.canal SET ultimo_evento = now() WHERE id = ${canal.id}`;
@@ -334,20 +348,27 @@ async function procesar(n) {
     return { status: 200, cuerpo: { ok: true, duplicado: true, evento_id: previo[0].evento_id } };
   let archivo = null;
   const meta = { ...n.metadatos || {}, id_origen: n.id_origen };
+  if (ajusteFecha)
+    meta.ocurrido_en_original = ajusteFecha;
   if (n.media?.base64) {
     try {
       archivo = await guardarArchivo(n.media, n.tipo);
     } catch (e) {
+      const msg = String(e.message);
+      if (msg !== "MEDIA_VACIA" && msg !== "MEDIA_DEMASIADO_GRANDE") {
+        console.warn(`[media] reintentable: ${msg.slice(0, 120)}`);
+        return { status: 503, cuerpo: { ok: false, error: "MEDIA_REINTENTAR" } };
+      }
       meta.media_pendiente = true;
-      meta.media_error = String(e.message).slice(0, 200);
+      meta.media_error = msg;
     }
   } else if (["imagen", "audio", "video", "documento"].includes(n.tipo)) {
     meta.media_pendiente = true;
   }
   let eventoRef = null;
   if (n.ref_origen) {
-    for (const t of ["mensaje", "imagen", "audio", "video", "documento", "ubicacion", "contacto"]) {
-      const f = await sql`SELECT evento_id FROM memoria.huella WHERE huella = ${sha2562(`${n.fuente}|${n.canal.id_externo}|${t}|${n.ref_origen}`)}`;
+    for (const t2 of ["mensaje", "imagen", "audio", "video", "documento", "ubicacion", "contacto"]) {
+      const f = await sql`SELECT evento_id FROM memoria.huella WHERE huella = ${sha2562(`${n.fuente}|${n.canal.id_externo}|${t2}|${n.ref_origen}`)}`;
       if (f.length) {
         eventoRef = f[0].evento_id;
         break;
@@ -469,6 +490,10 @@ var servidor = Bun.serve({
       }
       if (req.method !== "POST")
         return json(405, { ok: false });
+      if (configOk().length) {
+        console.warn("[rechazo] CONFIG_INCOMPLETA");
+        return json(503, { ok: false, error: "CONFIG_INCOMPLETA" });
+      }
       const cuerpo = await req.text();
       if (url.pathname === "/v1/evento") {
         const motivo = firmaValida(req.headers.get("x-fts-ts"), req.headers.get("x-fts-sig"), cuerpo);
@@ -496,9 +521,14 @@ var servidor = Bun.serve({
           return json(200, { ok: true, canales: t.sistema.length });
         }
         const res = [];
-        for (const n of t)
-          res.push((await procesar(n)).cuerpo);
-        return json(200, { ok: true, resultados: res });
+        let status = 200;
+        for (const n of t) {
+          const r = await procesar(n);
+          res.push(r.cuerpo);
+          if (r.status === 503)
+            status = 503;
+        }
+        return json(status, { ok: status === 200, resultados: res });
       }
       return json(404, { ok: false });
     } catch (e) {

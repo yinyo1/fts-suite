@@ -22,12 +22,13 @@ import { SQL } from "bun";
 import { createHmac, createHash, timingSafeEqual, randomUUID } from "node:crypto";
 
 const env = Bun.env;
-const VERSION = "receptor-2026.09.28-1";
+const VERSION = "receptor-2026.09.28-2";
 const PORT = Number(env.PORT || 8080);
 const SECRETO = env.MEMORIA_HMAC_SECRET || "";
 const PIMIENTA = env.MEMORIA_PIMIENTA || "";
 const VENTANA_MS = 5 * 60 * 1000;
 const MAX_BYTES = 64 * 1024 * 1024;
+const FUTURO_MAX_MS = 24 * 60 * 60 * 1000;          // un reloj adelantado no puede crear eventos en meses futuros
 
 function configOk(): string[] {
   const faltan: string[] = [];
@@ -134,7 +135,7 @@ async function asegurarCanal(fuente: string, idExt: string, nombre: string | nul
 }
 
 async function guardarArchivo(m: Media, tipo: string): Promise<string> {
-  const bytes = Uint8Array.from(Buffer.from(m.base64, "base64"));
+  const bytes = Buffer.from(m.base64, "base64");   // Buffer ya es Uint8Array: sin copia
   if (bytes.length === 0) throw new Error("MEDIA_VACIA");
   if (bytes.length > MAX_BYTES) throw new Error("MEDIA_DEMASIADO_GRANDE");
   const h = sha256(bytes);
@@ -150,11 +151,13 @@ async function guardarArchivo(m: Media, tipo: string): Promise<string> {
              VALUES (${h}, ${bytes.length}, ${m.mime || "application/octet-stream"}, ${m.nombre || null}, ${clase}, ${frio ? "frio" : "caliente"})
              ON CONFLICT (sha256) DO NOTHING`;
     await tx`INSERT INTO memoria.archivo_ubicacion (sha256, proveedor, contenedor, ruta, nivel, evento)
-             VALUES (${h}, 'railway_bucket', ${CONTENEDOR}, ${clave}, 'caliente', 'alta')`;
+             VALUES (${h}, 'railway_bucket', ${CONTENEDOR}, ${clave}, ${frio ? "frio" : "caliente"}, 'alta')
+             ON CONFLICT DO NOTHING`;
   });
   // Miniatura del video (la trae WhatsApp en el mensaje): ésa sí vive en caliente.
-  if (frio && m.miniatura_base64) {
-    const mb = Uint8Array.from(Buffer.from(m.miniatura_base64, "base64"));
+  // Si falla, el video ya quedó guardado y ligado: la miniatura no lo tumba.
+  if (frio && m.miniatura_base64) try {
+    const mb = Buffer.from(m.miniatura_base64, "base64");
     if (mb.length) {
       const mh = sha256(mb);
       const mk = `caliente/${mh.slice(0, 2)}/${mh}`;
@@ -165,17 +168,25 @@ async function guardarArchivo(m: Media, tipo: string): Promise<string> {
           await tx`INSERT INTO memoria.archivo (sha256, bytes, mime, clase, rol, deriva_de, nivel_objetivo)
                    VALUES (${mh}, ${mb.length}, 'image/jpeg', 'video', 'miniatura', ${h}, 'caliente') ON CONFLICT DO NOTHING`;
           await tx`INSERT INTO memoria.archivo_ubicacion (sha256, proveedor, contenedor, ruta, nivel, evento)
-                   VALUES (${mh}, 'railway_bucket', ${CONTENEDOR}, ${mk}, 'caliente', 'alta')`;
+                   VALUES (${mh}, 'railway_bucket', ${CONTENEDOR}, ${mk}, 'caliente', 'alta')
+                   ON CONFLICT DO NOTHING`;
         });
       }
     }
-  }
+  } catch (e) { console.warn(`[miniatura] no guardada: ${String((e as Error).message).slice(0, 120)}`); }
   return h;
 }
 
 export async function procesar(n: Normalizado) {
   if (!n?.canal?.id_externo || !n.id_origen || !n.tipo || !n.ocurrido_en || !n.autor?.id_externo)
     return { status: 400, cuerpo: { ok: false, error: "EVENTO_INCOMPLETO" } };
+  // Fecha: sólo ISO real. 'infinity', 'epoch' y compañía los aceptaría Postgres y caerían en
+  // la partición default, que después bloquea crear la partición de ese mes (revisión, hallazgo 1).
+  const t = Date.parse(n.ocurrido_en);
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(n.ocurrido_en) || !Number.isFinite(t) || t < Date.UTC(2000, 0, 1))
+    return { status: 400, cuerpo: { ok: false, error: "FECHA_INVALIDA" } };
+  let ajusteFecha: string | null = null;
+  if (t > Date.now() + FUTURO_MAX_MS) { ajusteFecha = n.ocurrido_en; n = { ...n, ocurrido_en: new Date().toISOString() }; }
   const canal = await asegurarCanal(n.fuente, n.canal.id_externo, n.canal.nombre ?? null);
   if (canal.estado_captura !== "capturando") {
     await sql`UPDATE memoria.canal SET ultimo_evento = now() WHERE id = ${canal.id}`;
@@ -203,9 +214,19 @@ export async function procesar(n: Normalizado) {
 
   let archivo: string | null = null;
   const meta: Record<string, unknown> = { ...(n.metadatos || {}), id_origen: n.id_origen };
+  if (ajusteFecha) meta.ocurrido_en_original = ajusteFecha;
   if (n.media?.base64) {
     try { archivo = await guardarArchivo(n.media, n.tipo); }
-    catch (e) { meta.media_pendiente = true; meta.media_error = String((e as Error).message).slice(0, 200); }
+    catch (e) {
+      const msg = String((e as Error).message);
+      // Error pasajero (S3, base): 503 ANTES de tomar la huella, para que el reintento
+      // lo vuelva a intentar y el binario no se pierda (revisión, hallazgo 3).
+      if (msg !== "MEDIA_VACIA" && msg !== "MEDIA_DEMASIADO_GRANDE") {
+        console.warn(`[media] reintentable: ${msg.slice(0, 120)}`);
+        return { status: 503, cuerpo: { ok: false, error: "MEDIA_REINTENTAR" } };
+      }
+      meta.media_pendiente = true; meta.media_error = msg;
+    }
   } else if (["imagen", "audio", "video", "documento"].includes(n.tipo)) {
     meta.media_pendiente = true;
   }
@@ -304,6 +325,8 @@ export const servidor = Bun.serve({
         return json(200, { ok: true, version: VERSION, config_faltante: configOk(), base });
       }
       if (req.method !== "POST") return json(405, { ok: false });
+      // Sin secretos completos NO se atiende: un HMAC con clave vacía lo calcula cualquiera (hallazgo 2).
+      if (configOk().length) { console.warn("[rechazo] CONFIG_INCOMPLETA"); return json(503, { ok: false, error: "CONFIG_INCOMPLETA" }); }
       const cuerpo = await req.text();
       if (url.pathname === "/v1/evento") {
         const motivo = firmaValida(req.headers.get("x-fts-ts"), req.headers.get("x-fts-sig"), cuerpo);
@@ -323,8 +346,9 @@ export const servidor = Bun.serve({
           return json(200, { ok: true, canales: t.sistema.length });
         }
         const res = [];
-        for (const n of t) res.push((await procesar(n)).cuerpo);
-        return json(200, { ok: true, resultados: res });
+        let status = 200;
+        for (const n of t) { const r = await procesar(n); res.push(r.cuerpo); if (r.status === 503) status = 503; }
+        return json(status, { ok: status === 200, resultados: res });
       }
       return json(404, { ok: false });
     } catch (e) {

@@ -4,7 +4,7 @@
 #
 # Cada corrida, en este orden (cada paso reporta; uno que falla no tapa a los demás):
 #   1. Contraseñas de los roles memoria_* desde variables de Railway (nunca git,
-#      nunca logs: psql las recibe como variable y las cita con :'var').
+#      nunca argv: psql las lee del entorno con \getenv y las cita con :'pw').
 #   2. Particiones: memoria.asegurar_particiones(3).
 #   3. Respaldo: pg_dump -Fc de TODA fts_suite (memoria, comercial, lo que haya)
 #      → bucket memoria-respaldos, con manifiesto de conteos → memoria.respaldo.
@@ -31,8 +31,19 @@ for par in "memoria_captura:PW_CAPTURA" "memoria_motor:PW_MOTOR" "memoria_admin:
   eval "pw=\${$var:-}"
   if [ -z "$pw" ] || [ ${#pw} -lt 24 ]; then log "rol $rol: variable $var ausente o corta, no se toca"; continue; fi
   if printf '%s' "$pw" | grep -q '\${{'; then log "rol $rol: la referencia no se resolvió, no se toca"; continue; fi
-  # La contraseña viaja como variable de psql y se cita con :'pw'. No aparece en argv ni en logs.
-  if printf "SELECT format('ALTER ROLE %%I LOGIN PASSWORD %%L', :'rol', :'pw') \\\\gexec\n" | q -v rol="$rol" -v pw="$pw" >/dev/null 2>&1; then
+  # psql lee la contraseña del ENTORNO (\getenv): no pasa por argv (/proc/*/cmdline).
+  # Y se le pide al servidor no registrar la sentencia si falla (log_min_error_statement):
+  # el ALTER ROLE lleva la contraseña en texto. Esos SET exigen superusuario; si no lo es,
+  # se ignoran y queda el valor del servidor (revisión, hallazgo 5).
+  if q -v rol="$rol" -v var="$var" >/dev/null 2>&1 <<'SQL'
+\set ON_ERROR_STOP 0
+SET log_min_error_statement = panic;
+SET log_statement = none;
+\set ON_ERROR_STOP 1
+\getenv pw :var
+SELECT format('ALTER ROLE %I LOGIN PASSWORD %L', :'rol', :'pw') \gexec
+SQL
+  then
     roles_ok=$((roles_ok+1))
   else log "rol $rol: ALTER ROLE falló"; fi
 done
@@ -51,20 +62,34 @@ CLAVE="pg_dump/${FECHA}/fts_suite_$(date -u +%Y%m%dT%H%M%SZ).dump"
 DUMP=/tmp/fts_suite.dump
 MANIF=/tmp/manifiesto.json
 
+# Instantánea compartida: el manifiesto y pg_dump ven EXACTAMENTE los mismos datos,
+# aunque la captura siga insertando. Sin esto, la prueba de restauración daba falsas
+# alarmas cada vez que entraba un evento entre el conteo y el dump (revisión, hallazgo 4).
+SNAP=""; rm -f /tmp/snap.in /tmp/snap.out; mkfifo /tmp/snap.in
+psql -X -qAt < /tmp/snap.in > /tmp/snap.out 2>/tmp/snap.err &
+SNAP_PID=$!
+exec 3>/tmp/snap.in
+echo "BEGIN ISOLATION LEVEL REPEATABLE READ; SELECT pg_export_snapshot();" >&3
+for _ in 1 2 3 4 5 6 7 8 9 10; do SNAP=$(head -1 /tmp/snap.out 2>/dev/null); [ -n "$SNAP" ] && break; sleep 1; done
+if [ -n "$SNAP" ]; then log "instantánea $SNAP"; SNAP_SQL="SET TRANSACTION SNAPSHOT '$SNAP';"; DUMP_SNAP="--snapshot=$SNAP"
+else log "sin instantánea compartida: $(head -c 200 /tmp/snap.err)"; SNAP_SQL=""; DUMP_SNAP=""; fi
+
 # Manifiesto: conteo EXACTO por tabla de usuario (base chica; si crece, se muestrea).
-q -c "SELECT coalesce(json_object_agg(n.nspname||'.'||c.relname,
+q -c "BEGIN ISOLATION LEVEL REPEATABLE READ" -c "$SNAP_SQL SELECT 1" -c "SELECT coalesce(json_object_agg(n.nspname||'.'||c.relname,
         (xpath('/row/c/text()', query_to_xml(format('SELECT count(*) AS c FROM %I.%I', n.nspname, c.relname), false, true, '')))[1]::text::bigint
         ORDER BY 1), '{}')
       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
       WHERE c.relkind IN ('r','p') AND NOT c.relispartition
-        AND n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname NOT LIKE 'pg_toast%'" > "$MANIF" 2>/tmp/manif.err \
+        AND n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname NOT LIKE 'pg_toast%'" -c "COMMIT" > "$MANIF.raw" 2>/tmp/manif.err \
+  && grep '^{' "$MANIF.raw" | tail -1 > "$MANIF" \
   || { log "manifiesto FALLO: $(head -c 300 /tmp/manif.err)"; echo '{}' > "$MANIF"; }
 
 ok_dump=false; err=""
-if pg_dump -Fc -Z 6 -f "$DUMP" 2>/tmp/dump.err; then
+if pg_dump -Fc -Z 6 $DUMP_SNAP -f "$DUMP" 2>/tmp/dump.err; then
   BYTES=$(wc -c < "$DUMP"); SHA=$(sha256sum "$DUMP" | cut -d' ' -f1)
   if s3put "$DUMP" "$CLAVE" >/dev/null 2>/tmp/put.err; then ok_dump=true; else err="subida: $(head -c 300 /tmp/put.err)"; fi
 else BYTES=0; SHA=""; err="pg_dump: $(head -c 300 /tmp/dump.err)"; fi
+exec 3>&-; wait "$SNAP_PID" 2>/dev/null || true      # cierra la transacción que sostenía la instantánea
 log "respaldo ok=$ok_dump bytes=${BYTES:-0} clave=$CLAVE ${err}"
 
 RID=$(q -v tipo="pg_dump" -v dest="railway_bucket:${S3_BUCKET}/${CLAVE}" -v bytes="${BYTES:-0}" -v sha="${SHA}" \
