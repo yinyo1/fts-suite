@@ -471,80 +471,10 @@ class Corrida:
             ruta_local = self.fichas_emitidas[-1]
         if ruta_local and os.path.exists(ruta_local):
             local = self.huella(ruta_local)
-        verificacion, avisos = "sin_verificar", []
-        if local and sha256_subido:
-            if sha256_subido.strip().lower() == local["sha256"]:
-                verificacion = ("identico_por_relectura" if hash_de_relectura
-                                else "identico")
-                if hash_de_relectura:
-                    avisos.append(
-                        "CONTENIDO verificado LEYENDO EL ARCHIVO DE VUELTA, no "
-                        "con un hash del servicio: el conector no devuelve "
-                        "`file.hashes`. El ida y vuelta completo coincide byte "
-                        f"por byte ({local['bytes']:,} bytes, sha256 "
-                        f"{local['sha256'][:16]}…). Queda una salvedad: la "
-                        "relectura pasa por el mismo conector, asi que si el "
-                        "conector normalizara algo al leer, lo normalizaria en "
-                        "los dos lados y esta comparacion no lo veria.")
-            else:
-                verificacion = "DIFIERE"
-                igual_tamano = (bytes_subidos == local["bytes"])
-                avisos.append(
-                    "EL CONTENIDO SUBIDO NO ES EL LOCAL. sha256 local "
-                    f"{local['sha256'][:16]}… contra subido "
-                    f"{sha256_subido.strip()[:16]}…"
-                    + (f", y el TAMANO SI COINCIDE ({local['bytes']:,} bytes): "
-                       "un archivo del mismo tamano con distinto contenido es "
-                       "exactamente lo que el tamano no puede detectar."
-                       if igual_tamano else
-                       f". Local {local['bytes']:,} bytes contra "
-                       f"{bytes_subidos:,} subidos." if bytes_subidos is not None
-                       else "."))
-        elif local and bytes_subidos is not None and base64_con_longitud_confirmada:
-            # TERCER CASO, y hacia falta. Salio subiendo el CSV y la tarjeta del
-            # piloto (#330): se subieron como BASE64 declarando `expectedBytes`, y
-            # el conector RECHAZA el envio si lo que recibe no decodifica a
-            # exactamente esa cantidad de bytes.
-            #
-            # Eso no es "el mismo tamano": es una comprobacion del TRANSPORTE que
-            # el servidor hizo y que no se puede rodear. Un base64 corrupto o
-            # truncado o no decodifica, o decodifica a otra longitud, y en los dos
-            # casos la subida se cae. Es justo el modo de falla de #306 -- un byte
-            # de mas por una transcripcion-- y este camino lo hace imposible.
-            #
-            # Y sigue siendo MAS DEBIL que una relectura: confirma la longitud de
-            # lo que llego, no su contenido. Una sustitucion que preserve longitud
-            # DENTRO del base64 que yo emiti pasaria las dos comprobaciones.
-            # Registrarlo como `identico` seria el mismo pecado que registrar el
-            # tamano como verificacion.
-            verificacion = ("longitud_confirmada_en_base64"
-                            if bytes_subidos == local["bytes"]
-                            else "TAMANO_DISTINTO")
-            avisos.append(
-                "Subido como BASE64 declarando la longitud exacta: el conector "
-                f"rechaza el envio si no decodifica a {local['bytes']:,} bytes, "
-                "asi que el transporte quedo comprobado del lado del servidor y "
-                "el byte de mas de #306 no puede pasar por aqui. NO es una "
-                "relectura: confirma la longitud de lo que llego, no su "
-                "contenido. Para verificar contenido, `--sha256-releido`.")
-        elif local and bytes_subidos is not None:
-            verificacion = ("mismo_tamano_sin_hash"
-                            if bytes_subidos == local["bytes"]
-                            else "TAMANO_DISTINTO")
-            avisos.append(
-                "Se comparo SOLO EL TAMANO, y el tamano no verifica contenido: "
-                f"local {local['bytes']:,} contra {bytes_subidos:,} subidos"
-                + (". Coinciden, y aun asi dos archivos del mismo tamano pueden "
-                   "diferir en cualquier byte." if bytes_subidos == local["bytes"]
-                   else ". NO coinciden.")
-                + " Pasa el `--sha256` que devolvio el conector para verificar de "
-                  "verdad.")
-        elif local:
-            avisos.append(
-                "Entrega registrada SIN VERIFICAR el contenido. La subida de "
-                "Pesqueria (#306) difirio en un byte y nadie lo comparo: pasa "
-                "`--sha256` con el hash que devolvio el conector, o al menos "
-                "`--bytes`.")
+        verificacion, avisos = comparar_subida(
+            local, sha256_subido=sha256_subido, bytes_subidos=bytes_subidos,
+            hash_de_relectura=hash_de_relectura,
+            base64_con_longitud_confirmada=base64_con_longitud_confirmada)
         self.entrega = {
             "destino": destino, "url": url.strip(), "archivo": ruta_local,
             "ts": datetime.now(timezone.utc).isoformat(), "declarada": False,
@@ -1719,3 +1649,97 @@ class Corrida:
             "rendimiento_por_origen": self.rendimiento_por_origen(),
             "contactos": [c.a_dict() for c in self.contactos],
         }
+
+
+def comparar_subida(local: dict, sha256_subido: str = "",
+                    bytes_subidos: int | None = None,
+                    hash_de_relectura: bool = False,
+                    base64_con_longitud_confirmada: bool = False
+                    ) -> tuple[str, list[str]]:
+    """El veredicto de una subida, comparada contra la huella local.
+
+    Vive SUELTA y no dentro de `Corrida` a proposito. La leccion de #306 --que
+    el tamano no verifica contenido-- no es de las fichas: es de CUALQUIER
+    archivo que sale de aqui a OneDrive. Los dos entregables de #335 -- el CSV
+    de la etapa 1 y la tarjeta del piloto-- no los produce una corrida, asi que
+    con la logica encerrada en `registrar_entrega` se subian SIN PASAR por esta
+    comparacion, que es justo la que existe para que eso no vuelva a pasar.
+
+    `local` es lo que devuelve `Corrida.huella`: {'sha256': ..., 'bytes': ...}.
+    Un `local` vacio significa que el archivo no se encontro en disco, y
+    entonces no hay nada que comparar y se dice asi."""
+    verificacion, avisos = "sin_verificar", []
+    if local and sha256_subido:
+        if sha256_subido.strip().lower() == local["sha256"]:
+            verificacion = ("identico_por_relectura" if hash_de_relectura
+                            else "identico")
+            if hash_de_relectura:
+                avisos.append(
+                    "CONTENIDO verificado LEYENDO EL ARCHIVO DE VUELTA, no "
+                    "con un hash del servicio: el conector no devuelve "
+                    "`file.hashes`. El ida y vuelta completo coincide byte "
+                    f"por byte ({local['bytes']:,} bytes, sha256 "
+                    f"{local['sha256'][:16]}…). Queda una salvedad: la "
+                    "relectura pasa por el mismo conector, asi que si el "
+                    "conector normalizara algo al leer, lo normalizaria en "
+                    "los dos lados y esta comparacion no lo veria.")
+        else:
+            verificacion = "DIFIERE"
+            igual_tamano = (bytes_subidos == local["bytes"])
+            avisos.append(
+                "EL CONTENIDO SUBIDO NO ES EL LOCAL. sha256 local "
+                f"{local['sha256'][:16]}… contra subido "
+                f"{sha256_subido.strip()[:16]}…"
+                + (f", y el TAMANO SI COINCIDE ({local['bytes']:,} bytes): "
+                   "un archivo del mismo tamano con distinto contenido es "
+                   "exactamente lo que el tamano no puede detectar."
+                   if igual_tamano else
+                   f". Local {local['bytes']:,} bytes contra "
+                   f"{bytes_subidos:,} subidos." if bytes_subidos is not None
+                   else "."))
+    elif local and bytes_subidos is not None and base64_con_longitud_confirmada:
+        # TERCER CASO, y hacia falta. Salio subiendo el CSV y la tarjeta del
+        # piloto (#330): se subieron como BASE64 declarando `expectedBytes`, y
+        # el conector RECHAZA el envio si lo que recibe no decodifica a
+        # exactamente esa cantidad de bytes.
+        #
+        # Eso no es "el mismo tamano": es una comprobacion del TRANSPORTE que
+        # el servidor hizo y que no se puede rodear. Un base64 corrupto o
+        # truncado o no decodifica, o decodifica a otra longitud, y en los dos
+        # casos la subida se cae. Es justo el modo de falla de #306 -- un byte
+        # de mas por una transcripcion-- y este camino lo hace imposible.
+        #
+        # Y sigue siendo MAS DEBIL que una relectura: confirma la longitud de
+        # lo que llego, no su contenido. Una sustitucion que preserve longitud
+        # DENTRO del base64 que yo emiti pasaria las dos comprobaciones.
+        # Registrarlo como `identico` seria el mismo pecado que registrar el
+        # tamano como verificacion.
+        verificacion = ("longitud_confirmada_en_base64"
+                        if bytes_subidos == local["bytes"]
+                        else "TAMANO_DISTINTO")
+        avisos.append(
+            "Subido como BASE64 declarando la longitud exacta: el conector "
+            f"rechaza el envio si no decodifica a {local['bytes']:,} bytes, "
+            "asi que el transporte quedo comprobado del lado del servidor y "
+            "el byte de mas de #306 no puede pasar por aqui. NO es una "
+            "relectura: confirma la longitud de lo que llego, no su "
+            "contenido. Para verificar contenido, `--sha256-releido`.")
+    elif local and bytes_subidos is not None:
+        verificacion = ("mismo_tamano_sin_hash"
+                        if bytes_subidos == local["bytes"]
+                        else "TAMANO_DISTINTO")
+        avisos.append(
+            "Se comparo SOLO EL TAMANO, y el tamano no verifica contenido: "
+            f"local {local['bytes']:,} contra {bytes_subidos:,} subidos"
+            + (". Coinciden, y aun asi dos archivos del mismo tamano pueden "
+               "diferir en cualquier byte." if bytes_subidos == local["bytes"]
+               else ". NO coinciden.")
+            + " Pasa el `--sha256` que devolvio el conector para verificar de "
+              "verdad.")
+    elif local:
+        avisos.append(
+            "Entrega registrada SIN VERIFICAR el contenido. La subida de "
+            "Pesqueria (#306) difirio en un byte y nadie lo comparo: pasa "
+            "`--sha256` con el hash que devolvio el conector, o al menos "
+            "`--bytes`.")
+    return verificacion, avisos

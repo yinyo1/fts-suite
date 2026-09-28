@@ -3,6 +3,73 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.14.0 — 2026-09-28
+
+Turno nocturno (#335), tercera mitad: las cuatro decisiones D6-D9 aplicadas.
+**899 pruebas** (eran 853). Herramienta nueva: `verificar_entrega.py`. Documento
+nuevo: `metodo/tarjeta-que-nace-vencida.md` (disenado, NO aplicado).
+
+### D6 · el evaluador lee el dinero, con la escala derivada y el corte por arriba
+
+`magnitudes()` ya lee MDD, MDP, MUSD, "millones de dolares/pesos" y MW. Lo que se
+puede DERIVAR del catalogo se derivo: el **piso** es el proyecto mas chico de los
+154 reales (192,000), porque un capex mas chico que el proyecto mas chico de FTS no
+puede contener uno. Lo que NO se puede derivar se declara como declarado: el corte
+de **500 MDD** para "programa corporativo" y el tipo de cambio **18.5** son de
+Esteban, con su alcance escrito y su fecha de revision. Que fraccion del capex de
+un cliente se vuelve proyecto de FTS no se sabe, y comparar 205 MDD contra el
+ticket de FTS seria un error de categoria.
+
+Las tres pruebas de aceptacion pasan: las cinco cuentas de inversion media suben,
+las dos que ya pasaban no se mueven, y **Bimbo (2,000 MDD) NO queda arriba de
+Coficab Durango (60 MDD)** — 45.5 contra 76.4. Un programa nacional no es una
+planta que FTS pueda atender.
+
+**B4 encontrado y NO arreglado:** `capacidad_por_tipo` esta vacio porque las 154
+entradas del catalogo traen `magnitudes: []`, asi que el corte por arriba de TR
+nunca ha corrido. Ahora el `por_que` lo dice en voz alta en vez de fingir que el
+rango existe.
+
+### D7 · los ejemplos de los docs llevan marca
+
+Convencion `[calculado]` / `[razonado a mano]` en los docs de metodo, y el §3d de
+`motor1-radar-de-leads.md` ahora cita `linea_base_radar.py` (12.0 -> 66.4 -> 76.4)
+en vez del 59 que nadie pudo reproducir. **Es la septima vez** que un numero
+escrito a mano en un doc no casa con el que el codigo produce; hay prueba que ata
+el §3d a la salida de la herramienta, asi que la octava se cae en rojo.
+
+### D8 · los primeros toques se escalonan
+
+Maximo **un toque #1 por cuenta por dia**, con al menos **2 dias habiles** de
+separacion, arrancando por el nivel mas alto y el canal mas directo. La prueba que
+DOCUMENTABA el enjambre se invirtio: ahora exige lo contrario. Un contacto en
+revision humana no consume dia de escalonamiento, porque no se le programa toque.
+
+### D9 · la etapa 1 filtra a pasa + guarda
+
+Dos archivos: `...-REVISAR-y-subir.csv` (4 tarjetas) y
+`...-archiva-NO-subir.csv` (5 tarjetas, referencia). El nombre carga la
+instruccion, porque el nombre es lo que se ve en OneDrive a las 8 de la manana.
+
+### El hueco que salio al subirlos: la comparacion no cubria lo que si se sube
+
+`prospector entregar --empresa Hershey` respondio *"No hay corrida para 'Hershey'
+en 'Escobedo'"*. La comparacion de #306 -- el tamano no verifica contenido-- vivia
+encerrada en `Corrida.registrar_entrega`, y los dos entregables que de verdad
+salen a OneDrive no los produce una corrida: se subian sin pasar por la unica
+comprobacion que existe para eso. El veredicto ahora vive suelto en
+`flujo.estado.comparar_subida`, `herramientas/verificar_entrega.py` lo usa desde
+fuera, y `datos/entregas-fuera-de-corrida.json` guarda las ligas. Prueba que ata
+las dos vias al mismo veredicto y que se niega a que `registrar_entrega` vuelva a
+calcularlo por su cuenta.
+
+### Tarjeta que nace vencida: disenada, NO aplicada
+
+`metodo/tarjeta-que-nace-vencida.md`. Coficab Durango llega con la senal ya
+caducada. Se recomienda la opcion C -- estado propio `vencida_sin_trabajar`, fuera
+de los lazos, con `caducidad_original` guardada--. Se rechaza fabricarle un cierre:
+un cierre inventado corrompe las tres compuertas del aprendizaje. **Espera OK.**
+
 ## 0.13.0 — 2026-09-28
 
 Turno nocturno (#330), segunda mitad: el piloto en pie. **853 pruebas** (eran 812).

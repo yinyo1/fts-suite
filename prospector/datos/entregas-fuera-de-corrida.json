@@ -1,0 +1,69 @@
+{
+  "que_es": "Entregas a OneDrive de archivos que NO produce una corrida: el CSV de la etapa 1 y las tarjetas del piloto. `prospector entregar` no las puede registrar porque exige una corrida, y sin esto se subian sin comparar nada.",
+  "reglas_duras": [
+    "Cero escrituras a Odoo: el CSV lo importa una PERSONA.",
+    "Sin datos personales: ni nombres ni correos ni celulares."
+  ],
+  "entregas": [
+    {
+      "archivo": "crm-lead-etapa1-4-tarjetas-REVISAR-y-subir.csv",
+      "ruta_local": "/tmp/claude-0/-home-user-fts-mcp-odoo/1546b028-bc52-5085-aa2e-d270de370c32/scratchpad/p2/etapa1/crm-lead-etapa1-4-tarjetas-REVISAR-y-subir.csv",
+      "url": "https://ftsmx0-my.sharepoint.com/personal/estebandelacruz_fts_mx/_layouts/15/Doc.aspx?sourcedoc=%7BD1B722E7-AC94-494E-8500-5A01684FD563%7D&file=crm-lead-etapa1-4-tarjetas-REVISAR-y-subir.csv&action=default&mobileredirect=true",
+      "ts": "2026-09-28T08:39:23.601846+00:00",
+      "local": {
+        "sha256": "da700156270748ecce9c60162644077540f020792820fa6d1e3dc5303ea696a7",
+        "bytes": 6125
+      },
+      "sha256_subido": "",
+      "bytes_subidos": 6125,
+      "hash_de_relectura": false,
+      "base64_con_longitud_confirmada": true,
+      "verificacion": "longitud_confirmada_en_base64",
+      "avisos_de_verificacion": [
+        "Subido como BASE64 declarando la longitud exacta: el conector rechaza el envio si no decodifica a 6,125 bytes, asi que el transporte quedo comprobado del lado del servidor y el byte de mas de #306 no puede pasar por aqui. NO es una relectura: confirma la longitud de lo que llego, no su contenido. Para verificar contenido, `--sha256-releido`."
+      ],
+      "verificacion_aceptable": true,
+      "nota": "Etapa 1 con D6 y D9 aplicados: las 4 tarjetas pasa+guarda. Las sube una PERSONA."
+    },
+    {
+      "archivo": "crm-lead-etapa1-5-tarjetas-archiva-NO-subir.csv",
+      "ruta_local": "/tmp/claude-0/-home-user-fts-mcp-odoo/1546b028-bc52-5085-aa2e-d270de370c32/scratchpad/p2/etapa1/crm-lead-etapa1-5-tarjetas-archiva-NO-subir.csv",
+      "url": "https://ftsmx0-my.sharepoint.com/personal/estebandelacruz_fts_mx/_layouts/15/Doc.aspx?sourcedoc=%7B39641375-7C8A-49B9-A7B1-3E0342144C70%7D&file=crm-lead-etapa1-5-tarjetas-archiva-NO-subir.csv&action=default&mobileredirect=true",
+      "ts": "2026-09-28T08:39:37.998413+00:00",
+      "local": {
+        "sha256": "cbdfb0b33adb452d79e46f8d41eabfbacf46bb996987bc4aef25826fdf31ac85",
+        "bytes": 5752
+      },
+      "sha256_subido": "",
+      "bytes_subidos": 5752,
+      "hash_de_relectura": false,
+      "base64_con_longitud_confirmada": true,
+      "verificacion": "longitud_confirmada_en_base64",
+      "avisos_de_verificacion": [
+        "Subido como BASE64 declarando la longitud exacta: el conector rechaza el envio si no decodifica a 5,752 bytes, asi que el transporte quedo comprobado del lado del servidor y el byte de mas de #306 no puede pasar por aqui. NO es una relectura: confirma la longitud de lo que llego, no su contenido. Para verificar contenido, `--sha256-releido`."
+      ],
+      "verificacion_aceptable": true,
+      "nota": "D9: las 5 tarjetas 'archiva'. REFERENCIA, NO SE SUBEN A ODOO."
+    },
+    {
+      "archivo": "tarjeta-1-hershey-escobedo.json",
+      "ruta_local": "/tmp/claude-0/-home-user-fts-mcp-odoo/1546b028-bc52-5085-aa2e-d270de370c32/scratchpad/p2/etapa1/tarjeta-1-hershey-escobedo.json",
+      "url": "https://ftsmx0-my.sharepoint.com/personal/estebandelacruz_fts_mx/Documents/tarjeta-1-hershey-escobedo.json",
+      "ts": "2026-09-28T08:39:38.057749+00:00",
+      "local": {
+        "sha256": "838a8a7485b76fc7810d9f10df3d5b85847cc29c0d6ea8ef1af7c86770e56822",
+        "bytes": 8356
+      },
+      "sha256_subido": "",
+      "bytes_subidos": 8356,
+      "hash_de_relectura": false,
+      "base64_con_longitud_confirmada": true,
+      "verificacion": "longitud_confirmada_en_base64",
+      "avisos_de_verificacion": [
+        "Subido como BASE64 declarando la longitud exacta: el conector rechaza el envio si no decodifica a 8,356 bytes, asi que el transporte quedo comprobado del lado del servidor y el byte de mas de #306 no puede pasar por aqui. NO es una relectura: confirma la longitud de lo que llego, no su contenido. Para verificar contenido, `--sha256-releido`."
+      ],
+      "verificacion_aceptable": true,
+      "nota": "Tarjeta 1 del piloto, regenerada con D8 (primeros toques escalonados). No la puede registrar 'prospector entregar': no la produce una corrida."
+    }
+  ]
+}

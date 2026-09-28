@@ -1356,3 +1356,106 @@ servidor **rechaza** lo que no decodifique a la longitud exacta— y no es
 Cero escrituras a Odoo · **cero consultas a Odoo** · cero Lusha · purga no
 ejecutada · `fts-mcp-odoo` intacto · sin datos personales en ningún archivo · cero
 consultas web (ninguna tarea las exigió). **853 pruebas**, versión **0.13.0**.
+
+---
+
+# #335 · Turno nocturno: D6 a D9 aplicadas, y el radar medido de punta a punta
+
+Continuación de #330. Las cuatro recomendaciones que quedaron esperando criterio se
+aprobaron, se aplicaron y se midieron. **899 pruebas**, versión **0.14.0**.
+
+## La evolución de la noche, en una sola tabla
+
+| cuenta | original | con D3+B | con D6 | veredicto | techo | ¿fecha? |
+|---|---:|---:|---:|---|---:|---|
+| Coficab/Pesquería | 22.7 | 64.9 | 64.9 | **pasa** | 87.9 | NO |
+| Coficab/Durango | 12 | 66.4 | **76.4** | **pasa** | — | sí |
+| LEGO | 10 | 20 | 30 | archiva | 53 | NO |
+| Ragasa | 18 | 18 | 28 | archiva | 51 | NO |
+| Cuprum | 18 | 28 | 38 | archiva | 61 | NO |
+| Bimbo | 18 | 43 | 45.5 | guarda | 68.5 | NO |
+| Amazon | 10 | 20.5 | 30.5 | archiva | 53.5 | NO |
+| Nemak/García | 18 | 28 | 28 | archiva | 51 | NO |
+| Hershey/Escobedo | 83 | 83 | 83 | **pasa** | — | sí |
+| **PASAN** | **1** | **3** | **3** | de 9 | | |
+
+Control con señal fresca documentada: **33 → 58 → 68 (pasa)**.
+
+> **El radar funciona sobre señal fresca; lo que hunde la línea base es que seis de
+> nueve señales no traen fecha registrada.** Cinco de las nueve pasarían si la señal
+> estuviera fresca. La mejora que más movería el número no está en el evaluador:
+> está en registrar la fecha de la señal cuando se documenta.
+
+## D6 · qué se derivó y qué se declaró
+
+Lo derivable se derivó: el **piso** es el proyecto más chico de los 154 reales
+(192,000), porque un capex menor que el proyecto más chico de FTS no puede contener
+uno. Es una cota dura.
+
+Lo no derivable se declara como declarado: el corte de **500 MDD** y el tipo de
+cambio **18.5** son de Esteban, con alcance escrito y fecha de revisión. Qué
+fracción del capex de un cliente se vuelve proyecto de FTS **no se sabe**, y
+comparar 205 MDD contra el ticket de FTS sería un error de categoría.
+
+La prueba de aceptación que importaba: **Bimbo (2,000 MDD) queda 45.5 y Coficab
+Durango (60 MDD) queda 76.4.** Un programa nacional no es una planta que FTS pueda
+atender, y el evaluador ahora lo distingue.
+
+**B4, encontrado y no arreglado:** `capacidad_por_tipo` está vacío porque las 154
+entradas del catálogo traen `magnitudes: []`. El corte por arriba de TR **nunca ha
+corrido**. Ahora el `por_qué` lo dice en voz alta en lugar de fingir que el rango
+existe.
+
+## D7 · la séptima vez
+
+Es la séptima vez que un número escrito a mano en un doc de método no casa con el
+que el código produce. El §3d ahora cita `linea_base_radar.py` (12.0 → 66.4 → 76.4)
+y el 59 quedó marcado como razonado a mano, con sus cuatro causas. Hay prueba que
+ata el §3d a la salida de la herramienta.
+
+> **Una columna que dice «antes» y se mueve cuando se agrega una mejora no es un
+> antes: es otro después.** Las tres etapas de la línea base son interruptores
+> independientes por eso.
+
+## Los cuatro huecos: cero señales, y dos pistas falsas nombradas
+
+Barrido de issues e HISTORIAL para Coficab Juárez, Silao, Metalsa e International:
+**ninguna señal de negocio con fecha**. No se declara ninguna. Cada hueco quedó con
+`que_faltaria` y `lo_mas_barato`, y las **dos pistas falsas** quedaron nombradas
+para que nadie las vuelva a perseguir.
+
+## El hueco que salió al subir los entregables
+
+`prospector entregar --empresa Hershey` respondió *«No hay corrida para 'Hershey' en
+'Escobedo'»*. La comparación que nació de #306 vivía encerrada en
+`Corrida.registrar_entrega`, y **los dos archivos que de verdad salen a OneDrive no
+los produce una corrida**: se subían sin pasar por la única comprobación que existe
+para eso.
+
+El veredicto vive suelto en `flujo.estado.comparar_subida`,
+`herramientas/verificar_entrega.py` lo usa desde fuera, y
+`datos/entregas-fuera-de-corrida.json` guarda las ligas. Prueba que ata las dos vías
+al mismo veredicto y que se niega a que `registrar_entrega` lo vuelva a calcular por
+su cuenta.
+
+> **La lección de #306 no es de las fichas: es de cualquier archivo que sale de
+> aquí.** Encerrarla en la clase que produce fichas la dejó cubriendo justo lo que
+> no se subía.
+
+## Lo que queda esperando OK
+
+- **D4** (modo expansión del radar) sigue esperando alcance exacto. Sin tocar.
+- **Tarjeta que nace vencida** (`metodo/tarjeta-que-nace-vencida.md`): se recomienda
+  la opción C —estado propio `vencida_sin_trabajar`, fuera de los lazos, con
+  `caducidad_original` guardada—. Se rechaza fabricarle un cierre: **ensuciar el
+  aprendizaje para que el tablero quede limpio es el peor de los dos males**, y eso
+  se verificó contra la base real, no se afirmó.
+- **B4**: el catálogo no trae magnitudes, y arreglarlo es volver a cómo se construye.
+
+## Restricciones del turno
+
+Cero escrituras a Odoo · cero consultas a Odoo · cero Lusha · purga no ejecutada ·
+`fts-mcp-odoo` intacto · sin datos personales en ningún archivo · **Microsoft 365
+solo para subir los tres entregables finales a OneDrive**, nada más. Los tres
+puntos `[ ? ]` de `listo` quedan sin sondear **porque sondearlos rompería las reglas
+duras**, no por descuido.
