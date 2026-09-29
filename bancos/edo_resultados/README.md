@@ -18,7 +18,7 @@ HTML y los CSV privados de OneDrive, en `FTS Finanzas - Bancos/02 Base maestra d
 | `db/migrations/bancos/bancos_0007_*.sql` | Crea `reglas_edo_resultados`, las reglas editables de a qué renglón va cada egreso. |
 | `db/migrations/bancos/bancos_0008_*.sql` (v1) | Amplía las reglas (D2, D3, D6, Conmet por cliente). Agrega las tablas editables `nomina_oficina`, `partidas_identificadas` y `er_parametros`, la bitácora `er_calculos`, la vista `v_auditoria_estados` y el rol `bancos_er`. `bancos_er` lee como `bancos_lector` y **sólo inserta** en `er_calculos` y `partidas_identificadas`; no tiene UPDATE ni DELETE. |
 | `db/migrations/bancos/bancos_0009_*.sql` (Vista E) | Catálogo editable `destinos_edo_resultados`; `reclasificaciones`, de sólo inserción, con partes (hasta 5), archivo de origen y huella; vista `v_reclasificaciones`, donde la última carga de cada movimiento es la vigente; columna `origen` en las reglas. `bancos_er` sólo inserta. |
-| workflow n8n `fts_bancos_estado_resultados` (`LW3DVENZjlI3Kurp`) | El recálculo automático. Baja `calcular.js` **fijado por commit** (constante `CALC_SHA` en el nodo `Code - Disparo`). |
+| workflow n8n `fts_bancos_estado_resultados` (`LW3DVENZjlI3Kurp`) | El recálculo automático. Baja `calcular.js` **fijado por commit** (constante `CALC_SHA` en el nodo `Code - Disparo`). Desde #352 lee también `PG - Jeeves` (vistas `v_jeeves_*`) y el folio fiscal de las facturas de proveedor. |
 
 ## Reglas vigentes (v1.1)
 
@@ -38,6 +38,15 @@ HTML y los CSV privados de OneDrive, en `FTS Finanzas - Bancos/02 Base maestra d
   - si no cuadra, no se publica versión nueva ni se sobrescribe el actual.
 - `pruebas.js`: pruebas con datos sintéticos de R1–R3 (a–h) y de la Vista D (a–c). Se corre con `node bancos/edo_resultados/pruebas.js`.
 - Publicar con etiqueta: `{ "publicar": true, "etiqueta": "v1.1", "forzar_correo": true, "motivo": "…" }` genera `historial/ER_2026_v1.1.*`.
+
+## v1.3: Jeeves desde su estado de cuenta (#352)
+
+- **Fuente:** en los meses con ciclo de Jeeves validado (V1 al centavo), Jeeves sale del PDF del estado de cuenta, por ciclo (fecha de aplicación). Los demás meses siguen con el diario 61 por fecha de compra, como el v1.2, y la cobertura lo marca. Un renglón del diario 61 que ya está en un ciclo validado no se cuenta dos veces.
+- **Clasificación de cada consumo, en orden:** 1) analítica de la factura conciliada (diario 61) · 2) CFDI de las columnas SAT del CSV (SAT Subtotal como monto sin IVA, «con CFDI») y la analítica de esa factura en Odoo, buscada por folio fiscal · 3) memo que nombra un proyecto (folio SO, cuenta analítica o cliente) → costo · 4) memo personal o ajeno (`bancos.jeeves_palabras_personales`) → renglón **«Gastos personales o ajenos en tarjeta (por decidir)»**, debajo de la utilidad de operación, sin IVA acreditable · 5) categoría del comercio (`bancos.jeeves_categorias_destino`) · 6) reglas por nombre de comercio del v1 · 7) costo sin clasificar. Cargos de Jeeves (usuario extra, recargos) → comisiones bancarias.
+- **R3 de Jeeves** con saldos reales: acumulado = −Amount Due; diferencia del mes = fondeos desde BBVA − pagos registrados por Jeeves.
+- **Informe privado:** % del monto por paso, sin clasificar contra el v1.2 (el mismo cálculo sin la base de Jeeves), lista de gastos personales y cotejo por ciclo contra el diario 61 con la diferencia explicada al centavo. La Vista E muestra la categoría, el memo y si trae CFDI.
+- **Sin datos de Jeeves, el v1.3 da la misma huella de resultados que el v1.2** (prueba en `pruebas_jeeves.js` y medido en producción, ejecuciones 118347 y 118354).
+- Pruebas: `node bancos/edo_resultados/pruebas_jeeves.js <calcular.js del v1.2>`.
 
 ## Vista E: reclasificación personalizada y escenarios
 
