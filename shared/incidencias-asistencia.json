@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-57-2026-09-29T12-41-18-686Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 57,
+      "empleado_nombre": "Samuel Ulises Alcántara",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": 112,
+      "supervisor_name": "Felipe Pérez Guzmán",
+      "supervisor_email": "samuelulises91@gmail.com",
+      "supervisor_phone": " +52 81 2973 9620",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": false,
+      "sin_supervisor": false,
+      "attendance_id": 15734,
+      "fecha_creacion": "2026-09-29T12:41:18.686Z",
+      "check_in_original_utc": "2026-09-28 12:52:22",
+      "check_out_propuesto_utc": "2026-09-29 11:02:00",
+      "check_out_propuesto_cst": "2026-09-29 05:02:00",
+      "geolocation": {
+        "lat": 25.6890624,
+        "lng": -100.2916753,
+        "accuracy": 19.533000946044922,
+        "captured_at": "2026-09-29T12:41:16.249Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-09-29T12:41:18.686Z",
+          "hora_propuesta_cst": "05:02",
+          "comentario": "No jalo el checador"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-09-29 11:02:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20260710-kiosk-versioncheck"
+    },
+    {
       "id_interno": "INC-AUTO-CIERRE-25-2026-09-29T12-40-31-633Z",
       "tipo": "auto_cierre_pendiente",
       "status": "pendiente_rh",
