@@ -477,7 +477,13 @@
     var m = (G.MachoteApp && G.MachoteApp.machotePorUuid)
       ? G.MachoteApp.machotePorUuid(o.machote_id) : null;
     var calc = (m && G.MachoteCalc && G.MachoteCalc.calcular) ? G.MachoteCalc.calcular(m) : null;
-    var v = P.evaluar({ machote: m, calc: calc, servidor: r, desde: 'confirmar' });
+    /* Esta pantalla SIEMPRE parte de un machote —sus órdenes salen de
+     * `comercial.machote`—, así que si no se encontró es que no está en este
+     * navegador, nunca que no exista. Eso avisa, no bloquea: los datos viven
+     * en el servidor y bloquear por no poder leerlos desde aquí le quitaría a
+     * alguien una confirmación que hoy puede hacer. */
+    var v = P.evaluar({ machote: m, calc: calc, servidor: r, desde: 'confirmar',
+                        machoteAjeno: !m });
 
     /* El servidor tiene la última palabra sobre lo suyo: si él dice que no se
      * puede, no se puede aunque la cotización esté completa. */

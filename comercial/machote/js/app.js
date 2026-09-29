@@ -1522,7 +1522,11 @@
         '<span class="engr-menu" data-menu="' + esc(m.id) + '" hidden>' +
           (archivable(m)
             ? '<button data-borrar="' + esc(m.id) + '">🗄 Archivar…</button>'
-            : '<span class="engr-no" title="Archivar es de su dueño">🔒 Archivar (es de otra persona)</span>') +
+            /* Conserva la clase `candado` y su title de siempre: el candado
+             * cambió de sitio, no de significado, y hay una prueba que lee
+             * justo ese title para comprobar que dice DE QUIÉN es. */
+            : '<span class="engr-no candado" title="Es de otra persona: se puede ver, ' +
+              'no archivar. Archivar es de su dueño.">🔒 Archivar (es de otra persona)</span>') +
           '<button data-dup="' + esc(m.id) + '">⧉ Duplicar…</button>' +
         '</span></span>';
     };

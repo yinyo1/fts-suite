@@ -53,22 +53,51 @@
     var o = op || {};
     var duras = [], blandas = [];
 
-    /* ── 1 · Los candados del machote ─────────────────────────────────────*/
-    if (!o.machote) {
+    /* ── 1 · Los candados del machote ─────────────────────────────────────
+     *
+     * ⚠️ AQUÍ HAY TRES SITUACIONES Y NO DOS, y confundirlas cuesta caro en
+     * direcciones opuestas (§20 #12b):
+     *
+     *   a) No hay machote ligado        → DURA. Confirmar una orden sin
+     *      cotización detrás es exactamente lo que este encargo viene a
+     *      impedir, y es una capacidad NUEVA: no se le quita nada a nadie.
+     *
+     *   b) Hay machote, pero no está en ESTE navegador → **NO bloquea**.
+     *      Avisa, fuerte y visible, y deja decidir al servidor.
+     *
+     *   c) Hay machote y está aquí      → los seis candados, como siempre.
+     *
+     * El caso (b) merece su párrafo, porque la primera versión lo bloqueaba y
+     * estaba mal. Los datos de la cotización EXISTEN —viven en el servidor—;
+     * lo que no existe es la forma de que este navegador los lea, porque la
+     * libreta de sincronización guarda sólo lo propio (§20 #13). Bloquear por
+     * eso no es un candado: es convertir una limitación del cliente en una
+     * avería, y le quitaría a alguien una confirmación que hoy puede hacer.
+     *
+     * Tampoco se calla: sale en ámbar diciendo que no se pudo comprobar desde
+     * aquí y por qué. Lo que corresponde es que el servidor devuelva esos
+     * campos en la Compuerta 2 —entonces (b) desaparece y el candado vale para
+     * todos—, y eso está anotado como pendiente. Mientras tanto, el
+     * comportamiento de este caso es EL MISMO que antes de la V1.46.
+     */
+    if (!o.machote && o.machoteAjeno) {
+      blandas.push({
+        id: 'machote-ajeno', fuente: 'machote',
+        que: 'La cotización no está en este navegador, así que no se pudo comprobar',
+        porque: 'Sus datos existen en el servidor, pero este navegador sólo guarda lo que ' +
+                'se capturó aquí. El contacto, la decisión de IVA, la orden de compra y el ' +
+                'anticipo NO se revisaron: lo que decide es lo que contestó el servidor. ' +
+                'Si quieres la revisión completa, ábrela en el navegador donde se capturó.',
+        donde: 'No impide confirmar. Es un aviso, no un candado.'
+      });
+    } else if (!o.machote) {
       duras.push({
         id: 'sin-machote', fuente: 'machote',
-        que: o.ordenSinMachote
-          ? 'Esta orden no tiene machote ligado'
-          : 'La cotización no está en este navegador',
-        porque: o.ordenSinMachote
-          ? 'Sin machote no se puede comprobar el contacto, la decisión de IVA, la ' +
-            'orden de compra ni el anticipo: esos datos viven en la cotización. Liga ' +
-            'una, o captúralos a mano sabiendo que nadie los va a revisar.'
-          : 'La libreta de este navegador sólo guarda lo que se capturó aquí, así que ' +
-            'de una cotización ajena no se puede leer nada. No es que esté incompleta: ' +
-            'es que no se puede mirar, y eso no es lo mismo.',
-        donde: o.ordenSinMachote ? 'En la orden, en «El machote ligado».'
-                                 : 'Ábrela desde la pantalla de su dueño.'
+        que: 'Esta orden no tiene machote ligado',
+        porque: 'Sin machote no se puede comprobar el contacto, la decisión de IVA, la ' +
+                'orden de compra ni el anticipo: esos datos viven en la cotización. Liga ' +
+                'una, o captúralos a mano sabiendo que nadie los va a revisar.',
+        donde: 'En la orden, en «El machote ligado».'
       });
     } else if (G.Confirmacion) {
       var todos = G.Confirmacion.faltantes(o.machote, o.calc, o.memoria);
@@ -209,8 +238,11 @@
     document.getElementById('puDesde').textContent =
       o.desde === 'orden' ? 'desde la orden' : 'desde Confirmar órdenes';
 
+    /* «No lo encontré» y «no lo hay» son dos cosas distintas, y de eso depende
+     * si esto bloquea o sólo avisa. */
+    var hayLiga = !!(orden && orden.machote) || !!o.machote_id;
     var base = { machote: machote, calc: calc, desde: o.desde,
-                 ordenSinMachote: !!(orden && !orden.machote) };
+                 machoteAjeno: hayLiga && !machote };
 
     /* Primero se pinta SIN la respuesta del servidor, que todavía no llegó —y
      * eso sale como una dura que dice justo eso, no como un hueco. */

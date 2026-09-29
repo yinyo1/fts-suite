@@ -343,6 +343,23 @@ await sembrarMachotes(p);
       await p.waitForTimeout(260);
     }
   };
+  /** Abre el engrane de un renglón y aprieta una de sus dos acciones.
+   *
+   *  Desde la V1.46 archivar NO es un botón suelto: vive bajo un engrane, con
+   *  duplicar. El candado cambió de SITIO, no de significado — pero una prueba
+   *  que apretaba `[data-borrar]` directo ahora se queda esperando un elemento
+   *  escondido, y lo que reporta es «Timeout», que manda a buscar al selector
+   *  y no al menú. Se centraliza aquí para que la próxima vez que se mueva se
+   *  mueva en un solo sitio. */
+  const porElEngrane = async (pg, accion, raiz) => {
+    const dentro = raiz ? (pg.locator(raiz)) : pg;
+    await (raiz ? dentro.locator('[data-engr]:visible').first()
+                : pg.locator('[data-engr]:visible').first()).click();
+    await pg.waitForTimeout(220);
+    await (raiz ? dentro.locator('[' + accion + ']:visible').first()
+                : pg.locator('[' + accion + ']:visible').first()).click();
+  };
+
   /* Navegación SUAVE: cambia de pantalla sin recargar. La necesitan las
    * pruebas que miden justamente lo que el estado recuerda entre pantallas —
    * recargar borraría lo que se está midiendo. */
@@ -1511,7 +1528,7 @@ await sembrarMachotes(q);
      * el ancho. A 380 px la primera coincidencia es el botón de la tabla, que
      * está oculto, y `click()` se queda esperando a que aparezca hasta agotar
      * el tiempo. Hay que apretar el que la persona ve. */
-    await p.locator('[data-borrar]:visible').first().click();
+    await porElEngrane(p, 'data-borrar');
     await p.waitForTimeout(700);
     const desp = await p.locator('.item[href^="#/m/"]').count();
     if (desp !== antes - 1) throw new Error('no salió de la lista: ' + antes + ' → ' + desp);
@@ -1545,7 +1562,7 @@ await sembrarMachotes(q);
     });
     const antes = await p.locator('.item[href^="#/m/"]').count();
     p.once('dialog', d => d.accept());
-    await p.locator('[data-borrar]:visible').first().click();
+    await porElEngrane(p, 'data-borrar');
     await p.waitForTimeout(700);
 
     const desp = await p.locator('.item[href^="#/m/"]').count();
@@ -1579,6 +1596,7 @@ await sembrarMachotes(q);
       const filas = [...document.querySelectorAll('[data-mid="M-1042"]')];
       if (!filas.length) return null;
       return { n: filas.length,
+               /* Sigue existiendo; desde la V1.46 vive dentro del engrane. */
                archivar: filas.every(f => !!f.querySelector('[data-borrar]')),
                candado: filas.some(f => !!f.querySelector('.candado')) };
     });
@@ -4638,7 +4656,7 @@ await sembrarMachotes(q);
        * al recargar no vuelva PORQUE EL SERVIDOR YA NO LO MANDA. */
       await q.evaluate(() => { window.__archivados = []; });
       q.once('dialog', d => d.accept());
-      await q.click('tr.rw:has-text("Ejemplo que estorba") [data-borrar]');
+      await porElEngrane(q, 'data-borrar', 'tr.rw:has-text("Ejemplo que estorba")');
       await q.waitForTimeout(700);
       if ((await hay()).some(t => t.indexOf('Ejemplo que estorba') >= 0))
         throw new Error('no salió de la lista ni siquiera en pantalla');
@@ -10695,13 +10713,23 @@ await sembrarMachotes(q);
         const srv = { ok: true, cuadra: true, dentro_politica: true, handoff: {} };
         const a = P.evaluar({ machote: m, calc: calc, servidor: srv, desde: 'orden' });
         const c = P.evaluar({ machote: m, calc: calc, servidor: srv, desde: 'confirmar' });
-        /* Y sin machote: no puede contestar «todo bien» por no haber mirado. */
-        const sin = P.evaluar({ machote: null, calc: null, servidor: srv,
-                                ordenSinMachote: true, desde: 'orden' });
+        /* Y sin machote LIGADO: no puede contestar «todo bien» por no haber
+         * mirado. Confirmar una orden sin cotización detrás es lo que este
+         * encargo viene a impedir. */
+        const sin = P.evaluar({ machote: null, calc: null, servidor: srv, desde: 'orden' });
+        /* Pero «no lo encontré» NO es «no lo hay»: si la cotización existe y
+         * sólo no está en ESTE navegador, sus datos viven en el servidor.
+         * Bloquear por eso convertiría una limitación del cliente en una
+         * avería, y le quitaría a alguien una confirmación que hoy puede
+         * hacer. Avisa, fuerte, y deja decidir al servidor. */
+        const ajeno = P.evaluar({ machote: null, calc: null, servidor: srv,
+                                  machoteAjeno: true, desde: 'confirmar' });
         const ids = (v) => v.duras.map(x => x.id).sort().join(',');
         return { igual: ids(a) === ids(c), ids: ids(a),
                  puedeA: a.puede, puedeC: c.puede,
                  sinPuede: sin.puede, sinIds: ids(sin),
+                 ajenoPuede: ajeno.puede,
+                 ajenoAvisa: ajeno.blandas.map(x => x.id).join(','),
                  fuentes: a.duras.map(x => x.fuente) };
       });
       if (!r.igual)
@@ -10712,9 +10740,14 @@ await sembrarMachotes(q);
         throw new Error('sin machote dijo que SÍ se puede confirmar');
       if (r.sinIds.indexOf('sin-machote') < 0)
         throw new Error('sin machote no dice que no pudo mirar: ' + r.sinIds);
+      if (r.ajenoPuede !== true)
+        throw new Error('una cotización que no está en este navegador BLOQUEÓ: ' +
+                        'eso convierte una limitación del cliente en una avería');
+      if (r.ajenoAvisa.indexOf('machote-ajeno') < 0)
+        throw new Error('dejó pasar al ajeno SIN avisar que no lo revisó: ' + r.ajenoAvisa);
       if (!r.ids) throw new Error('un machote recién creado no debería pasar los candados');
       console.log('    mismos candados por los dos caminos (' + r.ids + ') · ' +
-                  'sin machote NO pasa');
+                  'sin machote NO pasa · el ajeno pasa pero AVISA');
     } finally { await cerrar146(q); }
   });
 
