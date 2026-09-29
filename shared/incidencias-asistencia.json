@@ -61,9 +61,19 @@
           "fecha": "2026-09-29T12:41:18.686Z",
           "hora_propuesta_cst": "05:02",
           "comentario": "No jalo el checador"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-09-29T14:16:29.919Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobada salida",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": "2026-09-29 11:02:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
