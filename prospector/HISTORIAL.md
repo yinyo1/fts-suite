@@ -1607,3 +1607,67 @@ Cero escrituras a Odoo · cero consultas a Odoo · cero Lusha · purga no ejecut
 para los entregables**: tres subidas y **dos renombres** —los dos CSV de #335 quedaron
 `OBSOLETO-no-usar-…` en vez de borrados, porque el de subir llevaba dos leads con
 fecha límite en el pasado y a las 8 de la mañana nadie mira la fecha del archivo—.
+
+---
+
+# #353 — El cierre de la prueba de cobertura: 42% solo, y el radar archiva a los tres que contestaron
+
+Continuación de #353. **1,033 pruebas**, versión **0.16.0**.
+
+## El número definitivo
+
+Con el bloque completo —las tres formas de M5, alias de marca, ancla de geografía—
+la herramienta encuentra **23 de los 55 contactos de valor: 42%**. Por cuenta va de
+**100%** (una cuenta de un solo contacto) y **71%** (LEGO, 12 de 17) a **cero** en
+tres cuentas.
+
+Y hay un número que pesa más que el 42%, porque no habla de cobertura sino de
+criterio: **las tres cuentas que contestaron puntúan `archiva`.** Qualtia 10.0,
+Amazon 30.5, Cuprum 38.0; el umbral es 60. No es que el radar esté roto — es que el
+inventario de señales de esas tres cuentas está viejo, y **una respuesta la da una
+persona, no una nota de prensa**.
+
+## La vía interna: cero de los 55, y cuatro que valen más
+
+Odoo y el buzón cruzados contra las diez cuentas. **Cero** de los 55 contactos de
+valor habrían salido sin una búsqueda web — los ocho contactos hijos que Odoo tiene
+de esas cuentas se crearon el 21-23 de septiembre, así que **son la salida de la
+corrida humana, no su insumo**.
+
+Lo que la vía interna sí tiene son **cuatro personas que ya le escribieron a FTS**
+—en Bimbo, Nemak y Cuprum— y **ninguna de las cuatro está en la planilla**. Los dos
+conjuntos son **disjuntos**. Esas cuatro traen lo que ningún perfil de LinkedIn da:
+correo verificado, hilo abierto y un proyecto con nombre.
+
+`search_people` **no sirve para esto**: contesta por nombre, no por dominio —
+`fts.mx` devuelve cero aunque el buzón esté lleno de direcciones de fts.mx. El
+instrumento correcto es `outlook_email_search` con `sender` puesto al dominio.
+
+## Dos señales que salieron gratis, y una corrección
+
+El buzón cerró el hueco de **Metalsa** con un correo que llevaba ahí desde el
+24-jul: un evento de CAINTRA con Metalsa como empresa invitada. El hueco proponía
+resolverlo *«con una consulta dirigida de prensa»*, que cuesta una consulta web.
+**Estaba gratis en el buzón.** La lección es de orden: el buzón se lee antes de
+gastar en web.
+
+Y una corrección de la lectura anterior: **Ragasa no es un caso limpio de límite de
+fuente.** La consulta con el subdominio mexicano **sí devuelve perfiles de Ragasa**
+—un director general adjunto entre ellos—; lo que no devuelve son los puestos de
+planta. El detector temprano tal como se diseñó, que exige *cero perfiles de la
+empresa*, **no se dispararía en Ragasa**. Queda dicho en el diseño.
+
+## Lo que la medición pide y no se aplicó
+
+Tres configuraciones nuevas, cada una probada contra un caso concreto: el puesto
+largo entre comillas como frase, el nivel corporativo sin ancla de planta, y las
+siglas de la casa expandidas antes de consultar. La primera rescata un puesto de
+Nemak que el bloque de hoy deja en cero. **No están aplicadas**: las tres añaden
+consultas a la capa cara.
+
+## Restricciones del turno
+
+Cero escrituras a Odoo · cero Lusha · purga no ejecutada · `fts-mcp-odoo` intacto ·
+la planilla sólo en sesión, nunca al repo · sin datos personales en el repo ni en el
+issue — y el guardia lo demostró: atrapó la dirección de la cámara en
+`senales-documentadas.json` y quedó enmascarada.

@@ -190,6 +190,64 @@ se salta.**
 > devolvió a la persona con ese título en Sídney. El texto *sugiere*; sólo Sales
 > Navigator *filtra*.
 
+> ### 🟡 PROPUESTA · tres configuraciones que la medición del 29-sep pide, y su disparador
+>
+> **[calculado] #353.** Se probaron seis de los 32 contactos que la herramienta no
+> trae, uno por uno, contra configuraciones que hoy **no existen**. Tres
+> funcionaron. No están aplicadas: cada una añade consultas al bloque de M5, que
+> es la capa cara, y eso es decisión de Esteban.
+>
+> #### R1 · El puesto entre comillas, como FRASE
+>
+> Hoy el motor arma `puesto empresa` con las palabras suel­tas. Un puesto de cuatro
+> palabras se disuelve: el buscador lo trata como cuatro términos independientes y
+> devuelve cualquier cosa que tenga tres de ellos.
+>
+> | caso medido | forma del bloque de hoy | con el puesto entre comillas |
+> |---|---|---|
+> | Nemak · *Global Purchasing Performance Manager* | **cero** | **lo trae, con ciudad y todo** |
+>
+> **Disparador:** el puesto tiene **tres palabras o más**. Cuesta una consulta por
+> puesto largo, y sólo sobre los puestos largos.
+>
+> #### R2 · El nivel corporativo se busca SIN ancla de planta
+>
+> La consulta que trajo al de Nemak no llevaba ni ciudad ni planta. Y no es
+> casualidad: **un puesto que empieza con `Global`, `Corporate`, `Regional` o
+> `Nacional` no vive en una planta**, y anclarlo a una lo esconde. De los 32 que
+> faltan, **siete** son de ese nivel.
+>
+> **Disparador:** el puesto trae una de esas cuatro palabras. Corre la misma
+> combinación **sin** la dimensión de geografía.
+>
+> #### R3 · Las siglas de la casa se EXPANDEN antes de consultar
+>
+> La capa de vacantes (M2) ya cosecha las siglas internas: en esta medición trajo
+> **GWP = Global Workplace Projects**, **LOM = LEGO Operaciones de México** e
+> **IntlRME** de Amazon. Pero esas siglas se quedan en el vocabulario y **no entran
+> a las consultas de M5**, así que un puesto que se llama *Head of GWP Projects
+> LOM* se busca por sus siglas, que el índice no indexa como palabras.
+>
+> | caso medido | con la sigla tal cual | con la sigla expandida |
+> |---|---|---|
+> | LEGO · *Head of GWP Projects LOM* | **cero** | **aparece el rol, y un perfil de Monterrey en proyectos GWP** |
+>
+> **Disparador:** el puesto cosechado trae una sigla de 2 a 5 letras mayúsculas que
+> M2 ya expandió. Se corre la forma expandida **además** de la literal.
+>
+> #### Lo que estas tres NO arreglan
+>
+> Cuatro de los seis casos probados siguieron en cero con todas las
+> configuraciones. Dos razones distintas, y vale separarlas:
+>
+> - **La frase del puesto choca con otra industria.** *Global Asset Management
+>   Director* en Bimbo: el índice devuelve gestoras de fondos —BMO, CIBC, Credit
+>   Suisse— y, dentro de Bimbo, un perfil de riesgo financiero. Añadir
+>   `mantenimiento` como término obligatorio no lo rescató.
+> - **El perfil no está indexado.** Cuprum y Ragasa en sus puestos de planta,
+>   Amazon en su *RME Manager*: la consulta devuelve **vacantes** del puesto, no la
+>   persona que lo tiene.
+
 > ### ⚠️ La búsqueda simple sin operador se estaba saltando, y cuesta contactos
 >
 > **[calculado] #346:** dos puestos de compras de una cuenta global —un *Senior

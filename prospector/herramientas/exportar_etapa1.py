@@ -219,6 +219,12 @@ def exportar(destino: str, hoy: date | None = None) -> dict:
                          "bytes": len(texto.encode("utf-8-sig")),
                          "tarjetas": len(filas), "que_es": que_es})
 
+    _inv = json.load(open(os.path.join(RAIZ, "datos", "senales-documentadas.json"),
+                         encoding="utf-8"))["cuentas"]
+    _total_cuentas = len(_inv)
+    _con_senal = sum(1 for c in _inv if c.get("fuente"))
+    _huecos = _total_cuentas - _con_senal
+
     return {
         "archivos": archivos,
         "tarjetas_totales": (len(filas_suben) + len(filas_vencidas)
@@ -230,13 +236,15 @@ def exportar(destino: str, hoy: date | None = None) -> dict:
                    "Odoo, Y SOLO si su senal no caduco todavia. Las `archiva` y las "
                    "vencidas van a archivos marcados, no se tiran: las primeras son "
                    "material del lazo 1 y las segundas son decisiones de persona"),
+        # SE CALCULA, no se escribe. La version anterior era un texto a mano que
+        # decia «Diez cuentas... y tres huecos», y quedo vieja en silencio en #353
+        # al documentarse dos senales nuevas. Un conteo a mano en un reporte es la
+        # misma clase de mentira que un doc sin regenerar.
         "cuantas_cuentas": (
-            "Diez cuentas con senal documentada de las trece, y tres huecos. Eran "
-            "nueve y cuatro hasta el 28-sep: International dejo de ser hueco porque "
-            "sus 120 MDD llevaban documentados desde el 18-sep y el barrido los "
-            "perdio buscando «International» donde el repo dice «Navistar». Una "
-            "tarjeta sin expediente no tiene puntaje con el que ordenarla, asi que "
-            "los tres huecos no salen: habria que inventarles la senal."),
+            f"{_con_senal} cuentas con senal documentada de {_total_cuentas}, y "
+            f"{_huecos} hueco(s). Una tarjeta sin expediente no tiene puntaje con "
+            f"el que ordenarla, asi que los huecos no salen: habria que "
+            f"inventarles la senal."),
         "escrituras_a_odoo": 0,
         "detalle": detalle,
     }
