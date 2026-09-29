@@ -2438,3 +2438,248 @@ table.hoja-pad .padcel.ref2 { box-shadow: inset 0 0 0 2px var(--xl-ref2); backgr
   .cfx-bloque { padding: 10px 0 2px; }
   .cfx-fila { gap: 8px; }
 }
+
+/* ═══ V1.46 · Órdenes de venta, la liga y la puerta de confirmación ═════════
+ *
+ * Usa los tokens de `odoo19.css` donde la pantalla quiere PARECERSE a Odoo —la
+ * densidad del renglón, el morado de marca, la etiqueta chica— y los del
+ * módulo donde quiere parecerse a la suite. Copiar el aspecto no es copiar el
+ * comportamiento: a 380px manda lo que se lea, y ahí Odoo pierde.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.or-wrap { max-width: 1280px; }
+
+/* ── La banda del filtro. Va ARRIBA y es ámbar a propósito: Odoo lo pinta como
+ * una facetita gris junto al buscador y por eso nadie la ve. Un filtro que no
+ * se anuncia se lee como registros que faltan. */
+.or-filtro { background: #fff8e6; border: 1px solid #f0c36d; border-radius: 8px;
+             padding: 9px 12px; margin: 0 0 10px; }
+.or-fq { font-size: 13px; line-height: 1.55; }
+.or-fac { display: inline-flex; align-items: center; gap: 5px;
+          background: var(--o19-brand, #714B67); color: #fff; border-radius: 6px;
+          padding: 2px 5px 2px 9px; font-size: 12px; font-weight: 600; margin: 0 3px; }
+.or-fac.fijo { background: var(--o19-gray-600, #6c757d); padding: 2px 9px; }
+.or-fac button { background: transparent; border: 0; color: #fff; font-size: 15px;
+                 line-height: 1; cursor: pointer; padding: 0 3px; min-height: auto; }
+
+/* ── La tabla, con la densidad de Odoo: 3px por celda y NADA que envuelva.
+ * En cuanto una celda se parte en tres líneas se pierde la densidad, que es lo
+ * único que hace utilizable una lista de 1,546. */
+.or-caja { border: 1px solid var(--linea); border-radius: 8px; overflow: hidden; }
+table.or-tab { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.or-tab th { background: var(--o19-gray-100, #f8f9fa); color: #44546a;
+  font-size: var(--o19-fs-label, 11.2px); text-transform: uppercase;
+  letter-spacing: .04em; font-weight: 700; text-align: left; white-space: nowrap;
+  padding: 6px var(--o19-cell-pad-x, 8px);
+  border-bottom: 1px solid var(--o19-gray-300, #dee2e6); }
+table.or-tab td { padding: var(--o19-cell-pad-y, 3px) var(--o19-cell-pad-x, 8px);
+  border-bottom: 1px solid #f0f1f2; vertical-align: middle; height: 30px; }
+table.or-tab tbody tr { cursor: pointer; }
+table.or-tab tbody tr:hover { background: #f4f1f4; }
+table.or-tab td.num { text-align: right; }
+.or-num { font-weight: 600; white-space: nowrap; }
+.or-cli { max-width: 1px; width: 23%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.or-desc { max-width: 1px; width: 27%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.or-tot { white-space: nowrap; }
+.or-mn { color: var(--o19-gray-600, #6c757d); font-size: 11px; margin-left: 3px; }
+.or-vacio { color: var(--o19-gray-600, #6c757d); font-style: italic; }
+
+/* Los estados con los colores de Odoo: cotización gris, orden en el morado de
+ * marca, cancelada tachada. */
+.or-est { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px;
+          border-radius: 20px; white-space: nowrap; border: 1px solid transparent; }
+.or-est.q { background: var(--o19-gray-100, #f8f9fa); color: #44546a; border-color: var(--o19-gray-300, #dee2e6); }
+.or-est.s { background: #efe8ee; color: var(--o19-brand, #714B67); border-color: #d9c9d4; }
+.or-est.c { background: #f6f6f6; color: #8a8a8a; border-color: #e3e3e3; text-decoration: line-through; }
+
+.chip-mini { display: inline-block; font-size: 10.5px; font-weight: 700;
+             padding: 1px 6px; border-radius: 10px; background: var(--papel);
+             color: var(--muted2, #6b6b6b); border: 1px solid var(--linea); vertical-align: middle; }
+.chip-mini.bad { background: #ffebe9; color: #a40e26; border-color: #ffc9c9; }
+.chip-mini.warn { background: #fff8c5; color: #7d4e00; border-color: #f0c36d; }
+.chip-mini.info { background: #ddf4ff; color: #0a3069; border-color: #b6e3ff; }
+
+/* ── La columna del machote: folio Y descripción. Si hay que abrirlo para
+ * saber cuál es, la columna no sirve de nada. */
+.or-mach { display: flex; align-items: center; gap: 6px; white-space: nowrap; min-width: 0; }
+.or-fol { font-weight: 700; font-size: 12px; color: var(--o19-brand, #714B67); text-decoration: none; }
+.or-fol:hover { text-decoration: underline; }
+.or-md { font-size: 11.5px; color: var(--o19-gray-600, #6c757d);
+         max-width: 118px; overflow: hidden; text-overflow: ellipsis; }
+.or-lig { border: 1px dashed var(--linea); background: var(--fondo, #fff);
+          border-radius: 6px; font-size: 11px; padding: 2px 7px; cursor: pointer;
+          min-height: auto; color: #44546a; }
+.or-lig:hover { border-style: solid; border-color: var(--o19-brand, #714B67);
+                color: var(--o19-brand, #714B67); }
+
+/* ── LOS BOTONES DE ESTA PANTALLA TOMAN SU ANCHO… DESDE 761px ──────────────
+ * El `.btn` del módulo ocupa la fila entera, y eso a 380px es lo correcto: un
+ * botón del ancho del pulgar. A 1280px produce una PILA DE BARRAS —«Volver a
+ * la lista», «Cambiar de machote», «Desligar», «Abrir el machote»— que no se
+ * lee como botones, se lee como renglones de una lista. Se vio en la captura
+ * de 1280 y NO en la de 380, donde estaba bien: por eso el arreglo tiene que
+ * depender del ancho y no ser un `width:auto` a secas. */
+@media (min-width: 761px) {
+  .or-wrap .btns .btn, .or-wrap > p > .btn, .or-lig-caja .btns .btn {
+    width: auto; flex: 0 0 auto; min-width: 0; padding: 0 18px;
+  }
+  .or-wrap .btns, .or-lig-caja .btns { justify-content: flex-start; }
+}
+/* Desligar es destructivo y tiene que verse distinto del resto. `.peli` no
+ * existía en la hoja del módulo —sólo en la de los prototipos—, así que el
+ * botón salía idéntico a «Cambiar de machote». */
+.btn.peli { color: var(--rojo); border-color: #ffc9c9; }
+.btn.peli:hover { background: #fff5f5; }
+
+.or-pag { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 9px 2px; }
+/* Los botones de la paginación toman su propio ancho. Sin esto heredan el
+ * `.btn` del módulo, que está pensado para ocupar la fila en un formulario, y
+ * salen dos barras del ancho de la pantalla. Se vio en la captura de 1280. */
+.or-pag .btn { width: auto; flex: 0 0 auto; min-width: 0; padding: 0 14px; min-height: 34px; }
+/* Y las dos columnas cortas tampoco envuelven: en cuanto la PO se parte en
+ * tres líneas el renglón crece al triple y se pierde la densidad, que es lo
+ * único que hace utilizable una lista de 1,546. */
+.or-po, .or-cot { white-space: nowrap; }
+.or-po { max-width: 1px; width: 11%; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── El detalle ── */
+.or-cab { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 12px; }
+.or-cab > div:first-child { flex: 1; min-width: 200px; }
+.or-sb { display: flex; border: 1px solid var(--o19-gray-300, #dee2e6); border-radius: 6px;
+         overflow: hidden; min-height: var(--o19-statusbar-h, 33px); min-width: 240px; flex: 1; }
+.or-sb div { flex: 1; text-align: center; font-size: 12px; font-weight: 600;
+             padding: 7px 6px; color: var(--o19-gray-600, #6c757d);
+             border-right: 1px solid var(--o19-gray-300, #dee2e6); }
+.or-sb div:last-child { border-right: 0; }
+.or-sb div.on { background: var(--o19-brand, #714B67); color: #fff; }
+.or-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0 14px; }
+.or-campo { display: block; margin: 10px 0; }
+.or-campo > span { display: block; font-size: var(--o19-fs-label, 11.2px); font-weight: 700;
+                   color: #44546a; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+.or-val { border: 1px solid var(--linea); border-radius: 7px; padding: 8px 10px;
+          background: var(--papel); min-height: 36px; }
+.or-val.vac { color: var(--o19-gray-600, #6c757d); font-style: italic; }
+.or-lig-caja { border: 1px solid var(--linea); border-left: 4px solid var(--linea);
+               border-radius: 8px; padding: 12px 14px; margin: 8px 0; }
+.or-lig-caja.pasa { border-left-color: var(--verde); }
+.or-lig-caja.avisa { border-left-color: var(--ambar); background: #fffdf5; }
+.or-lig-caja h4 { margin: 0 0 4px; font-size: 14px; }
+.or-lig-caja p { margin: 5px 0 0; font-size: 13px; line-height: 1.5; }
+
+/* ── La hoja del machote, a media pantalla. No tapa la orden: la deja arriba,
+ * porque lo que se está haciendo es comparar las dos cosas. Se minimiza a su
+ * barra sin perder nada — el nodo no se destruye, sólo baja de altura. */
+.or-hoja { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+  background: var(--fondo, #fff); border-top: 2px solid var(--o19-brand, #714B67);
+  border-radius: 12px 12px 0 0; box-shadow: 0 -8px 28px rgba(0,0,0,.18);
+  display: none; flex-direction: column; height: 52vh; transition: height .18s ease; }
+.or-hoja.abierta { display: flex; }
+.or-hoja.min { height: 48px; }
+.or-hoja-cab { display: flex; align-items: center; gap: 10px; padding: 9px 14px;
+               border-bottom: 1px solid var(--linea2, #ececec); cursor: pointer; flex-shrink: 0; }
+.or-hoja-cab .tt { font-weight: 700; font-size: 14px; flex: 1; min-width: 0;
+                   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.or-hoja-cuerpo { overflow: auto; padding: 14px; flex: 1; }
+.or-hoja.min .or-hoja-cuerpo { display: none; }
+
+/* ── La puerta de confirmación y el selector de liga: el mismo velo ── */
+.pu-velo { position: fixed; inset: 0; background: rgba(0,0,0,.42); z-index: 50;
+  display: none; align-items: flex-start; justify-content: center; padding: 18px; overflow: auto; }
+.pu-velo.abierto { display: flex; }
+.pu-modal { background: var(--fondo, #fff); border-radius: 12px; max-width: 760px;
+            width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+.pu-cab { display: flex; align-items: center; gap: 10px; padding: 13px 16px;
+          border-bottom: 1px solid var(--linea2, #ececec); }
+.pu-cab h3 { margin: 0; font-size: 16px; flex: 1; }
+.pu-cuerpo { padding: 16px; max-height: calc(100vh - 200px); overflow: auto; }
+.pu-pie { padding: 12px 16px; border-top: 1px solid var(--linea2, #ececec);
+          display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+/* ⚠️ El `.btn` del módulo está pensado para ocupar la fila de un formulario,
+ * así que dentro de una cabecera o un pie SE ESTIRA: el aspa del cuadro salía
+ * como una barra del ancho de la pantalla y el título se partía en cuatro
+ * líneas para hacerle sitio. Visible de un golpe en la captura de 1280 e
+ * invisible releyendo el CSS nuevo, que era correcto — el choque estaba en
+ * otra parte del mismo archivo (CLAUDE.md §20 #12). */
+.pu-cab .btn, .pu-pie .btn, .or-hoja-cab .btn {
+  width: auto; flex: 0 0 auto; min-width: 0; padding: 0 14px; min-height: 36px; }
+.pu-cab .btn { padding: 0 11px; min-height: 32px; }
+.pu-cab h3 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pu-t { margin: 16px 0 6px; font-size: 14px; }
+.pu-c { border: 1px solid var(--linea); border-left: 4px solid var(--linea);
+        border-radius: 8px; padding: 11px 13px; margin: 8px 0; }
+.pu-c.frena { border-left-color: var(--rojo); background: #fffbfa; }
+.pu-c.avisa { border-left-color: var(--ambar); background: #fffdf5; }
+.pu-c h4 { margin: 0 0 4px; font-size: 14px; display: flex; gap: 8px;
+           align-items: center; flex-wrap: wrap; }
+.pu-c p { margin: 4px 0 0; font-size: 13px; line-height: 1.5; }
+/* De dónde sale cada candado. Son dos comprobaciones independientes y las dos
+ * tienen que pasar; decir cuál falló es la diferencia entre arreglar la
+ * cotización y arreglar la orden. */
+.pu-f { font-size: 10.5px; font-weight: 700; border-radius: 4px; padding: 1px 6px; }
+.pu-f.machote { background: #efe8ee; color: var(--o19-brand, #714B67); }
+.pu-f.servidor { background: #ddf4ff; color: #0a3069; }
+
+.lg-lista { max-height: 320px; overflow: auto; border: 1px solid var(--linea);
+            border-radius: 8px; margin: 8px 0; }
+.lg-fila { display: flex; gap: 10px; align-items: flex-start; padding: 9px 11px;
+           border-bottom: 1px solid var(--linea2, #ececec); cursor: pointer; }
+.lg-fila:last-child { border-bottom: 0; }
+.lg-fila:hover { background: var(--papel); }
+.lg-fila.sin { opacity: .62; cursor: not-allowed; }
+.lg-tx { flex: 1; min-width: 0; font-size: 13px; line-height: 1.45; }
+.lg-tx .tiny { display: block; }
+.lg-pri { display: flex; gap: 9px; align-items: flex-start; font-size: 13px; margin-top: 10px; }
+/* La nota del renglón va DEBAJO, no pegada al final de la frase: sin esto se
+ * leía «…para la ConfirmaciónSi la orden ya tiene otra ligada…», dos oraciones
+ * cosidas. Se vio en la captura de 760. */
+.lg-pri > span { display: block; }
+.lg-pri .tiny { display: block; margin-top: 3px; }
+.lg-pri input[type="checkbox"] { flex: 0 0 auto; margin-top: 2px; }
+/* Y el buscador ocupa su renglón: dentro del cuadro heredaba un ancho de
+ * contenido y salía una caja de dos centímetros. */
+.pu-cuerpo label.campo input[type="text"],
+.pu-cuerpo label.campo input[type="number"],
+.pu-cuerpo label.campo select { width: 100%; box-sizing: border-box; }
+
+/* ── El engrane de la lista ── */
+.engr { position: relative; display: inline-flex; align-items: center; }
+.engr-menu { position: absolute; right: 0; top: 100%; z-index: 30; min-width: 210px;
+  background: var(--fondo, #fff); border: 1px solid var(--linea); border-radius: 9px;
+  box-shadow: 0 8px 22px rgba(0,0,0,.16); padding: 5px; display: flex; flex-direction: column; }
+.engr-menu[hidden] { display: none; }
+.engr-menu button, .engr-menu .engr-no { text-align: left; background: transparent;
+  border: 0; border-radius: 7px; padding: 9px 10px; font-size: 13px; cursor: pointer;
+  color: var(--tinta, #1c1c1c); min-height: 40px; }
+.engr-menu button:hover { background: var(--papel); }
+.engr-menu .engr-no { color: var(--muted, #8a8a8a); cursor: default; }
+
+/* ── DÓNDE DEJA DE CABER LA TABLA, Y POR QUÉ EL CORTE ES 1040 ──────────────
+ * Medido en el prototipo: las ocho columnas con contenido real necesitan
+ * 1037px. A 900 la tabla «cabía» sólo porque su caja tiene scroll lateral, y
+ * lo que quedaba cortado a la derecha era la columna MACHOTE — la única que no
+ * existe en Odoo y la razón de ser de la pantalla. Un scroll horizontal que
+ * esconde justo lo nuevo no es densidad: es un defecto con buena letra. */
+@media (max-width: 1039px) {
+  /* Las DOS columnas recortadas hay que soltarlas, no sólo una: el
+   * `max-width:1px` que en la tabla hace el recorte, en una ficha parte el
+   * texto LETRA POR LETRA, y eso no lo caza ninguna medida automática —1px no
+   * es 0px y nada se derrama—. Se vio mirando la captura de 380. */
+  .or-cli, .or-desc, .or-po, .or-cot { width: auto; max-width: none; white-space: normal; }
+  table.or-tab thead { display: none; }
+  table.or-tab, table.or-tab tbody, table.or-tab tr, table.or-tab td { display: block; width: auto; }
+  table.or-tab tbody { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 9px; }
+  table.or-tab tr { border: 1px solid var(--linea); border-radius: 9px; padding: 6px 4px; }
+  table.or-tab td { border-bottom: 0; display: flex; gap: 10px; align-items: baseline;
+                    height: auto; padding: 4px 8px; flex-wrap: wrap; }
+  table.or-tab td::before { content: attr(data-th); flex: 0 0 92px;
+    font-size: var(--o19-fs-label, 11.2px); text-transform: uppercase;
+    letter-spacing: .04em; color: #44546a; font-weight: 700; }
+  table.or-tab td.num { justify-content: flex-start; text-align: left; }
+  .or-caja { border: 0; overflow: visible; }
+  .or-mach { flex-wrap: wrap; gap: 6px; }
+  .or-md { max-width: 100%; white-space: normal; }
+}
+@media (max-width: 760px) {
+  table.or-tab tbody { grid-template-columns: 1fr; }
+  .or-hoja { height: 66vh; }
+}

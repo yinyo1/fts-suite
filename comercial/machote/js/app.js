@@ -57,7 +57,7 @@
    *   2. el `?v=` de la URL con la que el navegador lo bajó,
    *   3. la que declara cada pieza que se carga aparte (hoy el motor).
    * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
-  const VERSION_ARCHIVO = 'V1.45';
+  const VERSION_ARCHIVO = 'V1.46';
 
   const VERSION_URL = (function () {
     try {
@@ -988,6 +988,8 @@
     if (p[0] === 'archivados') return vArchivados();
     if (p[0] === 'politica') return vPolitica();
     if (p[0] === 'confirmar') return vConfirmar();
+    if (p[0] === 'ordenes') return vOrdenes(null);
+    if (p[0] === 'so')      return vOrdenes(p[1]);
     location.hash = '#/';
   }
   /* El encabezado. `back` es a dónde vuelve la flecha:
@@ -1238,6 +1240,23 @@
     G.MachoteConfirmar.montar($('#vista'));
   }
 
+  /* Órdenes de venta · el SEGUNDO camino a la Confirmación. El primero
+   * (`#/confirmar`) parte del machote; éste parte de la ORDEN, que es como
+   * mira quien está revisando lo que hay en Odoo. Los dos llaman a la MISMA
+   * función para decidir si se puede confirmar. */
+  function vOrdenes(soId) {
+    top(soId ? 'Orden de venta' : 'Órdenes de venta', 'Comercial · Odoo',
+        null, soId ? '#/ordenes' : '../index.html');
+    $('#fija').innerHTML = '';
+    $('#vista').innerHTML = '';
+    if (!G.Ordenes) {
+      $('#vista').innerHTML = '<div class="pad"><div class="aviso bad">' +
+        'No cargó la vista de órdenes.</div></div>';
+      return;
+    }
+    G.Ordenes.montar($('#vista'), soId || null);
+  }
+
   function vControl() {
     top('Control', 'Comercial · dirección', null, '#/');
     $('#fija').innerHTML = '';
@@ -1484,10 +1503,32 @@
          * suelto en una tabla, sin manera de saber a qué se refería. */
         '<td><div class="acts">' +
           '<button class="ico" data-hist="' + esc(m.id) + '" title="Ver el historial de versiones">🕘</button>' +
-          (archivable(m)
-            ? '<button class="ico" data-borrar="' + esc(m.id) + '" title="Archivar: sale de la lista, no se borra nada">🗄</button>'
-            : '<span class="ico candado" title="Es de otra persona: se puede ver, no archivar. Archivar es de su dueño.">🔒</span>') +
+          engrane(m) +
         '</div></td></tr>';
+    };
+
+    /* ── V1.46 · el engrane ────────────────────────────────────────────
+     * Hasta aquí archivar era un botón suelto al lado del historial, y
+     * duplicar no existía. Dos acciones que cambian la lista no pueden ser
+     * dos iconos pegados a un tercero que sólo mira: el clic falso se paga
+     * en la que no era. Van juntas bajo un engrane, y las DOS preguntan.
+     *
+     * Quien no puede archivar (no es su dueño) igual puede DUPLICAR: copiar
+     * el trabajo de alguien para partir de ahí no le quita nada a nadie. */
+    const engrane = (m) => {
+      return '<span class="engr">' +
+        '<button class="ico" data-engr="' + esc(m.id) + '" ' +
+          'title="Más acciones" aria-haspopup="true" aria-expanded="false">⚙</button>' +
+        '<span class="engr-menu" data-menu="' + esc(m.id) + '" hidden>' +
+          (archivable(m)
+            ? '<button data-borrar="' + esc(m.id) + '">🗄 Archivar…</button>'
+            /* Conserva la clase `candado` y su title de siempre: el candado
+             * cambió de sitio, no de significado, y hay una prueba que lee
+             * justo ese title para comprobar que dice DE QUIÉN es. */
+            : '<span class="engr-no candado" title="Es de otra persona: se puede ver, ' +
+              'no archivar. Archivar es de su dueño.">🔒 Archivar (es de otra persona)</span>') +
+          '<button data-dup="' + esc(m.id) + '">⧉ Duplicar…</button>' +
+        '</span></span>';
     };
 
     const tarjeta = (m) => {
@@ -1537,9 +1578,7 @@
          * captura de 1280 (CLAUDE.md §20 #12). */
         '</div></a>' +
         '<button class="ico" data-hist="' + esc(m.id) + '" title="Ver el historial de versiones">🕘</button>' +
-        (archivable(m)
-          ? '<button class="ico archivar" data-borrar="' + esc(m.id) + '" title="Archivar: sale de la lista, no se borra nada">🗄</button>'
-          : '<span class="ico candado" title="Es de otra persona: se puede ver, no archivar. Archivar es de su dueño.">🔒</span>') +
+        engrane(m) +
         '</div>';
     };
 
@@ -1718,6 +1757,104 @@
      * Si el servidor dice que no, la lista no se mueve y se dice por qué.
      * La lápida ya NO se usa: sepultar el `id_local` haría que un machote
      * desarchivado no pudiera volver a verse en este navegador nunca. */
+    /* Abrir y cerrar el menú del engrane. Uno a la vez: dos menús abiertos
+     * es la forma más fácil de apretar el de la fila de al lado. */
+    $$('[data-engr]').forEach(b => b.onclick = (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      /* ⚠️ El menú se busca DENTRO del engrane que se apretó, no en todo el
+       * documento. La lista pinta el mismo machote DOS veces —renglón de
+       * tabla y ficha—, una por ancho, así que `data-menu` está duplicado y
+       * un `querySelector` global devuelve siempre el PRIMERO: el de la tabla,
+       * que a 380px vive dentro de un ancestro oculto. El botón se apretaba y
+       * no pasaba nada. Medido con las dos copias a la vista, no deducido. */
+      const yo = b.parentElement ? b.parentElement.querySelector('.engr-menu') : null;
+      const abierto = yo && !yo.hidden;
+      $$('[data-menu]').forEach(x => { x.hidden = true; });
+      $$('[data-engr]').forEach(x => x.setAttribute('aria-expanded', 'false'));
+      if (yo && !abierto) {
+        yo.hidden = false;
+        b.setAttribute('aria-expanded', 'true');
+        /* ⚠️ Posición FIJA, calculada del botón. Un menú `absolute` dentro de
+         * la tabla lo recorta el `overflow` del contenedor, y lo que se ve es
+         * una rendija blanca debajo del renglón — el menú «no abre». El CSS
+         * nuevo era correcto; el choque estaba en un ancestro. Se vio en la
+         * captura de 1280, no releyendo el diff. */
+        const r = b.getBoundingClientRect();
+        yo.style.position = 'fixed';
+        yo.style.top = Math.round(r.bottom + 4) + 'px';
+        /* Y si no cabe a la derecha, se pega al borde en vez de desbordar. */
+        const ancho = yo.offsetWidth || 210;
+        yo.style.left = Math.round(Math.max(8, Math.min(r.right - ancho,
+          document.documentElement.clientWidth - ancho - 8))) + 'px';
+        yo.style.right = 'auto';
+      }
+    });
+    /* ⚠️ Cerrar al hacer clic fuera, PERO no en el mismo clic que abre.
+     * La primera versión registraba el oyente del documento al pintar, así que
+     * el propio clic del engrane burbujeaba hasta él y cerraba el menú que
+     * acababa de abrir: el botón parecía muerto. El código «se lee bien» —las
+     * dos piezas son correctas por separado— y se vio en la captura de 380
+     * (CLAUDE.md §20 #12). Se cuelga UNA sola vez y comprueba de dónde viene
+     * el clic, en vez de cerrar a ciegas. */
+    if (!document.__engrCierra) {
+      document.__engrCierra = true;
+      document.addEventListener('click', (ev) => {
+        if (ev.target && ev.target.closest && ev.target.closest('.engr')) return;
+        $$('[data-menu]').forEach(x => { x.hidden = true; });
+        $$('[data-engr]').forEach(x => x.setAttribute('aria-expanded', 'false'));
+      });
+    }
+
+    /* ── DUPLICAR ───────────────────────────────────────────────────────
+     * Esteban, textual: «es para hacer un machote nuevo a partir de uno
+     * existente y modificarlo. Hereda el contenido, nace con folio propio,
+     * sin historial, y LIBRE de cualquier SO».
+     *
+     * La línea de qué se hereda y qué no —decisión mía, marcada como tal en
+     * el reporte—: se queda lo que es del TRABAJO (secciones, renglones,
+     * comisiones, cliente, contacto, decisión de IVA, oportunidad) y se va
+     * lo que es de UNA TRANSACCIÓN concreta (folio, historial, orden ligada,
+     * número y archivo de la PO, su importe, el anticipo, el estado).
+     *
+     * El caso que manda la regla es la PO: heredarla pondría el número de
+     * orden de compra de un cliente en una cotización que no la tiene, y
+     * eso no se vería como un error — se vería como un dato. */
+    $$('[data-dup]').forEach(b => b.onclick = async (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      const m = mach(b.dataset.dup);
+      if (!m) return;
+      if (!confirm('¿Duplicar «' + m.nombre + '»?\n\n' +
+                   'La copia hereda las secciones, los renglones y las comisiones, ' +
+                   'y NACE LIBRE: sin folio, sin historial, sin orden de venta y sin ' +
+                   'la orden de compra del cliente.\n\n' +
+                   'La suite NO crea ninguna cotización en Odoo al duplicar.')) return;
+
+      const copia = JSON.parse(JSON.stringify(m));
+      copia.id = 'M-' + Date.now();
+      copia.nombre = m.nombre + ' (copia)';
+      /* Lo de la transacción, fuera. */
+      copia.folio = null; copia.folio_txt = null;
+      copia.so = null;
+      copia.estado = (G.MachoteDocumento && G.MachoteDocumento.FLUJO)
+        ? G.MachoteDocumento.FLUJO[0] : copia.estado;
+      const _s = (G.SuiteAuth && G.SuiteAuth.getSession()) || null;
+      copia.creado_por = (_s && _s.actor) || copia.creado_por;
+      copia.creado_at = new Date().toISOString();
+      if (copia.confirmacion) {
+        copia.confirmacion.po = { numero: '', importe: null, archivo: null,
+                                  veredicto: null, varias: null };
+        copia.confirmacion.anticipo = { aplica: null, pct: null };
+      }
+      ST.machotes.unshift(copia);
+      guardarYa();
+      /* Y NO se toca la libreta de sincronización: sin renglón ahí, la copia
+       * es «todavía no ha subido», que es exactamente lo que es. Heredar el
+       * uuid del original haría que la primera subida sobrescribiera al
+       * original — un solo escritor por identidad (§20 #4). */
+      location.hash = '#/m/' + copia.id;
+      toast('Duplicada. Nace sin folio, sin historial y sin orden.');
+    });
+
     $$('[data-borrar]').forEach(b => b.onclick = async (ev) => {
       ev.preventDefault(); ev.stopPropagation();
       const m = mach(b.dataset.borrar);
@@ -5061,8 +5198,32 @@
    * botón «Guardar ahora»— en vez de colgar `ST` entero de `window`: un
    * estado global que cualquiera puede escribir es cómo se llega a dos
    * verdades sobre lo que hay en pantalla. */
+  /** El machote de ESTE navegador que corresponde a un uuid del servidor.
+   *
+   *  ⚠️ Devuelve `null` para lo que este navegador no creó, y eso NO es un
+   *  defecto: es el límite honesto. La libreta de sincronización está indexada
+   *  por `id_local` y guarda sólo lo propio (CLAUDE.md §20 #13). Quien llame a
+   *  esto tiene que distinguir «no es mío» de «no existe» — fingir un machote
+   *  vacío sería peor, porque se ve idéntico a uno sin capturar. */
+  function machotePorUuid(uuid) {
+    if (!uuid) return null;
+    let sync = {};
+    try { sync = JSON.parse(localStorage.getItem('fts_machote_sync_v1') || '{}') || {}; }
+    catch (e) { return null; }
+    for (const idLocal in sync) {
+      if (sync[idLocal] && sync[idLocal].machote_id === uuid) return mach(idLocal);
+    }
+    return null;
+  }
+
   G.MachoteApp = {
     guardarYa: guardarYa,
+    machotePorUuid: machotePorUuid,
+    /* La lista de ESTE navegador, para que el selector de liga pueda ofrecer
+     * entre qué elegir. Es la misma cobertura parcial de siempre y el selector
+     * lo DICE: aquí sólo salen las de este navegador, no las de todo el
+     * equipo. Un desplegable corto sin ese aviso se lee como «no hay más». */
+    todos: function () { return ST.machotes; },
     /* Y el directorio de gente, para que la franja del préstamo pueda decir
      * «Ricardo Hernández» donde el servidor sólo manda «ricardo.hernandez».
      * El nombre NO viaja en `machote_prestamo` a propósito: no hay tabla de

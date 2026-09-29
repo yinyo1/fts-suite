@@ -445,14 +445,55 @@
         '</ul>' +
         '<p class="tiny nota">Si algo falla antes de confirmar la orden, la orden se queda ' +
           'en borrador y lo que se haya creado se reusa al volver a intentarlo. Nada se borra.</p>' +
-        (r.se_puede_confirmar
-          ? '<div class="cf-detonar"><button class="btn primario" id="cfConfirmar">' +
-            'Confirmar ' + esc(r.odoo_so_name) + ' en Odoo</button></div>'
-          : '');
+        /* ── V1.46 · LA MISMA PUERTA QUE EL OTRO CAMINO ──────────────────
+         * Hasta aquí esta pantalla decidía con `r.se_puede_confirmar`, que es
+         * SÓLO lo que revisa el servidor: el cuadre contra Odoo, la moneda, el
+         * IVA por renglón, el presupuesto y la política. **No revisaba ni uno**
+         * de los seis candados de la cotización —contacto, decisión de IVA,
+         * número y archivo de la PO, cuadre contra la PO del cliente,
+         * anticipo—, que sí guardaban la puerta de ENTRADA en `orden.js`.
+         *
+         * O sea que los candados cuidaban la puerta reversible y no la
+         * irreversible. Ahora las dos pantallas llaman a `G.PuertaConfirmar`,
+         * que es una sola función, y el botón sale de SU veredicto. */
+        puertaHtml(o, r);
 
       var b = $('#cfConfirmar');
       if (b) b.onclick = function () { detonar(o, r, b); };
     });
+  }
+
+  /** El veredicto único, y el botón que sale de él. Si la pieza no está
+   *  cargada NO se cae de vuelta al criterio viejo: se dice que no se pudo
+   *  comprobar y no se ofrece el botón. Un candado que se abre solo cuando su
+   *  guardia no vino es peor que no tenerlo. */
+  function puertaHtml(o, r) {
+    var P = G.PuertaConfirmar;
+    if (!P) {
+      return '<div class="aviso bad"><strong>No se pudo comprobar la cotización.</strong> ' +
+        'La pieza que revisa los candados no está cargada en esta pantalla, así que no se ' +
+        'ofrece confirmar. Recarga.</div>';
+    }
+    var m = (G.MachoteApp && G.MachoteApp.machotePorUuid)
+      ? G.MachoteApp.machotePorUuid(o.machote_id) : null;
+    var calc = (m && G.MachoteCalc && G.MachoteCalc.calcular) ? G.MachoteCalc.calcular(m) : null;
+    /* Esta pantalla SIEMPRE parte de un machote —sus órdenes salen de
+     * `comercial.machote`—, así que si no se encontró es que no está en este
+     * navegador, nunca que no exista. Eso avisa, no bloquea: los datos viven
+     * en el servidor y bloquear por no poder leerlos desde aquí le quitaría a
+     * alguien una confirmación que hoy puede hacer. */
+    var v = P.evaluar({ machote: m, calc: calc, servidor: r, desde: 'confirmar',
+                        machoteAjeno: !m });
+
+    /* El servidor tiene la última palabra sobre lo suyo: si él dice que no se
+     * puede, no se puede aunque la cotización esté completa. */
+    var puede = v.puede && r.se_puede_confirmar !== false;
+
+    return P.html(v) +
+      (puede
+        ? '<div class="cf-detonar"><button class="btn primario" id="cfConfirmar">' +
+          'Confirmar ' + esc(r.odoo_so_name) + ' en Odoo</button></div>'
+        : '');
   }
 
   function detonar(o, r, boton) {
