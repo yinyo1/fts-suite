@@ -94,6 +94,50 @@ flowchart TD
 
 `CRASH` está medido: log HTTP de Railway, servicio Primary, `POST /webhook/kiosk/checkin` 200 en 2.5 s para las ejecuciones fallidas 105451, 107543, 107545, 108971, 108973, 108985.
 
+### 2.2b Caminos que abrió el caso 2 (28 y 29-sep-2026)
+
+Mismo flujo, con las ramas medidas en el caso 2 (`caso2.md`) y lo que cambia con el diseño nuevo.
+
+```mermaid
+flowchart TD
+    AC[Code - Analizar candados] -->|salida| US[Odoo - UPDATE Salida
+x_studio_project_id = so_id
+feb04c42: y x_studio_sales_order_2 = so_id]
+    US -->|existe sale.order con ese id| SIL[(escribe una SO equivocada
+en silencio: 2,074 registros)]
+    US -->|no existe: proyecto 2382| FK[(FK gHzp7_fkey
+sin salida de error
+= CRASH, la pantalla no lo dice)]
+    SIL --> OK[Respond OK]
+    FK -. al día siguiente .-> AR[auto-rescate a 9.6 h + TAG]
+    FK -. o el empleado .-> OLV[olvidé salida
+'05:02' = 5 am del día siguiente
+22.16 h sin TAG]
+    AR --> PUT[HTTP PUT incidencia]
+    PUT -->|otro auto-rescate escribió antes| SHA[(409 por sha:
+TAG en Odoo, incidencia perdida
+= fantasma)]
+    PUT --> OK
+    AR -. RH ajusta .-> M4[(resolver no aplica la hora
+al auto-cierre: M4)]
+
+    subgraph NUEVO[Diseño nuevo]
+      US2[UPDATE Salida
+solo x_studio_project_id
+B11] --> OK2[Respond OK con attendance_id
+B1]
+      US2 -. Odoo rechaza .-> ERR2[Respond Error visible
+B1]
+      PUT2[PUT con reintento y sha fresco
+B12] -. se agota .-> PARC[Respond: checada guardada,
+incidencia no, I2 extendida]
+      OLV2[olvidé salida con las dos lecturas
+B9] --> OK2
+    end
+```
+
+`FK` y `SHA` están medidos: ejecuciones 117659 a 117744 del 28-sep (23:00 a 23:07 UTC, 17:00 a 17:07 CST) y 118442 del 29-sep (12:59:35 UTC, 06:59:35 CST). La versión `a0c4b0e8` (29-sep 12:53 UTC, 06:53 CST) quitó el campo de SO de "Odoo - UPDATE Salida"; los caminos `SHA`, `OLV` y `M4` siguen abiertos.
+
 ### 2.3 El registro en Odoo
 
 ```mermaid

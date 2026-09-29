@@ -15,6 +15,9 @@ Restricción de plataforma que condiciona todo: Odoo 19 SaaS, sin SSH, sin módu
 | I7 | Lo que la pantalla ofrece, el servidor lo acepta por regla | Config compartida + n8n | Un solo juego de umbrales en un lugar (p. ej. `shared/public-config.json` o una data table) leído por `estado-empleado` y `kiosk/checkin`. Búsqueda de abiertos por `check_out = False`, sin ventana de fechas | B6 | Rota: 14/24 h contra 6/16 h; ventana de 15 días en los dos |
 | I8 | Ningún registro de más de 16 h sin TAG de disputa | n8n + frontend | Salida con 16 h o más: el servidor la rechaza y pide declarar la hora. "Olvidé salida": guarda AM/PM cuando el turno daría más de 16 h. Cualquier cierre de más de 16 h lleva TAG | B6, B9 | Rota: 25 registros de 20 h o más desde el 1-jun |
 | I9 | El watchdog distingue bloqueados de ausentes | n8n | `sin-checkin` lee `kiosk_intentos`: quien intentó y falló sale como "bloqueado", no como "ausente"; un watchdog nuevo marca ≥ 2 fallas en 24 h | B10 (requiere B1) | Rota: 124 habría salido "ausente" el vie 25 |
+| I10 | Todo id que se escribe en Odoo se valida contra su modelo: el campo de SO lleva la SO real del proyecto o va vacío, nunca el id del proyecto | n8n | Un solo lugar que traduce proyecto a SO (o ningún escritor del campo de SO, opción 2 de `caso2.md` §5.1). Confirmar Horas y `corregir-bolsa` pasan por la misma regla que el kiosko | B11, B13 (histórico) | Rota: FK con el proyecto 2382 (10 ejecuciones del 28-sep) y 2,074 registros con SO equivocada |
+| I11 | Ninguna escritura del almacén compartido se pierde; ningún TAG de disputa apunta a una incidencia que no existe | n8n | El PUT del almacén reintenta con sha fresco (releer, fusionar, volver a escribir) en los tres workflows que lo hacen; si al final falla, se limpia el TAG o se responde error sin marcar éxito | B12 | Rota: exec 118442, incidencia fantasma de 15737 |
+| I12 | Una hora ambigua de 12 h nunca se interpreta sin confirmación del empleado, y la hora ya confirmada no cae en el límite de 12 h hacia atrás | Frontend + resolver | "Olvidé salida" muestra las dos lecturas con su día y su jornada; el empleado toca una. El resolver no convierte "05:0x" a la mañana siguiente sin preguntar | B9 | Rota: exec 118408 (15734, 22.16 h) y 8 registros aprobados con 21.66 a 22.68 h |
 
 ## Detalles de diseño que el simulador obligó a agregar
 
@@ -24,3 +27,9 @@ La primera versión del diseño nuevo no pasaba la prueba aleatoria. Dos huecos,
 2. **Reconciliación tras timeout.** Si ningún intento recibió respuesta pero el servidor sí procesó, la pantalla diría error con la entrada hecha. El kiosko, antes de decir "no se guardó", consulta `kiosk/intento?id=…`.
 
 Con esos dos agregados a B1, 300 semanas aleatorias quedan en cero violaciones (`node tests/kiosko-blindaje/aleatorio.test.js --diseno=nuevo --semillas=300`).
+
+## Agregados del caso 2 (29-sep-2026)
+
+- **I2 extendida.** Si Odoo ya escribió y lo que falla después es otra escritura (el PUT del almacén), la respuesta no puede decir "error" a secas ni "éxito" a secas: dice que la checada quedó y que la incidencia no. En el simulador, con B1, la respuesta es `{success:true, attendance_id, incidencia_no_guardada:true}` (`sistema.js`, rama del auto-rescate).
+- **B9 necesitaba un ajuste.** Con la guarda AM/PM tal como estaba, la hora corregida a las 17:02 quedaba 13.6 h atrás y el límite de 12 h de "olvidé salida" la rechazaba, mientras que el "05:02" equivocado pasaba. La hora que el empleado confirmó queda exenta de ese límite (`caso2.test.js`, variante B9).
+- I10 a I12 son invariantes de **estado**: se miden al final del guion, no después de cada paso (`caso2.js`, `finales`).

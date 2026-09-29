@@ -4,22 +4,25 @@ Cada bloque tiene su prueba de aceptación en el simulador: `node tests/kiosko-b
 
 Regla de despliegue que aplica a casi todos: el contrato entre kiosko y n8n cambia. Primero se publica la mitad **tolerante** (el servidor acepta el formato viejo y el nuevo), se verifica, y después la estricta (CLAUDE.md §8, regla anti-trabón). Nunca en horario hábil 07:00 a 18:00 CST (CLAUDE.md §20 #14).
 
-## Orden recomendado
+## Orden recomendado (unificado tras el caso 2, 29-sep-2026)
 
 | Orden | Bloque | Por qué en ese lugar | Complejidad |
 |---|---|---|---|
-| 1 | **B1 Visibilidad** | Corta P3 del árbol y todos los M1-M3: sin esto, cualquier otra falla sigue siendo invisible. Crea la bitácora que B10 necesita | Media |
-| 2 | **B3 Candado de traslape en resolver** | Corta P5. Chico, de un solo nodo, y es lo que convirtió un mal día en cuatro | Baja |
-| 3 | **B2 Fail-closed** | Corta P2. Solo tiene sentido con B1 (si no, el error sigue sin verse) | Baja |
-| 4 | **B9 Guarda AM/PM** | Victoria rápida, solo frontend | Baja |
-| 5 | **B4 resolver aplica la hora de RH** | Arregla datos que se pierden cada semana (M4, M5) | Baja a media |
-| 6 | **B6 Umbrales únicos y búsqueda sin ventana** | Cierra D2 y D4. Toca dos workflows y el frontend a la vez: requiere el despliegue tolerante | Media |
-| 7 | **B5 Corregir mi hora de entrada** | Corta P4, el baile. Necesita B3 para ser seguro | Media |
-| 8 | **B7 Salida de emergencia** | Garantiza I4 para el empleado | Media |
-| 9 | **B10 Watchdog de bloqueados** | Requiere la bitácora de B1 | Baja a media |
-| 10 | **B8 Reparar registro para RH** | El más grande (auth firmada, UI nueva). Mientras llega, el desbloqueo sigue siendo manual en Odoo, como con 124 | Alta |
+| 1 | **B11 Ids validados** | Corta el disparo del caso 2 entero (Q1). Hay una FK **viva hoy** en Confirmar Horas y `corregir-bolsa` para el proyecto 2382. Pequeño: dos nodos y dos lectores | Baja a media |
+| 2 | **B1 Visibilidad** | Corta P3 del caso 1 y Q2 del caso 2. Ya está construido en borrador, pero el borrador de `kiosk/checkin` (`b8003bd7`) quedó atrás del hotfix `a0c4b0e8`: hay que rehacerlo encima antes de publicar | Media |
+| 3 | **B3 Candado de traslape en resolver** | Corta P5 | Baja |
+| 4 | **B2 Fail-closed** | Corta P2. Solo tiene sentido con B1 | Baja |
+| 5 | **B9 Guarda AM/PM** (con el ajuste del caso 2) | Corta Q3. 8 registros aprobados con ~12 h de más | Baja |
+| 6 | **B4 resolver aplica la hora de RH** | Corta Q5 y M4 | Baja a media |
+| 7 | **B12 Escrituras concurrentes del almacén** | Corta Q4. Hueco conocido desde el caso 1 (exec 99872) sin bloque | Media |
+| 8 | **B6 Umbrales únicos y búsqueda sin ventana** | Cierra D2 y D4 del caso 1 | Media |
+| 9 | **B5 Corregir mi hora de entrada** | Corta P4. Necesita B3 | Media |
+| 10 | **B7 Salida de emergencia** | Garantiza I4 | Media |
+| 11 | **B10 Watchdog de bloqueados** | Requiere B1 | Baja a media |
+| 12 | **B13 Histórico del campo de SO** | Limpieza de 2,074 registros. Depende de B11 y de la decisión de Dirección (`caso2.md` §5.2) | Baja (un solo uso) |
+| 13 | **B8 Reparar registro para RH** | El más grande | Alta |
 
-Con B1, B3 y B2 construidos, el caso del empleado 124 ya no se repite: se cortan P2, P3 y P5 (`arbol.test.js`).
+Con B1, B3 y B2 construidos, el caso del empleado 124 ya no se repite (`arbol.test.js`). Con B11 solo, el caso 2 no se repite (`caso2.test.js`, árbol de falla).
 
 ## Bloques
 
@@ -96,7 +99,8 @@ Con B1, B3 y B2 construidos, el caso del empleado 124 ya no se repite: se cortan
 - **Qué se construye:** en `confirmarOlvideCheckout` (`kiosk.js:1962`), si el turno resultante pasa de 16 h y la hora menos 12 h cae después de la entrada, preguntar "¿Quisiste decir HH+12?". Mostrar siempre la duración calculada antes de enviar.
 - **Riesgos:** mínimos.
 - **Otros módulos:** ninguno.
-- **Criterio:** "05:05" con entrada 06:57 del día anterior propone 17:05 y el turno queda en 10.1 h.
+- **Ajuste del caso 2:** mostrar las dos lecturas (mañana y tarde) con su día y su jornada, y que el empleado toque una; la hora confirmada queda exenta del límite de 12 h hacia atrás. Prototipo: `prototipo-ampm.html`.
+- **Criterio:** "05:05" con entrada 06:57 del día anterior propone 17:05 y el turno queda en 10.1 h. "05:02" del caso 2 deja a 57 en 10.16 h.
 - **Prueba:** `--bloque=B9` (como 14966).
 
 ### B10 · Watchdog de bloqueados
@@ -106,6 +110,36 @@ Con B1, B3 y B2 construidos, el caso del empleado 124 ya no se repite: se cortan
 - **Otros módulos:** ninguno.
 - **Criterio:** el caso 124 habría disparado alerta el vie 18 a las 17:09, no el vie 25.
 - **Prueba:** `--bloque=B10`.
+
+### B11 · Ids validados en toda escritura de proyecto
+- **Invariantes:** I10, I2.
+- **Qué se construye (opción 2 de `caso2.md` §5.1, recomendada):**
+  - `planeacion/confirmar-horas` (`7D3lgaYmH2DmqCWy`), "Odoo - UPDATE SO+Approval": quitar `x_studio_sales_order_2`; solo `x_studio_project_id`.
+  - `planeacion/corregir-bolsa` (`O61Abp4s26yYpFEq`), "Odoo - UPDATE Proyecto": igual. "Odoo - UPDATE Bolsa" puede seguir escribiendo `false`.
+  - Los dos tienen borrador B1 (`a85fb82d`, `06b897f3`) distinto de la publicada (`7a45cadc`, `183acaa5`), y el campo está en ambos: el cambio va sobre el borrador B1 y se publica junto, o se aplica a la publicada y se rehace el borrador. Nunca dos versiones divergentes.
+  - Antes que los escritores, los lectores: `bancos/edo_resultados/calcular.js:378` (commit fijado `5fa7c374`) cambia la condición a `x_studio_project_id` (aceptando cualquiera de los dos mientras dure la transición) y `nom/semana` (`w7NNmtukDvrXKkOk`) muestra el proyecto en vez de la SO.
+  - Kiosko (D5): la lista de proyectos se queda como está; el campo de SO ya no depende de ella.
+- **Otros módulos:** Confirmar Horas, estado de resultados (Bancos), nómina semanal.
+- **Riesgos:** los 29 workflows que no se pudieron leer por MCP; se revisan en la UI antes de publicar.
+- **Rollback:** `restore_workflow_version` a la publicada de cada uno; el commit anterior de `calcular.js` se vuelve a fijar en `CALC_SHA`.
+- **Criterio:** confirmar horas hacia SO11855 (proyecto 2382) deja `x_studio_project_id = 2382` y no truena.
+- **Prueba:** `caso2.test.js`, aceptación B11.
+
+### B12 · Escrituras concurrentes del almacén de incidencias
+- **Invariante:** I11 (y la extensión de I2).
+- **Qué se construye:** en cada workflow que hace GET y PUT de `shared/incidencias-asistencia.json` (`kiosk/checkin` rama auto-rescate, `crear-olvido-checkout` y `crear-olvido-entrada`; `resolver` también escribe ese archivo y entra en la misma revisión), el PUT que recibe 409 o 422 por sha vuelve a leer, fusiona su incidencia y reintenta hasta 3 veces con espera corta. Si se agota: la respuesta dice que la checada quedó y la incidencia no (I2), y queda en la bitácora de B1.
+- **Otros módulos:** panel de incidencias (lee el mismo archivo; sin cambio).
+- **Riesgos:** duplicar una incidencia si el primer PUT sí entró; la fusión va por `id_interno`.
+- **Rollback:** `restore_workflow_version` por workflow.
+- **Criterio:** dos auto-rescates en el mismo segundo dejan las dos incidencias en el almacén.
+- **Prueba:** `caso2.test.js`, aceptación B12.
+
+### B13 · Histórico del campo de SO
+- **Invariante:** I10 sobre los datos viejos. Requiere B11.
+- **Qué se construye:** según la decisión de Dirección (`caso2.md` §5.2): vaciar, reescribir a la SO real por el prefijo del nombre, o no tocar. Script de un solo uso, con la lista de cambios publicada en el issue antes de escribir, y read-back.
+- **Otros módulos:** estado de resultados, si se vacía antes de cambiar su lector.
+- **Rollback:** la lista de valores previos queda guardada; se restaura con el mismo script.
+- **Prueba:** `caso2.test.js`, aceptación B13.
 
 ## Fuera de bloques (anotado, no perseguido)
 
