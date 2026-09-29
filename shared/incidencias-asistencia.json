@@ -148,7 +148,7 @@
     {
       "id_interno": "INC-AUTO-CIERRE-25-2026-09-29T12-40-31-633Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_con_ajuste",
       "fecha_creacion": "2026-09-29T12:40:33.145Z",
       "empleado_id": 25,
       "empleado_nombre": "Héctor Cruz Hernández",
@@ -158,7 +158,7 @@
       "check_out_aplicado_utc": "2026-09-28 22:15:49",
       "horas_originales": "24.01",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -166,7 +166,18 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 63,
+          "usuario": "Magaly Estefanía Pérez García",
+          "timestamp": "2026-09-29T16:51:53.891Z",
+          "hora_propuesta_cst": "17:05",
+          "comentario": "No funcionaba reloj checador y registro salida a las 05:05 pm.",
+          "accion": "ajustado"
+        }
+      ]
     },
     {
       "id_interno": "INC-AUTO-CIERRE-121-2026-09-29T12-33-02-712Z",
