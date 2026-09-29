@@ -163,10 +163,43 @@ se salta.**
 
 | Dimensión | Valores |
 |---|---|
-| **Operador** | `site:linkedin.com/in` · **sin operador (búsqueda simple)** · `"@dominio.com"` · `"[empresa] email format"` · `"[empresa] key contacts"` · **`filetype:pdf`** |
+| **Operador** | `site:linkedin.com/in` · **`site:mx.linkedin.com/in`** · **sin operador (búsqueda simple)** · `"@dominio.com"` · `"[empresa] email format"` · `"[empresa] key contacts"` · **`filetype:pdf`** |
 | **Geografía** | sin ancla · con ancla (ciudad · estado · área metro) |
 | **Idioma** | español · inglés |
 | **Destino** | buscador general · directorios agregadores · **vacantes / careers** · **documentos PDF públicos indexados** |
+
+> ### 🆕 `site:mx.linkedin.com/in` es un operador APARTE, y la medición lo obliga
+>
+> **[calculado] Medido el 29-sep-2026 (#346)** contra la planilla de una corrida
+> humana con Sales Navigator. El subdominio de país **no es un alias**: el índice lo
+> trata como otro sitio, y los perfiles que la gente de planta escribe en español
+> viven ahí.
+>
+> | caso medido | `site:linkedin.com/in` + ancla de geografía en texto | `site:mx.linkedin.com/in` |
+> |---|---|---|
+> | Metalsa · plant manager | **cero perfiles** (dos formas distintas) | **lo trae** |
+> | Sigma · jefe de compras | — | **lo trae** |
+> | Amazon · operations manager Monterrey | cero en Monterrey | **lo trae** |
+> | Qualtia · head of procurement | — | **lo trae, y a ése el humano no lo tenía** |
+>
+> **Disparador:** la planta está en México. Se corre **además** del `site:` global,
+> no en su lugar — los directores globales siguen estando en el dominio sin país.
+>
+> Y una advertencia que la misma medición dio: **el ancla de geografía en el texto
+> no filtra.** Buscar un título de Amazon con «Monterrey Apodaca» en el texto
+> devolvió a la persona con ese título en Sídney. El texto *sugiere*; sólo Sales
+> Navigator *filtra*.
+
+> ### ⚠️ La búsqueda simple sin operador se estaba saltando, y cuesta contactos
+>
+> **[calculado] #346:** dos puestos de compras de una cuenta global —un *Senior
+> Director* y un *Senior Manager* de materiales indirectos— **no salieron** con
+> `site:linkedin.com/in` y **sí salieron** con la forma simple, sin operador. Los
+> dos son de valor.
+>
+> El §3.1 ya decía que la forma simple «es un tipo de consulta más — no un
+> descarte». Lo que la medición agrega es el costo de no correrla: **en la cuenta
+> más grande de la prueba, 2 de 17 contactos de valor dependían sólo de ella.**
 
 **La búsqueda simple, sin operador, es un tipo de consulta más — no un descarte.**
 Quitar `site:` cambia qué indexa el buscador y destapa páginas de equipo,
