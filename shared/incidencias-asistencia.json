@@ -229,7 +229,7 @@
     {
       "id_interno": "INC-AUTO-CIERRE-59-2026-09-28T13-27-42-890Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "pendiente_direccion",
       "fecha_creacion": "2026-09-28T13:27:44.519Z",
       "empleado_id": 59,
       "empleado_nombre": "Gerardo Isai Lozano Davila",
@@ -247,7 +247,18 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-09-29T16:42:33.573Z",
+          "hora_propuesta_cst": null,
+          "comentario": "No registro entrada el Viernes y registro entrada al momento de salir...\nConforme el reporte del Sr Juan su hora de entrada fue 7:26AM y su salida fue a las 5:30PM",
+          "accion": "escalado"
+        }
+      ]
     },
     {
       "id_interno": "INC-OLV-108-2026-09-25T14-27-05-146Z",
