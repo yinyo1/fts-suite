@@ -49,12 +49,13 @@ class OdooError extends Error {
 }
 
 class OdooModelo {
-  constructor() { this.regs = new Map(); this.sig = 100; this.log = []; this.forzados = []; this.validaAdelante = false; }
+  constructor() { this.regs = new Map(); this.sig = 100; this.log = []; this.forzados = []; this.validaAdelante = false; this.fk = null; }
 
   clonar() {
     const o = new OdooModelo();
     for (const [k, v] of this.regs) o.regs.set(k, Object.assign({}, v));
     o.sig = this.sig; o.log = this.log.slice(); o.forzados = this.forzados.slice(); o.validaAdelante = this.validaAdelante;
+    o.fk = this.fk;
     return o;
   }
 
@@ -111,9 +112,28 @@ class OdooModelo {
     return rec.id;
   }
 
+  // Llaves foráneas (caso 2). Si un escenario declara `fk = { campo: {ids, constraint} }`,
+  // escribir en ese campo un id que no existe en su modelo destino falla como Postgres.
+  // OBSERVADA: kiosk/checkin 28-sep 23:00 a 23:07 UTC (exec 117659 y 9 más), campo
+  // x_studio_sales_order_2 = 2382 (id de project.project; no existe sale.order 2382).
+  // Sin `fk` (caso 1) no se valida nada: el comportamiento no cambia.
+  validarFk(vals) {
+    if (!this.fk) return null;
+    for (const campo of Object.keys(this.fk)) {
+      const v = vals[campo];
+      if (v != null && v !== false && !this.fk[campo].ids.has(v)) {
+        return new OdooError('insert or update on table "hr_attendance" violates foreign key constraint "' +
+          this.fk[campo].constraint + '"', 'fk');
+      }
+    }
+    return null;
+  }
+
   escribir(id, vals) {
     const actual = this.regs.get(id);
     if (!actual) { const e = new OdooError('Record does not exist', 'missing'); throw e; }
+    const errFk = this.validarFk(vals);
+    if (errFk) { this.log.push({ op: 'write', id, vals, error: errFk.message }); throw errFk; }
     const nuevo = Object.assign({}, actual, vals);
     // Solo re-valida si cambian fechas, como Odoo (@api.constrains check_in, check_out).
     if ('check_in' in vals || 'check_out' in vals) {

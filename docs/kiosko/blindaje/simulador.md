@@ -34,6 +34,15 @@ Códigos de salida: el diseño de HOY sale en 0 aunque viole invariantes (es un 
 4. **Bloques:** los 10 están PENDIENTE (fallan hoy) y todos pasan con el diseño nuevo; cada uno, solo, lleva su escenario de violado a limpio.
 5. **Aleatoria:** contra el diseño de HOY, las 9 invariantes caen, con contraejemplos mínimos de 2 a 4 eventos. Con el diseño nuevo, 300 semanas en cero.
 
+## Caso 2 (SO11855, 28-sep-2026)
+
+`node tests/kiosko-blindaje/caso2.test.js` (también lo corre `run.js`). Archivos: `caso2.js` (guion de los 8 empleados, `SistemaCaso2`, invariantes I10 a I12) y `caso2.test.js`.
+
+- `odoo-modelo.js` sabe de llaves foráneas: `validarFk` lanza el mismo texto que producción cuando el campo de SO lleva un id que no existe en `sale.order`.
+- `sistema.js` tiene dos ganchos que no cambian el caso 1: `camposSalida(opts)` (qué campos escribe la salida) y `guardarIncidencia(inc)` (el PUT del almacén, donde se inyecta el choque de sha).
+- Demuestra: HOY reproduce las 12 fallas de FK, 0 de 7 salidas guardadas, 57 con 22.16 h, el TAG fantasma de 79, la FK viva de Confirmar Horas y la SO equivocada silenciosa; el diseño completo (B1 a B13) queda en cero violaciones; el árbol de falla muestra que B11 sola evita el caso; B9, B11, B12 y B13 están PENDIENTE (fallan hoy y pasan con su bloque).
+- Aproximaciones: las horas de entrada de 6 de los 8 empleados son aproximadas (las de 57 y 131 son exactas); qué vio cada pantalla el 28-sep no está medido, y la variante B1 lo modela como "el empleado ve el error y declara su salida esa tarde".
+
 ## Límites honestos del modelo
 
 - Modela, no prueba producción. Que el modelo del bloque pase no prueba que la implementación real cumpla; por eso el PR que construye un bloque también actualiza su modelo y, donde se pueda, agrega un smoke en vivo.

@@ -186,6 +186,13 @@ class Sistema {
              detalleOdoo: (llego && resp.body === null && ult) ? ult.error : null };
   }
 
+  // ─── Ganchos del caso 2 (tests/kiosko-blindaje/caso2.js los reemplaza) ────
+  // Qué campos de proyecto escribe "Odoo - UPDATE Salida". El modelo del caso 1 no
+  // distingue proyecto de SO: guarda el id tal cual en `so`.
+  camposSalida(opts) { return { so: opts.so || null }; }
+  // El PUT de shared/incidencias-asistencia.json a GitHub. En el caso 1 nunca choca.
+  guardarIncidencia(inc) { this.incidencias.push(inc); }
+
   efectoLogrado(antes, emp, tipo) {
     const a = antes.del(emp), d = this.odoo.del(emp);
     if (tipo === 'entrada') return d.filter(r => r.check_out == null).some(r => !a.find(x => x.id === r.id));
@@ -273,12 +280,21 @@ class Sistema {
       const incId = 'INC-AUTO-CIERRE-' + emp + '-' + (this.sigInc++);
       const inc = { id: incId, tipo: 'auto_cierre_pendiente', emp, att: p.id, status: 'pendiente_rh',
                     tag: true, base: p.check_in, creada: now };
-      if (this.d.B7) this.incidencias.push(inc);   // B7: persistir ANTES de escribir en Odoo
-      try { this.odoo.escribir(p.id, { check_out: p.check_in + 9.6 * H, disputa: true }); }
+      if (this.d.B7) { try { this.guardarIncidencia(inc); } catch (e) { return falla(e); } }   // B7: persistir ANTES de escribir en Odoo
+      try { this.odoo.escribir(p.id, { check_out: p.check_in + 9.6 * H, disputa: true, incidencia: incId }); }
       catch (e) { if (this.d.B7) inc.nota = 'cierre rechazado por Odoo: ' + e.message; return falla(e); }
       let id;
       try { id = this.odoo.crear({ emp, check_in: now }); } catch (e) { return falla(e); }
-      if (!this.d.B7) this.incidencias.push(inc);   // HOY el PUT va después de las dos escrituras
+      if (!this.d.B7) {   // HOY el PUT va después de las dos escrituras
+        try { this.guardarIncidencia(inc); }
+        catch (e) {
+          // Caso 2 (exec 118442): Odoo ya quedó escrito y el PUT a GitHub choca por sha.
+          // HOY el flujo truena sin Respond. B1 (borrador b8003bd7, "Code - B1 PUT falló")
+          // responde éxito con incidencia_no_guardada: la checada existe, la incidencia no.
+          if (this.d.B1) return { latencia, body: { success: true, accion_valida: true, attendance_id: id, incidencia_no_guardada: true } };
+          return falla(e);
+        }
+      }
       if (this.d.B5 && opts.hora_real) {
         this.incidencias.push({ id: 'INC-OLV-' + emp + '-' + (this.sigInc++), tipo: 'olvido_entrada', emp, att: id,
           status: 'pendiente_supervisor', declarada: opts.hora_real, base: now, tag: true, creada: now });
@@ -294,7 +310,7 @@ class Sistema {
     if (this.d.B6 && h >= u.zg) return candado('DECLARA_SALIDA', 'Llevas ' + h.toFixed(1) + ' h. Declara tu hora real de salida.');
     try {
       if (lecturaFallo) ej.escribioTrasLecturaFallida = true;
-      this.odoo.escribir(p.id, { check_out: now, so: opts.so || null });
+      this.odoo.escribir(p.id, Object.assign({ check_out: now }, this.camposSalida(opts)));
       return { latencia, body: { success: true, accion_valida: true, attendance_id: p.id } };
     } catch (e) { return falla(e); }
   }
@@ -327,11 +343,15 @@ class Sistema {
       cand -= 12 * H; corregido = true;
     }
     if (cand > now + MIN) return { pantalla: 'error', logrado: false, validacion: true };
-    const limiteAtras = (this.d.B7 || this.d.B6) ? null : 12 * H;
+    // B9 (refinado en el caso 2): si el empleado CONFIRMÓ la hora corregida, el límite de
+    // 12 h hacia atrás no aplica; el tope es el de 16 h de turno. Sin esto la guarda no sirve
+    // a la mañana siguiente: "05:02" pasa el límite justo porque está mal, y el 17:02
+    // correcto del día anterior (13.6 h atrás) lo rechazaría.
+    const limiteAtras = (this.d.B7 || this.d.B6 || corregido) ? null : 12 * H;
     if (limiteAtras != null && now - cand > limiteAtras) return { pantalla: 'error', logrado: false, validacion: true, detalle: 'mas de 12 h' };
     if (cand - ab.check_in > 24 * H) return { pantalla: 'error', logrado: false, validacion: true };
     try {
-      this.odoo.escribir(ab.id, { check_out: cand, disputa: true });
+      this.odoo.escribir(ab.id, { check_out: cand, disputa: true, tecleada: args.tecleada, ampmConfirmada: corregido });
     } catch (e) {
       if (this.d.B1) this.registrarFalla(emp, now, 'ODOO_RECHAZO', 'servidor');
       return { pantalla: 'error', logrado: false, detalle: e.message };

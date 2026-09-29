@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guarda AM/PM · prototipo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* Paleta del kiosko actual (operaciones/kiosk/css/kiosk.css). Prototipo con datos demo. */
+  :root{
+    --verde:#107C10; --azul:#0078D4; --naranja:#D83B01; --ambar:#7a5800;
+    --fondo:#fafafa; --texto:#1a1a1a; --gris:#666; --borde:#e0e0e0;
+    --card-azul:#f0f4ff; --card-rojo:#ffe8e8; --card-verde:#f0f9f0;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',-apple-system,sans-serif;background:var(--fondo);color:var(--texto);min-height:100vh}
+  button,input,select{font-family:inherit}
+  .top{background:#fff;border-bottom:1px solid var(--borde);padding:12px 16px}
+  .top h1{font-size:16px;font-weight:700}
+  .top p{font-size:12px;color:var(--gris);margin-top:2px;line-height:1.45}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .tab{border:1px solid var(--borde);background:#fff;border-radius:999px;padding:7px 12px;font-size:13px;cursor:pointer;color:#333}
+  .tab.on{background:var(--azul);border-color:var(--azul);color:#fff;font-weight:600}
+  .wrap{display:flex;flex-wrap:wrap;gap:24px;padding:20px 16px 60px;max-width:1180px;margin:0 auto;align-items:flex-start}
+  .device{flex:1 1 360px;max-width:440px;background:#fafafa;border:1px solid var(--borde);border-radius:24px;box-shadow:0 8px 32px rgba(0,0,0,.06);padding:18px 16px 22px}
+  .notas{flex:1 1 300px;min-width:0}
+  .notas h2{font-size:15px;margin-bottom:8px}
+  .notas p,.notas li{font-size:13px;line-height:1.55;color:#333}
+  .notas ul{padding-left:18px;margin:6px 0 12px}
+  .sim{background:#fff;border:1px dashed #bbb;border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12.5px;display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center}
+  .sim select,.sim input{border:1px solid var(--borde);border-radius:6px;padding:5px 6px;font-size:12.5px;min-width:0;width:100%}
+  .emp{text-align:center;margin-bottom:12px}
+  .foto{width:64px;height:64px;border-radius:50%;border:3px solid var(--azul);background:#e8eef7;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:22px;font-weight:700;color:var(--azul)}
+  .emp h3{margin:8px 0 2px;font-size:18px}
+  .emp small{color:var(--gris);font-size:12.5px}
+  h4{font-size:15px;margin-bottom:6px}
+  .sub{font-size:12.5px;color:var(--gris);margin-bottom:12px;line-height:1.45}
+  label.campo{display:block;font-size:12.5px;font-weight:600;margin-bottom:6px}
+  .hora{width:100%;font-size:30px;font-weight:700;text-align:center;letter-spacing:1px;border:2px solid var(--borde);border-radius:12px;padding:10px;margin-bottom:12px}
+  .hora:focus{outline:none;border-color:var(--azul)}
+  .opcion{display:block;width:100%;text-align:left;border:2px solid var(--borde);background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:10px;cursor:pointer}
+  .opcion .l1{font-size:15px;font-weight:700}
+  .opcion .l2{font-size:12.5px;color:var(--gris);margin-top:3px}
+  .opcion.sel{border-color:var(--azul);background:var(--card-azul)}
+  .opcion.rara .l2{color:var(--naranja);font-weight:600}
+  .aviso{border-radius:10px;padding:11px 12px;font-size:12.5px;line-height:1.5;margin-bottom:12px}
+  .aviso.ambar{background:#fff4d9;border:1px solid #e6d38a;color:var(--ambar)}
+  .aviso.rojo{background:var(--card-rojo);border:1px solid #f1b3b3;color:#7a1010}
+  .aviso.verde{background:var(--card-verde);border:1px solid #bfe3bf;color:#0d5c0d}
+  .prim{border:none;padding:14px 10px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;width:100%;color:#fff;background:var(--verde)}
+  .prim:disabled{background:#b9c7b9;cursor:not-allowed}
+  .frase{font-size:14px;line-height:1.5;margin-bottom:12px}
+  .frase b{color:var(--azul)}
+  .hide{display:none}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Guarda AM/PM en "Olvidé checar salida" · prototipo</h1>
+  <p>Datos demo, sin conexión a nada. Caso real que reproduce: entrada el lunes 28-sep a las 06:52; al día siguiente el empleado tecleó "05:02" queriendo decir 17:02, y quedó con 22.16 h.</p>
+  <div class="tabs">
+    <button class="tab on" data-v="emp">Empleado: olvidé salida</button>
+    <button class="tab" data-v="rh">RH: ajustar la hora</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="device">
+    <div class="sim">
+      <span>Entrada</span>
+      <select id="entrada">
+        <option value="2026-09-28T06:52" selected>lun 28-sep 06:52</option>
+        <option value="2026-09-28T14:30">lun 28-sep 14:30 (turno tarde)</option>
+        <option value="2026-09-28T22:30">lun 28-sep 22:30 (turno nocturno)</option>
+      </select>
+      <span>Ahora</span>
+      <select id="ahora">
+        <option value="2026-09-29T06:41" selected>mar 29-sep 06:41</option>
+        <option value="2026-09-28T17:20">lun 28-sep 17:20</option>
+        <option value="2026-09-29T08:10">mar 29-sep 08:10</option>
+      </select>
+    </div>
+
+    <div id="vistaEmp">
+      <div class="emp"><div class="foto">ED</div><h3>Empleado demo 999</h3><small>Operaciones</small></div>
+      <h4>¿A qué hora saliste?</h4>
+      <p class="sub">Escribe la hora como la recuerdes. Te vamos a mostrar exactamente qué día y a qué hora queda, y cuántas horas suma tu jornada.</p>
+    </div>
+    <div id="vistaRh" class="hide">
+      <h4>Ajustar hora de salida · olvido de salida</h4>
+      <p class="sub">Incidencia demo de empleado 999. El resolver ya no convierte la hora a la mañana siguiente sin preguntar.</p>
+    </div>
+
+    <label class="campo" for="hora">Hora de salida</label>
+    <input id="hora" class="hora" value="05:02" inputmode="numeric" autocomplete="off" aria-describedby="ayuda">
+    <div id="ayuda" class="sub" style="margin-top:-6px">Acepta 5:02, 05:02 o 17:02.</div>
+    <div id="opciones"></div>
+    <div id="aviso"></div>
+    <p id="frase" class="frase"></p>
+    <button id="confirmar" class="prim" disabled>Confirmar salida</button>
+    <div id="resultado" style="margin-top:12px"></div>
+  </div>
+
+  <div class="notas">
+    <h2>Qué cambia</h2>
+    <ul>
+      <li>Si la hora tecleada es ambigua (de 1 a 12), el kiosko <b>muestra las dos lecturas</b> con su día y la duración de la jornada, y el empleado toca una. Nunca se elige sola.</li>
+      <li>La lectura que deja más de 16 h de jornada se marca en naranja y pide una segunda confirmación.</li>
+      <li>Antes de enviar, una frase completa: "Saliste a las <b>5:02 de la tarde del lunes 28</b>. Tu jornada queda de 10.2 h."</li>
+      <li>La hora ya confirmada no cae en el límite de 12 h hacia atrás (hoy ese límite rechazaría el 17:02 correcto y dejaría pasar el 05:02 equivocado).</li>
+      <li>El resolver de RH aplica la misma regla: "05:02" sobre una salida no se convierte a la mañana siguiente sin preguntar.</li>
+    </ul>
+    <h2>Invariante</h2>
+    <p>I12: una hora ambigua de 12 h nunca se interpreta sin confirmación del empleado. Complementa I8 (ningún registro de más de 16 h sin TAG de disputa).</p>
+    <h2>Por qué</h2>
+    <p>Ocho registros aprobados desde mayo tienen entre 21.66 y 22.68 h por esta confusión (detalle en el issue del caso 2). En uno, el supervisor anotó "salida anticipada 4:30 pm" y aun así se aprobó "05:00".</p>
+  </div>
+</div>
+
+<script>
+(function(){
+  var DIAS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  var elegida = null, vista = 'emp';
+  function $(id){ return document.getElementById(id); }
+  function fecha(v){ var p = v.split(/[-T:]/).map(Number); return new Date(p[0], p[1]-1, p[2], p[3], p[4]); }
+  function dosDig(n){ return String(n).padStart(2,'0'); }
+  function hh12(h, m){ var ap = h < 12 ? 'de la mañana' : (h < 19 ? 'de la tarde' : 'de la noche'); var h12 = h % 12 === 0 ? 12 : h % 12; return h12 + ':' + dosDig(m) + ' ' + ap; }
+  function diaTxt(d){ return DIAS[d.getDay()] + ' ' + d.getDate(); }
+  function parse(txt){
+    var m = String(txt).trim().match(/^(\d{1,2})(?::?(\d{2}))?$/);
+    if(!m) return null;
+    var h = +m[1], mi = m[2] ? +m[2] : 0;
+    if(h > 23 || mi > 59) return null;
+    return { h: h, m: mi, ambigua: h >= 1 && h <= 12 };
+  }
+  // Candidato = primera vez que ocurre esa hora (h) DESPUÉS de la entrada.
+  function candidato(entrada, h, m){
+    var c = new Date(entrada); c.setHours(h, m, 0, 0);
+    if(c <= entrada) c.setDate(c.getDate() + 1);
+    return c;
+  }
+  function render(){
+    var entrada = fecha($('entrada').value), ahora = fecha($('ahora').value);
+    var p = parse($('hora').value), cont = $('opciones'); cont.innerHTML = ''; $('aviso').innerHTML = ''; $('frase').textContent = '';
+    $('resultado').innerHTML = '';
+    if(!p){ $('aviso').innerHTML = '<div class="aviso rojo">Escribe la hora como 5:02 o 17:02.</div>'; $('confirmar').disabled = true; return; }
+    var horas = p.ambigua ? [p.h % 12, (p.h % 12) + 12] : [p.h];
+    var ops = horas.map(function(h){
+      var c = candidato(entrada, h, p.m), dur = (c - entrada) / 36e5;
+      return { c: c, dur: dur, futura: c > ahora, larga: dur > 16, key: c.toISOString() };
+    }).filter(function(o){ return !o.futura; })
+      // La lectura que no pasa de 16 h va primero: es la probable. No se preselecciona.
+      .sort(function(a, b){ return (a.larga ? 1 : 0) - (b.larga ? 1 : 0); });
+    if(!ops.length){ $('aviso').innerHTML = '<div class="aviso rojo">Esa hora todavía no pasa. Revisa la hora que escribiste.</div>'; $('confirmar').disabled = true; return; }
+    if(elegida && !ops.some(function(o){ return o.key === elegida; })) elegida = null;
+    if(ops.length === 1 && !ops[0].larga) elegida = ops[0].key;
+    ops.forEach(function(o){
+      var b = document.createElement('button'); b.type = 'button';
+      b.className = 'opcion' + (o.key === elegida ? ' sel' : '') + (o.larga ? ' rara' : '');
+      b.innerHTML = '<div class="l1">' + hh12(o.c.getHours(), o.c.getMinutes()) + ' · ' + diaTxt(o.c) + '</div>' +
+        '<div class="l2">Jornada de ' + o.dur.toFixed(1) + ' h' + (o.larga ? ' · más de 16 h, ¿seguro?' : '') + '</div>';
+      b.setAttribute('aria-pressed', o.key === elegida ? 'true' : 'false');
+      b.onclick = function(){ elegida = o.key; render(); };
+      cont.appendChild(b);
+    });
+    if(ops.length > 1 && !elegida) $('aviso').innerHTML = '<div class="aviso ambar">"' + $('hora').value + '" puede ser de la mañana o de la tarde. Toca la que es.</div>';
+    var sel = ops.filter(function(o){ return o.key === elegida; })[0];
+    if(sel){
+      $('frase').innerHTML = (vista === 'emp' ? 'Saliste a las ' : 'La salida queda a las ') + '<b>' + hh12(sel.c.getHours(), sel.c.getMinutes()) + ' del ' + diaTxt(sel.c) + '</b>. ' +
+        (vista === 'emp' ? 'Tu jornada' : 'La jornada') + ' queda de ' + sel.dur.toFixed(1) + ' h.';
+      if(sel.larga) $('aviso').innerHTML = '<div class="aviso ambar">Más de 16 h de jornada. Si es correcto, confírmalo; tu supervisor lo va a revisar.</div>';
+    }
+    $('confirmar').disabled = !sel;
+    $('confirmar').textContent = sel && sel.larga ? 'Sí, confirmo ' + sel.dur.toFixed(1) + ' h' : 'Confirmar salida';
+  }
+  $('confirmar').onclick = function(){
+    $('resultado').innerHTML = '<div class="aviso verde">Demo: se enviaría la hora elegida, con la bandera de que el empleado la confirmó. Nada se guarda.</div>';
+  };
+  ['entrada','ahora'].forEach(function(id){ $(id).onchange = function(){ elegida = null; render(); }; });
+  $('hora').oninput = function(){ elegida = null; render(); };
+  Array.prototype.forEach.call(document.querySelectorAll('.tab'), function(t){
+    t.onclick = function(){
+      Array.prototype.forEach.call(document.querySelectorAll('.tab'), function(x){ x.classList.remove('on'); });
+      t.classList.add('on'); vista = t.getAttribute('data-v');
+      $('vistaEmp').classList.toggle('hide', vista !== 'emp'); $('vistaRh').classList.toggle('hide', vista !== 'rh');
+      render();
+    };
+  });
+  render();
+})();
+</script>
+</body>
+</html>
