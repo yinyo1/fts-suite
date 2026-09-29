@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Prototipo · Órdenes de venta en la suite</title>
+<link rel="stylesheet" href="_comun.css" />
+<style>
+/* ═══ Los tokens de Odoo 19, medidos del código fuente de la versión ═══════
+ * Copiados de `comercial/machote/css/odoo19.css` para que este archivo abra
+ * con doble clic. El morado es el de Enterprise, CONFIRMADO por Esteban con
+ * cuentagotas sobre la instancia (no deducido).
+ * El detalle de dónde sale cada número vive en `docs/comercial/ODOO19-UI.md`.
+ */
+:root{
+  --o19-brand:#714B67;
+  --o19-fs-label:11.2px;
+  --o19-warning:#ffac00;
+  --o19-cell-pad-y:3px; --o19-cell-pad-x:8px;
+  --o19-gray-100:#f8f9fa; --o19-gray-300:#dee2e6; --o19-gray-600:#6c757d;
+  --o19-statusbar-h:33px;
+}
+
+/* ── LA LISTA, con la densidad de Odoo ──────────────────────────────────────
+ * Odoo usa una tabla DENSA: 3px de alto por celda, no 8. Cabe mucho renglón en
+ * poca pantalla, que es justo lo que una lista de 1,546 necesita. Es de las
+ * cosas que más hacen que algo «se sienta Odoo» y casi nadie la copia. */
+table.o19{font-size:13px}
+table.o19 th{background:var(--o19-gray-100);color:#44546a;
+  font-size:var(--o19-fs-label);text-transform:uppercase;letter-spacing:.04em;
+  padding:6px var(--o19-cell-pad-x);border-bottom:1px solid var(--o19-gray-300);
+  white-space:nowrap;position:sticky;top:0;z-index:2}
+table.o19 td{padding:var(--o19-cell-pad-y) var(--o19-cell-pad-x);
+  border-bottom:1px solid #f0f1f2;vertical-align:middle;height:30px}
+table.o19 tbody tr{cursor:pointer}
+table.o19 tbody tr:hover{background:#f4f1f4}
+table.o19 tbody tr.sel{background:#efe8ee}
+.o19-num{font-weight:600;white-space:nowrap}
+/* El renglón de Odoo mide ~30px porque NADA envuelve. En cuanto una celda se
+ * parte en tres líneas se pierde la densidad, que es lo único que hace
+ * utilizable una lista de 1,546. Así que las dos columnas de texto largo se
+ * recortan con puntos suspensivos y el título trae el texto completo; el ancho
+ * que sobra se lo lleva la DESCRIPCIÓN, que es la que dice qué es la orden. */
+.o19-cli{max-width:1px;width:23%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.o19-desc{max-width:1px;width:27%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.o19-tot{white-space:nowrap}
+.o19-tot .mn{color:var(--o19-gray-600);font-size:11px;margin-left:3px}
+.o19-corta{color:var(--o19-gray-600);font-style:italic}
+
+/* Los estados con los colores de Odoo: Quotation gris, Sales Order en el
+ * morado de marca, Cancelled en rojo apagado. */
+.est{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;
+     border-radius:20px;white-space:nowrap;border:1px solid transparent}
+.est.q{background:var(--o19-gray-100);color:#44546a;border-color:var(--o19-gray-300)}
+.est.s{background:#efe8ee;color:var(--o19-brand);border-color:#d9c9d4}
+.est.c{background:#f6f6f6;color:#8a8a8a;border-color:#e3e3e3;text-decoration:line-through}
+
+/* ── EL FILTRO SE ANUNCIA ───────────────────────────────────────────────────
+ * Odoo pone «My Quotations» como facetita gris que se confunde con adorno, y
+ * por eso nadie la ve. Aquí el filtro activo es una BANDA, con lo que está
+ * escondiendo dicho en número: un filtro que no se anuncia se lee como
+ * registros que faltan. */
+.filtro-banda{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  background:#fff8e6;border:1px solid #f0c36d;border-radius:8px;
+  padding:9px 12px;margin:0 0 10px}
+.filtro-banda .qq{font-size:13px;line-height:1.45;flex:1;min-width:200px}
+.faceta{display:inline-flex;align-items:center;gap:6px;background:var(--o19-brand);
+  color:#fff;border-radius:6px;padding:3px 6px 3px 9px;font-size:12px;font-weight:600}
+.faceta button{background:transparent;border:0;color:#fff;font-size:15px;
+  line-height:1;cursor:pointer;padding:0 2px;min-height:auto}
+
+/* ── LA PAGINACIÓN, con el total a la vista ────────────────────────────────*/
+.pag{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+     padding:8px 2px;font-size:12.5px;color:var(--o19-gray-600)}
+.pag b{color:var(--tinta)}
+.pag .sp{flex:1}
+.pag button{min-height:32px;padding:0 11px;border:1px solid var(--linea);
+  background:#fff;border-radius:7px;cursor:pointer;font-size:13px}
+.pag button:disabled{color:#bbb;cursor:not-allowed}
+
+/* ── LA COLUMNA DEL MACHOTE ────────────────────────────────────────────────
+ * El folio Y la descripción, para no tener que abrirlo. Es la razón de ser de
+ * la columna: si hay que abrirlo para saber cuál es, no sirve de nada. */
+.mach{display:flex;align-items:center;gap:7px;white-space:nowrap}
+.mach .fol{font-weight:700;font-size:12px;color:var(--o19-brand)}
+.mach .ds{font-size:11.5px;color:var(--o19-gray-600);max-width:118px;
+          overflow:hidden;text-overflow:ellipsis}
+.mach .sin{font-size:11.5px;color:#a0a0a0;font-style:italic}
+.lig{border:1px dashed var(--linea);background:#fff;border-radius:6px;
+     font-size:11px;padding:2px 7px;cursor:pointer;min-height:auto;color:#44546a}
+.lig:hover{border-style:solid;border-color:var(--o19-brand);color:var(--o19-brand)}
+
+/* ── LA BARRA DE ESTADO DEL DETALLE, 33px como Odoo ───────────────────────*/
+.statusbar{display:flex;gap:0;border:1px solid var(--o19-gray-300);
+  border-radius:6px;overflow:hidden;background:#fff;min-height:var(--o19-statusbar-h)}
+.statusbar div{flex:1;text-align:center;font-size:12px;font-weight:600;
+  padding:7px 6px;color:var(--o19-gray-600);border-right:1px solid var(--o19-gray-300)}
+.statusbar div:last-child{border-right:0}
+.statusbar div.on{background:var(--o19-brand);color:#fff}
+
+/* ── EL MACHOTE COMO HOJA A MEDIA PANTALLA ────────────────────────────────
+ * No es un modal que tapa todo: es una hoja que sube desde abajo y deja la
+ * orden visible arriba, para poder mirar las dos cosas. Y se MINIMIZA a su
+ * propia barra sin perder nada de lo tecleado — el nodo no se destruye. */
+.hoja{position:fixed;left:0;right:0;bottom:0;z-index:40;background:#fff;
+  border-top:2px solid var(--o19-brand);border-radius:12px 12px 0 0;
+  box-shadow:0 -8px 28px rgba(0,0,0,.18);display:none;flex-direction:column;
+  height:52vh;transition:height .18s ease}
+.hoja.abierta{display:flex}
+.hoja.min{height:48px}
+.hoja-cab{display:flex;align-items:center;gap:10px;padding:10px 14px;
+  border-bottom:1px solid var(--linea2);cursor:pointer;flex-shrink:0}
+.hoja-cab .tt{font-weight:700;font-size:14px;flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hoja-cab button{min-height:30px;padding:0 10px;border:1px solid var(--linea);
+  background:#fff;border-radius:7px;cursor:pointer;font-size:13px}
+.hoja-cuerpo{overflow:auto;padding:14px;flex:1}
+.hoja.min .hoja-cuerpo{display:none}
+
+/* ── EL MODAL DE CONFIRMACIÓN ─────────────────────────────────────────────*/
+.velo{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:50;
+      display:none;align-items:flex-start;justify-content:center;padding:18px;overflow:auto}
+.velo.abierto{display:flex}
+.modal{background:#fff;border-radius:12px;max-width:760px;width:100%;
+       box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.modal-cab{display:flex;align-items:center;gap:10px;padding:14px 16px;
+  border-bottom:1px solid var(--linea2)}
+.modal-cab h3{margin:0;font-size:16px;flex:1}
+.modal-cuerpo{padding:16px;max-height:calc(100vh - 190px);overflow:auto}
+.modal-pie{padding:12px 16px;border-top:1px solid var(--linea2);
+  display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+
+.de-donde{font-size:11px;font-weight:700;border-radius:4px;padding:1px 6px;
+          white-space:nowrap}
+.de-donde.mach{background:#efe8ee;color:var(--o19-brand);display:inline-block}
+.de-donde.mano{background:#fff8c5;color:#7d4e00;display:inline-block}
+
+.vista{display:none} .vista.on{display:block}
+
+/* ── DÓNDE DEJA DE CABER LA TABLA, Y POR QUÉ EL CORTE ES 1040 ──────────────
+ * Medido, no elegido: las ocho columnas con contenido real necesitan 1037px.
+ * A 900 la tabla «entraba» sólo porque su caja tiene scroll lateral, y lo que
+ * quedaba cortado a la derecha era la columna MACHOTE — la única que no
+ * existe en Odoo y la razón de ser de esta pantalla. Un scroll horizontal que
+ * esconde justo lo nuevo no es densidad, es un defecto con buena letra.
+ *
+ * Así que por debajo de 1040 la tabla se vuelve FICHAS. Y entre 620 y 1039 van
+ * en dos columnas, para no pagar de golpe toda la altura que la densidad
+ * ahorraba. Es la franja donde se rompió este módulo dos veces seguidas. */
+@media (max-width:1039px){
+  /* ⚠️ Las DOS columnas recortadas hay que soltarlas, no sólo una. El
+   * `max-width:1px` que en la tabla hace el recorte, en una ficha parte el
+   * texto LETRA POR LETRA — y no lo caza ninguna medida automática, porque
+   * 1px no es 0px y nada se derrama. Se vio mirando la captura de 380. */
+  .o19-cli,.o19-desc{width:auto;max-width:none;white-space:normal}
+  table.o19 thead{display:none}
+  table.o19,table.o19 tbody,table.o19 tr,table.o19 td{display:block;width:auto}
+  table.o19 tbody{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:9px}
+  table.o19 tr{border:1px solid var(--linea);border-radius:9px;
+               margin-bottom:0;padding:6px 4px;background:#fff}
+  table.o19 td{border-bottom:0;display:flex;gap:10px;align-items:baseline;
+               height:auto;padding:4px 8px;flex-wrap:wrap}
+  table.o19 td::before{content:attr(data-th);flex:0 0 92px;
+    font-size:var(--o19-fs-label);text-transform:uppercase;letter-spacing:.04em;
+    color:#44546a;font-weight:700}
+  table.o19 td.num{justify-content:flex-start}
+  .tabla-caja{border:0;overflow:visible}
+  /* La celda del machote tiene TRES cosas dentro; sin permitirle envolver, el
+   * botón se sale por el borde derecho — 5px a 380px, que es un defecto igual
+   * de real que 500. */
+  .mach{flex-wrap:wrap;gap:6px;min-width:0}
+  .mach .ds{max-width:100%;white-space:normal}
+}
+@media (max-width:760px){
+  table.o19 tbody{grid-template-columns:1fr}
+  .hoja{height:66vh}
+}
+</style>
+</head>
+<body>
+
+<div class="demo">
+  <b>PROTOTIPO — no toca Odoo, no guarda nada.</b>
+  Todos los clientes, folios e importes de abajo están <b>inventados</b>: este archivo
+  vive en un repositorio público. Sirve para que decidas la FORMA antes de que se
+  construya, no para ver datos.
+</div>
+
+<div class="topbar">
+  <b>FTS Suite · Comercial</b>
+  <span class="pill neu">Órdenes de venta</span>
+  <span class="sp" style="flex:1"></span>
+  <span class="tiny">prototipo 29-sep-2026 · #294</span>
+</div>
+
+<div class="wrap">
+
+<!-- ════════════════════════ 1 · LA LISTA ════════════════════════ -->
+<div class="vista on" id="vLista">
+  <h2>Órdenes de venta</h2>
+  <p class="sub">La lista de Odoo, con las columnas que sirven para confirmar y sin
+     las que no. Al final de la página está el porqué de cada una que se dejó fuera.</p>
+
+  <div class="filtro-banda">
+    <div class="qq">
+      <b>Estás viendo 80 de 1,546.</b> Filtro activo:
+      <span class="faceta">Mías <button title="quitar el filtro">×</button></span>
+      <span class="faceta">Sin cancelar <button title="quitar el filtro">×</button></span>
+      <span class="faceta">Empresas FTS <button title="quitar el filtro">×</button></span>
+      — quitando «Mías» aparecerían <b>1,203 más</b>.
+    </div>
+    <button class="btn" style="min-height:34px;padding:0 12px">Filtros…</button>
+  </div>
+
+  <div class="tabla-caja">
+  <table class="o19">
+    <thead><tr>
+      <th>Número</th><th>Estado</th><th>Cliente</th><th>Descripción</th>
+      <th>PO del cliente</th><th>Cotizador</th><th class="num">Total</th><th>Machote</th>
+    </tr></thead>
+    <tbody id="filas"></tbody>
+  </table>
+  </div>
+
+  <div class="pag">
+    <button disabled>‹ Anteriores</button>
+    <button>Siguientes ›</button>
+    <b>1–80</b> de <b>1,546</b>
+    <span class="sp"></span>
+    <span>80 por página · se piden al servidor, no se traen todas</span>
+  </div>
+
+  <div class="banda">
+    <h4>Por qué la paginación no es un detalle de adorno</h4>
+    <p>Son <b>1,546 órdenes</b> y van a ser más. Traerlas todas y paginar en el
+       navegador funciona el primer año y se cae el segundo, y cuando se cae lo hace
+       en la máquina de quien está trabajando. El endpoint pide
+       <span class="codigo">limite</span> y <span class="codigo">desde</span>, y el
+       conteo total sale de una consulta aparte — el mismo contrato que ya usan
+       Facturas y Bills en Finanzas.</p>
+  </div>
+
+  <div class="card">
+    <h3>Las columnas: las ocho que están, y las siete que no</h3>
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Columna de Odoo</th><th>¿Está?</th><th>Por qué</th></tr></thead>
+      <tbody>
+        <tr><td><b>Number</b></td><td><span class="pill ok">sí</span></td>
+            <td>Es la identidad. Y ordena por sí sola: SO11859 es posterior a SO11855.</td></tr>
+        <tr><td><b>Status</b></td><td><span class="pill ok">sí</span></td>
+            <td>Es de lo que trata la pantalla: qué falta por confirmar.</td></tr>
+        <tr><td><b>Customer</b></td><td><span class="pill ok">sí</span></td>
+            <td>Sin cliente no se decide nada.</td></tr>
+        <tr><td><b>Project Description</b></td><td><span class="pill ok">sí</span></td>
+            <td>Es lo único que dice <em>qué</em> es la orden. Se le da el ancho que
+                le quitamos a la fecha.</td></tr>
+        <tr><td><b>Purchase order</b></td><td><span class="pill ok">sí</span></td>
+            <td>De un vistazo se ve a cuáles ya llegó la PO del cliente, que es el
+                candado que más frena.</td></tr>
+        <tr><td><b>Cotizador</b></td><td><span class="pill ok">sí</span></td>
+            <td>Quién cotizó. Con una marca cuando el nombre no casa con nadie
+                activo — ver la nota de abajo.</td></tr>
+        <tr><td><b>Total</b></td><td><span class="pill ok">sí</span></td>
+            <td>Es el número que tiene que cuadrar contra la PO.</td></tr>
+        <tr><td><b>Machote</b> <span class="pill info">nueva</span></td><td><span class="pill ok">sí</span></td>
+            <td>No existe en Odoo. Folio y descripción <b>sin abrirlo</b>, y el
+                control para ligar o cambiar.</td></tr>
+        <tr><td>Creation Date</td><td><span class="pill neu">no</span></td>
+            <td>El número ya ordena en el tiempo. La fecha exacta vive en el detalle,
+                y su ancho se lo lleva la descripción, que dice más.</td></tr>
+        <tr><td>Invoice Count</td><td><span class="pill neu">no</span></td>
+            <td>Es de después de confirmar. Pertenece a cobranza, no a esta pantalla.</td></tr>
+        <tr><td>Website</td><td><span class="pill neu">no</span></td>
+            <td>Vacío en un flujo interno.</td></tr>
+        <tr><td>Salesperson</td><td><span class="pill neu">no</span></td>
+            <td>Es el usuario de Odoo que capturó, no quien cotizó. Duplicaría
+                Cotizador y diría otra cosa.</td></tr>
+        <tr><td>Activities</td><td><span class="pill neu">no</span></td>
+            <td>Es el reloj de actividades de Odoo. La suite no las tiene, y una
+                columna siempre vacía enseña a ignorar la fila.</td></tr>
+        <tr><td>Company</td><td><span class="pill warn">como marca</span></td>
+            <td>La vista ya está acotada a FTS MX y FTS USA. Sale una insignia
+                <span class="pill info">USA</span> sólo cuando NO es la de siempre —
+                una columna con el mismo valor en el 97% de los renglones no informa.</td></tr>
+        <tr><td>Pricelist</td><td><span class="pill neu">no</span></td>
+            <td>Se deriva de la moneda, y la moneda ya se ve en el total. En el detalle.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ 2 · EL DETALLE ════════════════════════ -->
+<div class="vista" id="vDetalle">
+  <p><button class="btn" onclick="irLista()">‹ Volver a la lista</button></p>
+
+  <div class="card">
+    <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
+      <div style="flex:1;min-width:220px">
+        <h2 style="margin:0" id="dNum">SO11902</h2>
+        <p class="sub" style="margin:4px 0 0" id="dCli">Cliente</p>
+      </div>
+      <div style="min-width:240px;flex:1">
+        <div class="statusbar">
+          <div id="sb1">Cotización</div><div id="sb2">Enviada</div><div id="sb3">Orden</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rejilla" style="margin-top:14px">
+      <label class="campo"><span>Descripción del proyecto</span>
+        <input type="text" id="dDesc" readonly /></label>
+      <label class="campo"><span>PO del cliente</span>
+        <input type="text" id="dPo" readonly /></label>
+      <label class="campo"><span>Cotizador</span>
+        <input type="text" id="dCot" readonly /></label>
+      <label class="campo"><span>Total</span>
+        <input type="text" id="dTot" readonly /></label>
+      <label class="campo"><span>Fecha de creación</span>
+        <input type="text" id="dFec" readonly /></label>
+      <label class="campo"><span>Lista de precios</span>
+        <input type="text" id="dPl" readonly /></label>
+    </div>
+
+    <h3>El machote ligado</h3>
+    <div id="dMach"></div>
+
+    <div class="btns">
+      <button class="btn" onclick="abrirHoja()">Abrir el machote ⌃</button>
+      <button class="btn pri" onclick="abrirConfirmar()">Confirmar la orden</button>
+    </div>
+    <p class="tiny" style="margin-top:8px">El botón de confirmar abre
+       <b>el mismo</b> cuadro que el de la lista. No hay dos.</p>
+  </div>
+</div>
+
+<div style="height:120px"></div>
+</div><!-- /wrap -->
+
+<!-- ════════════════════════ 3 · EL MACHOTE, A MEDIA PANTALLA ════════════════════════ -->
+<div class="hoja" id="hoja">
+  <div class="hoja-cab" onclick="alternarMin(event)">
+    <span class="tt" id="hTt">COT-0077 · Machote</span>
+    <button onclick="event.stopPropagation();alternarMin(event)" id="hMin" title="Minimizar">—</button>
+    <button onclick="event.stopPropagation();cerrarHoja()" title="Cerrar">×</button>
+  </div>
+  <div class="hoja-cuerpo">
+    <p class="tiny">Media pantalla a propósito: la orden sigue visible arriba. El
+       botón <b>—</b> lo baja a su barra y <b>no pierde nada de lo tecleado</b> —
+       pruébalo escribiendo abajo, minimiza, y vuelve a abrir.</p>
+    <label class="campo"><span>Nombre de la cotización</span>
+      <input type="text" id="hNom" /></label>
+    <label class="campo"><span>Nota de trabajo (escribe aquí y minimiza)</span>
+      <textarea id="hNota" placeholder="Lo que escribas sigue aquí al volver."></textarea></label>
+    <div class="tabla-caja" style="margin-top:12px">
+      <table><thead><tr><th>Sección</th><th class="num">Renglones</th><th class="num">Importe</th></tr></thead>
+      <tbody>
+        <tr><td>Suministro e instalación</td><td class="num">6</td><td class="num mono">$—</td></tr>
+        <tr><td>Mano de obra</td><td class="num">3</td><td class="num mono">$—</td></tr>
+      </tbody></table>
+    </div>
+    <p class="tiny" style="margin-top:10px">En la versión construida, aquí va el
+       machote de verdad, con su motor. Los importes salen ocultos en el prototipo
+       porque este archivo es público.</p>
+  </div>
+</div>
+
+<!-- ════════════════════════ 4 · LA CONFIRMACIÓN ════════════════════════ -->
+<div class="velo" id="velo">
+  <div class="modal">
+    <div class="modal-cab">
+      <h3>Confirmar <span id="cNum">SO11902</span></h3>
+      <span class="pill info" id="cDesde">desde el detalle</span>
+      <button class="btn" onclick="cerrarConfirmar()">×</button>
+    </div>
+    <div class="modal-cuerpo">
+      <div class="banda" style="margin-top:0">
+        <h4>Este cuadro es UNO SOLO</h4>
+        <p>Se abre igual desde la lista y desde el detalle, y los candados los
+           calcula <b>la misma función</b> en los dos casos. La insignia de arriba
+           dice por dónde entraste; <b>lo que decide no cambia</b>. Es la lección
+           que costó cara: un estado calculado en dos sitios no falla, contesta
+           distinto — y el que contesta distinto es el que más corre.</p>
+      </div>
+
+      <h3 style="margin-top:6px">Lo que trae el machote solo</h3>
+
+      <div class="candado pasa">
+        <h4>Contacto de facturación <span class="de-donde mach">del machote</span>
+            <span class="pill ok">completo</span></h4>
+        <p>Nombre, correo y teléfono ya vienen capturados. No se vuelve a preguntar.</p>
+      </div>
+
+      <div class="candado pasa">
+        <h4>Decisión de IVA <span class="de-donde mach">del machote</span>
+            <span class="pill ok">sí lleva, 16%</span></h4>
+        <p>Dicho explícitamente en la cotización. Si no se dijera, la orden heredaría
+           lo que Odoo traiga por omisión y la equivocación se ve en la factura.</p>
+      </div>
+
+      <h3>Lo que hay que capturar aquí</h3>
+
+      <div class="candado frena">
+        <h4>Archivo de la orden de compra <span class="de-donde mano">a mano</span>
+            <span class="pill bad">falta</span></h4>
+        <p>El número ya llegó (<span class="codigo">PO-INVENTADA-4471</span>), el
+           archivo no. Es la prueba de que el cliente pidió esto y a este precio, y
+           se revisa <b>al subirlo</b>: dentro de Odoo ya no se puede mirar.</p>
+        <p style="margin-top:8px"><input type="text" placeholder="Elegir archivo…" /></p>
+      </div>
+
+      <div class="candado avisa">
+        <h4>Descripción del proyecto en Odoo <span class="pill warn">vacía</span></h4>
+        <p>Esta orden no tiene descripción en Odoo, y el machote sí. Se ofrece
+           <b>copiarla</b>. Avisa y deja pasar: bloquear por una descripción es lo
+           que produce los «aaa» que ya hay en la base.</p>
+        <p style="margin-top:8px"><button class="btn">Copiar la del machote a Odoo</button></p>
+      </div>
+
+      <div class="candado frena">
+        <h4>Cuadre contra la PO <span class="pill bad">no cuadra</span></h4>
+        <p>Los tres números se enseñan juntos y la diferencia contra el más cercano,
+           porque es lo único que permite decidir. Si la PO cubre varias
+           cotizaciones, se anota y deja de frenar — sin salida, la gente teclea el
+           número que hace cuadrar.</p>
+        <p style="margin-top:8px"><input type="text" placeholder="Si la PO cubre varias cotizaciones, escribe cuáles" /></p>
+      </div>
+
+      <p class="tiny">Los seis candados completos viven en
+         <span class="codigo">confirmacion.js</span> desde la V1.45; aquí sólo se
+         enseña la forma.</p>
+    </div>
+    <div class="modal-pie">
+      <button class="btn" onclick="cerrarConfirmar()">Cancelar</button>
+      <button class="btn pri" disabled>Confirmar en Odoo</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Datos INVENTADOS. Nada de esto sale de Odoo: el repositorio es público y en él
+ * no entran nombres de cliente, importes ni contactos. */
+var FILAS = [
+  { n:'SO11902', e:'q', cli:'Industrias Inventadas del Norte',
+    d:'Mantenimiento de centro de control de motores', po:'', cot:'Ricardo', cotOk:true,
+    t:'— MXN', fol:'COT-0077', fd:'Planta 2 · MCC' },
+  { n:'SO11901', e:'q', cli:'Manufacturas Ficticias',
+    d:'Proyecto de control de agua', po:'', cot:'Ricardo', cotOk:true,
+    t:'— USD', usa:true, fol:null, fd:null },
+  { n:'SO11900', e:'q', cli:'Alimentos Imaginarios',
+    d:'Mantenimiento preventivo y diagnóstico de tableros', po:'', cot:'Monty', cotOk:null,
+    t:'— MXN', fol:'COT-0074', fd:'Tableros · preventivo' },
+  { n:'SO11899', e:'s', cli:'Química Supuesta',
+    d:'Fabricación de almacén para residuos', po:'5000-INVENT', cot:'Monty', cotOk:null,
+    t:'— MXN', fol:'COT-0071', fd:'Almacén de residuos' },
+  { n:'SO11898', e:'s', cli:'Industrias Inventadas del Norte',
+    d:'', po:'17244-X', cot:'Aldo', cotOk:false,
+    t:'— MXN', fol:'COT-0069', fd:'Diagnóstico de agua' },
+  { n:'SO11897', e:'q', cli:'Ensambles Hipotéticos',
+    d:'Adecuación eléctrica para nueva línea', po:'', cot:'Aldo', cotOk:false,
+    t:'— MXN', fol:null, fd:null },
+  { n:'SO11896', e:'c', cli:'Metales Supuestos',
+    d:'Reubicación de polipasto', po:'', cot:'', cotOk:null,
+    t:'— MXN', fol:null, fd:null },
+  { n:'SO11895', e:'s', cli:'Plásticos Ficticios',
+    d:'Cubierta de acero inoxidable para resguardo', po:'151441', cot:'Monty', cotOk:null,
+    t:'— MXN', fol:'COT-0066', fd:'Cubierta inox 304' }
+];
+var ETIQ = { q:'Cotización', s:'Orden de venta', c:'Cancelada' };
+
+function esc(s){ return String(s==null?'':s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* El Cotizador se pinta TAL CUAL y se marca cuando no casa con nadie activo.
+ * No se traduce ni se inventa: el campo de Odoo es una lista de nombres de pila,
+ * no un enlace a una persona, así que lo honesto es decir lo que dice y avisar. */
+function cotHtml(f){
+  if (!f.cot) return '<span class="o19-corta">— sin cotizador —</span>';
+  if (f.cotOk === false)
+    return esc(f.cot) + ' <span class="pill bad" title="No hay empleado activo con ese nombre">ya no está</span>';
+  if (f.cotOk === null)
+    return esc(f.cot) + ' <span class="pill warn" title="Nombre de pila que no casa exacto con el padrón">¿quién?</span>';
+  return esc(f.cot);
+}
+function machHtml(f){
+  if (!f.fol) return '<span class="mach"><span class="sin">sin machote</span>' +
+    ' <button class="lig" onclick="event.stopPropagation()">ligar</button></span>';
+  return '<span class="mach"><span class="fol">' + esc(f.fol) + '</span>' +
+    '<span class="ds" title="' + esc(f.fd) + '">' + esc(f.fd) + '</span>' +
+    '<button class="lig" onclick="event.stopPropagation()">cambiar</button></span>';
+}
+function pinta(){
+  document.getElementById('filas').innerHTML = FILAS.map(function(f,i){
+    return '<tr onclick="irDetalle(' + i + ')">' +
+      '<td data-th="Número" class="o19-num">' + esc(f.n) +
+        (f.usa ? ' <span class="pill info">USA</span>' : '') + '</td>' +
+      '<td data-th="Estado"><span class="est ' + f.e + '">' + ETIQ[f.e] + '</span></td>' +
+      '<td data-th="Cliente" class="o19-cli" title="' + esc(f.cli) + '">' + esc(f.cli) + '</td>' +
+      '<td data-th="Descripción" class="o19-desc" title="' + esc(f.d) + '">' +
+        (f.d ? esc(f.d) : '<span class="o19-corta">— sin descripción —</span>') + '</td>' +
+      '<td data-th="PO">' + (f.po ? esc(f.po) : '<span class="o19-corta">—</span>') + '</td>' +
+      '<td data-th="Cotizador">' + cotHtml(f) + '</td>' +
+      '<td data-th="Total" class="num mono o19-tot">' + esc(f.t.split(' ')[0]) +
+        '<span class="mn">' + esc(f.t.split(' ')[1] || '') + '</span></td>' +
+      '<td data-th="Machote">' + machHtml(f) + '</td>' +
+    '</tr>';
+  }).join('');
+}
+function irDetalle(i){
+  var f = FILAS[i];
+  document.getElementById('dNum').textContent = f.n;
+  document.getElementById('dCli').textContent = f.cli + (f.usa ? ' · FTS USA' : ' · FTS México');
+  document.getElementById('dDesc').value = f.d || '(vacía en Odoo)';
+  document.getElementById('dPo').value = f.po || '(no ha llegado)';
+  document.getElementById('dCot').value = f.cot || '(sin cotizador)';
+  document.getElementById('dTot').value = f.t;
+  document.getElementById('dFec').value = '29/09/2026 09:14';
+  document.getElementById('dPl').value = f.usa ? 'USD público' : 'MXN público';
+  document.getElementById('cNum').textContent = f.n;
+  var on = f.e === 's' ? 3 : 2;
+  [1,2,3].forEach(function(k){
+    document.getElementById('sb'+k).className = (k === on ? 'on' : '');
+  });
+  document.getElementById('dMach').innerHTML = f.fol
+    ? '<div class="candado pasa"><h4>' + esc(f.fol) + ' — ' + esc(f.fd) + '</h4>' +
+      '<p>Se ve el folio y la descripción sin abrirlo. Para editarlo, ábrelo abajo.</p>' +
+      '<div class="btns"><button class="btn lig" style="min-height:36px">Cambiar de machote</button>' +
+      '<button class="btn lig" style="min-height:36px">Desligar</button></div></div>'
+    : '<div class="candado avisa"><h4>Sin machote ligado</h4>' +
+      '<p>Esta orden no tiene cotización de la suite detrás. Se puede ligar a una que ' +
+      'ya exista, y se puede confirmar sin ella — pero entonces los candados que salen ' +
+      'del machote hay que capturarlos a mano.</p>' +
+      '<div class="btns"><button class="btn" style="min-height:36px">Ligar un machote</button></div></div>';
+  document.getElementById('hTt').textContent = (f.fol || 'Sin machote') + ' · Machote';
+  document.getElementById('hNom').value = f.fd || '';
+  document.getElementById('vLista').className = 'vista';
+  document.getElementById('vDetalle').className = 'vista on';
+  window.scrollTo(0,0);
+}
+function irLista(){
+  cerrarHoja();
+  document.getElementById('vDetalle').className = 'vista';
+  document.getElementById('vLista').className = 'vista on';
+  window.scrollTo(0,0);
+}
+function abrirHoja(){ document.getElementById('hoja').classList.add('abierta'); }
+function cerrarHoja(){ var h = document.getElementById('hoja');
+  h.classList.remove('abierta'); h.classList.remove('min'); }
+function alternarMin(ev){ if (ev) ev.stopPropagation();
+  var h = document.getElementById('hoja'); h.classList.toggle('min');
+  document.getElementById('hMin').textContent = h.classList.contains('min') ? '▴' : '—'; }
+function abrirConfirmar(){
+  document.getElementById('cDesde').textContent = 'desde el detalle';
+  document.getElementById('velo').classList.add('abierto');
+}
+function cerrarConfirmar(){ document.getElementById('velo').classList.remove('abierto'); }
+pinta();
+</script>
+</body>
+</html>
