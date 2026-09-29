@@ -140,6 +140,7 @@
   var URL_ORDEN = BASE + '/comercial/orden-crear-v2';
   var URL_COMPUERTA = BASE + '/comercial/compuerta';
   var URL_CONFIRMAR = BASE + '/comercial/confirmar';
+  var URL_ORDENES = BASE + '/comercial/ordenes';
   var TIMEOUT_MS = 12000;
 
   /* Que exista el objeto no basta: en modo privado de Safari `localStorage`
@@ -1526,6 +1527,84 @@
     return postear(URL_CONFIRMAR, { token: ses.token, modo: 'evaluar', machote_id: uuid });
   }
 
+  /* ══ ÓRDENES DE VENTA ═════════════════════════════════════════════════════
+   *
+   * ── POR QUÉ HAY UN MODO DE EJEMPLO, Y POR QUÉ SE ANUNCIA A GRITOS ─────────
+   * El endpoint `comercial/ordenes` nace INACTIVO, como todos los de este
+   * módulo: encenderlo es un clic de Esteban que el API no permite hacer desde
+   * aquí. Mientras tanto la pantalla tiene que poder recorrerse, así que
+   * devuelve una muestra inventada — **con `demo:true`**, y la pantalla lo
+   * dice en una banda ámbar antes de la tabla.
+   *
+   * Eso NO es un adorno: un modo de ejemplo que no se distingue del real es
+   * cómo cuatro machotes de `window.DEMO` acabaron en la base de producción
+   * (§20 #12c). La marca va en el DATO, no en la pantalla, y sale del único
+   * punto por donde pasa todo.
+   */
+  var DEMO_ORDENES = [
+    { id: 90001, nombre: 'SO-EJEMPLO-01', estado: 'sent', empresa_id: 1,
+      cliente: 'Cliente de ejemplo · no existe', descripcion: 'Orden inventada para recorrer la pantalla',
+      po: '', cotizador: 'Ricardo', cotizador_estado: 'activo', total: null, moneda: 'MXN',
+      fecha: '—', pricelist: '—', machote: null },
+    { id: 90002, nombre: 'SO-EJEMPLO-02', estado: 'sale', empresa_id: 6,
+      cliente: 'Otro cliente de ejemplo · no existe', descripcion: '',
+      po: 'PO-EJEMPLO', cotizador: 'Aldo', cotizador_estado: 'archivado', total: null, moneda: 'USD',
+      fecha: '—', pricelist: '—', machote: null }
+  ];
+
+  /** ¿Esta respuesta significa «el webhook todavía no está encendido»?
+   *
+   *  ⚠️ NO se busca el 404 crudo de n8n: `postear` ya lo tradujo antes de
+   *  llegar aquí, en el único punto por donde pasan todas las respuestas. Se
+   *  busca **su** código. Mirar el crudo funcionaba en mi cabeza y no en la
+   *  pantalla — lo dijo la primera prueba, no la lectura del código. */
+  function apagado(r) {
+    return !!(r && r.ok !== true && r.error === 'ENDPOINT_APAGADO');
+  }
+
+  /** La página de órdenes. El servidor pagina: `limite` y `desde` viajan, y
+   *  el total viene aparte. Traerlas todas y paginar aquí funciona el primer
+   *  año y se cae el segundo, en la máquina de quien está trabajando. */
+  function listarOrdenes(op) {
+    var ses = sesion();
+    if (!ses) {
+      return Promise.resolve({ ok: false, error: 'SIN_SESION',
+        mensaje: 'No hay sesión: vuelve a entrar.' });
+    }
+    var o = op || {};
+    return postear(URL_ORDENES, {
+      token: ses.token, modo: 'listar',
+      limite: o.limite || 80, desde: o.desde || 0,
+      solo_mias: o.solo_mias !== false,
+      sin_cancelar: o.sin_cancelar !== false,
+      ver_prueba: o.ver_prueba === true
+    }).then(function (r) {
+      if (apagado(r)) {
+        return { ok: true, demo: true, ordenes: DEMO_ORDENES.slice(),
+                 total: DEMO_ORDENES.length, ocultas: 0 };
+      }
+      return r;
+    });
+  }
+
+  /** Ligar un machote a una orden. El servidor decide si se puede: aquí no hay
+   *  candado, sólo el viaje. */
+  function ligarOrden(soId, soName, machoteUuid, principal) {
+    var ses = sesion();
+    if (!ses) return Promise.resolve({ ok: false, error: 'SIN_SESION' });
+    return postear(URL_ORDENES, { token: ses.token, modo: 'ligar',
+      odoo_so_id: soId, odoo_so_name: soName || null,
+      machote_id: machoteUuid, principal: principal !== false });
+  }
+
+  /** Desligar. NO borra: el servidor escribe `desligado_at` y quién fue. */
+  function desligarOrden(soId, motivo) {
+    var ses = sesion();
+    if (!ses) return Promise.resolve({ ok: false, error: 'SIN_SESION' });
+    return postear(URL_ORDENES, { token: ses.token, modo: 'desligar',
+      odoo_so_id: soId, motivo: motivo || null });
+  }
+
   /** Confirmar. `version_leida` es la versión que la pantalla tenía delante:
    *  confirmar es congelar números, y si el machote se movió debajo, los
    *  números que se congelarían no son los que quien aprieta está viendo. */
@@ -1589,6 +1668,9 @@
     guardarHandoff: guardarHandoff,
     evaluarConfirmacion: evaluarConfirmacion,
     confirmar: confirmar,
+    listarOrdenes: listarOrdenes,
+    ligarOrden: ligarOrden,
+    desligarOrden: desligarOrden,
     esDemo: esDemo,
 
     pendientes: pendientes,

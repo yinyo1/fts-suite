@@ -1,11 +1,17 @@
 {
-  "version": "V1.45",
-  "build": "V1.45",
-  "fecha": "2026-09-28",
+  "version": "V1.46",
+  "build": "V1.46",
+  "fecha": "2026-09-29",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.46",
+      "pr": null,
+      "fecha": "2026-09-29",
+      "nota": "ORDENES DE VENTA EN LA SUITE, LA LIGA CON EL MACHOTE Y UNA SOLA PUERTA PARA CONFIRMAR (#294 · Estacion 3). Pantalla nueva en #/ordenes y #/so/:id con el aspecto de la lista de Odoo: ocho columnas de las quince, el filtro ANUNCIADO en una banda que dice cuantos registros esconde, paginacion del servidor para 1,546 ordenes, y una columna MACHOTE que no existe en Odoo con folio y descripcion sin abrirlo. El machote se abre como hoja a media pantalla, se minimiza sin perder lo tecleado y deja la orden visible. LA PUERTA: hasta la V1.45 los seis candados de la cotizacion guardaban la puerta de ENTRADA (crear el borrador) y NO la de salida — confirmar.js no mencionaba G.Confirmacion ni una vez, y su unica revision era la Compuerta 2 del servidor, que no mira el contacto, ni la decision de IVA, ni la PO, ni el anticipo. Ahora los dos caminos llaman a G.PuertaConfirmar, una sola funcion. EL ENGRANE: archivar dejo de ser un boton suelto y se le sumo DUPLICAR, las dos con confirmacion; la copia hereda el trabajo y nace libre de folio, historial, orden de venta y orden de compra. Migracion 011: la liga vive en la base, no en la libreta del navegador, que solo guarda lo propio y contestaba 'sin orden ligada' de algo que si existe."
+    },
     {
       "version": "V1.45",
       "pr": null,
