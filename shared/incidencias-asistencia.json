@@ -48,7 +48,7 @@
     {
       "id_interno": "INC-AUTO-CIERRE-128-2026-09-29T12-59-34-895Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_con_ajuste",
       "fecha_creacion": "2026-09-29T12:59:36.321Z",
       "empleado_id": 128,
       "empleado_nombre": "Enoc Natanael Maldonado soto",
@@ -58,7 +58,7 @@
       "check_out_aplicado_utc": "2026-09-28 22:27:09",
       "horas_originales": "24.14",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -66,7 +66,18 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 63,
+          "usuario": "Magaly Estefanía Pérez García",
+          "timestamp": "2026-09-29T16:49:49.120Z",
+          "hora_propuesta_cst": "05:06",
+          "comentario": "No funcionaba el reloj checador y su registro de salida fue a las 5:06 pm.",
+          "accion": "ajustado"
+        }
+      ]
     },
     {
       "id_interno": "INC-OLV-CHK-57-2026-09-29T12-41-18-686Z",
