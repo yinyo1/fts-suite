@@ -236,7 +236,7 @@
 
         '<div class="btns">' +
           (f.machote ? '<button class="btn" id="orAbrirHoja">Abrir el machote ⌃</button>' : '') +
-          '<button class="btn pri" id="orConfirmar">Confirmar la orden</button>' +
+          '<button class="btn primario" id="orConfirmar">Confirmar la orden</button>' +
         '</div>' +
         '<p class="tiny nota">Este botón abre <b>el mismo</b> cuadro que «Confirmar ' +
           'órdenes». No hay dos: los candados los calcula una sola función.</p>' +

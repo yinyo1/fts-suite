@@ -103,7 +103,7 @@
       '</div>' +
       '<div class="pu-pie">' +
         '<button class="btn" id="lgCancel">Cancelar</button>' +
-        '<button class="btn pri" id="lgOk" disabled>Ligar</button>' +
+        '<button class="btn primario" id="lgOk" disabled>Ligar</button>' +
       '</div></div>';
   }
 

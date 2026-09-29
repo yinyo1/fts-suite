@@ -175,7 +175,7 @@
         '<div class="pu-cuerpo" id="puCuerpo"></div>' +
         '<div class="pu-pie">' +
           '<button class="btn" id="puCancel">Cancelar</button>' +
-          '<button class="btn pri" id="puOk" disabled>Confirmar en Odoo</button>' +
+          '<button class="btn primario" id="puOk" disabled>Confirmar en Odoo</button>' +
         '</div>' +
       '</div>';
     document.body.appendChild(c);

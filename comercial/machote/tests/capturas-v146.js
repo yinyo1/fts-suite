@@ -74,6 +74,22 @@ const ESTADOS = [
       await p.evaluate((o) => { window.Ordenes._sembrar(o, 1546); location.hash = '#/so/70002'; }, ORDENES);
       await p.waitForTimeout(400);
       await p.evaluate(() => window.Ordenes.montar(document.querySelector('#vista'), '70002')); } },
+  { id: 'hoja', que: 'el machote a media pantalla, sobre la orden', ir: async (p) => {
+      await p.evaluate((o) => { window.Ordenes._sembrar(o, 1546); location.hash = '#/so/70001'; }, ORDENES);
+      await p.waitForTimeout(400);
+      await p.evaluate(() => window.Ordenes.montar(document.querySelector('#vista'), '70001'));
+      await p.waitForTimeout(250);
+      await p.evaluate(() => { const b = document.querySelector('#orAbrirHoja'); if (b) b.click(); });
+      await p.waitForTimeout(500); } },
+  { id: 'hoja-min', que: 'la hoja minimizada a su barra', ir: async (p) => {
+      await p.evaluate((o) => { window.Ordenes._sembrar(o, 1546); location.hash = '#/so/70001'; }, ORDENES);
+      await p.waitForTimeout(400);
+      await p.evaluate(() => window.Ordenes.montar(document.querySelector('#vista'), '70001'));
+      await p.waitForTimeout(250);
+      await p.evaluate(() => { const b = document.querySelector('#orAbrirHoja'); if (b) b.click(); });
+      await p.waitForTimeout(300);
+      await p.evaluate(() => { const b = document.querySelector('#orHojaMin'); if (b) b.click(); });
+      await p.waitForTimeout(400); } },
   { id: 'puerta', que: 'la puerta de confirmación, bloqueando', ir: async (p) => {
       await p.evaluate((o) => { window.Ordenes._sembrar(o, 1546); location.hash = '#/so/70002'; }, ORDENES);
       await p.waitForTimeout(400);

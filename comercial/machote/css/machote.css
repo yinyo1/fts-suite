@@ -2512,6 +2512,25 @@ table.or-tab td.num { text-align: right; }
 .or-lig:hover { border-style: solid; border-color: var(--o19-brand, #714B67);
                 color: var(--o19-brand, #714B67); }
 
+/* ── LOS BOTONES DE ESTA PANTALLA TOMAN SU ANCHO… DESDE 761px ──────────────
+ * El `.btn` del módulo ocupa la fila entera, y eso a 380px es lo correcto: un
+ * botón del ancho del pulgar. A 1280px produce una PILA DE BARRAS —«Volver a
+ * la lista», «Cambiar de machote», «Desligar», «Abrir el machote»— que no se
+ * lee como botones, se lee como renglones de una lista. Se vio en la captura
+ * de 1280 y NO en la de 380, donde estaba bien: por eso el arreglo tiene que
+ * depender del ancho y no ser un `width:auto` a secas. */
+@media (min-width: 761px) {
+  .or-wrap .btns .btn, .or-wrap > p > .btn, .or-lig-caja .btns .btn {
+    width: auto; flex: 0 0 auto; min-width: 0; padding: 0 18px;
+  }
+  .or-wrap .btns, .or-lig-caja .btns { justify-content: flex-start; }
+}
+/* Desligar es destructivo y tiene que verse distinto del resto. `.peli` no
+ * existía en la hoja del módulo —sólo en la de los prototipos—, así que el
+ * botón salía idéntico a «Cambiar de machote». */
+.btn.peli { color: var(--rojo); border-color: #ffc9c9; }
+.btn.peli:hover { background: #fff5f5; }
+
 .or-pag { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 9px 2px; }
 /* Los botones de la paginación toman su propio ancho. Sin esto heredan el
  * `.btn` del módulo, que está pensado para ocupar la fila en un formulario, y
