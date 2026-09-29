@@ -163,9 +163,19 @@
           "fecha": "2026-09-28T23:05:24.422Z",
           "hora_propuesta_cst": "17:01",
           "comentario": "No funciona el sistema"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-09-29T14:16:46.932Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobada salida",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": "2026-09-28 23:01:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
