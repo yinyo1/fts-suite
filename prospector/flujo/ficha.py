@@ -59,6 +59,7 @@ import re
 
 from .confianza import CONFIRMADO, DESMENTIDO, EN_CONFLICTO, SOLIDO, CANDIDATO, N1_CONFIRMADO, N2_PARCIAL, N3_PUESTO
 from .estado import Corrida, RESPONDIO, PENDIENTE
+from .catalogo_proyectos import plano as _plano
 from .sello import sello
 from .ubicacion_de_proyectos import (carta_de_presentacion, HISTORIA_AQUI,
                                      HISTORIA_EN_OTRA_PLANTA,
@@ -99,21 +100,58 @@ POR_QUE_NO_SE_PUDO = {
 # Tipo de interlocutor, por vocabulario EXPLICITO. Es el mismo criterio del
 # catalogo de proyectos: una lista que Esteban puede leer y corregir, y lo que no
 # clasifica cae en "otros" en vez de en el cajon mas parecido.
+# QUIEN ES QUIEN, y desde #346 tambien QUE CUENTA COMO DE VALOR.
+#
+# La planilla de una corrida HUMANA con Sales Navigator -- 68 personas en 10
+# cuentas, una semana de trabajo-- se uso como respuesta correcta externa, y midio
+# que este vocabulario dejaba fuera titulos que de verdad compran:
+#
+#   Capex Control Leader · Jefe de compras MRO y Capex · CAPEX Global Procurement
+#   Director · Portfolio Manager | Strategic CAPEX Leader   <- CAPEX no existia
+#   Sr. Regional RME Manager · Reliability and Maintenance Engineering Manager
+#                                                           <- RME no existia
+#   Ingeniero de proyecto · Comprador de proyecto           <- solo estaba el plural
+#   Operation Manager · Operations Head                     <- solo "operations manager"
+#   Strategic sourcing specialist                           <- "sourcing" no existia
+#   Gerente de Produccion                                   <- produccion no existia
+#
+# DOS de los tres que RESPONDIERON en esa corrida traen CAPEX o RME en el titulo.
+# El vocabulario que no los reconocia estaba mandando a contexto justo a los que
+# contestan.
+#
+# Las siglas de una sola palabra -- "ceo", "coo", "rme", "mro"-- se comparan CON
+# FRONTERA: "coo" se comia "COOrdinador" y metia a un coordinador de ingenieria en
+# el grupo de direccion. Misma leccion que B6 en la lista negra.
 INTERLOCUTOR = (
     ("mantenimiento", "Mantenimiento y servicios de planta",
      ("mantenimiento", "maintenance", "facilities", "facilidades", "utilities",
       "servicios auxiliares", "servicios generales", "ehs", "seguridad",
-      "higiene", "medio ambiente", "ambiental")),
+      "higiene", "medio ambiente", "ambiental",
+      # #346: el vocabulario de la casa, medido en la planilla.
+      "reliability", "confiabilidad", "rme", "asset management",
+      "activos", "superintendente", "superintendent")),
     ("compras", "Compras y abastecimiento",
      ("compras", "purchasing", "procurement", "comprador", "buyer",
-      "abastecimiento", "supply chain", "cadena de suministro")),
+      "abastecimiento", "supply chain", "cadena de suministro",
+      # #346: CAPEX y MRO son COMO SE LLAMA el presupuesto que FTS persigue, y no
+      # estaban. Tampoco "sourcing", que es la palabra de las plantas globales.
+      "capex", "mro", "sourcing", "categoria", "category", "commodity")),
     ("direccion", "Direccion y planta",
      ("director", "gerente de planta", "plant manager", "gerente general",
-      "gerente de operaciones", "operations manager", "chief", "ceo", "coo")),
+      "gerente de operaciones", "operations manager", "operation manager",
+      "operations head", "lider de operaciones", "jefe de operaciones",
+      "gerente de produccion", "produccion", "production",
+      "chief", "ceo", "coo")),
     ("ingenieria", "Ingenieria y proyectos",
-     ("ingenieria", "engineering", "proyectos", "project", "procesos",
+     ("ingenieria", "ingeniero", "engineering", "engineer",
+      "proyectos", "proyecto", "project", "procesos",
       "process", "control", "automatizacion")),
 )
+
+#: Siglas que se comparan COMO PALABRA. Sin esto "coo" pega dentro de
+#: "coordinador" y "mro" dentro de cualquier cosa; con esto, solo cuando el titulo
+#: de verdad las dice.
+SIGLAS_CON_FRONTERA = ("ceo", "coo", "cfo", "rme", "mro", "ehs", "capex")
 
 # Frases con las que una ficha se atribuye trabajo EN la planta que prospecta.
 
@@ -365,10 +403,24 @@ def _correo_en_palabras(x) -> tuple[str, str, str]:
             + salvedad, "sup")
 
 
+def _pega_palabra(w: str, p: str) -> bool:
+    """`w` aparece en `p`. Las siglas exigen FRONTERA; el resto son troncos.
+
+    "coo" dentro de "coordinador" metia a un Coordinador de Ingenieria de Producto
+    en el grupo de DIRECCION -- medido en la planilla de #346--. Y quitarle la
+    frontera a todo romperia los troncos que la lista usa a proposito: "ingenieria"
+    tiene que pegar con "ingenieria de proyectos".
+    """
+    if w in SIGLAS_CON_FRONTERA:
+        return re.search(r"(?<![0-9a-z])" + re.escape(w) + r"(?![0-9a-z])",
+                         p) is not None
+    return w in p
+
+
 def _tipo_de_interlocutor(puesto: str) -> tuple[str, str]:
-    p = " ".join(str(puesto or "").lower().split())
+    p = _plano(" ".join(str(puesto or "").lower().split()))
     for clave, titulo, palabras in INTERLOCUTOR:
-        if any(w in p for w in palabras):
+        if any(_pega_palabra(w, p) for w in palabras):
             return (clave, titulo)
     return ("otros", "Otros contactos")
 

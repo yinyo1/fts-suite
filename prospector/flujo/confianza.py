@@ -1129,13 +1129,23 @@ CERCANIA_CONTEXTO = 100
 # ya los nombraba contexto en prosa (§5: "IT o RH que solo mencionan la palabra
 # son contexto, no target"); aqui pasan a ser una compuerta.
 PUESTOS_NUNCA_DECISORES = (
-    "reclutad", "reclutamiento", "atraccion de talento", "atracción de talento",
+    "reclutad", "atraccion de talento", "atracción de talento",
     "recursos humanos", "capital humano", "rh ", "talent acquisition",
-    "recruiter", "recruiting", "headhunt",
+    "recruit", "headhunt",
+    # DEFECTO B8 de #346: la lista estaba en ESPANOL y la mitad de los titulos de
+    # una planta global vienen en INGLES. Medido en la planilla: "Human Resources",
+    # "HRBP Director Mexico Region" y "Benefits Sr. Specialist" pasaron la
+    # compuerta. Dos cayeron a contexto por accidente -- ningun grupo de
+    # interlocutor los reconocio-- y el tercero se COLO COMO VALOR, porque "HRBP
+    # Director" pega con "director" en el grupo `direccion`.
+    "human resources", "hr business partner", "hrbp", "people partner",
+    "people & culture", "compensation", "benefits", "payroll", "nomina",
+    "employee services", "employee relations", "relaciones laborales",
+    "desarrollo organizacional", "transformacion organizacional",
     "recepcion", "recepción", "receptionist",
     "prensa", "comunicacion social", "comunicación social",
     "community manager", "redes sociales",
-    "becario", "practicante", "intern ",
+    "becari", "practicant", "intern",
     # --- IT CORPORATIVO, que entra por la DECISION 2 de #305 ---------------
     # El metodo ya decia en prosa que "IT o RH que solo mencionan la palabra son
     # contexto", y esa regla NO estaba en el codigo: solo en el texto. Aqui pasa a
@@ -1147,6 +1157,21 @@ PUESTOS_NUNCA_DECISORES = (
     "ciberseguridad", "director de sistemas", "gerente de sistemas",
     "gerente de ti", "it manager", "it director", "cio",
 )
+
+#: Las UNICAS marcas de la lista negra que se dejan abiertas por la derecha, porque
+#: la palabra real varia de terminacion. Todo lo demas exige frontera: es la leccion
+#: de B6, y esta escrita como lista y no como regla adivinada desde el formato.
+TRONCOS_DE_LA_LISTA_NEGRA = (
+    "reclutad",      # reclutador, reclutadora, reclutadores
+    "headhunt",      # headhunter, headhunting
+    "recruit",       # recruiter, recruiting, recruitment
+    "becari",        # becario, becaria, becarios
+    "practicant",    # practicante, practicantes
+    "recepcion",     # recepcionista -- lo cazo una prueba de #300 al ponerle
+                     # frontera: "recepcion" no pega con "recepcionista"
+    "comunicacion social",
+)
+
 
 # ------------------------------------------- IT INDUSTRIAL: la excepcion medida
 #
@@ -1194,11 +1219,52 @@ def es_it_industrial(puesto: str | None) -> str:
 CERCANIA_TOPE_NO_DECISOR = 41
 
 
+def _pega_con_frontera(marca: str, texto_con_espacios: str) -> bool:
+    """La marca aparece como PALABRA, no como pedazo de otra.
+
+    DEFECTO B6 de #346, medido contra la planilla de 68 personas de una corrida
+    humana real. `marca in p` sin frontera hacia que la sigla "cio" -- que esta en
+    la lista negra por CIO, el director de sistemas-- se comiera cinco titulos:
+
+        Gerente Na-CIO-nal de Construccion y Mantenimiento   <- un target de primera
+        Gerente de Planta & Opera-CIO-nes Sr                 <- un plant manager
+        Lider de Opera-CIO-nes
+        Gerente de Proyectos Nuevos nego-CIO
+        Gerente Sr. Transforma-CIO-n Organiza-CIO-nal
+
+    Tres de esos cinco son puestos DE VALOR, y el filtro los mandaba a contexto. Es
+    la tercera vez que este proyecto tropieza con lo mismo: #300 (B2, los puestos),
+    #329 (B1, "prensa" dentro de otras palabras) y ahora esta. La leccion ya estaba
+    escrita en `catalogo_proyectos._pega`: **un substring no es una coincidencia.**
+
+    La frontera IZQUIERDA es obligatoria y la DERECHA se exige solo cuando la marca
+    no termina en espacio, porque la lista usa troncos a proposito -- "reclutad" tiene
+    que pegar con "reclutador" y con "reclutadora"-- y "rh " ya trae su frontera
+    escrita.
+    """
+    m = marca.strip()
+    if not m:
+        return False
+    # LA FRONTERA DERECHA VA SIEMPRE, y los troncos se declaran a mano.
+    #
+    # El primer intento la infirio del espacio final de la marca, y se cayo en el
+    # acto contra la misma planilla: `"intern "` -- que esta en la lista por los
+    # BECARIOS-- se comio "Maintenance Manager INTERNational Motors", un gerente de
+    # mantenimiento, que es el target mas directo que FTS tiene.
+    #
+    # El espacio de `"intern "` y de `"rh "` estaba ahi justo para CERRAR el lado
+    # derecho, y yo lo lei como que lo abria. Adivinar la intencion desde el formato
+    # de la cadena es lo que fallo dos veces; ahora los troncos se listan.
+    der = "" if m in TRONCOS_DE_LA_LISTA_NEGRA else r"(?![0-9a-z])"
+    return re.search(r"(?<![0-9a-z])" + re.escape(m) + der,
+                     texto_con_espacios) is not None
+
+
 def puesto_nunca_decisor(puesto: str | None) -> str:
     """Devuelve la palabra que lo delata, o "" si el puesto puede decidir."""
     p = f" {_normaliza(puesto or '')} "
     for marca in PUESTOS_NUNCA_DECISORES:
-        if marca.strip() and marca in p:
+        if _pega_con_frontera(marca, p):
             return marca.strip()
     return ""
 
