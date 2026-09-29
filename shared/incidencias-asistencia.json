@@ -126,12 +126,22 @@
           "hora_propuesta_cst": null,
           "comentario": "Aprobada salida",
           "accion": "aprobado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 63,
+          "usuario": "Magaly Estefanía Pérez García",
+          "timestamp": "2026-09-29T16:50:43.208Z",
+          "hora_propuesta_cst": "17:02",
+          "comentario": "No funcionaba el reloj checador y su salida fue a las 5:02 pm",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_rh",
-      "hora_final_aplicada_utc": "2026-09-29 11:02:00",
+      "status": "aprobada_con_ajuste",
+      "hora_final_aplicada_utc": "2026-09-28 23:02:00",
       "aplicado_en_odoo": true,
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "creada_por_modulo": "kiosk",
       "creada_por_build": "20260710-kiosk-versioncheck"
     },
