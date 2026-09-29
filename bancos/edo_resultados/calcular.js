@@ -15,7 +15,7 @@
  * ═══════════════════════════════════════════════════════════════════════════ */
 'use strict';
 
-const VERSION = 'er-2026-v1.2';
+const VERSION = 'er-2026-v1.3';
 const ANIO = '2026';
 const NOMBRE_MES = { '01': 'ene', '02': 'feb', '03': 'mar', '04': 'abr', '05': 'may', '06': 'jun', '07': 'jul', '08': 'ago', '09': 'sep', '10': 'oct', '11': 'nov', '12': 'dic' };
 const CONMET_SO = 'SO11771';                 // contrato Conmet (decisión de Esteban: renglón propio)
@@ -535,12 +535,150 @@ function motor(ins, F) {
     else itemBanco(m, 'info_abono_sin_clasificar', { regla: m.ti ? 'traspaso entre cuentas propias (servicio)' : 'abono sin renglón (informativo; las ventas salen de Odoo)' });
   }
 
-  // ── Jeeves: consumos de la tarjeta (diario 61) por tipo de comercio (D3) ──
+  // ── Jeeves (#352): base propia donde el ciclo del PDF está validado; diario 61 en los demás meses ──
+  // Un consumo del PDF se enriquece con su transacción del CSV (memo, categoría, CFDI) y con su renglón del diario 61
+  // (la factura conciliada). Clasificación, en orden: 1) analítica de la factura conciliada · 2) CFDI de las columnas SAT
+  // (y su factura en Odoo) · 3) memo con proyecto · 4) memo personal o ajeno · 5) categoría del comercio · 6) reglas por
+  // comercio del v1 · 7) costo sin clasificar.
+  const JV = ins.jeeves || {};
+  const jCiclos = {}; for (const c of (JV.ciclos || [])) if (c.v1_ok === true || c.v1_ok === 't') jCiclos[c.ciclo] = c;
+  const jFilas = (JV.movimientos || []).filter(x => jCiclos[x.ciclo]).map(x => ({ id: x.movimiento_id, ciclo: x.ciclo, fecha: dia(x.fecha), tarjeta: x.tarjeta ? String(x.tarjeta) : null,
+    monto: cents(x.monto_mxn), usd: x.monto_usd == null ? null : cents(x.monto_usd), tipo: x.tipo, comercio: String(x.comercio || ''), usuario: String(x.usuario || ''), pagina: x.pagina, renglon: x.renglon }));
+  const jTrans = (JV.transacciones || []).map(t => ({ uid: t.unique_id, tipo: t.tipo, monto: cents(t.monto_firmado), tarjeta: t.tarjeta ? String(t.tarjeta) : null,
+    creado: dia(t.created_mty), posteado: dia(t.posted_mty), memo: String(t.memo || ''), categoria: String(t.categoria || ''), payee: String(t.payee || ''),
+    uuid: (t.sat_uuid_valido === true || t.sat_uuid_valido === 't') ? String(t.sat_uuid).toUpperCase() : null,
+    sat_sub: t.sat_subtotal == null ? null : cents(t.sat_subtotal), sat_tot: t.sat_total == null ? null : cents(t.sat_total) }));
+  const jPalabras = (JV.palabras || []).filter(p => p.activa !== false && p.activa !== 'f').map(p => { try { return { re: new RegExp(p.patron, 'i'), patron: p.patron }; } catch (e) { return null; } }).filter(Boolean);
+  const jCategorias = ordenar((JV.categorias || []).filter(c => c.activa !== false && c.activa !== 'f'), 'prioridad', 'id').map(c => { try { return Object.assign({}, c, { re: new RegExp(c.patron, 'i') }); } catch (e) { return null; } }).filter(Boolean);
+  const facturaPorUUID = {}; for (const f of (O.facturas || [])) if (f.l10n_mx_edi_cfdi_uuid) facturaPorUUID[String(f.l10n_mx_edi_cfdi_uuid).toUpperCase()] = facturas[f.id];
+  // proyectos que un memo puede nombrar: folio SO, nombre de la cuenta analítica de proyecto, cliente de una orden confirmada
+  const quitarLegal = s => norm(s).replace(/\b(S\.?\s?A\.?|S\.?\s?DE\s?R\.?\s?L\.?|DE\s+C\.?\s?V\.?|S\.?\s?A\.?\s?P\.?\s?I\.?|SAPI|SA|CV|DE|S|RL)\b/g, ' ').replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const soNombres = new Set((O.ventas || []).map(s => norm(s.name).replace(/\s/g, '')));
+  const jProyectos = [];
+  for (const a of (O.analiticas || [])) { const pl = m2o(a.root_plan_id).id || m2o(a.plan_id).id; if (!PLANES_PROYECTO.includes(pl)) continue;
+    const n = quitarLegal(String(a.name || '').replace(/^\s*SO\s?-?\d+\s*[-·:]?\s*/i, '')); if (n.length >= 6) jProyectos.push({ n, nombre: a.name }); }
+  for (const s of (O.ventas || [])) { const n = quitarLegal(m2o(s.partner_id).name); if (n.length >= 5 && !/^ZZ/.test(n)) jProyectos.push({ n, nombre: m2o(s.partner_id).name + ' (' + s.name + ')' }); }
+  const proyectoEnMemo = memo => {
+    const t = norm(memo); if (!t) return null;
+    const so = t.match(/\bSO\s?-?(\d{4,6})\b/); if (so && soNombres.has('SO' + so[1])) return { via: 'folio', nombre: 'SO' + so[1] };
+    for (const p of jProyectos) if (new RegExp('(^|[^A-Z0-9])' + p.n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '([^A-Z0-9]|$)').test(t)) return { via: 'nombre', nombre: p.nombre };
+    return null;
+  };
+  // emparejar: renglón del PDF ↔ transacción del CSV ↔ renglón del diario 61 (monto exacto, tarjeta, fecha ±3 días)
+  const l4De = ref => { const x = String(ref || '').match(/\*{4}(\d{4})/); return x ? x[1] : null; };
+  const par = (a, bs, usados, fechaB, montoB, dias) => {
+    let mejor = null;
+    for (const b of bs) { if (usados.has(b)) continue; if (montoB(b) !== a.monto) continue;
+      const tb = b.tarjeta; if (a.tarjeta && tb && a.tarjeta !== tb) continue;
+      const d = Math.abs(diasEntre(fechaB(b), a.fecha)); if (d > dias) continue;
+      if (!mejor || d < mejor.d) mejor = { b, d }; }
+    if (mejor) usados.add(mejor.b); return mejor ? mejor.b : null;
+  };
+  const odoo61 = ordenar(O.jeeves || [], 'date', 'id').map(j => ({ j, fecha: dia(j.date), monto: -cents(j.amount), tarjeta: l4De(j.payment_ref) }));
+  const usadosO = new Set(), usadosT = new Set();
+  for (const r of ordenar(jFilas, 'fecha', 'id')) {
+    r.odoo = par(r, odoo61, usadosO, b => b.fecha, b => b.monto, 3);
+    r.csv = par(r, jTrans, usadosT, b => b.creado || b.posteado, b => b.monto, 3);
+  }
+  const jCotejo = {};                                     // Extra · contra Odoo, por ciclo (sólo en el informe privado)
+  const esConsumo61 = o => o.monto > 0 && !/AJUSTE|FONDEO/i.test(o.j.payment_ref || '');
+  for (const c of Object.keys(jCiclos).sort()) {
+    const fs = jFilas.filter(r => r.ciclo === c), ini = dia(jCiclos[c].periodo_inicio), fin = dia(jCiclos[c].periodo_fin);
+    const sumaF = pred => fs.filter(pred).reduce((a, r) => a + r.monto, 0);
+    const enMes = odoo61.filter(o => o.fecha >= ini && o.fecha <= fin);
+    const deCiclo = o => jFilas.find(r => r.odoo === o);
+    const x = {
+      pdf_new_charges: cents(jCiclos[c].new_charges),
+      odoo_consumos_mes: enMes.filter(esConsumo61).reduce((a, o) => a + o.monto, 0),                 // lo que el v1.2 toma como consumo del mes
+      odoo_del_ciclo_en_el_mes: enMes.filter(o => esConsumo61(o) && (deCiclo(o) || {}).ciclo === c).reduce((a, o) => a + o.monto, 0),
+      odoo_de_otro_ciclo: enMes.filter(o => esConsumo61(o) && deCiclo(o) && deCiclo(o).ciclo !== c).reduce((a, o) => a + o.monto, 0),   // corte: aplicado en otro ciclo
+      pdf_comprado_otro_mes: sumaF(r => ['consumo', 'cargo_jeeves'].includes(r.tipo) && r.odoo && r.odoo.fecha < ini),                 // corte: comprado antes, aplicado aquí
+      devoluciones_pdf: sumaF(r => r.tipo === 'devolucion'),
+      cargos_jeeves_sin_odoo: sumaF(r => r.tipo === 'cargo_jeeves' && !r.odoo),
+      faltan_en_odoo: sumaF(r => r.tipo === 'consumo' && !r.odoo), n_faltan: fs.filter(r => r.tipo === 'consumo' && !r.odoo).length,
+      sobran_en_odoo: enMes.filter(o => esConsumo61(o) && !deCiclo(o)).reduce((a, o) => a + o.monto, 0), n_sobran: enMes.filter(o => esConsumo61(o) && !deCiclo(o)).length,
+      ajuste_en_odoo_como_consumo: enMes.filter(o => /AJUSTE/i.test(o.j.payment_ref || '') && o.monto > 0).reduce((a, o) => a + o.monto, 0),
+      renglones: fs.filter(r => ['consumo', 'devolucion', 'cargo_jeeves'].includes(r.tipo)).length,
+      en_odoo: fs.filter(r => ['consumo', 'devolucion', 'cargo_jeeves'].includes(r.tipo) && r.odoo).length };
+    // PDF New Charges = consumos del diario 61 que son de este ciclo (comprados en el mes o antes) + devoluciones + lo que falta en el feed + cargos de Jeeves sin feed
+    x.explicado = x.odoo_del_ciclo_en_el_mes + x.pdf_comprado_otro_mes + x.devoluciones_pdf + x.faltan_en_odoo + x.cargos_jeeves_sin_odoo;
+    x.no_explicado = x.pdf_new_charges - x.explicado;
+    // y del lado del v1.2: consumos del mes en Odoo = del ciclo + de otro ciclo + sobrantes
+    x.odoo_cuadra = x.odoo_consumos_mes === x.odoo_del_ciclo_en_el_mes + x.odoo_de_otro_ciclo + x.sobran_en_odoo;
+    jCotejo[c] = x;
+  }
+  const jUsadoOdoo = new Set(jFilas.filter(r => r.odoo).map(r => r.odoo.j.id));
+  const jPasos = {};                                      // monto de Jeeves por paso de la clasificación
+  const pasoSuma = (k, b) => { jPasos[k] = (jPasos[k] || 0) + b; };
+  for (const r of ordenar(jFilas, 'fecha', 'id')) {
+    const p = r.ciclo; if (!MESES.includes(p)) continue;
+    const t = r.csv, o = r.odoo ? r.odoo.j : null;
+    const ref = '[' + (r.tarjeta ? '****' + r.tarjeta : 'Jeeves') + '] ' + r.comercio;
+    const base = { fuente: 'odoo', jfuente: 'pdf', id: 'jeeves_movimientos_pdf ' + r.id, periodo: p, fecha: r.fecha, renglon: r.renglon, cuenta: 'Jeeves (estado de cuenta)', mask: r.tarjeta ? '…' + r.tarjeta : '',
+      moneda: 'MXN', monto_nat: Math.abs(r.monto), tc: null, concepto: ref, archivo: jCiclos[p].archivo, pagina: r.pagina, sha256: jCiclos[p].sha256, cfdi: null, proveedor: '', conmet: false,
+      previo: false, iva_estimado: false, mov: 'jp:' + r.id, tipo_mov: r.monto < 0 ? 'abono' : 'cargo', contraparte: r.comercio,
+      jc: t ? t.categoria : '', jm: t ? t.memo : '', jcsv: !!t, jodoo: o ? o.id : null };
+    const vE = { contraparte: base.contraparte, descripcion: ref };
+    const bruto = r.monto;
+    if (r.tipo === 'pago') { conOverride(Object.assign(base, { destino: 'info_pago_jeeves_pdf', bruto: -bruto, neto: -bruto, regla: 'pago a la tarjeta (estado de cuenta de Jeeves)' }), vE); continue; }
+    const ext = r.usd != null || !!reglas.primera('jeeves_extranjero', { comercio_jeeves: norm(r.comercio) });
+    const ivaE = b => ext ? b : Math.round(b * 100 / 116);
+    const notaIva = ext ? ' · comercio extranjero, sin IVA' : ' · IVA estimado ÷1.16';
+    if (r.tipo === 'devolucion' || r.tipo === 'cashback') { conOverride(Object.assign(base, { destino: 'costo_jeeves_devolucion', bruto, neto: ivaE(bruto), iva_estimado: !ext, regla: (r.tipo === 'cashback' ? 'cashback' : 'devolución de comercio') + notaIva }), vE); continue; }
+    if (['cargo_jeeves', 'recargo', 'pay_fee'].includes(r.tipo)) { conOverride(Object.assign(base, { destino: 'admin_comisiones_bancarias', bruto, neto: ivaE(bruto), iva_estimado: !ext, via: 'regla', paso: 6, regla: 'cargo de Jeeves (' + r.tipo + ')' + notaIva }), vE); pasoSuma(6, bruto); continue; }
+    if (r.tipo === 'ajuste') { conOverride(Object.assign(base, { destino: 'costo_jeeves_sin_clasificar', bruto, neto: bruto, via: 'sin_clasificar', paso: 7, regla: 'ajuste de la línea de crédito (S21)' }), vE); pasoSuma(7, bruto); continue; }
+    { const ov = override(base.mov, vE, 'cargo');
+      if (ov) { emitirReclas(Object.assign({}, base, { destino: 'costo_jeeves (v1.1)', bruto, neto: ivaE(bruto), iva_estimado: !ext, regla: 'consumo de Jeeves' + notaIva }), ov); continue; } }
+    // neto y CFDI: SAT del CSV → factura conciliada con folio fiscal → IVA estimado
+    const facO = o && (o.is_reconciled === true || o.is_reconciled === 't') && o.reconciled_lines_name ? facturaPorNombre[(String(o.reconciled_lines_name).match(/BILL\d+/) || [''])[0]] || null : null;
+    const facU = t && t.uuid ? facturaPorUUID[t.uuid] || null : null;
+    let netoDe = ivaE, cfdi = null, ivaEst = !ext, notaN = notaIva;
+    if (t && t.uuid && t.sat_sub != null) {
+      const tot = t.sat_tot && t.sat_tot > 0 ? t.sat_tot : null;
+      netoDe = b => tot && Math.abs(tot - bruto) > 100 ? Math.round(b * t.sat_sub / tot) : (b === bruto ? t.sat_sub : Math.round(b * t.sat_sub / bruto));
+      cfdi = { via: 'sat_csv', ref: 'CFDI ' + t.uuid.slice(0, 8) + '…', factura: facU ? facU.name : null }; ivaEst = false; notaN = ' · con CFDI (SAT Subtotal)';
+    } else if (facO && facO.total > 0 && (O.facturas || []).some(f => f.id === facO.id && f.l10n_mx_edi_cfdi_uuid)) {
+      netoDe = b => aplicarRatio(b, ratio(facO)); cfdi = { via: 'factura_conciliada', ref: 'account.move ' + facO.id + ' · ' + facO.name, factura: facO.name }; ivaEst = false; notaN = ' · con CFDI (factura conciliada)';
+    }
+    const pieza = (suf, destino, b, paso, via, regla, extra) => { push(Object.assign({}, base, { id: base.id + suf, destino, bruto: b, neto: netoDe(b), iva_estimado: ivaEst, cfdi, via, paso, regla: regla + notaN }, extra || {})); pasoSuma(paso, b); };
+    let resto = bruto;
+    // 1) analítica de la factura conciliada · 2) la factura del CFDI
+    for (const [paso, fac, que] of [[1, F.r2 ? facO : null, 'factura conciliada'], [2, F.r2 ? facU : null, 'factura del CFDI']]) {
+      if (!fac || resto <= 0) continue;
+      const pz = partirPorAnalitica(fac, resto);
+      if (!pz.p && !pz.c) continue;
+      const hay = [pz.p, pz.c, pz.n].filter(x => x).length > 1;
+      if (pz.p) pieza(hay ? '#p' : '', 'costo_jeeves_proyecto', pz.p, paso, 'analitica', 'analítica de proyecto (plan 1/18) de la ' + que + ' · ' + fac.name, { proveedor: fac.partner, previo: proyectoPrevio(fac) });
+      if (pz.c) pieza(hay ? '#c' : '', 'admin_jeeves_analitica_comun', pz.c, paso, 'analitica', 'analítica común (plan 2) de la ' + que + ' · ' + fac.name, { proveedor: fac.partner });
+      resto = pz.n;
+      break;
+    }
+    if (resto <= 0) continue;
+    const suf = resto !== bruto ? '#n' : '';
+    const memo = t ? t.memo : '';
+    // 3) memo que nombra un proyecto
+    const pm = proyectoEnMemo(memo);
+    if (pm) { pieza(suf, 'costo_jeeves_proyecto', resto, 3, 'memo', 'el memo nombra el proyecto ' + pm.nombre + (pm.via === 'folio' ? ' (folio)' : ''), { proyecto_memo: pm.nombre }); continue; }
+    // 4) memo de gasto personal o ajeno a FTS
+    const pp = memo ? jPalabras.find(x => x.re.test(norm(memo).toLowerCase()) || x.re.test(memo)) : null;
+    if (pp) { push(Object.assign({}, base, { id: base.id + suf, destino: 'jeeves_personal', bruto: resto, neto: resto, iva_estimado: false, cfdi, via: 'memo', paso: 4,
+      regla: 'memo de gasto personal o ajeno (patrón «' + pp.patron + '»); por decidir · sin IVA acreditable' })); pasoSuma(4, resto); continue; }
+    // 5) categoría del comercio
+    const pc = t && t.categoria ? jCategorias.find(c => c.re.test(t.categoria)) : null;
+    if (pc) { pieza(suf, (pc.destino === 'administrativo' ? 'admin_jeeves_' : 'costo_jeeves_') + pc.subcategoria, resto, 5, 'categoria', 'categoría del comercio: ' + t.categoria); continue; }
+    // 6) reglas por nombre de comercio (v1) · 7) sin clasificar
+    const rj = reglas.primeraDe(['jeeves_costo', 'jeeves_admin'], { comercio_jeeves: norm(r.comercio) });
+    if (rj) { pieza(suf, (rj.destino === 'jeeves_admin' ? 'admin_jeeves_' : 'costo_jeeves_') + (rj.subcategoria || 'otros'), resto, 6, 'regla', 'regla ' + rj.id + ' por nombre de comercio'); continue; }
+    pieza(suf, 'costo_jeeves_sin_clasificar', resto, 7, 'sin_clasificar', 'sin analítica, CFDI con analítica, memo, categoría ni regla');
+  }
+
+  // ── Jeeves del diario 61, sólo en meses SIN ciclo validado (como el v1.2); se marca ──
   for (const j of ordenar(O.jeeves || [], 'date', 'id')) {
     const f = dia(j.date), p = f.slice(0, 7); if (!MESES.includes(p)) continue;
+    if (jCiclos[p] || jUsadoOdoo.has(j.id)) continue;                     // ya viene del estado de cuenta
     const c = cents(j.amount), ref = String(j.payment_ref || '');
     const comercio = norm(ref.replace(/^\[[^\]]*\]\s*/, ''));
-    const base = { fuente: 'odoo', id: 'account.bank.statement.line ' + j.id, periodo: p, fecha: f, renglon: 0, cuenta: 'Jeeves (diario 61)', mask: '', moneda: 'MXN', monto_nat: Math.abs(c), tc: null,
+    const base = { fuente: 'odoo', jfuente: 'diario61', id: 'account.bank.statement.line ' + j.id, periodo: p, fecha: f, renglon: 0, cuenta: 'Jeeves (diario 61)', mask: '', moneda: 'MXN', monto_nat: Math.abs(c), tc: null,
       concepto: ref, archivo: null, pagina: null, sha256: null, cfdi: null, proveedor: '', conmet: false, previo: false, iva_estimado: false,
       mov: 'j:' + j.id, tipo_mov: /\[FONDEO\]/i.test(ref) ? 'abono' : 'cargo', contraparte: ref.replace(/^\[[^\]]*\]\s*/, '') };
     const vE = { contraparte: base.contraparte, descripcion: ref };
@@ -660,8 +798,16 @@ function motor(ins, F) {
   for (const p of MESES) {
     const fJ = sumI(i => i.destino === 'excl_fondeo_jeeves', p);
     const cJ = sumI(i => i.cuenta.indexOf('Jeeves') === 0 && i.destino.indexOf('info_') !== 0, p);      // consumos − devoluciones
-    acJ += fJ - cJ;
-    conciliacion.jeeves[p] = { fondeos: fJ, consumos: cJ, dif_mes: fJ - cJ, acumulado: acJ, pendiente_fondear: acJ < 0 ? -acJ : 0, diferencia: acJ > 0 ? acJ : 0 };
+    const cic = jCiclos[p];
+    if (cic) {                                             // saldos reales del estado de cuenta (#352): acumulado = −Amount Due
+      const pagos = sumI(i => i.destino === 'info_pago_jeeves_pdf', p);
+      acJ = -cents(cic.amount_due);
+      conciliacion.jeeves[p] = { fondeos: fJ, consumos: cJ, pagos, dif_mes: fJ - pagos, acumulado: acJ, pendiente_fondear: acJ < 0 ? -acJ : 0, diferencia: acJ > 0 ? acJ : 0,
+        saldo_inicial: cents(cic.previous_balance), saldo_final: cents(cic.amount_due), fuente: 'estado de cuenta' };
+    } else {
+      acJ += fJ - cJ;
+      conciliacion.jeeves[p] = { fondeos: fJ, consumos: cJ, dif_mes: fJ - cJ, acumulado: acJ, pendiente_fondear: acJ < 0 ? -acJ : 0, diferencia: acJ > 0 ? acJ : 0 };
+    }
     const fY = sumI(i => i.destino === 'excl_fondeo_payana', p);
     const cY = sumI(i => i.cuenta.indexOf('Payana') === 0 && i.destino.indexOf('info_') !== 0, p);       // pagos (incluye activo fijo pagado por Payana)
     acY += fY - cY;
@@ -673,7 +819,9 @@ function motor(ins, F) {
     conciliacion.nomina[p] = { fondeos: fN, consumos: dN, var_saldo: dS, dif_mes: dS === null ? null : fN - dN - dS, sin_estado: !eN };
   }
 
-  return { MESES, MV, cobertura, items, ventas, facturado, P, contrato, estimado, conmetMes, candidatasPartida, activos, reglas, repartoNomina, conciliacion };
+  for (const p of MESES) cobertura[p].jeeves = jCiclos[p] ? 'estado de cuenta validado' : 'diario 61 (sin ciclo validado)';
+  return { MESES, MV, cobertura, items, ventas, facturado, P, contrato, estimado, conmetMes, candidatasPartida, activos, reglas, repartoNomina, conciliacion,
+    jeeves: { ciclos: jCiclos, cotejo: jCotejo, pasos: jPasos, filas: jFilas.length, con_csv: jFilas.filter(r => r.csv).length, con_odoo: jFilas.filter(r => r.odoo).length } };
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -715,10 +863,10 @@ function armarVistas(m, F) {
     const cs = [
       renglon('costo_prov_cfdi', 'Proveedores con CFDI ligado (sin IVA)', D('costo_proveedor_con_cfdi'), 'v_movimientos_validados · cargos con factura de proveedor en Odoo'),
       renglon('costo_prov_sin', 'Proveedores sin CFDI ligado (bruto)', D('costo_proveedor_sin_cfdi'), 'v_movimientos_validados · cargos sin factura (monto exacto ±15 días)'),
-      renglon('costo_jeeves_proy', 'Jeeves con analítica de proyecto (IVA estimado)', D('costo_jeeves_proyecto'), 'Odoo diario 61 · consumo conciliado con factura con analítica plan 1/18 (R2)'),
-      renglon('costo_jeeves', F.d3 ? 'Jeeves costo por regla de comercio (IVA estimado, sin CFDI)' : 'Jeeves: consumos (bruto)', i => i.destino.indexOf('costo_jeeves') === 0 && ['costo_jeeves_sin_clasificar', 'costo_jeeves_devolucion', 'costo_jeeves_proyecto'].indexOf(i.destino) < 0, 'Odoo diario 61 · sin analítica: reglas por tipo de comercio (D3)'),
-      renglon('costo_jeeves_sin', 'Jeeves sin clasificar (IVA estimado)', D('costo_jeeves_sin_clasificar'), 'Odoo diario 61 · comercio sin regla'),
-      renglon('costo_jeeves_dev', 'Jeeves: devoluciones de comercio', D('costo_jeeves_devolucion'), 'Odoo diario 61 · [DEVOLUCIÓN]'),
+      renglon('costo_jeeves_proy', 'Jeeves de proyecto (analítica, CFDI o memo)', D('costo_jeeves_proyecto'), 'estado de cuenta de Jeeves (o diario 61 sin ciclo) · analítica plan 1/18 de la factura conciliada o del CFDI, o memo con el proyecto'),
+      renglon('costo_jeeves', F.d3 ? 'Jeeves costo por regla de comercio (IVA estimado, sin CFDI)' : 'Jeeves: consumos (bruto)', i => i.destino.indexOf('costo_jeeves') === 0 && ['costo_jeeves_sin_clasificar', 'costo_jeeves_devolucion', 'costo_jeeves_proyecto'].indexOf(i.destino) < 0, 'estado de cuenta de Jeeves (o diario 61) · categoría del comercio o reglas por nombre de comercio'),
+      renglon('costo_jeeves_sin', 'Jeeves sin clasificar', D('costo_jeeves_sin_clasificar'), 'estado de cuenta de Jeeves (o diario 61) · sin analítica, memo, categoría ni regla'),
+      renglon('costo_jeeves_dev', 'Jeeves: devoluciones de comercio', D('costo_jeeves_devolucion'), 'estado de cuenta de Jeeves (o diario 61 · [DEVOLUCIÓN])'),
       renglon('costo_payana_proy', 'Payana con analítica de proyecto (sin IVA)', D('costo_payana_proyecto'), 'Odoo diario 74 · factura con analítica plan 1/18; las mixtas se parten (R2)'),
       renglon('costo_payana_pc', 'Payana sin clasificar (sin analítica ni regla)', D('costo_payana_sin_clasificar'), 'Odoo diario 74 · factura sin analítica de proyecto ni común y sin regla de proveedor (R2)'),
       F.r1 ? renglon('costo_nomina', 'Nómina de proyectos (reparto por horas)', D('nomina_proyectos'), 'nómina total del banco × % de horas o Carga MO a proyecto, por persona y mes (R1) · ver «Reparto de nómina»')
@@ -735,16 +883,22 @@ function armarVistas(m, F) {
     const ga = F.r1 ? [renglon('ga_nomina_oficina', 'Nómina de cuentas comunes (reparto por horas)', D('nomina_comun'), 'nómina total del banco × % de horas o Carga MO a bolsas comunes (R1) · ver «Reparto de nómina»'),
         renglon('ga_nomina_sin_horas', 'Nómina sin horas cargadas', D('nomina_sin_horas'), 'personas activas que nunca han cargado horas (R1)')]
       : [renglon('ga_nomina_oficina', 'Nómina de oficina', D('nomina_oficina'), 'personal de bancos.nomina_oficina (D1)')];
-    ga.push(renglon('ga_jeeves_an', 'Jeeves con analítica común (IVA estimado)', D('admin_jeeves_analitica_comun'), 'Odoo diario 61 · factura conciliada con analítica plan 2 (R2)'),
-      renglon('ga_jeeves', 'Jeeves administrativo por regla de comercio (IVA estimado)', i => i.destino.indexOf('admin_jeeves_') === 0 && i.destino !== 'admin_jeeves_analitica_comun', 'Odoo diario 61 · software, papelería, restaurantes en Monterrey (D3)'),
+    ga.push(renglon('ga_jeeves_an', 'Jeeves con analítica común', D('admin_jeeves_analitica_comun'), 'estado de cuenta de Jeeves (o diario 61) · factura conciliada o del CFDI con analítica plan 2'),
+      renglon('ga_jeeves', 'Jeeves administrativo por categoría o regla de comercio', i => i.destino.indexOf('admin_jeeves_') === 0 && i.destino !== 'admin_jeeves_analitica_comun', 'estado de cuenta de Jeeves (o diario 61) · software, papelería, restaurantes en Monterrey'),
       renglon('ga_payana', 'Payana con analítica común (plan 2)', D('admin_payana_indirecto'), 'Odoo diario 74 · factura con analítica plan 2; las mixtas se parten (R2)'));
     const otros = Array.from(new Set(items.filter(i => i.destino.indexOf('admin_') === 0 && i.destino.indexOf('admin_jeeves_') !== 0 && i.destino !== 'admin_payana_indirecto').map(i => i.destino))).sort();
     for (const d of otros) ga.push(renglon('ga_' + d, d.replace('admin_', '').replace(/_/g, ' ').replace(/^./, x => x.toUpperCase()), D(d), 'reglas administrativo (bancos.reglas_edo_resultados)'));
     const GA = linea('gastos_admin', 'Gastos administrativos', 1, p => ga.reduce((s, x) => s + x[p], 0));
     const OI = items.some(D('otros_ingresos')) ? renglon('otros_ingresos', 'Otros ingresos (reclasificado)', D('otros_ingresos'), 'abonos reclasificados por Esteban (Vista E)') : null;
     const UO = linea('utilidad_operacion', 'Utilidad de operación', 1, p => UB[p] - GA[p] + (OI ? OI[p] : 0));
-    const PI = renglon('partidas', 'Partidas por identificar (pendiente de Esteban)', P('partida_'), 'D5 · SPEI sin concepto ni CFDI desde el umbral, casa de cambio sin entrada, las marcadas «otro» y las reclasificadas');
+    const PI0 = renglon('partidas', 'Partidas por identificar (pendiente de Esteban)', P('partida_'), 'D5 · SPEI sin concepto ni CFDI desde el umbral, casa de cambio sin entrada, las marcadas «otro» y las reclasificadas');
     L[L.length - 1].nivel = 1;
+    let PI = PI0;
+    if (items.some(D('jeeves_personal'))) {                 // #352: memo de gasto personal o ajeno; Esteban decide (cuenta por cobrar, reembolso u otro)
+      const JP = renglon('jeeves_personales', 'Gastos personales o ajenos en tarjeta (por decidir)', D('jeeves_personal'), 'estado de cuenta de Jeeves · memo con palabra de bancos.jeeves_palabras_personales');
+      L[L.length - 1].nivel = 1;
+      PI = {}; for (const k of Object.keys(PI0)) PI[k] = PI0[k] + JP[k];
+    }
     const UOP = linea('utilidad_operacion_partidas', 'Utilidad de operación después de partidas', 1, p => UO[p] - PI[p]);
     // informativos
     const imp = ['impuestos_sat', 'impuestos_imss_infonavit', 'impuestos_isn'].map(d => renglon('info_' + d, 'Informativo · ' + d.replace('impuestos_', '').replace(/_/g, ' '), D(d), 'reglas impuestos_cuotas', 'bruto'));
@@ -775,6 +929,7 @@ function renglonPieza(d) {
   if (d.indexOf('admin_jeeves_') === 0) return 'ga_jeeves';
   if (d.indexOf('admin_') === 0) return 'ga_' + d;
   if (d.indexOf('partida_') === 0) return 'partidas';
+  if (d === 'jeeves_personal') return 'jeeves_personales';
   return null;
 }
 
@@ -793,13 +948,13 @@ function armarPuente(m, A) {
   const bS = pl('salidas', 'Total de cargos BBVA (General, Nómina y USD en pesos)', p => suma(esBancoCargo, 'bruto', p), '');
   const exs = EXCL.map(([d, et]) => pl(d, 'menos ' + et, p => -suma(i => i.fuente === 'banco' && (d.slice(-1) === '_' ? i.destino.indexOf(d) === 0 : i.destino === d), 'bruto', p), '−'));
   const bE = pl('egresos_estado', 'Egresos bancarios que entran al estado o a partidas (bruto)', p => bS[p] + exs.reduce((s, x) => s + x[p], 0), '=');
-  const bJ = pl('mas_jeeves', 'más consumos de Jeeves que entran al estado, netos de devoluciones (diario 61, bruto) · diferencia contra los fondeos en «Conciliación contra BBVA»', p => suma(i => i.fuente === 'odoo' && i.cuenta.indexOf('Jeeves') === 0 && i.destino.indexOf('info_') !== 0, 'bruto', p), '+');
+  const bJ = pl('mas_jeeves', 'más cargos de Jeeves que entran al estado, netos de devoluciones (estado de cuenta; diario 61 en meses sin ciclo), bruto · diferencia contra los fondeos en «Conciliación contra BBVA»', p => suma(i => i.fuente === 'odoo' && i.cuenta.indexOf('Jeeves') === 0 && i.destino.indexOf('info_') !== 0, 'bruto', p), '+');
   const bP = pl('mas_payana', 'más pagos de Payana que entran al estado (diario 74, bruto) · diferencia contra los fondeos en «Conciliación contra BBVA»', p => suma(i => i.fuente === 'odoo' && i.cuenta.indexOf('Payana') === 0 && i.destino.indexOf('info_') !== 0 && i.destino !== 'activo_fijo', 'bruto', p), '+');
   const bN = pl('mas_nomina_lado_nomina', 'más nómina de meses sin estado de la General (leída en el estado de Nómina)', p => suma(i => i.destino === 'nomina_fondeo_lado_nomina', 'bruto', p), '+');
   const bD = pl('mas_depreciacion', 'más depreciación del activo fijo (no es salida de banco)', p => suma(i => i.destino === 'costo_depreciacion', 'bruto', p), '+');
-  const enER = i => i.destino.indexOf('costo_') === 0 || i.destino.indexOf('admin_') === 0 || i.destino.indexOf('nomina') === 0 || i.destino.indexOf('partida_') === 0;
+  const enER = i => i.destino.indexOf('costo_') === 0 || i.destino.indexOf('admin_') === 0 || i.destino.indexOf('nomina') === 0 || i.destino.indexOf('partida_') === 0 || i.destino === 'jeeves_personal';
   const bI = pl('menos_iva', 'menos IVA (CFDI ligado y estimado en Jeeves)', p => -suma(i => enER(i) && i.fuente !== 'ajuste', 'bruto', p) + suma(i => enER(i) && i.fuente !== 'ajuste', 'neto', p), '−');
-  const bF = pl('fin', 'Costo de ventas + gastos administrativos + partidas por identificar', p => bE[p] + bJ[p] + bP[p] + bN[p] + bD[p] + bI[p], '=');
+  const bF = pl('fin', 'Costo de ventas + gastos administrativos + partidas por identificar (y gastos personales en tarjeta)', p => bE[p] + bJ[p] + bP[p] + bN[p] + bD[p] + bI[p], '=');
   const cuadre = {}; let cuadraTodo = true;
   for (const p of MESES.concat(['acum'])) { const d = bF[p] - (A.tot.C[p] + A.tot.GA[p] + A.tot.PI[p]); cuadre[p] = d; if (d !== 0) cuadraTodo = false; }
   return { puente, cuadre, cuadraTodo };
@@ -1094,6 +1249,18 @@ function calcular(insumos, opciones) {
   const baseC = suma(costoNoNomina, 'neto'), sinC = suma(sinCfdi, 'neto');
   const jeev = items.filter(i => i.cuenta.indexOf('Jeeves') === 0 && (i.destino.indexOf('costo_jeeves') === 0 || i.destino.indexOf('admin_jeeves') === 0) && i.destino !== 'costo_jeeves_devolucion');
   const jSin = jeev.filter(i => i.destino === 'costo_jeeves_sin_clasificar');
+  // #352: clasificación de Jeeves por paso (estado de cuenta) y contra el v1.2 (el mismo cálculo sin la base de Jeeves)
+  const esCargoJ = i => i.cuenta.indexOf('Jeeves') === 0 && i.tipo_mov === 'cargo' && i.destino.indexOf('info_') !== 0 && i.destino !== 'costo_jeeves_devolucion' && !i.reclas;
+  const pasoDe = i => i.paso || (i.via === 'analitica' ? 1 : i.via === 'sin_clasificar' || i.destino === 'costo_jeeves_sin_clasificar' ? 7 : 6);
+  const jCargos = items.filter(esCargoJ), jTot = jCargos.reduce((a, i) => a + i.bruto, 0);
+  const jPorPaso = {}; for (let k = 1; k <= 7; k++) jPorPaso[k] = jCargos.filter(i => pasoDe(i) === k).reduce((a, i) => a + i.bruto, 0);
+  const mV12 = motor(Object.assign({}, ins, { jeeves: null }), TODAS);
+  const jV12 = mV12.items.filter(esCargoJ), jV12Sin = jV12.filter(i => i.destino === 'costo_jeeves_sin_clasificar');
+  const jeevesClas = { meses_estado_de_cuenta: MESES.filter(p => m.jeeves.ciclos[p]), meses_diario61: MESES.filter(p => !m.jeeves.ciclos[p]),
+    por_paso: Object.fromEntries(Object.keys(jPorPaso).map(k => [k, pct(jPorPaso[k], jTot)])),
+    con_cfdi: pct(jCargos.filter(i => !!i.cfdi).reduce((a, i) => a + i.bruto, 0), jTot),
+    sin_clasificar: pct(jPorPaso[7], jTot), sin_clasificar_v12: pct(jV12Sin.reduce((a, i) => a + i.bruto, 0), jV12.reduce((a, i) => a + i.bruto, 0)),
+    personales: jCargos.filter(i => i.destino === 'jeeves_personal').length, renglones_pdf: m.jeeves.filas, con_csv: m.jeeves.con_csv, con_odoo: m.jeeves.con_odoo };
   const conteos = {}; for (const i of items) conteos[i.destino] = (conteos[i.destino] || 0) + 1;
   conteos.ventas = ventas.filter(v => !v.excluida).length; conteos.ventas_excluidas = ventas.filter(v => v.excluida).length;
   conteos.facturas_cliente = facturado.filter(f => !f.excluida).length;
@@ -1127,6 +1294,9 @@ function calcular(insumos, opciones) {
     ['S24', 'Meses sin horas clasificadas (R1)', 'Enero a marzo no tienen ninguna hora con proyecto ni bolsa: su reparto sale del historial o del % global y el mes se marca «reparto de nómina estimado».'],
     ['S25', 'Planes que no son ni proyecto ni común (R2)', 'El plan 20 (rubro) se ignora. Activos, combustible, inmuebles, flota y otros planes cuentan como «sin analítica» y van a las reglas.'],
     ['S26', 'Conciliación contra BBVA (R3)', 'Jeeves y Payana no traen saldo en los insumos: se muestra la diferencia ACUMULADA entre fondeos desde BBVA y consumos o pagos. Si es negativa es «pendiente de fondear desde BBVA»; si es positiva, «diferencia contra BBVA» (saldo sin gastar o faltante por explicar). Nómina: fondeos − dispersiones − variación del saldo de la cuenta Nómina.'],
+    ['S28', 'Jeeves desde su estado de cuenta (#352)', 'En los meses con ciclo validado (V1 al centavo) Jeeves sale del PDF del estado de cuenta, por ciclo (fecha de aplicación): un consumo del 30 de julio aplicado en agosto va a agosto. Los demás meses siguen con el diario 61 por fecha de compra, como en el v1.2, y se marcan. Un renglón del diario 61 que ya está en un ciclo validado no se cuenta dos veces.'],
+    ['S29', 'Clasificación de Jeeves (#352)', 'Por consumo, en orden: 1) analítica de la factura conciliada (diario 61) · 2) CFDI de las columnas SAT del CSV (SAT Subtotal como monto sin IVA) y la analítica de esa factura en Odoo · 3) memo que nombra un proyecto (folio SO, nombre de la cuenta analítica o cliente de una orden confirmada) → costo · 4) memo personal o ajeno (bancos.jeeves_palabras_personales) → renglón aparte, por decidir · 5) categoría del comercio (bancos.jeeves_categorias_destino) · 6) reglas por nombre de comercio del v1 · 7) costo sin clasificar. Cargos de Jeeves (usuario extra, recargos) → comisiones bancarias.'],
+    ['S30', 'Conciliación de Jeeves con saldos reales (#352)', 'En meses con ciclo validado, la conciliación R3 usa Previous Balance y Amount Due del PDF: el acumulado es −Amount Due (negativo = pendiente de fondear), y la diferencia del mes es fondeos desde BBVA − pagos registrados por Jeeves (la V4 los empareja uno a uno).'],
     ['S27', 'Versión que no cuadra (R3)', 'Si el puente no cuadra al centavo en algún mes, el mes se marca en rojo y el recálculo no publica versión nueva ni sobrescribe el estado actual.'],
   ];
   const decisiones = [
@@ -1146,6 +1316,8 @@ function calcular(insumos, opciones) {
     version_motor: VERSION, meses: MESES, mes_solo_ventas: MV, cuadra_al_centavo: pz.cuadraTodo, diferencia_puente_acum: pz.cuadre.acum, conteos,
     porcentaje_costo_sin_cfdi: pct(sinC, baseC), porcentaje_costo_sin_cfdi_sobre_costo_total: pct(sinC, A.tot.C.acum),
     jeeves: { consumos: jeev.length, sin_clasificar: jSin.length, pct_monto_sin_clasificar: pct(jSin.reduce((s, i) => s + i.bruto, 0), jeev.reduce((s, i) => s + i.bruto, 0)) },
+    jeeves_clasificacion: jeevesClas,
+    jeeves_cotejo_odoo: Object.fromEntries(Object.keys(m.jeeves.cotejo).map(c => [c, { renglones: m.jeeves.cotejo[c].renglones, en_odoo: m.jeeves.cotejo[c].en_odoo, n_faltan: m.jeeves.cotejo[c].n_faltan, n_sobran: m.jeeves.cotejo[c].n_sobran, explicado_al_centavo: m.jeeves.cotejo[c].no_explicado === 0 }])),
     cobertura: MESES.map(p => ({ periodo: p, estado: cobertura[p].estado, faltan: cobertura[p].faltan })),
     partidas_por_identificar: partidas.filter(i => i.destino === 'partida_por_identificar').length, nomina_oficina_filas: (ins.nomina_oficina || []).length,
     utilidad_operacion: { A: A.tot.UO.acum, B: B.tot.UO.acum, C: C.tot.UO.acum },
@@ -1180,7 +1352,7 @@ function calcular(insumos, opciones) {
   for (const [k, V] of [['A', A], ['B', B], ['C', C]]) { const b = {}; for (const p of MESES) b[p] = V.tot.UOP[p]; b.acum = V.tot.UOP.acum; vd.base[k] = b; }
 
   // ═══ Vista E: todos los movimientos (incluidos los excluidos), catálogo y renglones base (fuera de la huella) ═══
-  const secc = c => c.indexOf('ventas_') === 0 ? 'venta' : c.indexOf('costo_') === 0 ? 'costo' : c.indexOf('ga_') === 0 ? 'ga' : c === 'otros_ingresos' ? 'oi' : c === 'partidas' ? 'pi' : null;
+  const secc = c => c.indexOf('ventas_') === 0 ? 'venta' : c.indexOf('costo_') === 0 ? 'costo' : c.indexOf('ga_') === 0 ? 'ga' : c === 'otros_ingresos' ? 'oi' : (c === 'partidas' || c === 'jeeves_personales') ? 'pi' : null;
   const soloMeses = v => { const o = {}; for (const p of MESES) o[p] = v[p] || 0; o.acum = v.acum || 0; return o; };
   const ve = { meses: MESES, huella, columnas: CSV_RECLAS_COLUMNAS, cat: Object.values(leerCatalogo(ins.destinos)).map(c => ({ clave: c.clave, tipo: c.tipo, seccion: c.seccion, etiqueta: c.etiqueta, renglon: c.renglon || null, entra: !!c.entra })),
     lineas: {}, ventas: {}, nom: {}, movs: [], catLabels: {},
@@ -1197,7 +1369,7 @@ function calcular(insumos, opciones) {
     impuestos_sat: 'Informativo · SAT', impuestos_imss_infonavit: 'Informativo · IMSS / INFONAVIT', impuestos_isn: 'Informativo · ISN', impuestos_reclasificado: 'Informativo · impuestos (reclasificado)',
     nomina_fondeo: 'Nómina · fondeo General → Nómina (repartida R1)', nomina_directa: 'Nómina · pago directo (repartida R1)', nomina_fondeo_lado_nomina: 'Nómina · fondeo leído en Nómina (repartida R1)',
     info_abono_sin_clasificar: 'Abono sin renglón (informativo)', info_entrada_financiamiento: 'Abono · financiamiento recibido', info_devolucion_recibida: 'Abono · devolución recibida', info_anticipo_conmet_cobrado: 'Abono · cobro de Conmet',
-    info_fondeo_jeeves_odoo: 'Jeeves · fondeo registrado', info_payana_entrada: 'Payana · entrada', info_cobro_cliente: 'Abono · cobro de cliente', info_anticipo_cliente: 'Abono · anticipo de cliente',
+    info_fondeo_jeeves_odoo: 'Jeeves · fondeo registrado', info_pago_jeeves_pdf: 'Jeeves · pago a la tarjeta (estado de cuenta)', jeeves_personal: 'Gastos personales o ajenos en tarjeta (por decidir)', info_payana_entrada: 'Payana · entrada', info_cobro_cliente: 'Abono · cobro de cliente', info_anticipo_cliente: 'Abono · anticipo de cliente',
     info_aportacion_socio: 'Abono · aportación de socio', info_traspaso_recibido: 'Abono · traspaso propio', otros_ingresos: 'Otros ingresos' };
   const grupos = {}, ordenK = [];
   for (const i of items) { if (!i.mov) continue; if (!grupos[i.mov]) { grupos[i.mov] = []; ordenK.push(i.mov); } grupos[i.mov].push(i); }
@@ -1209,7 +1381,8 @@ function calcular(insumos, opciones) {
     ve.movs.push({ k, f: i0.fuente === 'banco' ? 'banco' : (i0.cuenta.indexOf('Jeeves') === 0 ? 'jeeves' : 'payana'), fe: i0.fecha, m: i0.periodo, cu: i0.cuenta + (i0.mask ? ' ' + i0.mask : ''), co: enmascarar(i0.concepto),
       cp: String(i0.contraparte || i0.proveedor || ''), t: i0.tipo_mov, b: g.reduce((a, i) => a + i.bruto, 0), n: g.reduce((a, i) => a + i.neto, 0), cf: g.some(i => !!i.cfdi), cx: g.some(i => i.conmet),
       ca, cat: ve.catLabels[ca] + (g.length > 1 ? ' (partido en ' + g.length + ')' : ''), rg: String(mayor.regla || ''), o: i0.fuente === 'banco' ? (i0.archivo || '') + ' · p. ' + (i0.pagina || '') : String(i0.id).replace(/#.*$/, ''),
-      pz, ex: pz.every(x => !x[0]), pi: g.some(i => i.destino.indexOf('partida_') === 0),
+      pz, ex: pz.every(x => !x[0]), pi: g.some(i => i.destino.indexOf('partida_') === 0 || i.destino === 'jeeves_personal'),
+      jj: i0.jfuente === 'pdf' ? { ca: i0.jc || '', me: i0.jm || '', cf: g.some(i => !!i.cfdi), csv: !!i0.jcsv } : null,
       rc: i0.reclas ? (i0.reclas.fuente === 'movimiento' ? 'archivo ' + i0.reclas.archivo + ' · ' + i0.reclas.aplicada_en + ' · Esteban' : 'regla de Esteban ' + i0.reclas.regla_id) : '' });
   }
 
@@ -1239,7 +1412,7 @@ function calcular(insumos, opciones) {
     .concat(...['jeeves', 'payana', 'nomina'].map(k => MESES.map(p => { const x = CQ[k][p]; const f = v => v == null ? '' : (v / 100).toFixed(2);
       return [k, p, f(x.fondeos), f(x.consumos), f(x.var_saldo), f(x.dif_mes), f(x.acumulado), f(x.pendiente_fondear), f(x.diferencia)]; }))));
   const html = armarHTML({ A, B, C, pz, items, ventas, facturado, cobertura, supuestos, decisiones, partidas, conteos, baseC, sinC, huella, huellaInsumos,
-    opciones, COLS, MESES, MV, incompletos, cambios, vd, ve, m, jeev, jSin, nv, etq, decision: out.decision });
+    opciones, COLS, MESES, MV, incompletos, cambios, vd, ve, m, jeev, jSin, jeevesClas, nv, etq, decision: out.decision });
   const cab = 'Estado de resultados ' + ANIO + ' ' + etq + ' (versión ' + nv + ') · Servicios FTS SA de CV · sin IVA · pesos · huella ' + huella.slice(0, 16) + '\n';
   const base = [
     ['vista_A.csv', csvVista(A)], ['vista_B_sin_Conmet.csv', csvVista(B)], ['vista_C_facturado.csv', csvVista(C)],
@@ -1429,7 +1602,7 @@ function vistaECliente() {
       var err = r.errores.filter(function (e) { return e.k === m.k; })[0];
       var dest = exp && exp.partes && exp.partes.length === 1 ? parte1.dest : '';
       h += '<tr class="' + (ch ? 'vecambio' : '') + (err ? ' bad' : '') + (RET.sel[m.k] ? ' marcado' : '') + '" data-k="' + escH(m.k) + '"><td><input type="checkbox" class="ve-sel"' + (ui.sel[m.k] ? ' checked' : '') + '></td>' +
-        '<td class="mut">' + escH(m.k.slice(0, 14)) + '</td><td>' + escH(m.fe) + '</td><td>' + escH(m.cu) + '</td><td>' + escH(m.co) + '</td><td>' + escH(m.cp) + '</td><td>' + m.t + '</td>' +
+        '<td class="mut">' + escH(m.k.slice(0, 14)) + '</td><td>' + escH(m.fe) + '</td><td>' + escH(m.cu) + '</td><td>' + escH(m.co) + (m.jj ? '<br><span class="mut">Jeeves · categoría: ' + escH(m.jj.ca || 'sin dato') + ' · memo: ' + escH(m.jj.me || 'sin memo') + ' · ' + (m.jj.cf ? 'con CFDI' : 'sin CFDI') + (m.jj.csv ? '' : ' · sin transacción en el CSV') + '</span>' : '') + '</td><td>' + escH(m.cp) + '</td><td>' + m.t + '</td>' +
         '<td class="n">' + money(m.b) + '</td><td class="n">' + money(m.n) + '</td><td>' + escH(m.cat) + (m.rc ? '<br><span class="tag2" title="' + escH(m.rc) + '">reclasificación vigente</span>' : '') + '</td>' +
         '<td class="mut">' + escH(m.rg) + '</td><td>' + (exp && exp.partes && exp.partes.length > 1 ? '<b>partido en ' + exp.partes.length + '</b> ' : '<select class="ve-dest">' + opcionesDestino(m.t, dest) + '</select> ') +
         '<button class="ve-partir" title="Partir entre varios destinos">Partir</button>' + (ch && !exp ? '<br><span class="tag2">por regla propuesta</span>' : '') + (err ? '<br><span class="bad">' + escH(err.motivo) + '</span>' : '') + '</td>' +
@@ -1646,7 +1819,7 @@ function vistaECliente() {
 
 // ═══ HTML privado, autocontenido ═══════════════════════════════════════════
 function armarHTML(z) {
-  const { A, B, C, pz, items, ventas, facturado, cobertura, supuestos, decisiones, partidas, COLS, MESES, MV, cambios, vd, ve, m, jeev, jSin, nv, etq } = z;
+  const { A, B, C, pz, items, ventas, facturado, cobertura, supuestos, decisiones, partidas, COLS, MESES, MV, cambios, vd, ve, m, jeev, jSin, jeevesClas, nv, etq } = z;
   const cols = COLS.concat(['acum']);
   const celda = (l, p) => l.es_pct ? (l.vals[p] === null ? '—' : (l.vals[p] / 100).toFixed(1) + '%') : fmt(l.vals[p]);
   const detalleItems = lista => '<div class="scroll"><table class="det"><tr><th>fecha</th><th>cuenta</th><th>concepto</th><th>proveedor / CFDI</th><th class="n">bruto</th><th class="n">sin IVA</th><th>origen</th></tr>' +
@@ -1700,7 +1873,7 @@ function armarHTML(z) {
   const filaC = (et, k, campo, cls) => '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + et + '</td>' + MESES.map(p => { const v = CQ[k][p][campo]; return '<td class="n' + (v && campo === 'diferencia' ? ' bad' : '') + '">' + (v == null ? '—' : fmt(v)) + '</td>'; }).join('') + '</tr>';
   const hConc = '<h2 id="bbva">Conciliación contra BBVA (R3): todo peso del estado sale de BBVA</h2><p class="mut">Sin saldo de Jeeves ni de Payana en los insumos: se muestra la diferencia ACUMULADA entre fondeos desde BBVA y consumos o pagos (S26). Negativa = pendiente de fondear desde BBVA; positiva = diferencia contra BBVA (saldo sin gastar o faltante por explicar). Nunca se reparte ni se esconde.</p>' +
     '<div class="scroll"><table class="er"><thead><tr><th>Concepto</th>' + MESES.map(p => '<th class="n">' + esc(nombreMes(p)) + '</th>').join('') + '</tr></thead><tbody>' +
-    '<tr class="lv1"><td>Jeeves</td>' + MESES.map(() => '<td></td>').join('') + '</tr>' + filaC('fondeos desde BBVA', 'jeeves', 'fondeos') + filaC('consumos − devoluciones', 'jeeves', 'consumos') + filaC('diferencia del mes', 'jeeves', 'dif_mes') + filaC('pendiente de fondear desde BBVA (acumulado)', 'jeeves', 'pendiente_fondear') + filaC('Diferencia contra BBVA (acumulada)', 'jeeves', 'diferencia', 'lv1') +
+    '<tr class="lv1"><td>Jeeves</td>' + MESES.map(() => '<td></td>').join('') + '</tr>' + filaC('fondeos desde BBVA', 'jeeves', 'fondeos') + filaC('pagos registrados por Jeeves (estado de cuenta; — = sin ciclo)', 'jeeves', 'pagos') + filaC('consumos − devoluciones', 'jeeves', 'consumos') + filaC('saldo inicial · Previous Balance (— = sin ciclo)', 'jeeves', 'saldo_inicial') + filaC('saldo final · Amount Due (— = sin ciclo)', 'jeeves', 'saldo_final') + filaC('diferencia del mes (con ciclo: fondeos − pagos)', 'jeeves', 'dif_mes') + filaC('pendiente de fondear desde BBVA (acumulado)', 'jeeves', 'pendiente_fondear') + filaC('Diferencia contra BBVA (acumulada)', 'jeeves', 'diferencia', 'lv1') +
     '<tr class="lv1"><td>Payana</td>' + MESES.map(() => '<td></td>').join('') + '</tr>' + filaC('fondeos desde BBVA', 'payana', 'fondeos') + filaC('pagos', 'payana', 'consumos') + filaC('diferencia del mes', 'payana', 'dif_mes') + filaC('pendiente de fondear desde BBVA (acumulado)', 'payana', 'pendiente_fondear') + filaC('Diferencia contra BBVA (acumulada)', 'payana', 'diferencia', 'lv1') +
     '<tr class="lv1"><td>Nómina</td>' + MESES.map(() => '<td></td>').join('') + '</tr>' + filaC('fondeos General → Nómina', 'nomina', 'fondeos') + filaC('dispersiones de la cuenta Nómina', 'nomina', 'consumos') + filaC('variación del saldo de la cuenta Nómina', 'nomina', 'var_saldo') +
     filaC('Diferencia contra BBVA (fondeos − dispersiones − variación de saldo; — = sin estado de Nómina)', 'nomina', 'dif_mes', 'lv1') + '</tbody></table></div>' +
@@ -1717,6 +1890,24 @@ function armarHTML(z) {
   const pc = ordenar(items.filter(i => i.destino === 'costo_payana_sin_clasificar'), 'fecha', 'id');
   const jsin = ordenar(jSin, 'bruto').reverse().slice(0, 60);
   const hJeeves = '<p>Jeeves: ' + jeev.length + ' consumos; ' + jSin.length + ' sin clasificar (' + pct(jSin.reduce((s, i) => s + i.bruto, 0), jeev.reduce((s, i) => s + i.bruto, 0)) + ' del monto). Los 60 más grandes sin clasificar:</p>' + detalleItems(jsin);
+  // #352: base de Jeeves (estado de cuenta), clasificación por paso, gastos personales y cotejo contra Odoo
+  const JC = jeevesClas || {}, NP = ['', 'analítica de la factura conciliada', 'CFDI (columnas SAT) y su factura', 'memo con proyecto', 'memo personal o ajeno', 'categoría del comercio', 'regla por nombre de comercio (v1)', 'sin clasificar'];
+  const perso = ordenar(items.filter(i => i.destino === 'jeeves_personal'), 'fecha', 'id');
+  const cotejo = m.jeeves.cotejo, cc = Object.keys(cotejo).sort();
+  const filaCot = (et, k) => '<tr><td>' + et + '</td>' + cc.map(c => '<td class="n">' + (typeof cotejo[c][k] === 'number' ? fmt(cotejo[c][k]) : esc(String(cotejo[c][k]))) + '</td>').join('') + '</tr>';
+  const hJeevesBase = '<h2 id="jeeves">Jeeves: estado de cuenta, clasificación y cotejo contra Odoo (#352)</h2>' +
+    '<p>Meses desde el estado de cuenta: ' + esc((JC.meses_estado_de_cuenta || []).map(nombreMes).join(', ') || 'ninguno todavía') + '. Meses con el diario 61 (sin ciclo validado): ' + esc((JC.meses_diario61 || []).map(nombreMes).join(', ') || 'ninguno') + '.</p>' +
+    '<div class="scroll"><table class="det"><tr><th>paso</th><th class="n">% del monto de Jeeves</th></tr>' + [1, 2, 3, 4, 5, 6, 7].map(k => '<tr><td>' + k + ') ' + NP[k] + '</td><td class="n">' + esc((JC.por_paso || {})[k] || 'n/a') + '</td></tr>').join('') +
+    '<tr class="lv1"><td>sin clasificar ahora · con la regla del v1.2</td><td class="n">' + esc(JC.sin_clasificar || 'n/a') + ' · ' + esc(JC.sin_clasificar_v12 || 'n/a') + '</td></tr><tr><td>con CFDI</td><td class="n">' + esc(JC.con_cfdi || 'n/a') + '</td></tr></table></div>' +
+    '<h3>Gastos personales o ajenos en tarjeta (por decidir)</h3>' + (perso.length ? '<p>Decidir cada uno: cuenta por cobrar, reembolso u otro.</p><div class="scroll"><table class="det"><tr><th>fecha</th><th>tarjeta</th><th>comercio</th><th>memo</th><th class="n">bruto</th></tr>' +
+      perso.map(i => '<tr><td>' + esc(i.fecha) + '</td><td>' + esc(i.mask) + '</td><td>' + esc(i.contraparte) + '</td><td>' + esc(i.jm || '') + '</td><td class="n">' + fmt(i.bruto) + '</td></tr>').join('') + '</table></div>' : '<p class="mut">Ninguno.</p>') +
+    '<h3>Cotejo contra Odoo (diario 61), por ciclo</h3>' + (cc.length ? '<div class="scroll"><table class="det"><tr><th>concepto</th>' + cc.map(c => '<th class="n">' + esc(nombreMes(c)) + '</th>').join('') + '</tr>' +
+      filaCot('New Charges del PDF', 'pdf_new_charges') + filaCot('consumos del diario 61 en el mes (lo que usa el v1.2)', 'odoo_consumos_mes') + filaCot('  de ellos, de este ciclo', 'odoo_del_ciclo_en_el_mes') +
+      filaCot('  de ellos, aplicados en otro ciclo (corte de fechas)', 'odoo_de_otro_ciclo') + filaCot('  de ellos, que no están en ningún PDF validado (sobran, o son de un ciclo que aún no llega)', 'sobran_en_odoo') +
+      filaCot('comprados el mes anterior y aplicados en este ciclo (corte de fechas)', 'pdf_comprado_otro_mes') + filaCot('devoluciones del PDF', 'devoluciones_pdf') +
+      filaCot('consumos del PDF que no están en el diario 61 (faltan en el feed)', 'faltan_en_odoo') + filaCot('cargos de Jeeves sin renglón en el diario 61', 'cargos_jeeves_sin_odoo') +
+      filaCot('ajuste del PDF que el diario 61 trae como consumo', 'ajuste_en_odoo_como_consumo') + filaCot('explicado', 'explicado') + filaCot('NO explicado (debe ser 0.00)', 'no_explicado') +
+      filaCot('renglones del PDF · en Odoo', 'renglones') + '</table></div>' : '<p class="mut">Todavía no hay ciclos validados.</p>');
   const vdHtml = '<h2 id="vD">Vista D · escenarios hipotéticos de utilidad retenida</h2>' +
     '<p class="leyenda">Escenario hipotético. No es un registro contable ni cambia el estado de resultados. El subtotal se calcula dividiendo el monto bruto entre 1.16 para todo movimiento seleccionado.</p>' +
     '<p class="mut">Si el visor de OneDrive no ejecuta esta sección, descarga el archivo y ábrelo en el navegador; funciona sin conexión.</p>' +
@@ -1774,7 +1965,7 @@ function armarHTML(z) {
     '<h2 id="sup">Supuestos</h2><div class="scroll"><table class="det">' + supuestos.map(s => '<tr><td>' + esc(s[0]) + '</td><td><b>' + esc(s[1]) + '</b></td><td>' + esc(s[2]) + '</td></tr>').join('') + '</table></div>' +
     '<h2 id="pi">Partidas por identificar (pendientes de Esteban)</h2><p>' + partidas.length + ' partidas, ' + fmt(partidas.reduce((s, i) => s + i.bruto, 0)) + '. Se deciden en bancos.partidas_identificadas.</p>' + detalleItems(partidas) +
     '<h2>Payana sin clasificar</h2><p>' + pc.length + ' pagos, ' + fmt(pc.reduce((s, i) => s + i.neto, 0)) + ' (dentro de costo).</p>' + detalleItems(pc) +
-    '<h2>Jeeves sin clasificar</h2>' + hJeeves +
+    '<h2>Jeeves sin clasificar</h2>' + hJeeves + hJeevesBase +
     '<h2 id="excl">Excluido del resultado (renglones informativos)</h2>' + hExcl +
     '<h2 id="tablas">Tablas editables</h2><ul><li><b>bancos.nomina_oficina</b> (corrección manual de R1): beneficiario = nombre de la persona como está en Odoo; esa persona va 100 % a cuentas comunes entre vigente_desde y vigente_hasta. Vacía = manda la regla de horas.</li>' +
     '<li><b>bancos.partidas_identificadas</b>: clasificacion = costo · pago_prestamo · devolucion_aportacion · traspaso_propio · otro, nota, fecha_decision.</li>' +
