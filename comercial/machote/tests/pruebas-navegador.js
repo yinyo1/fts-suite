@@ -10430,6 +10430,320 @@ await sembrarMachotes(q);
     console.log('    380 · 760 · 900 · 1280 sin desbordes ni anchos en cero');
   });
 
+  /* ══ V1.46 · ÓRDENES DE VENTA, LA LIGA Y LA PUERTA ═══════════════════════ */
+
+  /** Una página con la vista de órdenes lista para usar, SIN carrera.
+   *  La siembra va en el guion de ARRANQUE, no después de cargar: sembrar y
+   *  recargar compite con el arranque de la aplicación y la misma siembra
+   *  llegaba unas veces sí y otras no. Una prueba que a veces ve la pantalla
+   *  vacía no está midiendo la pantalla. */
+  const ordPagina146 = async (opts) => {
+    const o = opts || {};
+    const ctx = await b.newContext({ viewport: { width: 1280, height: 1000 } });
+    const q = await ctx.newPage();
+    q.__ctx = ctx;
+    await q.addInitScript((cfg) => {
+      window.__llamadas = [];
+      try {
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'p.p.p', actor: 'zz.prueba', nombre: 'ZZ Prueba', empleado_id: null,
+          scopes: ['comercial:read', 'comercial:write'],
+          exp: Math.floor(Date.now() / 1000) + 3600 }));
+        localStorage.setItem('fts_machote_v1', JSON.stringify({
+          v: 1, guardado_at: new Date().toISOString(), machotes: [cfg.m], handoff: {} }));
+        localStorage.setItem('fts_machote_sync_v1', JSON.stringify({
+          'M-9146': { machote_id: 'uuid-146', version: 4, folio: 77, folio_txt: 'COT-0146',
+                      subido_at: new Date().toISOString(), huella: 'x' } }));
+      } catch (e) {}
+      const orig = window.fetch;
+      window.fetch = function (u, init) {
+        const url = String(u);
+        if (url.indexOf('/comercial/') >= 0) {
+          let cuerpo = null;
+          try { cuerpo = JSON.parse((init && init.body) || '{}'); } catch (e) {}
+          window.__llamadas.push({ url: url, cuerpo: cuerpo });
+          if (url.indexOf('/comercial/ordenes') >= 0) {
+            const desde = (cuerpo && cuerpo.desde) || 0;
+            const lim = (cuerpo && cuerpo.limite) || 80;
+            const filas = [];
+            for (let i = 0; i < lim && desde + i < cfg.total; i++) {
+              const n = desde + i;
+              filas.push({ id: 80000 + n, nombre: 'SO-P-' + n, estado: 'sent', empresa_id: 1,
+                cliente: 'Cliente inventado ' + n, descripcion: 'Trabajo inventado ' + n,
+                po: '', cotizador: 'Ricardo', cotizador_estado: 'activo',
+                total: 1000 + n, moneda: 'MXN', fecha: '—', pricelist: '—',
+                machote: n === 0 ? { id: 'uuid-146', id_local: 'M-9146',
+                  folio_txt: 'COT-0146', nombre: 'Cotización de prueba', duenio: 'zz.prueba',
+                  version: 4 } : null });
+            }
+            return Promise.resolve({ ok: true, json: () => Promise.resolve(
+              { ok: true, ordenes: filas, total: cfg.total, ocultas: 9 }) });
+          }
+          /* Un servidor de mentiras tiene que contestar como el de verdad: el
+           * real devuelve la identidad y la versión en cada guardado, y un
+           * `{ok:true}` a secas mide un caso que no ocurre. */
+          if (url.indexOf('/comercial/machote-guardar') >= 0) {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve(
+              { ok: true, machote_id: (cuerpo && cuerpo.id_local) === 'M-9146'
+                  ? 'uuid-146' : 'uuid-' + ((cuerpo && cuerpo.id_local) || 'x'),
+                version: 5, folio: 77, folio_txt: 'COT-0146' }) });
+          }
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, hecho: true }) });
+        }
+        return orig(u, init);
+      };
+    }, { m: MACHOTES_FIXTURE[0] && Object.assign(
+           JSON.parse(JSON.stringify(MACHOTES_FIXTURE[0])), { id: 'M-9146' }),
+         total: (o.total === undefined ? 1546 : o.total) });
+    await q.goto(BASE);
+    await q.waitForTimeout(800);
+    return q;
+  };
+  const cerrar146 = async (q) => { try { await q.close(); await q.__ctx.close(); } catch (e) {} };
+
+  await paso('V1.46 · la lista NO se trae las 1,546: pide una página al servidor', async () => {
+    /* El encargo lo pide medido, no supuesto. Se comprueba lo que VIAJA
+     * (limite y desde en el cuerpo) y lo que LLEGA a la pantalla. */
+    const q = await ordPagina146({ total: 1546 });
+    try {
+      await q.evaluate(() => { location.hash = '#/ordenes'; });
+      await q.waitForTimeout(1200);
+
+      const r = await q.evaluate(() => ({
+        filas: document.querySelectorAll('tr[data-so]').length,
+        llamadas: window.__llamadas.filter(x => x.url.indexOf('/ordenes') >= 0)
+                    .map(x => ({ limite: x.cuerpo.limite, desde: x.cuerpo.desde })),
+        texto: (document.body.innerText || '').replace(/\s+/g, ' ')
+      }));
+      if (r.llamadas.length !== 1)
+        throw new Error('pidió ' + r.llamadas.length + ' veces, debía ser 1');
+      if (r.llamadas[0].limite !== 80 || r.llamadas[0].desde !== 0)
+        throw new Error('pidió mal: ' + JSON.stringify(r.llamadas[0]));
+      if (r.filas !== 80) throw new Error('pintó ' + r.filas + ' renglones, no 80');
+      if (r.texto.indexOf('1,546') < 0)
+        throw new Error('no dice el total: ' + r.texto.slice(0, 160));
+
+      /* Y la siguiente página avanza el corrimiento, no vuelve a pedir lo mismo. */
+      await q.evaluate(() => {
+        const b2 = document.querySelector('[data-pag="1"]'); if (b2) b2.click(); });
+      await q.waitForTimeout(900);
+      const dos = await q.evaluate(() => window.__llamadas
+        .filter(x => x.url.indexOf('/ordenes') >= 0).map(x => x.cuerpo.desde));
+      if (dos.join(',') !== '0,80')
+        throw new Error('la segunda página pidió ' + JSON.stringify(dos));
+      console.log('    80 de 1,546 · pidió desde 0 y luego desde 80');
+    } finally { await cerrar146(q); }
+  });
+
+  await paso('V1.46 · el filtro se ANUNCIA y dice cuánto esconde', async () => {
+    /* Un filtro que no se anuncia se lee como registros que faltan. Odoo trae
+     * «My Quotations» puesto y lo pinta como adorno; esto es la mitad del
+     * encargo, así que se mide. */
+    const q = await ordPagina146({ total: 1546 });
+    try {
+      await q.evaluate(() => { location.hash = '#/ordenes'; });
+      await q.waitForTimeout(1200);
+      const t = (await q.textContent('.or-filtro') || '').replace(/\s+/g, ' ');
+      ['Mías', 'Sin canceladas', 'Sin las de prueba', 'Empresas FTS'].forEach(x => {
+        if (t.indexOf(x) < 0) throw new Error('no anuncia «' + x + '»: ' + t.slice(0, 200)); });
+      if (t.indexOf('9') < 0)
+        throw new Error('no dice cuántas esconde: ' + t.slice(0, 200));
+      console.log('    «' + t.trim().slice(0, 96) + '…»');
+    } finally { await cerrar146(q); }
+  });
+
+  await paso('V1.46 · ligar pide confirmación, y al confirmar manda machote, orden y principal', async () => {
+    const q = await ordPagina146({ total: 3 });
+    try {
+      await q.evaluate(() => { location.hash = '#/ordenes'; });
+      await q.waitForTimeout(1200);
+
+      /* Primero se dice que NO: nada debe viajar. */
+      await q.evaluate(() => { window.confirm = () => false; window.alert = () => {}; });
+      await q.evaluate(() => {
+        const b2 = document.querySelector('[data-ligar]'); if (b2) b2.click(); });
+      await q.waitForTimeout(500);
+      await q.evaluate(() => {
+        const r = document.querySelector('input[name="lgM"]'); if (r) { r.checked = true;
+          r.dispatchEvent(new Event('change', { bubbles: true })); } });
+      await q.evaluate(() => { const o = document.querySelector('#lgOk'); if (o) o.click(); });
+      await q.waitForTimeout(400);
+      let viaje = await q.evaluate(() => window.__llamadas.filter(x => x.cuerpo &&
+        x.cuerpo.modo === 'ligar').length);
+      if (viaje !== 0) throw new Error('ligó aunque se dijo que NO');
+
+      /* Y ahora que sí. */
+      await q.evaluate(() => { window.confirm = () => true; });
+      await q.evaluate(() => { const o = document.querySelector('#lgOk'); if (o) o.click(); });
+      await q.waitForTimeout(600);
+      const l = await q.evaluate(() => (window.__llamadas.filter(x => x.cuerpo &&
+        x.cuerpo.modo === 'ligar')[0] || {}).cuerpo);
+      if (!l) throw new Error('dijo que sí y no viajó nada');
+      if (l.machote_id !== 'uuid-146')
+        throw new Error('mandó el machote equivocado: ' + JSON.stringify(l));
+      if (l.principal !== true) throw new Error('no mandó cuál manda: ' + JSON.stringify(l));
+      if (!l.odoo_so_id) throw new Error('no mandó la orden: ' + JSON.stringify(l));
+      console.log('    NO no liga · SÍ manda machote ' + l.machote_id +
+                  ', orden ' + l.odoo_so_id + ' y principal');
+    } finally { await cerrar146(q); }
+  });
+
+  await paso('V1.46 · desligar pregunta, avisa qué se pierde, y NO borra', async () => {
+    const q = await ordPagina146({ total: 3 });
+    try {
+      await q.evaluate(() => { location.hash = '#/so/80000'; });
+      await q.waitForTimeout(1300);
+      const pregunta = await q.evaluate(() => {
+        let dicho = null;
+        window.confirm = (t) => { dicho = t; return false; };
+        const b2 = document.querySelector('[data-desligar]'); if (b2) b2.click();
+        return dicho;
+      });
+      if (!pregunta) throw new Error('desligó sin preguntar');
+      if (!/No se borra nada/i.test(pregunta))
+        throw new Error('no dice que no se borra: ' + pregunta.slice(0, 120));
+      if (!/contacto|IVA|PO/.test(pregunta))
+        throw new Error('no dice QUÉ se pierde: ' + pregunta.slice(0, 160));
+      const viajo = await q.evaluate(() => window.__llamadas.filter(x => x.cuerpo &&
+        x.cuerpo.modo === 'desligar').length);
+      if (viajo !== 0) throw new Error('desligó aunque se dijo que no');
+      console.log('    pregunta, dice qué se pierde, y con un NO no viaja nada');
+    } finally { await cerrar146(q); }
+  });
+
+  await paso('V1.46 · duplicar pregunta, y la copia nace SIN folio, SIN historial y SIN orden', async () => {
+    /* El encargo de Esteban, literal: «hereda el contenido, nace con folio
+     * propio, sin historial, y LIBRE de cualquier SO». */
+    const q = await ordPagina146({ total: 3 });
+    try {
+      await q.waitForTimeout(400);
+      const antes = await q.evaluate(() => window.MachoteApp.todos().length);
+      /* La identidad del original ANTES de nada: si se midiera sólo después,
+       * un `null` no distinguiría «duplicar la borró» de «nunca estuvo». */
+      const uuidAntes = await q.evaluate(() => {
+        try { return (JSON.parse(localStorage.getItem('fts_machote_sync_v1') ||
+          '{}')['M-9146'] || {}).machote_id || null; } catch (e) { return null; }
+      });
+
+      /* Con un NO no pasa nada. */
+      await q.evaluate(() => { window.confirm = () => false; });
+      await q.evaluate(() => {
+        const bs = [].slice.call(document.querySelectorAll('[data-dup]'));
+        const b2 = bs[0]; if (b2) b2.click(); });
+      await q.waitForTimeout(300);
+      if (await q.evaluate(() => window.MachoteApp.todos().length) !== antes)
+        throw new Error('duplicó aunque se dijo que NO');
+
+      let dicho = await q.evaluate(() => {
+        let t = null; window.confirm = (x) => { t = x; return true; };
+        const bs = [].slice.call(document.querySelectorAll('[data-dup]'));
+        if (bs[0]) bs[0].click();
+        return t;
+      });
+      await q.waitForTimeout(500);
+      if (!dicho) throw new Error('duplicó sin preguntar');
+      if (!/NO crea ninguna cotización en Odoo/i.test(dicho))
+        throw new Error('no dice que no toca Odoo: ' + dicho.slice(0, 140));
+
+      const r = await q.evaluate(() => {
+        const t = window.MachoteApp.todos();
+        const c = t.find(x => /\(copia\)/.test(x.nombre));
+        let sync = {};
+        try { sync = JSON.parse(localStorage.getItem('fts_machote_sync_v1') || '{}'); } catch (e) {}
+        return c ? { total: t.length, id: c.id, nombre: c.nombre, folio: c.folio || null,
+                     _sync: Object.keys(sync),
+                     folio_txt: c.folio_txt || null, so: c.so || null,
+                     /* Lo que importa NO es que no tenga renglón en la libreta
+                      * —la aplicación le crea uno para saber que está sin subir—
+                      * sino que no herede la IDENTIDAD del original: con el mismo
+                      * uuid, la primera subida de la copia pisaría al original.
+                      * La primera versión de esta prueba medía el proxy. */
+                     uuidCopia: (sync[c.id] || {}).machote_id || null,
+                     uuidOriginal: (sync['M-9146'] || {}).machote_id || null,
+                     poNum: c.confirmacion && c.confirmacion.po ? c.confirmacion.po.numero : null,
+                     secciones: (c.secciones || []).length } : null;
+      });
+      if (!r) throw new Error('no apareció la copia');
+      if (r.total !== antes + 1) throw new Error('la lista quedó en ' + r.total);
+      if (r.id === 'M-9146') throw new Error('la copia reusó el id del original');
+      if (r.folio || r.folio_txt) throw new Error('la copia heredó el folio: ' + r.folio_txt);
+      if (r.so) throw new Error('la copia heredó la orden: ' + r.so);
+      if (r.uuidCopia && r.uuidCopia === r.uuidOriginal)
+        throw new Error('la copia heredó la identidad del original (' + r.uuidCopia +
+                        '): su primera subida lo pisaría');
+      if (uuidAntes && r.uuidOriginal !== uuidAntes)
+        throw new Error('duplicar le movió la identidad al ORIGINAL: ' +
+                        uuidAntes + ' → ' + r.uuidOriginal);
+      if (r.poNum) throw new Error('la copia heredó la PO del cliente: ' + r.poNum);
+      if (!r.secciones) throw new Error('la copia no heredó el trabajo');
+      console.log('    ' + r.nombre + ' · ' + r.secciones + ' sección(es) heredadas · ' +
+                  'sin folio, sin orden, sin PO y con identidad propia');
+    } finally { await cerrar146(q); }
+  });
+
+  await paso('V1.46 · la puerta de confirmar es LA MISMA por los dos caminos', async () => {
+    /* La prueba que el encargo pide con nombre propio. No se comparan dos
+     * pantallas: se comprueba que la DECISIÓN sale de una sola función y que
+     * el camino por el que se entra no la cambia. */
+    const q = await ordPagina146({ total: 3 });
+    try {
+      await q.waitForTimeout(400);
+      const r = await q.evaluate(() => {
+        const P = window.PuertaConfirmar;
+        const m = window.MachoteApp.todos()[0];
+        const calc = window.MachoteCalc.calcular(m);
+        const srv = { ok: true, cuadra: true, dentro_politica: true, handoff: {} };
+        const a = P.evaluar({ machote: m, calc: calc, servidor: srv, desde: 'orden' });
+        const c = P.evaluar({ machote: m, calc: calc, servidor: srv, desde: 'confirmar' });
+        /* Y sin machote: no puede contestar «todo bien» por no haber mirado. */
+        const sin = P.evaluar({ machote: null, calc: null, servidor: srv,
+                                ordenSinMachote: true, desde: 'orden' });
+        const ids = (v) => v.duras.map(x => x.id).sort().join(',');
+        return { igual: ids(a) === ids(c), ids: ids(a),
+                 puedeA: a.puede, puedeC: c.puede,
+                 sinPuede: sin.puede, sinIds: ids(sin),
+                 fuentes: a.duras.map(x => x.fuente) };
+      });
+      if (!r.igual)
+        throw new Error('los dos caminos dan candados distintos: ' + r.ids);
+      if (r.puedeA !== r.puedeC)
+        throw new Error('el veredicto depende del camino: ' + r.puedeA + ' vs ' + r.puedeC);
+      if (r.sinPuede !== false)
+        throw new Error('sin machote dijo que SÍ se puede confirmar');
+      if (r.sinIds.indexOf('sin-machote') < 0)
+        throw new Error('sin machote no dice que no pudo mirar: ' + r.sinIds);
+      if (!r.ids) throw new Error('un machote recién creado no debería pasar los candados');
+      console.log('    mismos candados por los dos caminos (' + r.ids + ') · ' +
+                  'sin machote NO pasa');
+    } finally { await cerrar146(q); }
+  });
+
+  await paso('V1.46 · el Cotizador se pinta tal cual y se MARCA cuando no casa con nadie', async () => {
+    /* Medido en Odoo el 29-sep: de los seis valores en uso, tres nombran a
+     * alguien archivado. El campo es un `selection` de nombres de pila, no un
+     * enlace a una persona, así que traducirlo sería inventar una atribución. */
+    const q = await ordPagina146({ total: 3 });
+    try {
+      await q.waitForTimeout(400);
+      const r = await q.evaluate(() => {
+        const C = window.Ordenes._cotizador;
+        return {
+          activo: C({ cotizador: 'Ricardo', cotizador_estado: 'activo' }),
+          ido: C({ cotizador: 'Aldo', cotizador_estado: 'archivado' }),
+          duda: C({ cotizador: 'Monty', cotizador_estado: 'sin_casar' }),
+          vacio: C({ cotizador: '' })
+        };
+      });
+      if (r.activo.indexOf('Ricardo') < 0 || /chip-mini/.test(r.activo))
+        throw new Error('marcó a uno que sí está: ' + r.activo);
+      if (!/ya no está/.test(r.ido) || r.ido.indexOf('Aldo') < 0)
+        throw new Error('no marcó al archivado: ' + r.ido);
+      if (!/¿quién\?/.test(r.duda)) throw new Error('no marcó la duda: ' + r.duda);
+      if (!/sin cotizador/.test(r.vacio)) throw new Error('el vacío no se dice: ' + r.vacio);
+      console.log('    activo sin marca · archivado «ya no está» · dudoso «¿quién?»');
+    } finally { await cerrar146(q); }
+  });
+
   await paso('sin errores de consola propios del prototipo', async () => {
     if (errs.length) throw new Error(errs.slice(0, 4).join(' | '));
     if (delEntorno.length) console.log('   (' + delEntorno.length +

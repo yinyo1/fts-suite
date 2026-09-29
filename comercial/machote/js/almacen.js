@@ -510,7 +510,16 @@
         s2[m.id] = {
           version: r.version,
           huella: huella(m),
-          machote_id: r.machote_id,
+          /* ⚠️ La IDENTIDAD se conserva si la respuesta no la trae, por la
+           * misma razón que el folio de tres líneas abajo — y con más motivo:
+           * perder el `machote_id` deja al machote huérfano, y su siguiente
+           * guardado crea una identidad NUEVA en el servidor en vez de una
+           * versión más. O sea, dos cotizaciones donde había una, sin que
+           * nadie vea un error. Lo cazó una prueba cuyo servidor de mentiras
+           * contestaba `{ok:true}` a secas: el real siempre lo manda, pero
+           * «siempre» es justo lo que hay que dejar de suponer. */
+          machote_id: (r.machote_id !== undefined && r.machote_id !== null)
+            ? r.machote_id : (previo.machote_id || null),
           /* El folio lo asigna el servidor la PRIMERA vez que este machote
            * llega allá, así que la respuesta del guardado es el momento más
            * temprano en que se puede saber. Si esta respuesta no lo trae

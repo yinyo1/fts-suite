@@ -347,7 +347,21 @@
   /* ══ MONTAJE ══════════════════════════════════════════════════════════════ */
   function montar(host, soId) {
     _st.host = host;
-    if (soId) return pintarDetalle(host, soId);
+    /* ⚠️ El detalle también CARGA si no hay nada que mirar.
+     *
+     * La primera versión pintaba el detalle directo desde `_st.filas`, que es
+     * lo que trajo la lista. Funcionaba entrando por la lista y se rompía en
+     * el único caso que la gente usa de verdad: pegar la dirección de una
+     * orden, o recargar estando en ella. Salía «esa orden no está en la página
+     * que se trajo», que es cierto y completamente inútil. Lo cazó la prueba
+     * de desligar, que entra directo a `#/so/:id` — no la lectura del código.
+     */
+    if (soId) {
+      if (!_st.filas.length && !_st.cargando) {
+        return cargar(host, true).then(function () { pintarDetalle(host, soId); });
+      }
+      return pintarDetalle(host, soId);
+    }
     if (!_st.filas.length && !_st.cargando && !_st.error) return cargar(host);
     pintarLista(host);
   }
@@ -365,14 +379,14 @@
     cablearDetalle(host, f);
   }
 
-  function cargar(host) {
+  function cargar(host, noPintarLista) {
     _st.cargando = true; _st.error = null;
-    if (host) host.innerHTML = htmlLista();
+    if (host && !noPintarLista) host.innerHTML = htmlLista();
     var a = A();
     if (!a || !a.listarOrdenes) {
       _st.cargando = false;
       _st.error = 'La pieza que habla con el servidor no está cargada en esta pantalla.';
-      if (host) pintarLista(host);
+      if (host && !noPintarLista) pintarLista(host);
       return Promise.resolve();
     }
     return a.listarOrdenes({
@@ -388,7 +402,7 @@
       } else {
         _st.error = (r && r.mensaje) || 'El servidor no contestó lo que se esperaba.';
       }
-      if (host) pintarLista(host);
+      if (host && !noPintarLista) pintarLista(host);
     });
   }
 
