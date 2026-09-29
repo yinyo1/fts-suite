@@ -521,6 +521,102 @@ def aviso_de_senal_sin_fecha(c: Corrida) -> str:
         + ' <b>Antes de usarla como novedad, confirma la fecha de la nota.</b></p>')
 
 
+# ---------------------------------------------------------------------------
+# CLASE (c): LA CUENTA QUE EL BUSCADOR PUBLICO NO TIENE
+#
+# Tarea 4 de #353. La medicion contra la corrida humana encontro tres cuentas
+# donde el bloque completo de M5 -- las tres formas, con alias de marca y con
+# ancla de geografia-- devuelve CERO perfiles de la empresa: Ragasa es el caso
+# limpio (0 de 3 contactos de valor), y Cuprum y Qualtia se le parecen.
+#
+# Eso NO es un defecto de la herramienta ni un hueco de vocabulario. Es un
+# limite de la FUENTE: esos perfiles existen y Sales Navigator los entrega, y el
+# buscador publico no los indexa. Y mientras la ficha no lo diga, quien la lee
+# concluye lo contrario -- que la herramienta fallo, o que la planta no tiene
+# gente--. Las dos conclusiones son falsas y las dos cuestan.
+#
+# Cuantas consultas de M5 hacen falta para poder decirlo. Con dos o tres
+# consultas secas lo honesto es "todavia no se sabe". El bloque de #353 se corrio
+# con ocho o mas por cuenta antes de declarar clase (c), y ese es el numero que
+# se deja escrito: es el que se midio, no un redondeo.
+CONSULTAS_M5_PARA_DECLARAR_LIMITE_DE_FUENTE = 8
+
+
+def sin_presencia_en_buscador_publico(c: Corrida) -> tuple[bool, str]:
+    """¿El buscador publico no tiene a esta empresa? (bool, razon legible).
+
+    Se LEE de lo que la corrida ya gasto -- no cuesta una consulta mas--:
+    si M5 corrio su bloque completo y ninguna de sus consultas entrego un
+    contacto, el limite es de la fuente y la ficha tiene que decirlo.
+
+    Deliberadamente NO decide nada: no corta el gasto ni cambia el plan. Cortar
+    antes es el DETECTOR TEMPRANO, y eso cambia cuanto se gasta, asi que es
+    decision de Esteban y no de esta funcion.
+    """
+    m5 = [b for b in c.busquedas() if b.modulo == "M5"]
+    if len(m5) < CONSULTAS_M5_PARA_DECLARAR_LIMITE_DE_FUENTE:
+        return (False, "")
+    con_hallazgo = [b for b in m5 if b.hallazgos]
+    if con_hallazgo:
+        return (False, "")
+    return (True, f"{len(m5)} consultas de personas, ninguna con resultado")
+
+
+def busqueda_armada_para_sales_navigator(c: Corrida) -> str:
+    """La busqueda de Sales Navigator, ya armada, para copiar y pegar.
+
+    Las familias salen de INTERLOCUTOR, la misma tabla con la que la herramienta
+    agrupa: si manana se le agrega vocabulario, esto se mueve con ella y no
+    queda una version vieja escrita a mano en un texto.
+    """
+    filas = []
+    for _clave, titulo, palabras in INTERLOCUTOR:
+        muestra = ", ".join(palabras[:5])
+        filas.append(f"<li><b>{html.escape(titulo)}:</b> "
+                     f"{html.escape(muestra)}</li>")
+    donde = c.ciudad or "la ciudad de la planta"
+    return (
+        '<p style="margin:10px 0 4px"><b>La busqueda, ya armada:</b></p>'
+        '<ol style="margin:0 0 8px 18px;padding:0">'
+        f'<li><b>Empresa:</b> {html.escape(c.empresa)} '
+        '— en el filtro <i>Current company</i>, no en el texto.</li>'
+        f'<li><b>Lugar:</b> {html.escape(donde)} '
+        '— en el filtro <i>Geography</i>. <b>Escribir la ciudad en el texto no '
+        'filtra:</b> una consulta con la ciudad escrita devolvio a quien tiene '
+        'ese mismo puesto en Sydney.</li>'
+        '<li><b>Puestos — una busqueda por familia,</b> no las cuatro juntas: '
+        'juntas se tapan entre si.</li>'
+        '</ol>'
+        f'<ul style="margin:0 0 0 18px;padding:0">{"".join(filas)}</ul>')
+
+
+def aviso_de_cuenta_sin_buscador_publico(c: Corrida) -> str:
+    """«Esta empresa no aparece en el buscador publico», en lenguaje de persona.
+
+    VA EN LA CAPA LIMPIA, en «A quien buscar»: es ahi donde quien lee se
+    pregunta por que no hay nombres, y es ahi donde la respuesta le sirve.
+
+    Sin vocabulario interno: no dice "clase (c)", ni "M5", ni "limite de
+    fuente". Dice que la empresa no esta en el buscador, que los contactos de
+    planta salen por Sales Navigator, y deja la busqueda armada.
+    """
+    es, razon = sin_presencia_en_buscador_publico(c)
+    if not es:
+        return ""
+    return (
+        '<div class="hueco">'
+        '<b>Esta empresa no aparece en el buscador publico.</b> '
+        'No es que no tenga gente de planta: es que sus perfiles no estan '
+        'indexados donde la herramienta busca. Se pregunto de todas las formas '
+        f'({html.escape(razon)}) y el buscador no devolvio ni un perfil de la '
+        'empresa. '
+        '<b>Los contactos de planta de esta cuenta salen solo por Sales '
+        'Navigator</b>, con sesion en la ciudad de la planta. Insistir aqui no '
+        'los va a traer, y cada intento cuesta.'
+        + busqueda_armada_para_sales_navigator(c)
+        + '</div>')
+
+
 def linea_de_tiempo(c: Corrida) -> str:
     """La senal como linea de tiempo: fecha a la izquierda, hecho a la derecha.
 
@@ -1064,6 +1160,7 @@ def modo_limpio(c: Corrida) -> str:
 
     tl = linea_de_tiempo(c)
     bl_sin_fecha = aviso_de_senal_sin_fecha(c)
+    bl_sin_buscador = aviso_de_cuenta_sin_buscador_publico(c)
     bl_porque = (f'<p style="margin:0 0 12px">{html.escape(c.por_que_ahora)}</p>'
                  if c.por_que_ahora else _hueco(
                      "razon de oportunidad escrita",
@@ -1311,6 +1408,7 @@ def modo_limpio(c: Corrida) -> str:
 
 <div class="card">
 <h2>A quien buscar</h2>
+{bl_sin_buscador}
 {f'<div class="sub-h">Decisores de la planta — {n["decisores"]}</div>{b_dec}' if b_dec else '<div class="hueco"><b>Sin decisores con nombre todavia.</b> Lo que sigue en «Lo que falta» es exactamente como conseguirlos.</div>'}
 {f'<div class="sub-h">Por confirmar, valen la pena — {n["confirmar"]}</div><p class="nota-g">No estan descartados: les falta una comprobacion, y cual va en su renglon. Un contacto pendiente con su razon visible vale mas que un hueco.</p>{b_con}' if b_con else ''}
 {f'<div class="sub-h">De contexto, no son compradores — {n["contexto"]}</div>{b_ctx}' if b_ctx else ''}

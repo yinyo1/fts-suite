@@ -158,17 +158,29 @@ def test_ningun_doc_sigue_diciendo_que_capacidad_por_tipo_esta_VACIO():
             f"{nombre} sigue diciendo que el corte por arriba nunca ha corrido")
 
 
-def test_el_doc_de_la_linea_base_NO_dice_9_cuentas_ni_4_huecos():
-    """International dejo de ser hueco: son 10 con senal y 3 huecos."""
+def test_el_doc_de_la_linea_base_cuenta_las_senales_QUE_HAY():
+    """El doc se regenera; el numero de cuentas con senal NO se escribe a mano.
+
+    La version anterior de esta prueba fijaba el numero (10 con senal, 3 huecos)
+    y por eso se rompio en #353 al documentar dos senales nuevas -- Qualtia y el
+    evento de camara de Metalsa--. Fijar el CONTEO es fijar el inventario, que
+    es justo lo que va a seguir creciendo. Lo que hay que fijar es que el doc
+    diga lo que el dato dice HOY, y que no se quede diciendo un numero viejo.
+    """
     import json
     sen = json.load(open(os.path.join(RAIZ, "datos", "senales-documentadas.json"),
                          encoding="utf-8"))
     con_senal = sum(1 for c in sen["cuentas"] if c.get("fuente"))
     huecos = sum(1 for c in sen["cuentas"] if not c.get("fuente"))
-    assert (con_senal, huecos) == (10, 3)
+    assert con_senal >= 10 and huecos >= 2, (con_senal, huecos)
     doc = _plano("linea-base-del-radar.md")
-    assert f"3 de {con_senal}" in doc
-    for viejo in ("3 de 9", "6 de 9", "4 huecos", "de las nueve señales"):
+    assert f"{con_senal} con senal documentada · {huecos} huecos" in doc, (
+        f"el doc no dice «{con_senal} con senal documentada · {huecos} huecos». "
+        f"Se regenera con `linea_base_radar.py --actualizar-doc "
+        f"metodo/linea-base-del-radar.md`"
+    )
+    for viejo in ("3 de 9", "6 de 9", "3 de 10", "4 huecos",
+                  "de las nueve señales"):
         assert viejo not in doc, f"el doc sigue diciendo «{viejo}»"
 
 

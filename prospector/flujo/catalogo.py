@@ -101,6 +101,72 @@ PERMITIDAS = {
 }
 
 
+# ---------------------------------------------------------------------------
+# LAS FORMAS DE M5 -- las CONFIGURACIONES del bloque de personas
+#
+# Aprobada por Esteban sobre #353. Hasta la 0.15.0 el codigo decia "M5 se corre
+# en DOS formas" y lo decia SOLO en prosa: en `arranque.py` y en `estado.py`,
+# como texto de ayuda. No habia dato que dijera cuales, ni prueba que lo fijara,
+# y por eso la medicion contra la corrida humana encontro cuatro personas que
+# `site:linkedin.com/in` no entrega y `site:mx.linkedin.com/in` si.
+#
+# Ahora son TRES, y la tercera tiene DISPARADOR: no se corre siempre, se corre
+# cuando la planta esta en Mexico. Y se corre ADEMAS de la global, no en su
+# lugar: las dos entregan personas que la otra no.
+#
+# Cada forma es (clave, plantilla, disparador, por_que).
+#   disparador is None  -> se corre siempre
+#   disparador == 'planta_en_mexico' -> solo si el pais de la planta es Mexico
+FORMAS_M5 = (
+    ("simple", '{puesto} {empresa}', None,
+     "Sin operador. Es la mas barata y la que el buscador contesta con mas "
+     "variedad de dominio: rescato dos personas de LEGO que la forma con "
+     "`site:` no entrego, porque el perfil que las nombra no es un perfil de "
+     "LinkedIn."),
+    ("linkedin_global", 'site:linkedin.com/in {puesto} {empresa}', None,
+     "La forma canonica. Es la que mas perfiles trae por consulta y la que "
+     "sostiene el patron de correo."),
+    ("linkedin_mx", 'site:mx.linkedin.com/in {puesto} {empresa}',
+     "planta_en_mexico",
+     "El subdominio de pais ES UN CORPUS DISTINTO, no un filtro del global: "
+     "medido en #353, entrego cuatro personas de planta en Mexico que la forma "
+     "global no entrega con ninguna redaccion. Y NO se sustituye poniendo la "
+     "ciudad en el texto: una consulta con 'Monterrey Apodaca' en el texto "
+     "devolvio a quien tiene ese puesto en Sydney. El ancla de geografia en el "
+     "texto no filtra; el subdominio si."),
+)
+
+# Los paises cuyo subdominio de LinkedIn el buscador sirve aparte. Hoy solo se
+# midio Mexico: agregar otro pide medirlo, no suponerlo.
+DISPARADOR_PLANTA_EN_MEXICO = "planta_en_mexico"
+PAISES_CON_SUBDOMINIO_MEDIDO = {"mexico", "mx", "mex"}
+
+
+def formas_de_m5(pais_de_la_planta: str | None = None) -> list[str]:
+    """Las claves de forma que M5 debe correr para esta planta, en orden.
+
+    Sin pais declarado se corren solo las dos globales: el disparador se
+    dispara por dato declarado, nunca por suposicion.
+    """
+    p = _plano_pais(pais_de_la_planta)
+    corre = []
+    for clave, _plantilla, disparador, _por_que in FORMAS_M5:
+        if disparador is None:
+            corre.append(clave)
+        elif (disparador == DISPARADOR_PLANTA_EN_MEXICO
+              and p in PAISES_CON_SUBDOMINIO_MEDIDO):
+            corre.append(clave)
+    return corre
+
+
+def _plano_pais(pais: str | None) -> str:
+    """Normaliza el pais a minusculas sin acentos ni puntuacion."""
+    import unicodedata
+    s = unicodedata.normalize("NFD", str(pais or "").strip().lower())
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    return "".join(c for c in s if c.isalnum())
+
+
 def exigir_permitida(fuente: str) -> None:
     """Compuerta de catalogo. Lanza si la fuente esta descartada."""
     f = fuente.strip().lower()

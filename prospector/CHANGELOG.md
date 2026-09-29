@@ -3,6 +3,80 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.16.0 — 2026-09-29
+
+Cierre de la prueba de cobertura (#353): la tercera configuración de M5 con su
+prueba, la ficha declara el límite de la fuente, la vía interna medida contra Odoo
+y el buzón, y el tercer respondedor cargado. **1,033 pruebas** (eran 1,005).
+
+### `site:mx.linkedin.com/in` es una configuración con dato y con prueba
+
+`catalogo.FORMAS_M5` — antes el número de formas de M5 vivía **sólo en prosa**, en
+el texto de ayuda de `arranque.py` y en `estado.DESCRIPCION`, y por eso se quedó
+en «dos» mientras la medición decía tres. Ahora es una tabla: tres formas, cada
+una con su plantilla, su disparador y la razón escrita de por qué existe.
+`formas_de_m5(pais)` dice cuáles correr, y **sin país declarado no se dispara la
+mexicana**: el disparador se dispara por dato, no por suposición.
+
+La razón de la forma mexicana guarda el hallazgo que cuesta dinero olvidar, y una
+prueba lo exige: **el ancla de geografía en el texto no filtra** — una consulta con
+«Monterrey Apodaca» en el texto devolvió a quien tiene ese puesto en Sídney.
+
+### La ficha declara cuando el buscador no tiene a la empresa
+
+`ficha.sin_presencia_en_buscador_publico()` lee lo que la corrida **ya gastó**: si
+M5 corrió 8 consultas o más y ninguna entregó un contacto, el límite es de la
+fuente y la ficha lo dice en la capa limpia, en «A quien buscar», arriba de los
+decisores — que es donde quien lee se pregunta por qué no hay nombres.
+
+Sin vocabulario interno: no dice «clase (c)», ni «M5», ni «límite de fuente». Dice
+que la empresa no aparece en el buscador público, que los contactos de planta
+salen sólo por Sales Navigator, y **entrega la búsqueda armada** — con la empresa
+en el filtro de compañía, la ciudad en el filtro de geografía y una búsqueda por
+familia de interlocutor. Las familias salen de `INTERLOCUTOR`, no de un texto a
+mano: si mañana se le agrega vocabulario, la búsqueda armada se mueve con ella.
+
+No corta el gasto. Cortar antes es el **detector temprano**, que cambia cuánto se
+gasta y por eso queda como decisión en
+[`metodo/detector-temprano-de-limite-de-fuente.md`](metodo/detector-temprano-de-limite-de-fuente.md).
+
+### Dos señales nuevas, y las dos nacen vencidas
+
+**Qualtia / Xignux** — 17-dic-2024, primera piedra de la ampliación de la Planta
+Monterrey, de la página de la propia empresa. Era un hueco: entró al piloto por la
+corrida humana, no por señal. Puntúa **10.0 · archiva**, con frescura 0.0 (651
+días) y cero en todo lo demás. Su tarjeta nace vencida desde el 16-abr-2025.
+
+**Metalsa** — 24-jul-2026, evento de CAINTRA con Metalsa como empresa invitada.
+Salió del **buzón**, no de la web, y cierra el hueco que el barrido del 28-sep
+había dejado abierto proponiendo *«una consulta dirigida de prensa»*. Puntúa
+**42.7 · guarda**: al revés que todas las demás, **su frescura es lo único que
+tiene** (18 de 25, 67 días) y su ventana ya cerró.
+
+### `sitio_de_la_empresa` tiene peso, y vale 10
+
+Documentar la señal de Qualtia dejó al descubierto una fuente sin peso declarado,
+que el evaluador puntúa **cero** — y hace bien: un peso inventado es peor que un
+hueco. Vale **10**: más que `prensa_industrial` (8), porque no hay intermediario
+que le cambie la cifra; menos que `camara` (12), porque un comunicado propio es
+texto de marketing que la empresa puede editar o bajar, y casi nunca trae monto.
+
+### Una respuesta positiva reabre una tarjeta que nació vencida
+
+La opción C de #340 dejó escrito que el destino 2 reabre con **señal fresca**. La
+corrida humana trajo el otro caso: lo que llega es una **respuesta**. Probado
+contra la base real — la tarjeta pasa a `abierta`, con `reabierta_vencida`, con la
+caducidad **recalculada desde hoy** y la original guardada, sale de
+`vencidas_sin_trabajar`, y **sigue ocupando el único lugar abierto de la cuenta**.
+
+### Seis conteos que estaban escritos a mano, y se quedaban viejos en silencio
+
+`exportar_etapa1.py` decía *«Diez cuentas con señal documentada de las trece, y
+tres huecos»* como **texto literal**. Al documentarse dos señales nuevas quedó
+mintiendo, y con él cinco pruebas que fijaban el número en vez de la invariante.
+Ahora el reporte lo calcula, y las pruebas exigen que la base, el reporte y el
+inventario **digan lo mismo** en lugar de exigir un número que crece.
+
 ## 0.15.0 — 2026-09-28
 
 Turno de madrugada (#340): la opcion C aplicada, B4 cerrado, las fechas de las

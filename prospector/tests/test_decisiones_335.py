@@ -344,7 +344,12 @@ def test_d9_las_vencidas_NO_se_tiran_van_a_un_archivo_que_pide_DECIDIR(tmp_path)
     queda es una decision de persona, y el nombre del archivo lo dice."""
     r = _exportado(tmp_path)
     venc = next(a for a in r["archivos"] if "VENCIDAS-decidir" in a["nombre"])
-    assert venc["tarjetas"] == r["vencidas"] == 2
+    # El CONTEO no se fija: el inventario de senales crece. Lo que se fija es que
+    # el archivo y el reporte digan lo MISMO, y que haya al menos una -- porque si
+    # no hubiera ninguna, esta decision no tendria caso y la prueba estaria
+    # verificando nada--. Fijar el numero fue lo que rompio esta prueba en #353,
+    # al documentar dos senales nuevas.
+    assert venc["tarjetas"] == r["vencidas"] >= 2
     assert "recalcula desde hoy" in venc["que_es"]
     assert "NO se suben tal cual" in venc["que_es"]
 

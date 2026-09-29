@@ -52,7 +52,8 @@ DESCRIPCION = {
     "M3":  "Congresos y camaras · CMC, CAINTRA, CLAUT, Supply Hub, Herramentales",
     "M12": "Prensa · angulo tecnico -> gancho Y TITULOS que el diccionario no tiene",
     "M4":  "Motor de combinaciones (SIN RED) -> lista de consultas",
-    "M5":  "Busqueda de personas · 2 formas: simple SIN operador y site:linkedin",
+    "M5":  "Busqueda de personas · 3 formas: simple SIN operador, "
+           "site:linkedin.com/in y site:mx.linkedin.com/in si la planta es MX",
     "M6":  "Individuales por nombre · cierra apellidos y cosecha colegas",
     "M7":  "PDFs publicos · DESPUES de M6: su forma fuerte pide nombres",
     "M8":  "Padrones publicos de gobierno",

@@ -77,7 +77,9 @@ PLAN = [
      "Se corre DESPUES del vocabulario, nunca antes: el motor combina lo que las "
      "olas baratas cosecharon."),
     ("M5", "bloques_secos", ["buscador", "linkedin_publico"],
-     "personas por puesto, en DOS formas: simple sin operador y site:linkedin",
+     "personas por puesto, en TRES formas: simple sin operador, "
+     "site:linkedin.com/in y -- si la planta esta en Mexico -- "
+     "site:mx.linkedin.com/in (catalogo.FORMAS_M5)",
      "La capa cara, ~60% del gasto. Se mide por bloques de 10 y para a los tres "
      "secos seguidos."),
     ("M6", "vueltas_secas", ["buscador", "linkedin_publico"],

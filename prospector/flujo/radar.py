@@ -249,6 +249,16 @@ FUERZA_DE_FUENTE = {
     "camara": 12,
     "congreso": 12,
     "prensa_industrial": 8,
+    # La EMPRESA hablando de si misma en su propio sitio. Se agrego en #353 al
+    # documentar la senal de Qualtia -- su ampliacion la anuncia su propia
+    # pagina, no la prensa-- y sin peso declarado valia CERO, que es lo que el
+    # evaluador hace bien: un peso inventado es peor que un hueco. Vale MAS que
+    # la prensa industrial para el HECHO -- no hay intermediario que le cambie
+    # la cifra-- y MENOS que una camara: un comunicado propio es texto de
+    # marketing, la empresa lo puede editar o bajar, y casi nunca trae monto ni
+    # fecha. "La mayor inversion de nuestra historia" sin cifra es exactamente
+    # el tipo de afirmacion que una pagina propia infla.
+    "sitio_de_la_empresa": 10,
     "ip_corporativa": 6,
     "feed_generico": 3,
 }

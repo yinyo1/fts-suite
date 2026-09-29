@@ -153,10 +153,20 @@ def test_el_piloto_carga_y_sus_reglas_rechazan(base):
     # DIEZ, no nueve: International dejo de ser hueco en #340 -- su senal de 120 MDD
     # llevaba documentada en `modulos-de-contactos.md` desde el 18-sep y el barrido
     # anterior la perdio porque busco "International" y el repo la nombra "Navistar".
-    assert r["cuentas_cargadas"] == 10
-    assert len(r["huecos_no_cargados"]) == 3
+    # Los CONTEOS no se fijan: el inventario de senales crece -- de 10 cuentas y 3
+    # huecos en #340 a 12 y 2 en #353, al documentarse Qualtia y el evento de camara
+    # de Metalsa--. Lo que se fija es la INVARIANTE: cada cuenta con senal se carga,
+    # cada hueco se queda fuera, y la suma cuadra.
+    import json as _json
+    _inv = _json.load(open(os.path.join(RAIZ, "datos",
+                                        "senales-documentadas.json"),
+                           encoding="utf-8"))["cuentas"]
+    _con_senal = sum(1 for c in _inv if c.get("fuente"))
+    _huecos = len(_inv) - _con_senal
+    assert r["cuentas_cargadas"] == _con_senal >= 10
+    assert len(r["huecos_no_cargados"]) == _huecos >= 2
     res = r["resumen"]
-    assert res["cuentas"] == 10
+    assert res["cuentas"] == _con_senal
     # OPCION C de #340, y el numero SUBIO al fechar las senales: fechar LEGO, Ragasa
     # y Bimbo las pone a caducar en 2024 y 2025, asi que nacen vencidas igual que
     # Durango. Antes las tres traian "sin fecha" y el reloj arrancaba en HOY, que les
@@ -164,10 +174,14 @@ def test_el_piloto_carga_y_sus_reglas_rechazan(base):
     #
     # El diseno de la tarjeta vencida lo habia anticipado: "cuando se regeneren las
     # que tienen hueco, probablemente nazcan mas".
-    assert res["tarjetas_vencidas_sin_trabajar"] == 4
-    assert res["tarjetas_abiertas"] == 6
+    # El CONTEO crece con el inventario de senales: en #353 paso de 4 a 6 al
+    # documentarse Qualtia y el evento de camara de Metalsa. Lo que se fija es que
+    # la base y el reporte digan lo mismo, no el numero.
+    assert (res["tarjetas_vencidas_sin_trabajar"]
+            == len(r["tarjetas_vencidas_al_cargar"]) >= 4)
+    assert res["tarjetas_abiertas"] >= 6
     assert (res["tarjetas_abiertas"] + res["tarjetas_cerradas"]
-            + res["tarjetas_vencidas_sin_trabajar"]) == 10
+            + res["tarjetas_vencidas_sin_trabajar"]) == _con_senal
     assert res["vencidas_reabiertas"] == 0
     # CERO contactos: la semana 1 valida reglas, y las reglas no necesitan a nadie.
     assert res["contactos"] == 0
@@ -301,9 +315,13 @@ def test_opcionC_la_vista_vencidas_sin_trabajar_la_cuenta_con_su_fecha(base):
     cp.cargar(base)
     filas = base.json(
         "SELECT jsonb_agg(to_jsonb(v)) FROM motor3.vencidas_sin_trabajar v;")
-    assert filas and len(filas) == 4, "cambio el numero de vencidas al cargar"
+    assert filas and len(filas) >= 4, "la vista dejo de ver las vencidas"
     quienes = sorted(x["empresa"] for x in filas)
-    assert quienes == ["Bimbo", "Coficab", "LEGO", "Ragasa"], quienes
+    # Las cuatro de #340 siguen ahi. Las que se agreguen despues tambien deben
+    # estar, pero fijar la lista COMPLETA convertiria cada senal nueva en una
+    # prueba roja: es el inventario, y el inventario crece.
+    for de_340 in ("Bimbo", "Coficab", "LEGO", "Ragasa"):
+        assert de_340 in quienes, (de_340, quienes)
     f = next(x for x in filas if x["empresa"] == "Coficab")
     assert f["planta"] == "Durango"
     # La caducidad que ya se le paso queda guardada, y con ella se puede decir
@@ -348,7 +366,11 @@ def test_opcionC_reabrir_una_vencida_recalcula_la_caducidad_desde_hoy(base):
     """
     import cargar_piloto as cp
     cp.cargar(base)
-    # Son CUATRO desde que las senales se fecharon; se reabre UNA.
+    # Se reabre UNA, y se cuenta cuantas habia antes: el numero crece con el
+    # inventario de senales, asi que se mide en vez de escribirse.
+    antes_de_reabrir = int(base.correr(
+        "SELECT count(*) FROM motor3.vencidas_sin_trabajar;").strip())
+    assert antes_de_reabrir >= 4
     t_id = base.correr("SELECT min(id) FROM motor3.tarjeta WHERE estado = "
                        "'vencida_sin_trabajar';").strip()
     assert t_id
@@ -365,10 +387,12 @@ def test_opcionC_reabrir_una_vencida_recalcula_la_caducidad_desde_hoy(base):
     # La original NO se borra: es el dato que hace auditable la reapertura.
     assert f["caducidad_original"] == original
     assert f["caduca_el"] > original
-    # Y la vista ya no LA lista, porque ya no esta sin trabajar. Las otras tres
-    # siguen ahi: reabrir una no toca a las demas.
+    # Y la vista ya no LA lista, porque ya no esta sin trabajar. Las demas siguen
+    # ahi: reabrir una no toca a las otras -- y eso se afirma sobre el conteo que
+    # habia ANTES de reabrir, no sobre un numero escrito a mano--.
     assert base.correr(
-        "SELECT count(*) FROM motor3.vencidas_sin_trabajar;").strip() == "3"
+        "SELECT count(*) FROM motor3.vencidas_sin_trabajar;").strip() == str(
+            antes_de_reabrir - 1)
     assert base.correr(
         f"SELECT count(*) FROM motor3.vencidas_sin_trabajar WHERE tarjeta_id = "
         f"{t_id};").strip() == "0"

@@ -190,17 +190,28 @@
       "empresa": "Metalsa",
       "planta": null,
       "giro": "estructuras automotrices; estampado y soldadura",
-      "fuente": null,
-      "tipo": null,
-      "texto": null,
-      "fecha_senal": null,
-      "fecha_documentada": false,
-      "en_padron_denue": null,
-      "documentado_en": null,
-      "nota": "HUECO DECLARADO. No hay senal documentada de esta cuenta en ningun archivo del repo.",
-      "que_faltaria": "Un evento de mercado. La unica mencion es la invitacion de LinkedIn del corpus de M0b, que es fuente de contactos y no senal -- ver `pistas_descartadas`--. Metalsa es de las ocho cuentas de septiembre y de ella se midio el rendimiento de busqueda (12 consultas, 24 entradas) y el patron de correo sostenido por UN solo directorio: nada de eso es senal.",
-      "lo_mas_barato": "una consulta dirigida de prensa por «Metalsa inversion» o «Metalsa ampliacion», que es exactamente el modo señal de M12. Cuesta una consulta web.",
-      "barrido_2026_09_28": "sin senal documentada; ver `barrido_de_huecos`"
+      "fuente": "camara",
+      "tipo": "presencia_en_evento",
+      "texto": "CAINTRA convoca «Cafe con el experto» con Metalsa como empresa invitada; el formato es «conocer de cerca la vision de lideres clave en la industria»",
+      "fecha_senal": "2026-07-24",
+      "fecha_documentada": true,
+      "en_padron_denue": false,
+      "documentado_en": "#353, Tarea 3 (la via interna). Salio del BUZON de FTS, no de la web.",
+      "nota": "CIERRA EL HUECO DE METALSA, pero hay que decir de que tamanio es. Es senal DEBIL: dice que hay una puerta abierta y quien la abre, NO que la planta vaya a comprar. No se parece a la invitacion de LinkedIn que el barrido de #336 descarto -- esa era una fuente de contactos disfrazada de senal--: esta es un evento con fecha, con camara identificable y con Metalsa como la empresa invitada, que es exactamente el tipo `presencia_en_evento` del catalogo.",
+      "fecha_procedencia": "buzon de FTS: invitacion de [vinculacion-de-negocios]@caintra.org.mx recibida el 24-jul-2026. El NOMBRE del invitado especial viene en el correo y NO se copia aqui ni al issue.",
+      "fecha_cita": "correo del 24-jul-2026; el evento es el 29-jul-2026",
+      "fecha_precision": "dia",
+      "fecha_hallada_el": "2026-09-29 (Tarea 3 de #353)",
+      "fecha_del_evento": "2026-07-29",
+      "NACE_VENCIDA": "Si, por CADUCIDAD -- no por frescura, y la diferencia importa. Tipo `presencia_en_evento`, ventana de 45 dias: contada desde el evento (29-jul-2026) mas los 15 dias de gracia, caduco a mediados de septiembre. Pero su FRESCURA al 29-sep-2026 son 18.0 puntos sobre 25 (67 dias, tramo de 90) -- calculado con `radar.puntos_de_frescura`--: es una senal RECIENTE cuya VENTANA ya paso. Entra como `vencida_sin_trabajar` y es el mejor candidato a `reabierta_vencida` de las tres, porque la siguiente edicion del evento la revive sin cambiarle nada.",
+      "lo_que_falta": "La camara publica el calendario: si «Cafe con el experto» es recurrente, la SIGUIENTE edicion es una senal fresca de verdad y hay que buscarla antes de trabajar esta.",
+      "era_hueco_hasta_353": {
+        "nota": "HUECO DECLARADO. No hay senal documentada de esta cuenta en ningun archivo del repo.",
+        "que_faltaria": "Un evento de mercado. La unica mencion es la invitacion de LinkedIn del corpus de M0b, que es fuente de contactos y no senal -- ver `pistas_descartadas`--. Metalsa es de las ocho cuentas de septiembre y de ella se midio el rendimiento de busqueda (12 consultas, 24 entradas) y el patron de correo sostenido por UN solo directorio: nada de eso es senal.",
+        "lo_mas_barato": "una consulta dirigida de prensa por «Metalsa inversion» o «Metalsa ampliacion», que es exactamente el modo señal de M12. Cuesta una consulta web.",
+        "barrido_2026_09_28": "sin senal documentada; ver `barrido_de_huecos`"
+      },
+      "hueco_cerrado_el": "2026-09-29, Tarea 3 de #353. Y NO se cerro por donde el hueco decia: el hueco proponia «una consulta dirigida de prensa por Metalsa inversion», que cuesta una consulta web. Lo cerro el BUZON, gratis, con un correo que ya estaba ahi desde el 24-jul. La leccion de orden es esa: el buzon se lee antes de gastar en web."
     },
     {
       "empresa": "International",
@@ -220,6 +231,28 @@
       "CORRECCION_2026_09_28": "ESTA CUENTA NO ERA UN HUECO, y el barrido de #336 se equivoco. El monto -- 120 MDD-- lleva documentado en `metodo/modulos-de-contactos.md` desde el 18-sep, en la MISMA LINEA que los cinco montos que si se declararon. El barrido lo perdio por una razon que vale nombrar: busco «International» y el repo la nombra «Navistar». Una cuenta con dos nombres se pierde en una busqueda de texto, y esa es la leccion, no el descuido.",
       "por_que_esta_senal_importa": "Es la mas especifica para FTS de las ocho. Un paint shop es el mayor consumidor de agua desmineralizada y el mayor generador de efluente de una armadora. Ampliarlo Y bajar 10% el agua a la vez solo se logra con reuso y recirculacion, y una empresa que PUBLICA una meta de reduccion de agua ya acepto el problema: no hay que vendserselo.",
       "que_faltaria_para_fecharla": "la fecha del anuncio de los 120 MDD. Sin ella la senal cuenta con el respaldo de «sin fecha» y su techo no es alcanzable."
+    },
+    {
+      "empresa": "Xignux / Qualtia Alimentos",
+      "planta": "Monterrey (San Nicolas de los Garza)",
+      "giro": "embutidos y carnes frias",
+      "fuente": "sitio_de_la_empresa",
+      "tipo": "ampliacion_de_capacidad",
+      "texto": "primera piedra de la ampliacion de la Planta Monterrey, declarada por la empresa como la mayor inversion de su historia; area nueva de embutidos y de embutidos para asar, con equipo de ultima generacion 'especializado en brindar mayor eficiencia energetica'; alineada a su estrategia Q25",
+      "fecha_senal": "2024-12-17",
+      "fecha_documentada": true,
+      "en_padron_denue": false,
+      "documentado_en": "#353, Tarea 5. Antes de esta busqueda Qualtia era un HUECO: entro al piloto por la corrida humana, no por senal.",
+      "nota": "LA CUENTA DEL TERCER RESPONDEDOR. Los tres que contestaron en la corrida humana estan en tres grupos de interlocutor distintos, y este es el unico de los tres cuya cuenta no tenia senal documentada. Ahora la tiene, y el angulo es DIRECTO: 'mayor eficiencia energetica' en un area nueva de proceso carnico es agua, vapor y frio, que es lo que FTS vende.",
+      "fecha_procedencia": "pagina propia de la empresa, «Expandemos nuestra Planta Monterrey» (qualtia.com.mx). Es fuente de la empresa hablando de si misma, no prensa: mas fuerte para el hecho, y sin intermediario que le cambie la cifra.",
+      "fecha_cita": "«17 de diciembre de 2024, primera piedra de la ampliacion de la Planta Monterrey»",
+      "fecha_precision": "dia",
+      "fecha_hallada_el": "2026-09-29 (Tarea 5 de #353)",
+      "monto": null,
+      "por_que_sin_monto": "La empresa la llama «la mayor inversion de su historia» y NO publica la cifra. Las cifras que si estan publicadas -- 282 y 284.4 MDP, 226 empleos, 2840 m2-- son de la planta de LACTEOS en Balvanera, Corregidora, QUERETARO: otra planta, otro negocio y otro estado. Ponerlas en esta senal seria la misma pista falsa que Nemak/Garcia (#340): un monto que pertenece a otro.",
+      "NACE_VENCIDA": "Si, por las dos. Tipo `ampliacion_de_capacidad`, ventana de 120 dias: caduco el 16-abr-2025. Y su frescura al 29-sep-2026 es 0.0 -- 651 dias, «ya no es senal, es historia», calculado con `radar.puntos_de_frescura`--, que es MENOS que los 2 puntos de una senal sin fecha. Entra como `vencida_sin_trabajar`, el caso de la opcion C de #340.",
+      "lo_que_la_hace_trabajable": "No la senal: la RESPUESTA. La corrida humana del 22-24 sep-2026 obtuvo respuesta positiva de esta cuenta, y eso es un hecho de hace una semana. La senal vieja sirve para el CONTENIDO del toque -- de que se habla--, no para justificar el momento.",
+      "via_interna": "FTS ya es proveedor registrado del grupo: hay perfil de proveedor en el portal Coupa de XIGNUX (ene-feb 2025) y notificaciones de pago de MAGNEKON, empresa del grupo, en jun-2025 y jun-2026. Es relacion con XIGNUX, no con Qualtia, y vale nombrar la diferencia antes de usarla: sirve como puerta de entrada al grupo, no como historia con esta planta."
     }
   ],
   "casos_de_control": [
@@ -279,5 +312,11 @@
     },
     "donde_deberia_haber_quedado_anotada": "En el contrato de M12, que dice literalmente que su salida es «el gancho: proyecto, monto, FECHA, ventana». La fecha estaba en el contrato y no llego al registro: de las ocho senales se guardo el monto y se perdio la fecha. El renglon de `senales-documentadas.json` es donde tiene que vivir, y de ahi sale `fecha_senal` para el evaluador.",
     "el_hallazgo_QUE_CAMBIA_LA_CONCLUSION": "Fechar NO subio el conteo: lo BAJO dos puntos por cuenta. Las tres que se pudieron fechar son de hace mas de un ano -- 1,050 dias LEGO, 574 Ragasa, 437 Bimbo-- asi que pasan de `FRESCURA_SIN_FECHA = 2` a 0. El radar no estaba ciego por falta de fecha: estaba siendo GENEROSO, regalandole dos puntos a una senal de hace tres anios.\nY el techo de esas tres deja de existir: la columna «pasaria si la senal estuviera fresca» no aplica cuando la senal ES vieja y ya se sabe. Lo que la lista de 13 necesita no es mejor puntuacion de senales viejas: es senal NUEVA."
+  },
+  "barrido_de_la_via_interna": {
+    "cuando": "2026-09-29, Tarea 3 de #353",
+    "que_se_pregunto": "Para las 10 cuentas de la corrida humana: partner en Odoo, hilos en el buzon, y remitentes por dominio de empresa.",
+    "hallazgo": "Dos senales nuevas que la web NO habia dado, y las dos salieron del BUZON: el evento de CAINTRA con Metalsa (cierra un hueco) y la relacion de proveedor con Xignux via Coupa y Magnekon. La leccion es de ORDEN: el buzon se lee antes de gastar en web, y en #353 no se habia leido.",
+    "lo_que_NO_dio": "Cero de los 55 contactos de valor de la corrida humana. Los cuatro remitentes humanos que el buzon si tiene -- en Bimbo, Nemak y Cuprum-- no estan en la planilla: son conjuntos DISJUNTOS."
   }
 }

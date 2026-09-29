@@ -17,21 +17,21 @@ es la de D7 (ver `motor1-radar-de-leads.md`).
 
 | | |
 |---|---|
-| Cuentas ya evaluadas | **13** |
-| Con señal documentada en el repo | **10** |
-| Con **fecha** de señal documentada | **5** de 10 |
-| Huecos (nadie documentó su señal) | **3** |
-| **Pasan solas, hoy** | **3 de 10** |
-| Pasaban en la etapa `original` | 1 de 10 |
-| Pasaban en la etapa `con_d3_y_b` | 3 de 10 |
-| Pasaban en la etapa `con_d6` | 3 de 10 |
-| Pasarían si la señal estuviera fresca | 4 de 10 |
+| Cuentas ya evaluadas | **14** |
+| Con señal documentada en el repo | **12** |
+| Con **fecha** de señal documentada | **7** de 12 |
+| Huecos (nadie documentó su señal) | **2** |
+| **Pasan solas, hoy** | **3 de 12** |
+| Pasaban en la etapa `original` | 1 de 12 |
+| Pasaban en la etapa `con_d3_y_b` | 3 de 12 |
+| Pasaban en la etapa `con_d6` | 3 de 12 |
+| Pasarían si la señal estuviera fresca | 4 de 12 |
 
 ### La evolución, cuenta por cuenta
 
 ```
   LINEA BASE DEL RADAR — corte 2026-09-28
-  13 cuentas ya evaluadas · 10 con senal documentada · 3 huecos
+  14 cuentas ya evaluadas · 12 con senal documentada · 2 huecos
 
   LA EVOLUCION DE LA NOCHE, cuenta por cuenta
   cuenta                      original  con_d3_y_b      con_d6 veredicto  techo fecha?
@@ -47,17 +47,18 @@ es la de D7 (ver `motor1-radar-de-leads.md`).
   Hershey/Escobedo                  83          83          83      pasa            si
   Coficab/Cd. Juarez                 —           —           —     HUECO
   Coficab/Silao                      —           —           —     HUECO
-  Metalsa                            —           —           —     HUECO
+  Metalsa                           30        42.7        42.7    guarda            si
   International                     20          20          30   archiva     53     NO
+  Xignux / Qualtia Alimentos/Monterrey (San Nicolas de los Garza)          10          10          10   archiva            si
   ------------------------------------------------------------------------------------
-  PASAN                              1           3           3     de 10
+  PASAN                              1           3           3     de 12
 
     original       antes de la noche del 28-sep: sin vocabulario de obra nueva, con el falso positivo de 'prensa', sin 'cable' en el catalogo, sin giro y sin dinero
     con_d3_y_b     con D3 -- obra nueva integral-- y con B1/B2/B3 corregidos
     con_d6         mas D6: el evaluador ya lee los montos de inversion
 
-  Pasarian si la senal estuviera fresca: 4 de 10
-  Huecos (sin senal documentada, NO se inventa): Coficab/Cd. Juarez, Coficab/Silao, Metalsa
+  Pasarian si la senal estuviera fresca: 4 de 12
+  Huecos (sin senal documentada, NO se inventa): Coficab/Cd. Juarez, Coficab/Silao
 
   CONTROL · senal fresca documentada: 33 -> 58 -> 68  (pasa)
 ```
@@ -130,7 +131,7 @@ fecha en el registro»*. No es que nadie buscara.
 
 ## Cómo se lee esto, y las tres cosas que NO dice
 
-**1. «3 de 10» no es «el radar falla 7 veces».** Es *«de las cuentas que FTS ya
+**1. «3 de 12» no es «el radar falla 9 veces».** Es *«de las cuentas que FTS ya
 trabajó, el radar habría detonado 3 por sí solo»*. Las otras entraron por criterio
 del dueño, y eso sigue siendo una vía legítima — el punto de la métrica es saber
 cuánta del trabajo depende de que alguien se acuerde.
@@ -149,12 +150,25 @@ la primera noche cometió.
 
 ---
 
-## El diagnóstico: por qué 7 de 10 no pasan
+## El diagnóstico: por qué 9 de 12 no pasan
 
 Las que no pasan son **casi todas** anuncios de inversión: LEGO 205 MDD · Ragasa
 633 MDP · Cuprum 200 MDD · Amazon 500 MDP · International 120 MDD · Nemak
 (inversión + vacantes, **sin cifra**) — y Bimbo queda en `guarda` con 2,000 MDD.
 Todas menos Nemak tienen **su monto documentado**.
+
+**Las dos que entraron en #353 no son de esa familia, y por eso valen aparte.**
+
+| Cuenta | Puntaje | Qué la hunde |
+|---|---|---|
+| **Qualtia / Xignux** | **10.0** | Todo lo demás en cero. Señal del 17-dic-2024 —651 días, `«ya no es señal, es historia»`—, la obra no nombra ningún proceso de FTS *(dice «mayor eficiencia energética», no agua ni vapor ni frío)*, y la empresa **no publica el monto**: la llama «la mayor inversión de nuestra historia» y ahí se queda. Los 10 puntos son los de `sitio_de_la_empresa`, que se declaró en #353 justo por esta señal. |
+| **Metalsa** | **30.0** | Al revés que todas las demás: **su frescura es lo único que tiene** —18 de 25, 67 días— y el resto es cero. Es un evento de cámara: dice que hay una puerta abierta, no que la planta vaya a comprar. |
+
+Y hay algo que la tabla no puede decir y esta línea sí: **las tres cuentas que
+respondieron en la corrida humana de septiembre puntúan `archiva`** — Qualtia 10.0,
+Amazon 30.5, Cuprum 38.0. Ninguna llega al umbral de 60. Lo que eso mide no es que
+el radar esté roto: es que **el inventario de señales de esas tres cuentas está
+viejo**, y que una respuesta la da una persona, no una nota de prensa.
 
 > **International dejó de ser un hueco el 28-sep, y el error vale nombrarlo.** Sus
 > 120 MDD para el área de pintura de cabinas llevaban documentados en
