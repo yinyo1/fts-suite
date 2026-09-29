@@ -89,7 +89,10 @@ def test_mes_no_disponible_no_cuenta(base):
     correr(lote())
     # el 30-sep septiembre todavía no se pide; el 1-oct sí
     assert uno("SELECT count(*) FROM bancos.f_faltantes('2026-09-30') WHERE periodo='2026-09'") == 0
-    assert uno("SELECT count(*) FROM bancos.f_faltantes('2026-10-01') WHERE periodo='2026-09'") == 5
+    # #352: el 1-oct se piden las 3 BBVA y Payana; Jeeves se pide desde el primer día hábil DESPUÉS de su
+    # Statement Date (el 1-oct), o sea el 2-oct
+    assert uno("SELECT count(*) FROM bancos.f_faltantes('2026-10-01') WHERE periodo='2026-09'") == 4
+    assert uno("SELECT count(*) FROM bancos.f_faltantes('2026-10-02') WHERE periodo='2026-09'") == 5
 
 
 def test_rechazo_y_conflicto_siguen_abiertos(base):
@@ -115,7 +118,7 @@ def test_escenario_1_primer_dia_habil(base):
     correr(lote())
     d = uno("SELECT bancos.f_solicitud('2026-10-01','prueba')")
     assert d["tipo"] == "solicitud" and d["razon"] == "primer día hábil del mes" and d["periodo_reciente"] == "2026-09"
-    assert d["total"] == 2 + 5 + 2   # rezago (jul General, jun Nómina, ago Payana/Jeeves) + septiembre de las 5
+    assert d["total"] == 2 + 4 + 2   # rezago (jul General, jun Nómina, ago Payana/Jeeves) + septiembre de 4 (Jeeves desde el 2-oct, #352)
     c = render("solicitud", d, url="https://ejemplo.invalid/buzon")
     assert c["asunto"] == f"Estados de cuenta FTS: faltan {d['total']} (el más antiguo lleva {d['mas_antiguo_dias']} días hábiles)"
     assert "Mes recién cerrado: septiembre 2026" in c["html"] and "Rezago" in c["html"]

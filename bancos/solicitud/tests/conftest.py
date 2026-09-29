@@ -46,8 +46,20 @@ def base(monkeypatch):
         pipeline.sembrar(con, cargar_de_entorno())
     # configuración de prueba (como administrador: la aplicación no puede editarla)
     admin("UPDATE bancos.fuentes_solicitud SET periodo_inicio='2026-01' WHERE tipo='bbva'", nombre)
+    # estas pruebas son de la solicitud de BBVA: Jeeves como estaba antes de bancos_0011 (sólo agosto, sin CSV);
+    # la solicitud de Jeeves tiene sus propias pruebas (test_jeeves_solicitud.py, fixture base_jeeves)
+    if not getattr(monkeypatch, "_jeeves_completo", False):
+        admin("UPDATE bancos.fuentes_solicitud SET periodo_inicio='2026-08' WHERE clave='jeeves'", nombre)
+        admin("UPDATE bancos.fuentes_solicitud SET activa=false WHERE clave='jeeves_csv'", nombre)
     yield nombre
     psql("postgres", "-c", f"DROP DATABASE IF EXISTS {nombre} WITH (FORCE)")
+
+
+@pytest.fixture
+def base_jeeves(monkeypatch):
+    """Base con la solicitud de Jeeves completa de bancos_0011 (PDF desde enero 2025 y CSV por año)."""
+    monkeypatch._jeeves_completo = True
+    yield from base.__wrapped__(monkeypatch)
 
 
 def admin(sql, db):
