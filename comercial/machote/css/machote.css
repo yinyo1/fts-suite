@@ -2743,4 +2743,11 @@ table.or-tab td.num { text-align: right; }
 /* Chico de aspecto, NO de area de toque: el minimo son 40px de alto y la suite
  * lo exige. Un boton de 28px se pica mal con el pulgar, y este vive metido en
  * una linea de texto, que es justo donde mas facil se falla. */
-.btn.peq { min-height: 40px; padding: 0 10px; font-size: 12px; }
+/* ⚠️ `width: auto` NO sobra: `shared/fts-styles.css` define `.btn{width:100%}`
+ * para el kiosko, donde los botones son de pantalla completa, y cada contexto
+ * de este módulo lo tiene que deshacer. Sin esto el botón sale de ancho
+ * completo dentro de la línea y se lee como la acción principal de la tarjeta,
+ * que es lo contrario de lo que es. `flex:none` no basta: no deshace un ancho.
+ * Es el mismo tropiezo que el botón de copiar de la V1.47. */
+.btn.peq { min-height: 40px; padding: 0 10px; font-size: 12px;
+            width: auto; flex: none; align-self: center; }
