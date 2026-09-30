@@ -3,9 +3,133 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Prototipo · Confirmación con sus candados</title>
-<link rel="stylesheet" href="_comun.css">
+<title>Prototipo · Confirmación con sus diecisiete candados</title>
+<style id="comun">
+/* ═══ GENERADO desde _comun.css por sellar.js — NO editar aquí ═══
+ * Va inline a propósito: Jekyll no publica archivos que empiezan con `_`,
+ * así que enlazarlo por fuera llega vacío al dominio.
+ * Para cambiarlo: edita _comun.css y corre `node sellar.js`. */
+/* ═══ Prototipos de la Estación 3 · hoja de estilo común ═══
+ *
+ * ⚠️ NO la enlaces con <link>. Su nombre empieza con `_`, y GitHub Pages
+ * construye con Jekyll, que NO publica los archivos que empiezan con `_`:
+ * enlazarla se ve bien en disco y llega VACÍA al dominio — que es justo lo
+ * que dejó los cuatro prototipos sin formato hasta el 30-sep-2026.
+ * Esta hoja va INLINE dentro de cada prototipo. Ésta es la fuente única:
+ * edítala aquí y corre `node comercial/prototipos/e3/sellar.js`.
+ *
+ * Los mismos tokens del módulo de machote, para que estas pantallas se vean
+ * de la MISMA familia que la suite y no como una maqueta de otro sitio.
+ * No es el CSS de producción: es una copia recortada, a propósito, para que
+ * estos archivos sean autocontenidos y se puedan abrir con doble clic.
+ */
+:root{
+  --tinta:#1c1c1c; --suave:#6b6b6b; --linea:#dcdcdc; --linea2:#ececec;
+  --fondo:#fff; --papel:#f6f7f8; --cab:#eef1f4;
+  --acento:#0969da; --verde:#1a7f37; --ambar:#9a6700; --rojo:#cf222e;
+  --toque:44px;
+  --azul-banda:#1f4e79;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--papel);color:var(--tinta);
+     font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;}
+.mono{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.tiny{font-size:12px;color:var(--suave);line-height:1.45}
+.n-ok{color:var(--verde)} .n-warn{color:var(--ambar)} .n-bad{color:var(--rojo)}
+
+/* ── el marco ── */
+.topbar{background:var(--fondo);border-bottom:1px solid var(--linea);
+        padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+        position:sticky;top:0;z-index:10}
+.topbar b{font-size:15px}
+.wrap{max-width:1080px;margin:0 auto;padding:16px}
+.card{background:var(--fondo);border:1px solid var(--linea);border-radius:10px;
+      padding:16px;margin-bottom:14px}
+h2{font-size:19px;margin:0 0 4px} h3{font-size:15px;margin:18px 0 8px}
+.sub{color:var(--suave);font-size:13px;margin:0 0 14px}
+
+/* ── la marca de prototipo, que NO se puede confundir con producción ── */
+.demo{background:#3d2b00;color:#ffdf8a;padding:9px 16px;font-size:12.5px;
+      line-height:1.5;border-bottom:2px solid #8a6d00}
+.demo b{color:#fff}
+
+/* ── pastillas de estado ── */
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;
+      border-radius:20px;white-space:nowrap;vertical-align:middle}
+.pill.ok{background:#dafbe1;color:#116329} .pill.bad{background:#ffebe9;color:#a40e26}
+.pill.warn{background:#fff8c5;color:#7d4e00} .pill.neu{background:var(--papel);color:var(--suave)}
+.pill.info{background:#ddf4ff;color:#0a3069}
+
+/* ── candados ── */
+.candado{border:1px solid var(--linea);border-left:4px solid var(--linea);
+         border-radius:8px;padding:12px 14px;margin:10px 0;background:var(--fondo)}
+.candado.pasa{border-left-color:var(--verde)}
+.candado.frena{border-left-color:var(--rojo);background:#fffbfa}
+.candado.avisa{border-left-color:var(--ambar);background:#fffdf5}
+.candado h4{margin:0 0 4px;font-size:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.candado p{margin:5px 0 0;font-size:13px;line-height:1.5}
+.codigo{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;
+        background:var(--papel);border:1px solid var(--linea);border-radius:4px;padding:1px 6px}
+
+/* ── botones ── */
+.btn{min-height:var(--toque);padding:0 16px;border-radius:8px;border:1px solid var(--linea);
+     background:var(--fondo);color:var(--tinta);font-size:14px;font-weight:600;cursor:pointer;
+     display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn:hover{background:var(--papel)}
+.btn.pri{background:var(--acento);border-color:var(--acento);color:#fff}
+.btn.pri:disabled{background:#8fb8e8;border-color:#8fb8e8;cursor:not-allowed}
+.btn.peli{color:var(--rojo);border-color:#ffc9c9}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+
+/* ── tablas y números ── */
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--linea2)}
+th{background:var(--cab);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;
+   color:#44546a;font-weight:700}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.tabla-caja{overflow-x:auto;border:1px solid var(--linea);border-radius:8px}
+
+/* ── campos ── */
+label.campo{display:block;margin:12px 0}
+label.campo>span{display:block;font-size:12px;font-weight:700;color:#44546a;margin-bottom:5px}
+input[type=text],input[type=number],input[type=date],select,textarea{
+  width:100%;min-height:var(--toque);padding:9px 11px;border:1px solid var(--linea);
+  border-radius:8px;font:inherit;background:var(--fondo);color:var(--tinta)}
+textarea{min-height:80px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--acento);outline-offset:-1px}
+.rejilla{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:0 14px}
+
+/* ── el bloque de los cuatro números ── */
+.cuatro{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.num-caja{border:1px solid var(--linea);border-radius:10px;padding:14px;background:var(--fondo)}
+.num-caja .et{font-size:11.5px;font-weight:700;color:#44546a;text-transform:uppercase;
+              letter-spacing:.04em;display:flex;align-items:center;gap:6px}
+.num-caja .vl{font-size:23px;font-weight:700;margin:7px 0 2px;font-variant-numeric:tabular-nums}
+.num-caja .nt{font-size:11.5px;color:var(--suave);line-height:1.4}
+.num-caja.sin .vl{color:var(--suave)}
+
+/* ── banda de advertencia del reporte ── */
+.banda{border:1px solid #f0c36d;background:#fffbe6;border-radius:9px;padding:13px 15px;margin:14px 0}
+.banda h4{margin:0 0 6px;font-size:14px;color:#7d4e00}
+.banda p{margin:5px 0;font-size:13px;line-height:1.55}
+
+@media (max-width:720px){
+  .wrap{padding:12px}
+  .card{padding:13px;border-radius:9px}
+  .topbar{padding:9px 12px}
+}
+
+/* ── el aviso duro, compartido: el que nadie debe poder no ver ──────────────
+ * Vive aqui y no en cada prototipo porque los tres dicen lo MISMO. Dos copias
+ * del mismo aviso se separan en cuanto una se corrige (CLAUDE.md §20 #4). */
+.alto{background:#fff0ef;border:1px solid #ffc9c9;border-left:4px solid var(--rojo);
+      border-radius:9px;padding:13px 15px;margin:0 0 14px}
+.alto h3{margin:0 0 5px;font-size:14.5px;color:#a40e26}
+.alto p{margin:5px 0 0;font-size:13px;line-height:1.5}
+.alto .codigo{background:#fff}
+</style>
 <style>
+  /* ── los pasos de la escritura ── */
   .paso{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--linea2)}
   .paso:last-child{border-bottom:0}
   .paso .n{flex:none;width:26px;height:26px;border-radius:50%;background:var(--papel);
@@ -14,18 +138,49 @@
   .paso.irrev .n{background:#ffebe9;border-color:#ffc9c9;color:#a40e26}
   .paso .t{flex:1 1 auto;min-width:0}
   .paso .t b{font-size:13.5px} .paso .t div{font-size:12px;color:var(--suave);line-height:1.45}
+
+  /* ── el cuadre de la PO ── */
   .cuadre{display:grid;grid-template-columns:1fr auto;gap:4px 14px;font-size:13.5px;
           max-width:430px;margin:10px 0}
   .cuadre .v{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
   .cuadre .sep{grid-column:1/-1;border-top:1px solid var(--linea);margin:4px 0}
+
+  /* ── el marcador del candado: número + dónde vive ──────────────────────────
+   * El número NO es decorativo: es el de la especificación, y es lo que permite
+   * discutir «el 13» sin tener que citar el texto entero. */
+  .cand-num{flex:none;width:24px;height:24px;border-radius:6px;background:var(--papel);
+            border:1px solid var(--linea);display:inline-flex;align-items:center;
+            justify-content:center;font-size:11.5px;font-weight:700;color:var(--suave)}
+  .vive{font-size:11px;color:var(--suave);margin-top:7px;display:flex;gap:6px;
+        align-items:center;flex-wrap:wrap}
+  .vive .et{background:var(--papel);border:1px solid var(--linea);border-radius:4px;
+            padding:1px 6px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px}
+
+  /* Un candado que todavía no existe se pinta DISTINTO de uno que pasa.
+   * Pintarlos igual sería el vacío que se lee como respuesta (CLAUDE.md §20 #11). */
+  .candado.falta{border-left-color:#8250df;background:#fbfaff}
+  .candado.futuro{border-left-color:var(--linea);background:var(--papel);opacity:.92}
+  .pill.mora{background:#f3e8ff;color:#6639ba}
+
+  /* ── el tablero de arriba ── */
+  .marcador{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:2px 0 12px}
+  .mk{border:1px solid var(--linea);border-radius:8px;background:var(--fondo);
+      padding:7px 12px;font-size:12px;color:var(--suave);line-height:1.3}
+  .mk b{display:block;font-size:19px;color:var(--tinta);font-variant-numeric:tabular-nums}
+  .mk.bad b{color:var(--rojo)} .mk.warn b{color:var(--ambar)} .mk.ok b{color:var(--verde)}
+
+  .resuelto{display:none}
+  .candado.ya .resuelto{display:block}
+  .candado.ya .pendiente{display:none}
 </style>
 </head>
 <body>
 
 <div class="demo">
-  <b>PROTOTIPO · datos inventados.</b> No está conectado a nada: no lee Odoo, no lee Postgres y
-  ningún botón escribe. Sirve para ver <b>la forma de la pantalla y el texto de los candados</b>
-  antes de construirla. Issue <b>#294</b> · 25-sep-2026.
+  <b>MAQUETA · no es una pantalla conectada.</b> Todos los datos de abajo —cliente, importes,
+  fechas, nombres— están <b>inventados</b>. Esta página no lee Odoo, no lee Postgres, no llama a
+  ningún servidor y <b>ningún botón escribe nada</b>. Sirve para ver la forma de la pantalla y
+  <b>el texto exacto de los diecisiete candados</b> antes de construirla. Issue <b>#294</b>.
 </div>
 
 <div class="topbar">
@@ -37,6 +192,20 @@
 </div>
 
 <div class="wrap">
+
+  <div class="alto">
+    <h3>⚠ Hoy NO uses el botón de «Pasar a orden de venta» del machote</h3>
+    <p><b>Contesta error y de todas formas crea la orden</b>, casi media hora después. Medido el
+      29-sep: el navegador corta la espera a los <b>10 segundos</b> y enseña un fallo, pero el
+      proceso del servidor siguió corriendo y terminó bien a los <b>28 min 41 s</b> y
+      <b>28 min 46 s</b>, dejando dos órdenes creadas en Odoo.</p>
+    <p>Quien ve el error asume que no pasó nada y <b>vuelve a picarle</b>. La reserva que impide
+      el duplicado dura <b>2 minutos</b> y la corrida tarda <b>29</b>: para cuando se pica otra
+      vez, la reserva ya caducó. <span class="tiny">(Esto último sale de restar los dos números
+      medidos; el doble clic no se probó a propósito, porque probarlo crea una orden de más.)</span></p>
+    <p><b>Mientras no se arregle, las órdenes se crean a mano en Odoo.</b> El porqué y el arreglo
+      exacto están en <span class="codigo">docs/comercial/POR-QUE-NO-SE-PODIA-CONFIRMAR.md</span>.</p>
+  </div>
 
   <div class="card">
     <h2>Lo que se va a confirmar</h2>
@@ -58,11 +227,13 @@
 
   <div class="card">
     <h2>Lo que falta capturar</h2>
-    <p class="sub">Cuatro cosas que el machote no tiene. Todo lo demás ya viene de la cotización.</p>
+    <p class="sub">Cuatro cosas que el machote no tiene. Todo lo demás ya viene de la cotización.
+       Se piden <b>aquí y no al confirmar</b>: al confirmar se le estarían pidiendo a otra
+       persona, otro día, sin el correo del cliente delante.</p>
 
     <div class="rejilla">
       <label class="campo"><span>Número de la orden de compra</span>
-        <input type="text" value="4500123987" ></label>
+        <input type="text" value="4500123987"></label>
       <label class="campo"><span>Importe que dice la PO</span>
         <input type="number" value="1160000.00" step="0.01"></label>
     </div>
@@ -91,67 +262,23 @@
 
   <div class="card">
     <h2>Los candados</h2>
-    <p class="sub">Se revisan en orden, y <b>primero lo que se puede rechazar sin tocar nada</b>.
-       Un candado que salta no es un error: es un pendiente.</p>
+    <p class="sub">Los <b>diecisiete</b> de la especificación, en orden, y
+       <b>primero lo que se puede rechazar sin tocar nada</b>. Un candado que salta no es un
+       error: es un pendiente. Ninguno dice sólo qué falta — dice <b>qué falta, por qué importa
+       y dónde se arregla</b>.</p>
 
-    <div class="candado pasa"><h4>✓ Cliente del catálogo <span class="pill ok">pasa</span></h4>
-      <p class="tiny">Ligado a Odoo. Sin esto no se puede crear la orden.</p></div>
+    <div class="marcador" id="marcador"></div>
+    <div id="lista"></div>
 
-    <div class="candado pasa"><h4>✓ Contacto con teléfono y correo <span class="pill ok">pasa</span></h4>
-      <p class="tiny">Es a quien se le manda la factura.</p></div>
-
-    <div class="candado pasa"><h4>✓ Los cuatro compromisos <span class="pill ok">pasa</span></h4>
-      <p class="tiny">Términos de pago (30 días) · incoterm (DDP) · entrega (8 semanas) ·
-         vigencia (30 días). Capturados en la cotización.</p></div>
-
-    <div class="candado pasa"><h4>✓ La PO cuadra <span class="pill ok">con IVA</span>
-        <span class="codigo">CON_IVA</span></h4>
-      <div class="cuadre">
-        <div>Tu PO dice</div><div class="v">$1,160,000.00</div>
-        <div>La cotización, sin IVA</div><div class="v">$1,000,000.00</div>
-        <div>La cotización, con IVA</div><div class="v">$1,160,000.00</div>
-        <div class="sep"></div>
-        <div>Cuadra contra</div><div class="v n-ok">el total con IVA</div>
-      </div>
-      <p class="tiny">Coincide con la forma en que este cliente siempre manda su PO.</p></div>
-
-    <div class="candado frena"><h4>✗ Anticipo obligatorio <span class="pill bad">frena</span>
-        <span class="codigo">SIN_ANTICIPO</span></h4>
-      <p><b>Esta orden pasa del umbral y no tiene anticipo.</b><br>
-        El subtotal es <b>$1,000,000.00 MXN</b> y el umbral para pesos es
-        <b>$200,000.00</b>. Arriba de ese monto el anticipo es obligatorio.</p>
-      <p class="tiny">Se propone <b>30 %</b> = $300,000.00 sobre el subtotal. Se factura con el
-        asistente de anticipos de Odoo, que es lo que hace que el avance de la orden quede bien
-        sin tener que corregirlo después.</p>
-      <div class="btns">
-        <button class="btn pri">Poner anticipo de 30 %</button>
-        <button class="btn">Cambiar el porcentaje</button>
-        <button class="btn">Pedir excepción a dirección</button>
-      </div></div>
-
-    <div class="candado frena"><h4>✗ Beneficiario de comisión sin autorizar
-        <span class="pill bad">frena</span> <span class="codigo">BENEFICIARIO_SIN_APROBAR</span></h4>
-      <p><b>Falta autorizar a quien va a recibir comisión.</b><br>
-        <b>Contacto nuevo del cliente (demo)</b> — lado cliente — está <b>pendiente de
-        autorizar</b> desde el 24-sep.</p>
-      <p class="tiny">Se le pidió a quien autoriza el 24-sep 18:40 y <b>caduca el 27-sep a las
-        18:40</b>. Sin esa autorización no se puede confirmar, porque el presupuesto de comisión
-        se escribe al confirmar.</p>
-      <div class="btns">
-        <button class="btn">Recordarle</button>
-        <button class="btn peli">Quitar a esta persona de la cotización</button>
-      </div></div>
-
-    <div class="candado avisa"><h4>⚠ La oportunidad <span class="pill warn">avisa, todavía no frena</span>
-        <span class="codigo">SIN_OPORTUNIDAD</span></h4>
-      <p class="tiny">Esta cotización no está ligada a ninguna tarjeta del CRM. Hoy se marca y
-        deja pasar; cuando las 24 cotizaciones vivas estén ligadas, pasa a frenar.
-        <b>Se liga en la cotización, no aquí</b>: la liga nace al cotizar.</p></div>
-
-    <div class="candado pasa"><h4>✓ Las facturas de la orden cuadran <span class="pill ok">pasa</span></h4>
-      <p class="tiny">Orden en borrador, sin facturas. En este camino el candado casi nunca
-        salta: sirve cuando se reabre una orden ya facturada, cuando la orden se creó en Odoo
-        por fuera, o en una orden hija de adicionales.</p></div>
+    <p class="tiny" style="margin-top:14px">
+      El color del borde izquierdo dice <b>qué clase de candado es</b>, no sólo si pasa:
+      <span class="pill ok">pasa</span> revisado y bien ·
+      <span class="pill bad">frena</span> no deja confirmar ·
+      <span class="pill warn">avisa</span> deja pasar y queda anotado ·
+      <span class="pill mora">no construido</span> hoy <b>no se revisa</b>, y decirlo es la
+      diferencia entre «no impide» y «todo bien» ·
+      <span class="pill neu">del servidor</span> se revisa allá al confirmar, no aquí.
+    </p>
   </div>
 
   <div class="card">
@@ -175,7 +302,7 @@
     <div class="paso"><div class="n">6</div><div class="t"><b>Escribir en la orden</b>
       <div>PO y su archivo, términos, incoterm, fecha, contacto, proyecto, analítica.
         <b>El archivo es lo único irreversible que no es el último paso</b>: por eso se valida
-        antes.</div></div></div>
+        antes, en el candado 11.</div></div></div>
     <div class="paso"><div class="n">7</div><div class="t"><b>Factura de anticipo</b>
       <div>Con el asistente de Odoo. Reversible: se cancela.</div></div></div>
     <div class="paso irrev"><div class="n">8</div><div class="t"><b>Confirmar la orden</b>
@@ -183,15 +310,263 @@
         pueda fallar.</div></div></div>
 
     <div class="btns" style="margin-top:16px">
-      <button class="btn pri" disabled>Confirmar orden — faltan 2 candados</button>
-      <button class="btn">Revisar de nuevo</button>
+      <button class="btn pri" id="btn-confirmar" disabled>Confirmar orden</button>
+      <button class="btn" id="btn-reiniciar">Volver a empezar</button>
       <button class="btn">Volver a la cotización</button>
     </div>
-    <p class="tiny" style="margin-top:10px">El botón se enciende solo cuando los dos candados
-      rojos pasen. No hay forma de saltárselos desde aquí — y tampoco desde el servidor, que
-      vuelve a revisarlos todos.</p>
+    <p class="tiny" style="margin-top:10px" id="nota-btn"></p>
   </div>
 
 </div>
+
+<script>
+/* ═══ LOS DIECISIETE CANDADOS ══════════════════════════════════════════════
+ * El texto NO está inventado: sale de `docs/trazabilidad/ESPECIFICACION-
+ * CONFIRMACION.md` §3.1 (qué mide y qué ve la persona) y de los mensajes
+ * reales de `comercial/machote/js/confirmacion.js` y `puerta.js`.
+ * El campo `vive` sale de §8.1 — qué está construido y qué no.
+ *
+ * Se pintan desde UNA lista. Si la lista y el marcador vivieran aparte,
+ * mañana dirían números distintos de la misma verdad (CLAUDE.md §20 #4).
+ * ─────────────────────────────────────────────────────────────────────────
+ * estado: pasa | frena | avisa | falta (no construido) | futuro (del servidor) */
+var CANDADOS = [
+ { n:1, cod:'VERSION_VIEJA', tit:'El machote existe, vive, y la versión es la última',
+   estado:'futuro', vive:'servidor · pendiente de construir',
+   txt:'«Alguien guardó una versión más nueva mientras mirabas ésta. Vuelve a abrirla; '+
+       '<b>no se confirmó nada</b>.»',
+   nota:'Se revisa en el servidor, no aquí: el navegador no puede saber lo que otro guardó.' },
+
+ { n:2, cod:'SIN_PERMISO', tit:'Quien confirma tiene el permiso', estado:'pasa',
+   vive:'orden.js + servidor · ya estaba',
+   txt:'«Tu cuenta no tiene permiso para confirmar. Pídeselo a Esteban.»',
+   nota:'Se revisa dos veces, aquí y allá. La de aquí es para no llegar hasta el final; '+
+        'la que decide es la del servidor.' },
+
+ { n:3, cod:'REGLAS_DURAS', tit:'Sin reglas duras pendientes en la cotización', estado:'pasa',
+   vive:'reglas.js · ya estaba',
+   txt:'La lista literal de las reglas que faltan, cada una con liga a su sección.',
+   nota:'Las 3 reglas duras de esta cotización pasan.' },
+
+ { n:4, cod:'SIN_CLIENTE', tit:'Cliente del catálogo, no tecleado a mano', estado:'pasa',
+   vive:'orden.js · ya estaba',
+   txt:'«Esta cotización tiene el cliente escrito a mano. Elígelo del catálogo de Odoo para '+
+       'poder crear la orden.» + selector',
+   nota:'Ligado a Odoo. Sin esto no se puede crear la orden.' },
+
+ { n:5, cod:'SIN_CONTACTO', tit:'Contacto con teléfono y correo', estado:'pasa',
+   vive:'confirmacion.js · construido',
+   txt:'«Es la persona a quien se le manda la factura. Sin nombre, la factura sale a nombre de '+
+       'la empresa y se pierde.» · del correo: «Es a donde llega la factura. Un correo mal '+
+       'escrito no rebota a nadie: la factura simplemente no llega.» · del teléfono: «Es por '+
+       'donde se cobra cuando el correo no contesta. Diez dígitos mínimo.»',
+   nota:'Son tres comprobaciones con el mismo código, no una.' },
+
+ { n:6, cod:'SIN_DIAS_PAGO', tit:'Días de pago', estado:'pasa',
+   vive:'compromisos.js · ya estaba',
+   txt:'«Falta en cuántos días paga el cliente.»',
+   nota:'30 días. Va con los otros tres compromisos: incoterm (DDP), entrega (8 semanas) y '+
+        'vigencia (30 días).' },
+
+ { n:7, cod:'SIN_DECISION_IVA', tit:'Decisión de impuesto tomada, explícita', estado:'pasa',
+   vive:'confirmacion.js · construido',
+   txt:'«Si no se dice, la orden hereda lo que Odoo traiga por omisión, y la factura sale con '+
+       'lo que nadie decidió.» Y si no lleva IVA: «Una factura sin IVA y sin leyenda es una '+
+       'factura que el cliente rechaza.»',
+   nota:'Esta orden lleva IVA 16 %. Un valor por omisión no es una decisión.' },
+
+ { n:8, cod:'VIAJE_SIN_RESOLVER', tit:'Viáticos resueltos si la obra es foránea', estado:'pasa',
+   vive:'V1.26 · ya estaba',
+   txt:'Si la obra es fuera de la ciudad, los viáticos se resuelven antes, no después.',
+   nota:'Obra local. El candado no aplica en esta cotización.' },
+
+ { n:9, cod:'SIN_OPORTUNIDAD', tit:'Oportunidad del CRM ligada', estado:'avisa',
+   vive:'oportunidades.js · V1.44',
+   txt:'Esta cotización no está ligada a ninguna tarjeta del CRM.',
+   nota:'Hoy <b>avisa y deja pasar</b>; cuando las cotizaciones vivas estén ligadas, pasa a '+
+        'frenar. <b>Se liga en la cotización, no aquí</b>: la liga nace al cotizar.' },
+
+ { n:10, cod:'SIN_NUMERO_PO', tit:'Número de la orden de compra', estado:'pasa',
+   vive:'confirmacion.js · construido',
+   txt:'«Es la referencia con la que el cliente va a pagar. Sin ella, su cuentas por pagar no '+
+       'encuentra la factura.»',
+   nota:'4500123987.' },
+
+ { n:11, cod:'PO_EN_BLANCO', tit:'El archivo de la PO trae texto', estado:'avisa',
+   vive:'confirmacion.js · construido, y es BLANDO a propósito',
+   txt:'«La orden de compra parece un escaneo sin texto. No se le pudo leer texto, así que '+
+       'nadie va a poder buscar dentro. Es normal en un escaneo.»',
+   nota:'La especificación lo ponía entre los que rechazan y <b>se construyó blando</b>: si '+
+        'bloqueara, la salida obvia sería subir otro archivo cualquiera que sí traiga texto, '+
+        'y el candado habría producido justo el dato falso que venía a impedir.' },
+
+ { n:12, cod:'PO_NO_CUADRA', tit:'El importe de la PO cuadra', estado:'pasa', etiq:'CON_IVA',
+   vive:'confirmacion.js · construido',
+   txt:'Se deduce sola si la PO viene con IVA o sin él, comparándola contra los dos importes. '+
+       'No se le pregunta a nadie.',
+   cuadre:[['Tu PO dice','$1,160,000.00'],['La cotización, sin IVA','$1,000,000.00'],
+           ['La cotización, con IVA','$1,160,000.00'],['SEP',''],
+           ['Cuadra contra','el total con IVA']],
+   nota:'Coincide con la forma en que este cliente siempre manda su PO (6 de 6).' },
+
+ { n:13, cod:'SIN_ANTICIPO', tit:'Anticipo obligatorio arriba del umbral', estado:'frena',
+   vive:'confirmacion.js · construido',
+   txt:'<b>Esta orden pasa del umbral y no tiene anticipo.</b> El subtotal es '+
+       '<b>$1,000,000.00 MXN</b> y el umbral para pesos es <b>$200,000.00</b>. Arriba de ese '+
+       'monto el anticipo es obligatorio.',
+   nota:'Se propone <b>30 %</b> = $300,000.00 sobre el subtotal. Se factura con el asistente '+
+        'de anticipos de Odoo, que es lo que hace que el avance de la orden quede bien sin '+
+        'tener que corregirlo después. <br>El umbral en dólares es <b>10,000 fijo</b>, no '+
+        'convertido: si fuera 200,000 entre el tipo de cambio, la misma orden estaría arriba '+
+        'un día y abajo el siguiente sin que nadie cambiara nada.',
+   acciones:[['Poner anticipo de 30 %','pri'],['Cambiar el porcentaje',''],
+             ['Pedir excepción a dirección','']],
+   ya:'Anticipo del 30 % puesto — $300,000.00. Se factura en el paso 7, con el asistente de Odoo.' },
+
+ { n:14, cod:'BENEFICIARIO_SIN_APROBAR', tit:'Beneficiario de comisión autorizado', estado:'frena',
+   vive:'beneficiarios.js · V1.44',
+   txt:'<b>Falta autorizar a quien va a recibir comisión.</b> <b>Contacto nuevo del cliente '+
+       '(demo)</b> — lado cliente — está <b>pendiente de autorizar</b> desde el 24-sep.',
+   nota:'Se le pidió a quien autoriza el 24-sep 18:40 y <b>caduca el 27-sep a las 18:40</b>. '+
+        'Sin esa autorización no se puede confirmar, porque el presupuesto de comisión se '+
+        'escribe al confirmar — en el paso 5, y ya no se corrige solo.',
+   acciones:[['Recordarle',''],['Quitar a esta persona de la cotización','peli']],
+   ya:'Autorizado. El renglón de comisión se escribe en el paso 5.' },
+
+ { n:15, cod:'FACTURAS_NO_CUADRAN', tit:'Las facturas de la orden cuadran', estado:'falta',
+   vive:'— · NO CONSTRUIDO',
+   txt:'Seis reglas sobre lo facturado contra lo pendiente. Hoy <b>no se revisa nada</b>: este '+
+       'candado no existe todavía, ni aquí ni en el servidor.',
+   nota:'Necesita <span class="codigo">amount_invoiced</span> y '+
+        '<span class="codigo">amount_to_invoice</span> de Odoo, que son calculados y sin '+
+        'almacenar: sólo se pueden comparar fuera, y eso vive en el workflow, no en el '+
+        'navegador. <br>En este camino casi nunca saltaría —una orden recién creada está en '+
+        'borrador y sin facturas— pero <b>38 de 179 órdenes confirmadas ya están así</b>, y '+
+        'ésas nadie las va a volver a confirmar: por eso el mismo juego de reglas tiene que '+
+        'correr también como vigilante.' },
+
+ { n:16, cod:'ORDEN_NO_CUADRA', tit:'La orden de Odoo existe y sigue cuadrando', estado:'futuro',
+   vive:'servidor · pendiente de construir',
+   txt:'Los dos importes, lado a lado. «Los de allá y los de aquí no dicen lo mismo. Confirmar '+
+       'congelaría el número equivocado, y es el que se va a facturar.»',
+   nota:'Entre que se abre esta pantalla y que se pica confirmar, alguien pudo tocar la orden '+
+        'en Odoo. Por eso se vuelve a mirar allá, contra el registro, no contra la captura.' },
+
+ { n:17, cod:'YA_CONFIRMADA', tit:'La orden no está ya confirmada', estado:'futuro',
+   vive:'servidor · pendiente de construir',
+   txt:'<b>Es idempotente: responde OK</b> y enseña lo que ya se creó.',
+   nota:'No es un rechazo. Si la orden ya está confirmada, la respuesta correcta es enseñar el '+
+        'proyecto, la analítica y el presupuesto que ya existen — no un error que invite a '+
+        'volver a picarle.' }
+];
+
+var esc = function (s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); };
+
+function pastilla(e) {
+  if (e === 'pasa')   return '<span class="pill ok">pasa</span>';
+  if (e === 'frena')  return '<span class="pill bad">frena</span>';
+  if (e === 'avisa')  return '<span class="pill warn">avisa, deja pasar</span>';
+  if (e === 'falta')  return '<span class="pill mora">no construido</span>';
+  return '<span class="pill neu">del servidor</span>';
+}
+function simbolo(e) {
+  return e === 'pasa' ? '✓' : e === 'frena' ? '✗' : e === 'avisa' ? '⚠'
+       : e === 'falta' ? '○' : '·';
+}
+
+function pintar() {
+  var html = '';
+  CANDADOS.forEach(function (c, i) {
+    var resuelto = c._ya === true;
+    var e = resuelto ? 'pasa' : c.estado;
+    html += '<div class="candado ' + e + (resuelto ? ' ya' : '') + '" id="c' + c.n + '">';
+    html += '<h4><span class="cand-num">' + c.n + '</span>' + simbolo(e) + ' ' + c.tit + ' '
+          + pastilla(e) + ' <span class="codigo">' + c.cod + '</span>'
+          + (c.etiq && !resuelto ? ' <span class="codigo">' + c.etiq + '</span>' : '') + '</h4>';
+
+    html += '<div class="pendiente">';
+    html += '<p>' + c.txt + '</p>';
+    if (c.cuadre) {
+      html += '<div class="cuadre">';
+      c.cuadre.forEach(function (f) {
+        if (f[0] === 'SEP') { html += '<div class="sep"></div>'; return; }
+        html += '<div>' + f[0] + '</div><div class="v">' + f[1] + '</div>';
+      });
+      html += '</div>';
+    }
+    if (c.nota) html += '<p class="tiny">' + c.nota + '</p>';
+    if (c.acciones) {
+      html += '<div class="btns">';
+      c.acciones.forEach(function (a, j) {
+        html += '<button class="btn ' + a[1] + '" data-res="' + c.n + '" data-j="' + j + '">'
+              + esc(a[0]) + '</button>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+
+    if (c.ya) html += '<div class="resuelto"><p class="tiny n-ok">✓ ' + c.ya + '</p></div>';
+    html += '</div>';
+  });
+  document.getElementById('lista').innerHTML = html;
+
+  /* El marcador se CUENTA de la lista, nunca se escribe a mano. */
+  var n = function (f) { return CANDADOS.filter(f).length; };
+  var pendientes = n(function (c) { return c.estado === 'frena' && c._ya !== true; });
+  var pasan = n(function(c){return c.estado==='pasa';})
+            + n(function(c){return c.estado==='frena' && c._ya===true;});
+  var avisan = n(function(c){return c.estado==='avisa';});
+  var falta  = n(function(c){return c.estado==='falta';});
+  var futuro = n(function(c){return c.estado==='futuro';});
+  /* «1 frenan» es de las cosas que hacen que una pantalla se lea como borrador. */
+  var pl = function (k, uno, varios) { return k === 1 ? uno : varios; };
+  document.getElementById('marcador').innerHTML =
+      '<div class="mk ok"><b>' + pasan + '</b>' + pl(pasan,'pasa','pasan') + '</div>'
+    + '<div class="mk ' + (pendientes ? 'bad' : 'ok') + '"><b>' + pendientes + '</b>'
+    + pl(pendientes,'frena','frenan') + '</div>'
+    + '<div class="mk warn"><b>' + avisan + '</b>' + pl(avisan,'avisa','avisan') + '</div>'
+    + '<div class="mk"><b>' + falta + '</b>' + pl(falta,'sin construir','sin construir') + '</div>'
+    + '<div class="mk"><b>' + futuro + '</b>del servidor</div>'
+    + '<div class="mk"><b>' + CANDADOS.length + '</b>en total</div>';
+
+  var btn = document.getElementById('btn-confirmar');
+  btn.disabled = pendientes > 0;
+  btn.textContent = pendientes > 0
+    ? 'Confirmar orden — falta' + (pendientes > 1 ? 'n ' : ' ') + pendientes + ' candado'
+      + (pendientes > 1 ? 's' : '')
+    : 'Confirmar orden';
+  document.getElementById('nota-btn').innerHTML = pendientes > 0
+    ? 'El botón se enciende solo cuando los candados rojos pasen. No hay forma de saltárselos '
+      + 'desde aquí — y tampoco desde el servidor, que vuelve a revisarlos todos. '
+      + '<b>Toca los botones de los candados rojos para recorrer el flujo.</b>'
+    : '<b>Los candados duros pasan.</b> En la pantalla de verdad, esto dispararía los nueve '
+      + 'pasos de arriba, en ese orden, cada uno con su lectura de vuelta. '
+      + '<b>Aquí no escribe nada</b>: es una maqueta. Quedan '
+      + avisan + (avisan === 1 ? ' aviso anotado y ' : ' avisos anotados y ')
+      + falta + (falta === 1 ? ' candado sin construir.' : ' candados sin construir.');
+}
+
+document.addEventListener('click', function (ev) {
+  var t = ev.target;
+  if (t && t.getAttribute && t.getAttribute('data-res')) {
+    var num = parseInt(t.getAttribute('data-res'), 10);
+    CANDADOS.forEach(function (c) { if (c.n === num) c._ya = true; });
+    pintar();
+    var el = document.getElementById('c' + num);
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' });
+  }
+  if (t && t.id === 'btn-reiniciar') {
+    CANDADOS.forEach(function (c) { c._ya = false; });
+    pintar();
+    window.scrollTo(0, 0);
+  }
+  if (t && t.id === 'btn-confirmar' && !t.disabled) {
+    t.textContent = 'Aquí no se escribe nada — es una maqueta';
+    t.disabled = true;
+  }
+});
+
+pintar();
+</script>
 </body>
 </html>
