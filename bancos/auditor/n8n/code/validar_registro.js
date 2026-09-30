@@ -16,7 +16,7 @@ b.informe_html = informeHtml; b.correo_html = correoHtml;
 J.informe_html = informeHtml;   // se guarda en bancos.auditorias.informe_html (privado)
 b.p_b64 = aB64(JSON.stringify(J));
 const fecha = new Date().toISOString().slice(0, 16).replace(/[-:]/g, '').replace('T', '-');
-const nombre = 'Auditoria_' + fecha + '_' + String(b.tipo || 'auditoria').replace(/[^a-z_]/gi, '') + '_' + b.veredicto + '.html';
+const nombre = 'Auditoria_' + fecha + '_' + (J.objetivo === 2 ? 'O2_' : '') + String(b.tipo || 'auditoria').replace(/[^a-z_]/gi, '') + '_' + b.veredicto + '.html';
 if (!/^[A-Za-z0-9+/=]+$/.test(b.p_b64)) throw new Error('base64 inválido');
 return [{ json: { sql: SQL.replace('__B64__', b.p_b64).replace('__EXEC__', String($execution.id)), veredicto: b.veredicto,
   tipo: String(b.tipo || ''), html: String(b.informe_html || '<p>(sin informe)</p>'), nombre,
