@@ -10493,6 +10493,11 @@ await sembrarMachotes(q);
                 machote: n === 0 ? { id: 'uuid-146', id_local: 'M-9146',
                   folio_txt: 'COT-0146', nombre: 'Cotización de prueba', duenio: 'zz.prueba',
                   version: 4 } : null });
+              /* Sobreescrituras por prueba. Van DESPUÉS de armar la fila para
+               * que una prueba pueda cambiar un campo sin reescribir el
+               * sembrador entero — y por omisión no cambian nada. */
+              if (cfg.extra) { Object.assign(filas[filas.length - 1], cfg.extra); }
+              if (cfg.extra0 && n === 0) { Object.assign(filas[filas.length - 1], cfg.extra0); }
             }
             return Promise.resolve({ ok: true, json: () => Promise.resolve(
               { ok: true, ordenes: filas, total: cfg.total, ocultas: 9 }) });
@@ -10512,7 +10517,8 @@ await sembrarMachotes(q);
       };
     }, { m: MACHOTES_FIXTURE[0] && Object.assign(
            JSON.parse(JSON.stringify(MACHOTES_FIXTURE[0])), { id: 'M-9146' }),
-         total: (o.total === undefined ? 1546 : o.total) });
+         total: (o.total === undefined ? 1546 : o.total),
+         extra: o.extra || null, extra0: o.extra0 || null });
     await q.goto(BASE);
     await q.waitForTimeout(800);
     return q;
@@ -10763,7 +10769,7 @@ await sembrarMachotes(q);
         return {
           activo: C({ cotizador: 'Ricardo', cotizador_estado: 'activo' }),
           ido: C({ cotizador: 'Aldo', cotizador_estado: 'archivado' }),
-          duda: C({ cotizador: 'Monty', cotizador_estado: 'sin_casar' }),
+          duda: C({ cotizador: 'Angel', cotizador_estado: 'sin_casar' }),
           vacio: C({ cotizador: '' })
         };
       });
@@ -10774,6 +10780,158 @@ await sembrarMachotes(q);
       if (!/¿quién\?/.test(r.duda)) throw new Error('no marcó la duda: ' + r.duda);
       if (!/sin cotizador/.test(r.vacio)) throw new Error('el vacío no se dice: ' + r.vacio);
       console.log('    activo sin marca · archivado «ya no está» · dudoso «¿quién?»');
+    } finally { await cerrar146(q); }
+  });
+
+  /* ══ V1.47 · LO QUE DECIDIÓ ESTEBAN, Y EL PUENTE DEL SERVIDOR ════════════ */
+
+  await paso('V1.47 · «Monty» sale con el NOMBRE COMPLETO y ya no dice «¿quién?»', async () => {
+    /* Decisión 1 de Esteban: nombre completo en todos los sistemas. Medido
+     * contra el padrón: hr.employee 8 = Francisco Montalvo Ramirez, activo.
+     * Y hay DOS Montalvo Ramirez, así que el apellido solo no basta — por eso
+     * la prueba exige el nombre COMPLETO y no sólo que diga «Montalvo». */
+    const q = await ordPagina146({ total: 3 });
+    try {
+      await q.waitForTimeout(400);
+      const r = await q.evaluate(() => {
+        const C = window.Ordenes._cotizador;
+        return {
+          monty: C({ cotizador: 'Monty', cotizador_estado: 'sin_casar' }),
+          conEspacios: C({ cotizador: '  Monty  ', cotizador_estado: 'sin_casar' }),
+          otro: C({ cotizador: 'Aldo', cotizador_estado: 'archivado' })
+        };
+      });
+      if (r.monty.indexOf('Francisco Montalvo Ramirez') < 0)
+        throw new Error('no puso el nombre completo: ' + r.monty);
+      if (/¿quién\?/.test(r.monty))
+        throw new Error('sigue dudando de alguien que ya está resuelto: ' + r.monty);
+      /* El crudo se sigue viendo: quien lee tiene que poder saber que esto es
+       * una TRADUCCIÓN y no el dato (§20 #12c, la marca va en el dato). */
+      if (r.monty.indexOf('Monty') < 0)
+        throw new Error('escondió el valor crudo de Odoo, y entonces nadie sabe que se tradujo');
+      if (r.conEspacios.indexOf('Francisco Montalvo Ramirez') < 0)
+        throw new Error('un valor con espacios alrededor no se resolvió: ' + r.conEspacios);
+      /* Y el puente NO se pasa de listo con los demás. */
+      if (r.otro.indexOf('Aldo') < 0 || !/ya no está/.test(r.otro))
+        throw new Error('el puente tocó a quien no debía: ' + r.otro);
+      console.log('    Monty → Francisco Montalvo Ramirez, con el crudo al lado');
+    } finally { await cerrar146(q); }
+  });
+
+  await paso('V1.47 · la descripción sale del MACHOTE, no del texto libre de Odoo', async () => {
+    /* Medido: el campo de Odoo trae «aaa» y «prueba 4 marzo 2026» en órdenes
+     * reales, y la Confirmación lo lee para nombrar proyecto y presupuesto. */
+    const q = await ordPagina146({ total: 1, extra0: { descripcion: 'aaa' } });
+    try {
+      await q.evaluate(() => { location.hash = '#/ordenes'; });
+      await q.waitForTimeout(1000);
+      const enLista = await q.evaluate(() => {
+        const c = document.querySelector('.or-desc');
+        return c ? (c.textContent || '').trim() : null;
+      });
+      if (!enLista) throw new Error('no se pintó la celda de descripción');
+      if (enLista.indexOf('Cotización de prueba') < 0)
+        throw new Error('la lista no usó la del machote: ' + enLista);
+      if (enLista === 'aaa')
+        throw new Error('la lista sigue enseñando el texto libre de Odoo');
+
+      /* Y el detalle dice de DÓNDE sale, y que allá dice otra cosa. */
+      await q.evaluate(() => { location.hash = '#/so/80000'; });
+      await q.waitForTimeout(900);
+      const det = await q.evaluate(() => document.body.innerHTML);
+      if (det.indexOf('del machote') < 0)
+        throw new Error('el detalle no dice de dónde sale la descripción');
+      if (det.indexOf('aaa') < 0)
+        throw new Error('el detalle ESCONDIÓ lo que dice Odoo, y eso hay que poder verlo');
+      console.log('    lista y detalle desde el machote · lo de Odoo se enseña marcado');
+    } finally { await cerrar146(q); }
+  });
+
+  await paso('V1.47 · copiar la descripción a Odoo pregunta, y manda el modo correcto', async () => {
+    const q = await ordPagina146({ total: 1, extra0: { descripcion: '' } });
+    try {
+      await q.evaluate(() => { location.hash = '#/so/80000'; });
+      await q.waitForTimeout(1000);
+
+      /* Primero se cancela: un botón que escribe a Odoo sin preguntar es el
+       * clic falso que este encargo viene a evitar. */
+      await q.evaluate(() => { window.confirm = () => false; window.__llamadas.length = 0; });
+      const hay = await q.evaluate(() => !!document.querySelector('[data-copiardesc]'));
+      if (!hay) throw new Error('con Odoo vacío no se ofreció copiar');
+      await q.click('[data-copiardesc]');
+      await q.waitForTimeout(500);
+      const trasCancelar = await q.evaluate(() =>
+        window.__llamadas.filter(l => l.cuerpo && l.cuerpo.modo === 'descripcion').length);
+      if (trasCancelar !== 0)
+        throw new Error('escribió a Odoo habiendo cancelado (' + trasCancelar + ' llamada(s))');
+
+      /* Ahora se acepta. */
+      await q.evaluate(() => { window.confirm = () => true; });
+      await q.click('[data-copiardesc]');
+      await q.waitForTimeout(700);
+      const env = await q.evaluate(() =>
+        window.__llamadas.filter(l => l.cuerpo && l.cuerpo.modo === 'descripcion')
+          .map(l => l.cuerpo));
+      if (env.length !== 1) throw new Error('mandó ' + env.length + ' veces, se esperaba 1');
+      if (env[0].odoo_so_id !== 80000)
+        throw new Error('mandó otra orden: ' + env[0].odoo_so_id);
+      if (env[0].descripcion !== 'Cotización de prueba')
+        throw new Error('no mandó la del machote: ' + env[0].descripcion);
+      console.log('    cancelar no escribe · aceptar manda modo descripcion con la del machote');
+    } finally { await cerrar146(q); }
+  });
+
+  await paso('V1.47 · sin el machote local, la puerta usa la del SERVIDOR y dice qué no revisó', async () => {
+    /* El agujero que quedó abierto en la V1.46: los seis candados necesitan el
+     * machote, y la libreta sólo guarda lo propio (§20 #13). Cuando la
+     * Compuerta 2 manda `confirmacion`, cuatro candados se comprueban igual —y
+     * los dos que dependen del precio SE ABSTIENEN y lo DICEN, porque una
+     * abstención callada se lee como «todo bien» (§20 #11). */
+    const q = await ordPagina146({ total: 1 });
+    try {
+      await q.waitForTimeout(400);
+      const r = await q.evaluate(() => {
+        const P = window.PuertaConfirmar;
+        const servidor = {
+          ok: true, cuadra: true, dentro_politica: true, moneda: 'MXN',
+          confirmacion: {
+            contacto: { nombre: '', correo: 'no-es-un-correo', tel: '123' },
+            iva: { decision: null },
+            po: { numero: '', importe: null, archivo: null },
+            anticipo: { aplica: null, pct: null }
+          }
+        };
+        const conPuente = P.evaluar({ machote: null, machoteAjeno: true,
+          calc: null, servidor: servidor, desde: 'confirmar' });
+        const sinPuente = P.evaluar({ machote: null, machoteAjeno: true,
+          calc: null, servidor: { ok: true, cuadra: true, dentro_politica: true },
+          desde: 'confirmar' });
+        const ids = (v) => v.duras.concat(v.blandas).map(x => x.id);
+        return { con: ids(conPuente), sin: ids(sinPuente),
+                 puedeCon: conPuente.puede, puedeSin: sinPuente.puede };
+      });
+
+      /* CON la llave del servidor: los candados que no dependen del precio se
+       * aplican de verdad. */
+      ['contacto-nombre', 'contacto-correo', 'iva', 'po-numero', 'po-archivo']
+        .forEach((id) => {
+          if (r.con.indexOf(id) < 0)
+            throw new Error('con la confirmación del servidor no se aplicó ' + id +
+                            ' (salieron: ' + r.con.join(', ') + ')');
+        });
+      if (r.puedeCon !== false)
+        throw new Error('dejó confirmar con el contacto y el IVA en blanco');
+      /* Y declara la abstención en voz alta. */
+      if (r.con.indexOf('sin-precio-local') < 0)
+        throw new Error('no dijo que dos candados se abstuvieron: ' + r.con.join(', '));
+
+      /* SIN la llave —el servidor viejo— se comporta como antes: avisa y deja
+       * decidir al servidor. Es la mitad tolerante, y tiene que seguir viva. */
+      if (r.sin.indexOf('machote-ajeno') < 0)
+        throw new Error('sin la llave perdió el aviso de la V1.46: ' + r.sin.join(', '));
+      if (r.sin.indexOf('sin-precio-local') >= 0)
+        throw new Error('inventó la abstención sin que el servidor mandara nada');
+      console.log('    con la llave: 5 candados + la abstención dicha · sin ella: como la V1.46');
     } finally { await cerrar146(q); }
   });
 

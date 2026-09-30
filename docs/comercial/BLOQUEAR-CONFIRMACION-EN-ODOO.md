@@ -251,3 +251,33 @@ Sobre una **orden de prueba**, no sobre una real:
    el bloqueo bloqueaba y no que lo demás seguía vivo.
 6. Y exigir que el caso **haya ocurrido**: si en el paso 5 no había nada que
    confirmar, no se probó nada.
+
+---
+
+## 7 · Corrección del 30-sep-2026: el paso 1 del plan de prueba HOY NO PASA
+
+Todo lo de arriba sigue en pie, con una salvedad que cambia el calendario: **el
+paso 1 —«confirmar desde la suite y que funcione»— no se puede cumplir todavía.**
+
+Al recorrer el ciclo se midió que la suite **no puede confirmar por ningún
+camino**: `orden-crear-v2` no completa (cuatro lecturas de Odoo encadenadas sin
+`executeOnce`, ~47,000 llamadas) y `orden-crear` v1 crea líneas sin producto, que
+Odoo se niega a confirmar. Los dos defectos y sus arreglos, en
+[`POR-QUE-NO-SE-PODIA-CONFIRMAR.md`](POR-QUE-NO-SE-PODIA-CONFIRMAR.md).
+
+**Por qué esto importa para este documento, y no es un detalle de secuencia:** el
+rumbo que fijó Esteban es *primero se logra confirmar desde la suite, luego se
+bloquea en Odoo, luego se apaga el radar*. Encender el candado **antes** de que
+la suite pueda confirmar dejaría a la empresa sin ninguna forma de confirmar una
+orden salvo el usuario maestro. O sea, el orden no era una preferencia: es lo que
+evita convertir dos defectos en un paro.
+
+📌 **Y es exactamente la lección de la `ir.rule` 814 otra vez, un paso antes.**
+Aquella probó que el bloqueo bloqueaba y no que lo demás seguía vivo. Aquí el
+riesgo es más temprano todavía: probar que el bloqueo bloquea **cuando el camino
+alterno nunca funcionó**. El paso 1 no es un trámite del plan de prueba — es su
+única precondición real.
+
+**Así que el paso 2 del rumbo queda bloqueado por el paso 1**, y el paso 1
+necesita los tres cambios del otro documento. Aplicados y con el ciclo en verde,
+este plan de prueba se puede correr tal como está escrito.

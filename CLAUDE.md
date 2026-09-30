@@ -1320,6 +1320,53 @@ alrededor de ella. El único que iba a notarlo era quien la mirara a propósito,
 que programarlo. Es la misma exigencia de §20 #12 («una pantalla se revisa MIRÁNDOLA»),
 puesta como paso obligatorio de la entrega en vez de como buena intención.
 
+### 21. Dos mitades probadas por separado no son un ciclo probado
+Cada mitad puede pasar su prueba y el camino completo no existir. Y lo peor no es
+que falle: es que **el arreglo puede estar construido y no haber corrido nunca**,
+así que el equipo cree que el problema está resuelto porque recuerda haberlo
+resuelto.
+
+*(Origen: 30-sep-2026, #294. La suite no podía confirmar una orden por NINGÚN
+camino. `comercial/orden-crear` v1 crea líneas sin `product_id` —Odoo deja
+crearlas y **no** deja confirmar la orden—, y `comercial/orden-crear-v2`, que
+existe precisamente para arreglar eso creando el producto al vuelo, **no puede
+completar**: sus cuatro `getAll` de Odoo van encadenados sin `executeOnce`, o sea
+6 × 178 × 44 ≈ 47,000 llamadas por intento. Crear se había probado creando
+—con la v1, que es la que funciona— y confirmar se había probado leyendo el
+diseño. Nadie recorrió las dos seguidas sobre la misma orden.)*
+
+**Regla operativa:** un flujo que cruza dos workflows se declara vivo cuando
+**una sola corrida** lo atraviesa de punta a punta y se lee el efecto en el
+destino. Y cuando hay una v2 que arregla algo de la v1, la pregunta obligatoria
+es **«¿la v2 ha corrido alguna vez?»** — no «¿está construida?». Es el mismo modo
+de fallo del contrato frontend↔servidor de §8 (una mitad verificada y la otra
+supuesta), una capa más adentro: **entre dos piezas del servidor que nunca se
+miraron juntas.**
+
+⚠️ **Y el corolario de n8n, que es de diseño:** en una cadena de nodos, cada uno
+corre **una vez por item del anterior**. Dos fuentes de varias filas encadenadas
+multiplican; cuatro, explotan. `executeOnce: true` es obligatorio en toda lectura
+que no varíe por item. Se prueba con **dos** nodos y se proyecta: medir el factor
+costó 6 llamadas a Odoo, reproducir el caso completo habría costado 47 mil.
+
+### 22. Un `create` que Odoo acepta no promete que el registro pase el siguiente candado
+Las validaciones de Odoo no están todas en el `create`. Un registro puede nacer
+sin protestas y romper en la transición de estado, que es donde a nadie le
+quedaba duda de que ya estaba bien.
+
+*(Origen: el mismo caso. El nodo de v1 lleva escrito «Odoo acepta la linea sin
+`product_id` (probado, linea 26996)», y es **cierto**. La conclusión no: el
+candado vive en `action_confirm`, no en el `create`. La frase describía una
+medición real y se leyó como una garantía que nadie había medido.)*
+
+**Regla operativa:** cuando una prueba diga «Odoo lo aceptó», anotar **qué
+operación** lo aceptó, y no extender la conclusión a las demás. Un dato que hay
+que confirmar, postear, validar o cerrar después se prueba **hasta ese paso**, no
+hasta el `create`. Misma familia que el `create` que devuelve id y descarta campos
+en silencio (§9): allá se perdía un campo, aquí se pierde una transición.
+
+---
+
 ---
 
 ### Correcciones a reglas anteriores (verificadas 2026-08-31)

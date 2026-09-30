@@ -27,9 +27,17 @@
  * ── Y LO QUE NO SE PUEDE SABER, SE DICE ─────────────────────────────────────
  * Los candados del machote necesitan el machote. Si la cotización no está en
  * ESTE navegador (la libreta de sincronización guarda sólo lo propio, §20 #13),
- * no se puede comprobar — y entonces esto devuelve una **dura** que lo dice,
- * nunca un «todo bien» por no haber podido mirar. Es la misma exigencia que el
- * barrido que se niega a concluir cuando sus consultas fallaron (§20 #19c).
+ * lo que falte se DICE en voz alta — nunca un «todo bien» por no haber podido
+ * mirar. Es la misma exigencia que el barrido que se niega a concluir cuando
+ * sus consultas fallaron (§20 #19c).
+ *
+ * Qué tan alto se dice depende del caso, y las tres situaciones están abajo con
+ * su porqué. La primera versión BLOQUEABA este caso y estaba mal: los datos de
+ * la cotización existen, lo que falta es la forma de leerlos desde aquí, y
+ * convertir una limitación del cliente en una avería le habría quitado a
+ * alguien una confirmación que hoy sí puede hacer. Desde la V1.47, cuando el
+ * servidor manda la `confirmacion` del machote, cuatro de los seis candados se
+ * comprueban igual y los otros dos declaran que se abstienen.
  * ═══════════════════════════════════════════════════════════════════════════ */
 (function (G) {
   'use strict';
@@ -75,12 +83,41 @@
      * avería, y le quitaría a alguien una confirmación que hoy puede hacer.
      *
      * Tampoco se calla: sale en ámbar diciendo que no se pudo comprobar desde
-     * aquí y por qué. Lo que corresponde es que el servidor devuelva esos
-     * campos en la Compuerta 2 —entonces (b) desaparece y el candado vale para
-     * todos—, y eso está anotado como pendiente. Mientras tanto, el
-     * comportamiento de este caso es EL MISMO que antes de la V1.46.
+     * aquí y por qué.
+     *
+     * ── Y EL CASO (b) YA SE ESTÁ CERRANDO ──
+     * Lo que corresponde es que el servidor mande esos campos en la Compuerta
+     * 2. Esta mitad ya está hecha (el puente de aquí abajo); la del servidor es
+     * una llave más en su respuesta y está escrita en
+     * `docs/comercial/POR-QUE-NO-SE-PODIA-CONFIRMAR.md`, sin aplicar, porque
+     * `comercial/confirmar` está activo. Mientras no llegue, (b) se comporta
+     * EXACTAMENTE como antes de la V1.46: avisa y deja decidir al servidor.
      */
-    if (!o.machote && o.machoteAjeno) {
+    /* ── EL PUENTE DEL SERVIDOR (V1.47) ──────────────────────────────────
+     * Si esta pantalla no tiene el machote pero la Compuerta 2 mandó su
+     * `confirmacion`, se usa ESA y los candados valen igual venga de donde
+     * venga la cotización. Es el arreglo de fondo del caso (b) de abajo, y es
+     * TOLERANTE a propósito: mientras el servidor no mande la llave, esto no
+     * hace nada y el comportamiento es el de antes (§8, la mitad tolerante va
+     * primero).
+     *
+     * ⚠️ Lo que NO se hereda es el PRECIO. El subtotal sale del motor del
+     * machote, y aquí no hay machote que calcular. Se podría usar el
+     * `subtotal_odoo` que el servidor manda al lado, y sería un error: dos
+     * sumas del mismo número es una carrera silenciosa y la que pierde no deja
+     * rastro (§20 #4). Así que los dos candados que dependen del precio —el
+     * cuadre de la PO y el anticipo— SE ABSTIENEN, y eso se DICE en voz alta
+     * tres líneas más abajo: una abstención callada se lee como «todo bien»,
+     * que es el vacío que se confunde con una respuesta (§20 #11). */
+    var mach = o.machote;
+    var delServidor = false;
+    if (!mach && o.servidor && o.servidor.confirmacion) {
+      mach = { confirmacion: o.servidor.confirmacion,
+               moneda: o.servidor.moneda || null };
+      delServidor = true;
+    }
+
+    if (!mach && o.machoteAjeno) {
       blandas.push({
         id: 'machote-ajeno', fuente: 'machote',
         que: 'La cotización no está en este navegador, así que no se pudo comprobar',
@@ -90,7 +127,7 @@
                 'Si quieres la revisión completa, ábrela en el navegador donde se capturó.',
         donde: 'No impide confirmar. Es un aviso, no un candado.'
       });
-    } else if (!o.machote) {
+    } else if (!mach) {
       duras.push({
         id: 'sin-machote', fuente: 'machote',
         que: 'Esta orden no tiene machote ligado',
@@ -100,11 +137,22 @@
         donde: 'En la orden, en «El machote ligado».'
       });
     } else if (G.Confirmacion) {
-      var todos = G.Confirmacion.faltantes(o.machote, o.calc, o.memoria);
+      var todos = G.Confirmacion.faltantes(mach, o.calc, o.memoria);
       todos.forEach(function (x) {
         var r = { id: x.id, que: x.que, porque: x.porque, donde: x.donde, fuente: 'machote' };
         if (x.dureza === 'dura') duras.push(r); else blandas.push(r);
       });
+      if (delServidor) {
+        blandas.push({
+          id: 'sin-precio-local', fuente: 'machote',
+          que: 'Dos de los seis candados no se pudieron comprobar',
+          porque: 'La cotización no está en este navegador, así que sus datos vinieron del ' +
+                  'servidor y aquí no hay precio calculado. El contacto, la decisión de IVA y ' +
+                  'la orden de compra SÍ se revisaron; el cuadre de la PO contra el precio y ' +
+                  'el anticipo NO. Decirlo es la diferencia entre «no impide» y «todo bien».',
+          donde: 'Si quieres los seis, ábrela en el navegador donde se capturó.'
+        });
+      }
     } else {
       duras.push({ id: 'sin-modulo', fuente: 'machote',
         que: 'Los candados de la cotización no están cargados en esta pantalla',

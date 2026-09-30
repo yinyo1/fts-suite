@@ -48,6 +48,32 @@ Cada orden:
 - **`ocultas`** son las que los filtros dejaron fuera. La pantalla lo dice en la
   banda: un filtro que no se anuncia se lee como registros que faltan.
 
+### `modo: 'descripcion'` — la única escritura a Odoo de esta pantalla
+
+```
+→  { token, modo:'descripcion', odoo_so_id, descripcion }
+←  { ok:true, odoo_so_id, descripcion, write_date }
+```
+
+Escribe `x_studio_proyect_description` en `sale.order`. Existe porque ese campo
+de Odoo es texto libre que nadie vigila —trae «prueba 4 marzo 2026» y «aaa» en
+órdenes reales— y la Confirmación lo LEE para nombrar el proyecto, la analítica
+y el presupuesto. La descripción buena vive en el machote, que tiene dueño,
+versión e historial.
+
+Reglas del modo, y ninguna es opcional:
+
+- **Nunca automático.** Lo dispara una persona con un botón y una confirmación.
+  Si la pantalla lo copiara sola, sería un segundo escritor del campo y una
+  carrera silenciosa con quien lo edite en Odoo (§20 #4).
+- **Se relee después de escribir** y se devuelve el `write_date`. Un `write` que
+  contesta éxito no prueba que el campo quedó (§9). La pantalla repinta desde
+  esta respuesta, nunca desde haber apretado.
+- **Sólo sobre órdenes en `draft` o `sent`.** Una orden confirmada ya tiene su
+  proyecto creado con el nombre viejo; cambiarle la descripción después no
+  renombra nada y sólo deja los dos textos discrepando.
+- **Exige `comercial:write`**, como el resto de las escrituras del módulo.
+
 ### `modo: 'ligar'` y `modo: 'desligar'`
 
 ```

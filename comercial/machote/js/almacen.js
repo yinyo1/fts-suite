@@ -1614,6 +1614,24 @@
       odoo_so_id: soId, motivo: motivo || null });
   }
 
+  /** Escribir en Odoo la descripción del proyecto, tomada del machote.
+   *
+   *  ⚠️ Esta es la ÚNICA escritura a Odoo que sale de la vista de órdenes, y
+   *  está aquí y no en la pantalla por lo de siempre: si mañana hay un segundo
+   *  botón que haga lo mismo, los dos pasan por esta función. Dos caminos
+   *  escribiendo el mismo campo de Odoo es el §20 #4 en su forma más cara,
+   *  porque el que pierde no deja rastro.
+   *
+   *  El servidor es quien decide si se puede: aquí no hay candado, sólo el
+   *  viaje. */
+  function copiarDescripcion(soId, texto) {
+    var ses = sesion();
+    if (!ses) return Promise.resolve({ ok: false, error: 'SIN_SESION',
+      mensaje: 'No hay sesión: vuelve a entrar.' });
+    return postear(URL_ORDENES, { token: ses.token, modo: 'descripcion',
+      odoo_so_id: soId, descripcion: String(texto || '') });
+  }
+
   /** Confirmar. `version_leida` es la versión que la pantalla tenía delante:
    *  confirmar es congelar números, y si el machote se movió debajo, los
    *  números que se congelarían no son los que quien aprieta está viendo. */
@@ -1678,6 +1696,7 @@
     evaluarConfirmacion: evaluarConfirmacion,
     confirmar: confirmar,
     listarOrdenes: listarOrdenes,
+    copiarDescripcion: copiarDescripcion,
     ligarOrden: ligarOrden,
     desligarOrden: desligarOrden,
     esDemo: esDemo,

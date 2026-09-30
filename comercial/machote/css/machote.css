@@ -2559,6 +2559,14 @@ table.or-tab td.num { text-align: right; }
 .or-val { border: 1px solid var(--linea); border-radius: 7px; padding: 8px 10px;
           background: var(--papel); min-height: 36px; }
 .or-val.vac { color: var(--o19-gray-600, #6c757d); font-style: italic; }
+/* La acción de copiar la descripción a Odoo. El `.btn` de este módulo es de
+   ancho completo por omisión, y dentro de una columna de 210px eso convierte
+   «Copiarlo a Odoo» en una barra que pesa más que el dato de arriba. Va en
+   línea con su frase, que es lo que es: una oferta, no la acción principal de
+   la pantalla. Lo cazó mirar la captura de 760, no el guion. */
+.or-desc-acc { margin-top: 4px; }
+.or-desc-acc .btn { display: inline-block; width: auto; padding: 3px 9px;
+                    margin: 0; font-size: 12px; vertical-align: baseline; }
 .or-lig-caja { border: 1px solid var(--linea); border-left: 4px solid var(--linea);
                border-radius: 8px; padding: 12px 14px; margin: 8px 0; }
 .or-lig-caja.pasa { border-left-color: var(--verde); }

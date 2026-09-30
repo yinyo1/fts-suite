@@ -81,9 +81,43 @@
    *
    * Lo honesto es pintarlo TAL CUAL y decir que no casa. Traducirlo sería
    * inventar una atribución, que es peor que no tenerla. */
+  /* ── EL PUENTE DE LOS APODOS, Y POR QUÉ ES UN PUENTE ──────────────────────
+   * Decisión de Esteban (30-sep-2026): en todos los sistemas se maneja el
+   * NOMBRE COMPLETO, no el apodo. Pero el campo de Odoo es un `selection`
+   * escrito a mano y sigue diciendo «Monty» en 83 órdenes, así que traducir
+   * aquí es lo único que se puede hacer hoy sin tocar el catálogo — y el
+   * catálogo es cambio de Studio, o sea suyo.
+   *
+   * ESTO ES UN PUENTE CON FECHA DE CADUCIDAD: se borra el día que el catálogo
+   * guarde nombres completos. Cómo llegar ahí, en
+   * `docs/comercial/COTIZADOR-NOMBRE-COMPLETO.md`.
+   *
+   * Y no se adivina, se midió contra el padrón: `hr.employee` 8 = Francisco
+   * Montalvo Ramirez, activo, departamento Comercial. El apodo viene de su
+   * cuenta de correo, que empieza por el apellido.
+   *
+   * Ojo con el detalle que decide la FORMA del arreglo: hay DOS empleados
+   * activos con el apellido Montalvo Ramirez, en áreas distintas, así que el
+   * apellido solo TAMPOCO desambigua. Por eso el nombre completo.
+   *
+   * El valor crudo de Odoo se sigue enseñando al lado, en gris. Quien lee la
+   * pantalla tiene que poder ver que esto es una TRADUCCIÓN y no el dato: si
+   * el puente se equivoca algún día, ahí está dónde mirar. */
+  var APODOS = {
+    'Monty': { nombre: 'Francisco Montalvo Ramirez', empleado_id: 8 }
+  };
+
   function cotizador(f) {
     if (!f.cotizador) return '<span class="or-vacio">— sin cotizador —</span>';
-    var t = esc(f.cotizador);
+    var crudo = String(f.cotizador).trim();
+    var puente = APODOS[crudo];
+    if (puente) {
+      return esc(puente.nombre) +
+        ' <span class="chip-mini" title="En Odoo el campo todavía dice «' + esc(crudo) +
+        '». Aquí se enseña el nombre completo; corregir el catálogo es un cambio de Studio.">' +
+        esc(crudo) + '</span>';
+    }
+    var t = esc(crudo);
     if (f.cotizador_estado === 'archivado')
       return t + ' <span class="chip-mini bad" title="El empleado con ese nombre ya no está activo">ya no está</span>';
     if (f.cotizador_estado === 'sin_casar')
@@ -184,8 +218,10 @@
        * a ignorar justo donde luego hace falta mirar. */
       '<td data-th="Estado"><span class="or-est ' + e.cls + '">' + esc(e.txt) + '</span></td>' +
       '<td data-th="Cliente" class="or-cli" title="' + esc(f.cliente) + '">' + esc(f.cliente) + '</td>' +
-      '<td data-th="Descripción" class="or-desc" title="' + esc(f.descripcion) + '">' +
-        (f.descripcion ? esc(f.descripcion)
+      /* La MISMA función que el detalle. Dos lecturas del mismo dato acaban
+       * diciendo cosas distintas, y la lista es la que más se mira. */
+      '<td data-th="Descripción" class="or-desc" title="' + esc(descripcion(f).texto) + '">' +
+        (descripcion(f).texto ? esc(descripcion(f).texto)
           : '<span class="or-vacio">— sin descripción —</span>') + '</td>' +
       '<td data-th="PO" class="or-po" title="' + esc(f.po) + '">' +
         (f.po ? esc(f.po) : '<span class="or-vacio">—</span>') + '</td>' +
@@ -221,10 +257,15 @@
         '</div>' +
 
         '<div class="or-campos">' +
-          campo('Descripción del proyecto', f.descripcion,
-                'Vacía en Odoo — el machote sí la tiene') +
+          htmlDescripcion(f) +
           campo('PO del cliente', f.po, 'Todavía no ha llegado') +
-          campo('Cotizador', f.cotizador, 'Sin cotizador') +
+          /* La MISMA función que la lista. Aquí decía `f.cotizador` a secas, y
+           * el resultado era que el puente de los apodos se aplicaba en la
+           * lista y NO en el detalle: la misma orden decía «Francisco Montalvo
+           * Ramirez» en una pantalla y «Monty» en la otra. Es §20 #4 en su
+           * forma más tonta —un dato pintado en dos sitios— y no lo cazó
+           * ninguna prueba: lo cazó mirar la captura de 760. */
+          campo('Cotizador', cotizador(f), 'Sin cotizador', true) +
           campo('Total', (f.total === null || f.total === undefined)
                 ? '' : money(f.total, f.moneda), 'Sin importe', true) +
           campo('Fecha de creación', f.fecha, '—') +
@@ -242,6 +283,63 @@
           'órdenes». No hay dos: los candados los calcula una sola función.</p>' +
       '</div>' +
     '</div>';
+  }
+
+  /* ── LA DESCRIPCIÓN DEL PROYECTO SALE DEL MACHOTE, NO DE ODOO ──────────────
+   * Decisión de Esteban (30-sep-2026). Y la razón está medida: el campo de Odoo
+   * (`x_studio_proyect_description`) trae «prueba 4 marzo 2026» y «aaa» en
+   * órdenes reales. Es un texto libre que nadie vigila, así que como fuente de
+   * verdad no sirve — y la Confirmación lo LEE para ponerle nombre al proyecto,
+   * a la analítica y al presupuesto. Un «aaa» ahí se convierte en un proyecto
+   * llamado «aaa» que vive años.
+   *
+   * El machote sí tiene dueño, versión e historial, así que manda él. Lo de
+   * Odoo se sigue enseñando cuando DIFIERE — no se esconde: el día que alguien
+   * lo edite allá, hay que poder verlo. Y cuando allá está vacío se ofrece
+   * copiarlo, que es el caso más común y el más fácil de arreglar.
+   *
+   * ⚠️ Lo que NO hace es copiarlo solo. Escribir a Odoo sin que nadie lo pida
+   * convierte esta pantalla en un segundo escritor del campo, y dos escritores
+   * es una carrera silenciosa en la que el que pierde no deja rastro (§20 #4).
+   * Hay un botón, y lo aprieta una persona. */
+  function descripcion(f) {
+    var deOdoo = String((f && f.descripcion) || '').trim();
+    var delMach = String((f && f.machote && f.machote.nombre) || '').trim();
+    return {
+      odoo: deOdoo,
+      machote: delMach,
+      /* Lo que se ENSEÑA: el machote si lo hay, y si no lo de Odoo — que es
+       * mejor que nada y viene marcado. */
+      texto: delMach || deOdoo,
+      fuente: delMach ? 'machote' : (deOdoo ? 'odoo' : null),
+      vacia_en_odoo: !deOdoo,
+      difiere: !!(delMach && deOdoo && delMach !== deOdoo)
+    };
+  }
+
+  /** La descripción en el DETALLE, con su procedencia y su botón. */
+  function htmlDescripcion(f) {
+    var d = descripcion(f);
+    if (!d.texto) {
+      return '<label class="or-campo"><span>Descripción del proyecto</span>' +
+        '<div class="or-val vac">Ni el machote ni Odoo la traen</div></label>';
+    }
+    var marca = d.fuente === 'machote'
+      ? '<span class="chip-mini" title="Sale de la cotización de la suite, que tiene dueño y versión. ' +
+        'El campo de Odoo es texto libre que nadie vigila.">del machote</span>'
+      : '<span class="chip-mini warn" title="No hay machote ligado, así que esto es el texto libre de Odoo.">de Odoo</span>';
+
+    var extra = '';
+    if (d.fuente === 'machote' && d.vacia_en_odoo) {
+      extra = '<p class="tiny nota or-desc-acc">En Odoo este campo está <b>vacío</b>. ' +
+        '<button class="btn fantasma" data-copiardesc="' + esc(f.id) + '">Copiarlo a Odoo</button></p>';
+    } else if (d.difiere) {
+      extra = '<p class="tiny nota or-desc-acc">⚠️ En Odoo dice otra cosa: «' + esc(d.odoo) + '». ' +
+        'No se toca sola — <button class="btn fantasma" data-copiardesc="' + esc(f.id) +
+        '">sobrescribir con la del machote</button>.</p>';
+    }
+    return '<label class="or-campo"><span>Descripción del proyecto ' + marca + '</span>' +
+      '<div class="or-val">' + esc(d.texto) + '</div>' + extra + '</label>';
   }
 
   function campo(et, val, vacio, crudo) {
@@ -454,6 +552,12 @@
     host.querySelectorAll('[data-desligar]').forEach(function (x) {
       x.addEventListener('click', function () { desligar(f); });
     });
+    host.querySelectorAll('[data-copiardesc]').forEach(function (x) {
+      x.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        copiarDescripcion(f);
+      });
+    });
   }
 
   /* ── Ligar y desligar ─────────────────────────────────────────────────────
@@ -463,6 +567,37 @@
     if (!G.OrdenLigar) return;
     G.OrdenLigar.abrir(soId, function () { cargar(_st.host); });
   }
+  /** Copiar la descripción del machote al campo de Odoo. Lo aprieta una
+   *  persona, y la pantalla NO se pinta como si hubiera funcionado: se repinta
+   *  desde lo que contestó el servidor. Un ✓ antes del POST es el anti-patrón
+   *  más caro que tiene este repo (hallazgo #15). */
+  function copiarDescripcion(f) {
+    var d = descripcion(f);
+    if (!d.machote) return;
+    var q = d.vacia_en_odoo
+      ? ('Vas a escribir en Odoo la descripción del machote:\n\n«' + d.machote + '»\n\n' +
+         'El campo de allá está vacío. ¿Seguir?')
+      : ('En Odoo dice:\n\n«' + d.odoo + '»\n\ny se va a SOBRESCRIBIR con la del machote:\n\n«' +
+         d.machote + '»\n\nEsto no se puede deshacer desde aquí. ¿Seguir?');
+    if (!G.confirm(q)) return;
+
+    var A = G.MachoteAlmacen;
+    if (!A || !A.copiarDescripcion) {
+      G.alert('No está cargada la pieza que habla con el servidor.');
+      return;
+    }
+    A.copiarDescripcion(f.id, d.machote).then(function (r) {
+      if (r && r.ok) {
+        /* Se relee la lista: el estado de la pantalla sale del servidor, nunca
+         * de haber apretado. */
+        cargar(document.getElementById('vista'), true);
+      } else {
+        G.alert((r && r.mensaje) ||
+          'No se pudo escribir la descripción en Odoo. Nada cambió.');
+      }
+    });
+  }
+
   function desligar(f) {
     var q = 'Vas a desligar ' + (f.machote ? (f.machote.folio_txt || '') : '') +
       ' de ' + f.nombre + '.\n\nNo se borra nada: queda escrito quién lo desligó y cuándo. ' +

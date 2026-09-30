@@ -1,11 +1,17 @@
 {
-  "version": "V1.46",
-  "build": "V1.46",
-  "fecha": "2026-09-29",
+  "version": "V1.47",
+  "build": "V1.47",
+  "fecha": "2026-09-30",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.47",
+      "pr": null,
+      "fecha": "2026-09-30",
+      "nota": "EL CICLO COMPLETO, RECORRIDO POR PRIMERA VEZ, Y DOS DEFECTOS DE PRODUCCION QUE SOLO SE VEN ANDANDO (#294 · Estacion 3). Se aplicaron las migraciones 010 y 011 con read-back contra la base -comision_beneficiario, comision_aprobacion, machote_orden y odoo_contacto_prueba ya existen-; el Schedule de comision-barrido apuntaba a tablas que no existian y la migracion llego ANTES de su primera corrida: cero ejecuciones previas de cualquier tipo, o sea que nunca fallo. || EL HALLAZGO: la suite NO podia confirmar una orden por NINGUN camino, y cada camino falla en un punto distinto. comercial/orden-crear-v2 -la que llama el frontend- encadena cuatro getAll de Odoo sin executeOnce, asi que cada uno corre una vez por item del anterior: 6 x 178 x 44 = ~47,000 idas a Odoo y medio millon de items por intento. Medido con DOS nodos (6 x 178 = 1068, factor 6) para no gastar 47 mil llamadas probando lo obvio. Y comercial/orden-crear v1 -la anterior, la que si completa- crea lineas SIN product_id: Odoo deja crearlas y NO deja confirmar la orden. Su propio nodo dice 'Odoo acepta la linea sin product_id (probado, linea 26996)', y es cierto al CREAR: el candado esta en action_confirm. La v2 es justamente el arreglo de eso, y la v2 nunca ha podido correr. Los dos cambios son de workflow ACTIVO y quedaron escritos, no aplicados. || LA CONFIRMACION A MEDIAS NO HUBO QUE PROVOCARLA: paso sola. Se quedo en el paso 5 de 7, la orden SIGUE EN BORRADOR -lo unico irreversible no ocurrio-, la analitica 3133, el proyecto 2384 y el presupuesto 433 quedaron guardados para reusarse, y la bandera del radar quedo puesta ANTES de confirmar, que es lo que evita que el radar de cada 5 minutos cree un segundo proyecto. El presupuesto nace con LOS DOS EJES en la misma linea (account_id + x_plan20_id), que es la forma compuesta que el Frente A necesitaba. || MONTY ES FRANCISCO MONTALVO RAMIREZ (decision de Esteban). La vista enseña el nombre completo y dejo de decir '¿quien?'. Es un PUENTE con fecha de caducidad: el catalogo de Studio sigue diciendo 'Monty' en 83 ordenes, y el crudo se sigue enseñando al lado porque quien lee tiene que poder ver que es una traduccion. Hay DOS Montalvo Ramirez en el padron, asi que el apellido solo tampoco desambigua. || LA DESCRIPCION DEL PROYECTO SALE DEL MACHOTE: el campo de Odoo es texto libre que trae 'aaa' y 'prueba 4 marzo 2026' en ordenes reales, y la Confirmacion lo lee para nombrar proyecto, analitica y presupuesto. Se ofrece copiarlo cuando allá esta vacio, con confirmacion, y NUNCA solo: dos escritores del mismo campo es una carrera silenciosa. || LA PUERTA, la otra mitad: cuando la Compuerta 2 manda la confirmacion del machote, cuatro de los seis candados se aplican aunque la cotizacion no este en este navegador, y los dos que dependen del precio DECLARAN que se abstienen — una abstencion callada se lee como 'todo bien'."
+    },
     {
       "version": "V1.46",
       "pr": null,
