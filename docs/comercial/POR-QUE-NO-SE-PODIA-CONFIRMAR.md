@@ -266,6 +266,35 @@ solo. El frontend ya está listo para usarla sin exigirla — lee
 
 ---
 
+## ⚠️ Estado desde la V1.48 (30-sep-2026): las dos escrituras están APAGADAS
+
+**Ya no urge aplicar nada de lo de abajo, y a cambio nada de esto se puede
+encender sin ello.** Desde la V1.48 las dos escrituras irreversibles están
+apagadas en el código del cliente:
+
+| función | archivo | qué hacía | interruptor |
+|---|---|---|---|
+| `crearOrden` | `comercial/machote/js/almacen.js` | crear la orden en Odoo (`orden-crear-v2`) | `EMITIR_ENCENDIDO` |
+| `confirmar` | `comercial/machote/js/almacen.js` | confirmarla (`confirmar`, modo `confirmar`) | `CONFIRMAR_ENCENDIDO` |
+
+Se apagan **en la única puerta por la que salen**, no en el botón que las llama:
+un botón deshabilitado es una sugerencia —queda la consola, queda otra pantalla,
+queda el siguiente que escriba un camino nuevo sin enterarse—, la puerta no. Hay
+una prueba que las llama **directo**, saltándose la interfaz, y exige que ni
+siquiera toquen la red (`V1.48 · las dos escrituras irreversibles no salen ni
+forzándolas`).
+
+El flujo **se recorre entero**: el botón del machote se llama ahora *Confirmar
+orden*, abre el paso 1 (elegir el par), pasa al checklist, y llega al paso 3,
+que se ve, dice que está apagado y no escribe.
+
+**Los tres cambios de abajo son la CONDICIÓN para encenderlo.** En cuanto estén
+aplicados y verificados, encender es poner esos dos `false` en `true` —una línea
+cada uno— y volver a recorrer el ciclo completo exigiendo que el paso 6 pase.
+Son workflows **ACTIVOS**: los aplica Esteban, no una rama.
+
+---
+
 ## Resumen de lo que hay que aplicar, en orden
 
 | # | workflow | cambio | riesgo |

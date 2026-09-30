@@ -283,8 +283,15 @@
 
     document.getElementById('puTt').textContent =
       'Confirmar ' + (orden.nombre || o.titulo || '');
+    /* V1.48 · hay TRES entradas, no dos. Con un ternario, la tercera caía en
+     * el `else` y la insignia mentía: decía «desde Confirmar órdenes» a quien
+     * venía del machote. Un rótulo de diagnóstico que miente es peor que no
+     * tenerlo, porque se usa para saber por dónde entró alguien. */
+    var DESDE = { orden: 'paso 2 de 3 · desde la orden',
+                  machote: 'paso 2 de 3 · desde la cotización',
+                  confirmar: 'paso 2 de 3 · desde Confirmar órdenes' };
     document.getElementById('puDesde').textContent =
-      o.desde === 'orden' ? 'desde la orden' : 'desde Confirmar órdenes';
+      DESDE[o.desde] || ('paso 2 de 3 · ' + (o.desde || 'origen no dicho'));
 
     /* «No lo encontré» y «no lo hay» son dos cosas distintas, y de eso depende
      * si esto bloquea o sólo avisa. */
@@ -306,11 +313,44 @@
     }
   }
 
+  /* ── EL PASO 3, VISIBLE Y APAGADO ────────────────────────────────────────
+   * Se LLEGA hasta aquí y se ve lo que haría; simplemente no escribe. No se
+   * esconde el botón: un botón que desaparece se lee como algo que se perdió,
+   * y el siguiente en abrir la pantalla no tiene forma de saber que existe.
+   *
+   * El motivo NO se escribe aquí: se le pregunta al almacén, que es donde vive
+   * el interruptor. Dos copias del motivo se separan el día que se encienda. */
+  function bloqueFinal() {
+    var A = G.MachoteAlmacen;
+    var encendido = !A || !A.confirmacionEncendida || A.confirmacionEncendida();
+    if (encendido) return '';
+    var F = G.ConfirmarFlujo;
+    var motivo = (A && A.motivoApagado) ? A.motivoApagado('confirmar') : '';
+    var h = '<div class="pu-final aviso warn"><strong>Paso 3 · Confirmar en Odoo — APAGADO</strong>' +
+            '<p class="tiny">' + motivo + '</p>';
+    if (F && F.FINAL && F.FINAL.condiciones) {
+      h += '<p class="tiny">Se enciende cuando estén los tres cambios de ' +
+           '<code>' + F.FINAL.donde + '</code>:</p><ul class="tiny">';
+      F.FINAL.condiciones.forEach(function (c) { h += '<li>' + c + '</li>'; });
+      h += '</ul>';
+    }
+    return h + '</div>';
+  }
+
   function pintar(v) {
     var cu = document.getElementById('puCuerpo');
-    if (cu) cu.innerHTML = html(v);
+    if (cu) cu.innerHTML = html(v) + bloqueFinal();
     var ok = document.getElementById('puOk');
-    if (ok) ok.disabled = !v.puede;
+    if (!ok) return;
+    var A = G.MachoteAlmacen;
+    var apagado = A && A.confirmacionEncendida && !A.confirmacionEncendida();
+    /* Apagado manda sobre el veredicto: aunque los candados pasen, no se
+     * escribe. Y el botón lo DICE, en vez de quedarse gris sin explicación. */
+    ok.disabled = apagado || !v.puede;
+    ok.textContent = apagado ? 'Confirmar en Odoo — apagado' : 'Confirmar en Odoo';
+    ok.title = apagado
+      ? ((A && A.motivoApagado) ? A.motivoApagado('confirmar') : 'Apagado a propósito.')
+      : '';
   }
 
   G.PuertaConfirmar = {

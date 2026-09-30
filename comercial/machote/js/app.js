@@ -57,7 +57,7 @@
    *   2. el `?v=` de la URL con la que el navegador lo bajó,
    *   3. la que declara cada pieza que se carga aparte (hoy el motor).
    * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
-  const VERSION_ARCHIVO = 'V1.47';
+  const VERSION_ARCHIVO = 'V1.48';
 
   const VERSION_URL = (function () {
     try {
@@ -3363,7 +3363,29 @@
         ? '<span class="tiny">🔒 Enviado a Odoo. Este es el documento con el que se vendió: se consulta, no se edita.</span>'
         : '<label class="tiny">Estado <select class="cel" data-estado>' + ops + '</select></label>') +
       '<span class="grow"></span>' +
-      '<span class="tiny">' + ligadaTxt(m) + '</span></div>';
+      '<span class="tiny">' + ligadaTxt(m) + '</span>' +
+      /* ⚠️ La puerta del cuadro de DATOS —donde se CAPTURAN el contacto, el
+       * IVA, la orden de compra y el anticipo, que alimentan seis de los
+       * diecisiete candados—. Al mandar «Confirmar orden» al flujo nuevo, ese
+       * cuadro se quedó sin forma de abrirse: los mensajes del checklist
+       * terminan en «Arriba, en DATOS» y mandaban a una pantalla inalcanzable.
+       * Lo cazaron 28 pruebas viejas cayéndose a la vez.
+       *
+       * Va AQUÍ y no en la barra de abajo a propósito: la barra ya llevaba seis
+       * botones y a 380 px el séptimo le costaba un renglón entero (169 → 223),
+       * que es el invariante que cuida la prueba de la V1.37. Y además éste es
+       * su sitio: es la línea donde se habla de la orden. */
+      /* ⚠️ Y el candado de AJENO viaja con el botón. Al moverlo de la barra se
+       * me quedó atrás: la barra lo traía —«pasar a orden es del DUEÑO, no de
+       * quien tiene prestado»— y aquí quedó un botón vivo para capturar los
+       * datos de la orden sobre la cotización de otro. Lo cazó la prueba del
+       * machote ajeno, no el diff. Un guardia que se mueve de sitio hay que
+       * contarlo entre lo que se mueve. */
+      ((G.MachoteOrden && !cong && !ajeno(m))
+        ? '<button class="btn fantasma peq" id="btnDatosOrden" ' +
+          'title="Capturar el contacto, el IVA, la orden de compra y el anticipo">Datos</button>'
+        : '') +
+      '</div>';
   }
 
   /* ── Hoja DESGLOSE COTIZACIÓN ────────────────────────────────────────── */
@@ -3708,8 +3730,12 @@
        * captura, no el diff—: quedaba un botón vivo para convertir en orden la
        * cotización de otro. «Revisar» sí se queda: es de sólo lectura y es
        * justo para lo que dirección abre un machote ajeno. */
-      (G.MachoteOrden && !ajeno(m)   /* pasar a orden es del DUEÑO, no de quien tiene prestado */
-        ? '<button class="btn fantasma" id="btnOrden" title="Ver cómo se pasaría a orden de venta">Pasar a orden</button>'
+      /* V1.48 · deja de llamarse «Pasar a orden». Se llama CONFIRMAR ORDEN, y
+       * abre el flujo único: elegir el par → el checklist → el paso final, que
+       * hoy está apagado. El nombre viejo describía el medio (crear una orden);
+       * el nuevo describe lo que la persona viene a hacer. */
+      (G.ConfirmarFlujo && !ajeno(m)   /* confirmar es del DUEÑO, no de quien tiene prestado */
+        ? '<button class="btn fantasma" id="btnOrden" title="Elegir la orden, revisar los candados y llegar al paso final">Confirmar orden</button>'
         : '') +
       /* PRESTAR es del dueño y sólo del dueño (decisión 1 de la propuesta:
        * quien sabe que no puede meterle mano ahora es él). Y sólo tiene
@@ -3810,7 +3836,16 @@
     /* El segundo argumento es cómo se GUARDA. La pantalla de la orden puede
      * cambiar el cliente cuando falta, y sin esto ese cambio se quedaría en
      * memoria: `tocado` es lo que lo marca para subir. */
-    if (bo) bo.onclick = () => G.MachoteOrden.abrir(m, (mm) => tocado(mm));
+    /* UNA sola pieza para los dos caminos. Desde aquí se trae puesta la mitad
+     * «qué cotización manda» y falta elegir la ORDEN; desde la vista de órdenes
+     * es al revés. Si cada camino armara su propio flujo, en un mes dirían
+     * cosas distintas de la misma verdad (CLAUDE.md §20 #4). */
+    if (bo) bo.onclick = () => G.ConfirmarFlujo.abrir({ desde: 'machote', machote: m });
+    const bDatos = $('#btnDatosOrden');
+    /* El segundo argumento es cómo se GUARDA. La pantalla puede cambiar el
+     * cliente cuando falta, y sin esto ese cambio se quedaría en memoria:
+     * `tocado` es lo que lo marca para subir. */
+    if (bDatos) bDatos.onclick = () => G.MachoteOrden.abrir(m, (mm) => tocado(mm));
     const bp = $('#btnPrestar');
     if (bp) bp.onclick = () => G.MachotePrestamo.abrir(m, personasDelEquipo(), vMachote);
     const bc = $('#btnCeder');

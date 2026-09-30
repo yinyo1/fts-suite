@@ -169,6 +169,13 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--acento);outline-
   .mk b{display:block;font-size:19px;color:var(--tinta);font-variant-numeric:tabular-nums}
   .mk.bad b{color:var(--rojo)} .mk.warn b{color:var(--ambar)} .mk.ok b{color:var(--verde)}
 
+  /* Las dos cajas del paso 1 NO son candados. Reusar `.candado` las hacia
+   * contar como tales —la pagina decia 19 donde hay 17—, que es el choque de
+   * clases de CLAUDE.md §20 #12 otra vez, esta vez contando mal. */
+  .par-op{border:1px solid var(--linea);border-radius:9px;padding:12px 14px;
+          background:var(--fondo)}
+  .par-op h4{margin:0 0 4px;font-size:14px}
+
   .resuelto{display:none}
   .candado.ya .resuelto{display:block}
   .candado.ya .pendiente{display:none}
@@ -261,7 +268,32 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--acento);outline-
   </div>
 
   <div class="card">
-    <h2>Los candados</h2>
+    <h2>Paso 1 · Elegir el par</h2>
+    <p class="sub">La confirmación necesita saber dos cosas: <b>a qué orden se le escribe</b> y
+       <b>qué cotización manda</b>. Cada camino llega con una mitad puesta, así que el paso 1
+       pregunta por la que falta — y es <b>el mismo componente</b> en los dos.</p>
+
+    <div class="rejilla">
+      <div class="par-op">
+        <h4>Desde la cotización</h4>
+        <p class="tiny">La que manda la traes tú. Falta elegir <b>la orden</b> de entre las
+          que tiene ligadas.</p></div>
+      <div class="par-op">
+        <h4>Desde la vista de órdenes</h4>
+        <p class="tiny">La orden la traes tú. Falta elegir <b>qué machote manda</b> de entre
+          los ligados a esa orden.</p></div>
+    </div>
+
+    <p class="tiny" style="margin-top:12px"><b>Con una sola candidata igual hay que
+      elegirla.</b> Es la orden que va a recibir siete escrituras irreversibles; una pantalla
+      que se salta sola el único paso donde se lee lo que va a pasar entrena a no leer.</p>
+    <p class="tiny">Y una lista <b>corta</b> no es una lista <b>vacía</b>: si el servidor dice
+      que hay más ligados de los que este navegador conoce, la pantalla lo dice en vez de
+      enseñar «el único» que en realidad era «el único de aquí».</p>
+  </div>
+
+  <div class="card">
+    <h2>Paso 2 · Los candados</h2>
     <p class="sub">Los <b>diecisiete</b> de la especificación, en orden, y
        <b>primero lo que se puede rechazar sin tocar nada</b>. Un candado que salta no es un
        error: es un pendiente. Ninguno dice sólo qué falta — dice <b>qué falta, por qué importa
@@ -282,7 +314,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--acento);outline-
   </div>
 
   <div class="card">
-    <h2>Qué va a escribir, y en qué orden</h2>
+    <h2>Paso 3 · Qué va a escribir, y en qué orden</h2>
     <p class="sub">Lo irreversible va al final, para que una confirmación a medias
        <b>nunca deje una orden confirmada sin su proyecto</b>.</p>
 
@@ -309,10 +341,27 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--acento);outline-
       <div><b class="n-bad">Esto no se deshace.</b> Va al final porque no hay nada después que
         pueda fallar.</div></div></div>
 
-    <div class="btns" style="margin-top:16px">
-      <button class="btn pri" id="btn-confirmar" disabled>Confirmar orden</button>
+    <div class="alto" style="margin-top:16px">
+      <h3>&#9888; El paso que escribe en Odoo est&#225; APAGADO</h3>
+      <p>Se llega hasta aqu&#237; y se ve lo que har&#237;a; simplemente <b>no escribe</b>. Est&#225; apagado
+        a prop&#243;sito, para poder recorrer todo lo de arriba sin que nada llegue a Odoo. No es una
+        falla ni te falta un permiso.</p>
+      <p>Y se apaga en la <b>&#250;nica puerta por la que sale</b> —las dos funciones de
+        <span class="codigo">almacen.js</span>—, no en el bot&#243;n: un bot&#243;n deshabilitado es una
+        sugerencia (queda la consola, queda otra pantalla, queda el siguiente que escriba un
+        camino nuevo). La puerta no.</p>
+      <p><b>Se enciende cuando est&#233;n los tres cambios</b> de
+        <span class="codigo">docs/comercial/POR-QUE-NO-SE-PODIA-CONFIRMAR.md</span>, que son de
+        workflows <b>activos</b>: los tres <span class="codigo">executeOnce</span> de
+        <span class="codigo">orden-crear-v2</span> (la causa de los 29 minutos), la llave que
+        falta en la respuesta de <span class="codigo">Code - Compuerta 2</span>, y dejar de usar
+        la v1, que crea rengl&#243;nes sin producto y Odoo despu&#233;s no deja confirmar.</p>
+    </div>
+
+    <div class="btns" style="margin-top:14px">
+      <button class="btn pri" id="btn-confirmar" disabled>Confirmar en Odoo — apagado</button>
       <button class="btn" id="btn-reiniciar">Volver a empezar</button>
-      <button class="btn">Volver a la cotización</button>
+      <button class="btn">Volver a la cotizaci&#243;n</button>
     </div>
     <p class="tiny" style="margin-top:10px" id="nota-btn"></p>
   </div>
@@ -529,19 +578,22 @@ function pintar() {
     + '<div class="mk"><b>' + futuro + '</b>del servidor</div>'
     + '<div class="mk"><b>' + CANDADOS.length + '</b>en total</div>';
 
+  /* El botón NO se enciende aunque pasen los candados: el paso 3 está apagado,
+   * y eso manda sobre el veredicto. Enseñarlo encendido aquí y apagado en la
+   * pantalla de verdad sería una maqueta que promete lo que no hay. */
   var btn = document.getElementById('btn-confirmar');
-  btn.disabled = pendientes > 0;
+  btn.disabled = true;
   btn.textContent = pendientes > 0
-    ? 'Confirmar orden — falta' + (pendientes > 1 ? 'n ' : ' ') + pendientes + ' candado'
-      + (pendientes > 1 ? 's' : '')
-    : 'Confirmar orden';
+    ? (pendientes > 1 ? 'Faltan ' : 'Falta ') + pendientes + ' candado'
+      + (pendientes > 1 ? 's' : '') + ' — y además apagado'
+    : 'Confirmar en Odoo — apagado';
   document.getElementById('nota-btn').innerHTML = pendientes > 0
-    ? 'El botón se enciende solo cuando los candados rojos pasen. No hay forma de saltárselos '
-      + 'desde aquí — y tampoco desde el servidor, que vuelve a revisarlos todos. '
-      + '<b>Toca los botones de los candados rojos para recorrer el flujo.</b>'
-    : '<b>Los candados duros pasan.</b> En la pantalla de verdad, esto dispararía los nueve '
-      + 'pasos de arriba, en ese orden, cada uno con su lectura de vuelta. '
-      + '<b>Aquí no escribe nada</b>: es una maqueta. Quedan '
+    ? 'Primero tienen que pasar los candados rojos. <b>Toca sus botones para recorrer el '
+      + 'flujo.</b> Aunque pasen, el paso 3 sigue apagado — son dos cosas distintas y las dos '
+      + 'tienen que resolverse.'
+    : '<b>Los candados duros pasan</b>, y aun así no se escribe: el paso 3 está apagado. '
+      + 'En la pantalla de verdad esto dispararía los nueve pasos de arriba, en ese orden, '
+      + 'cada uno con su lectura de vuelta. Quedan '
       + avisan + (avisan === 1 ? ' aviso anotado y ' : ' avisos anotados y ')
       + falta + (falta === 1 ? ' candado sin construir.' : ' candados sin construir.');
 }
@@ -560,10 +612,9 @@ document.addEventListener('click', function (ev) {
     pintar();
     window.scrollTo(0, 0);
   }
-  if (t && t.id === 'btn-confirmar' && !t.disabled) {
-    t.textContent = 'Aquí no se escribe nada — es una maqueta';
-    t.disabled = true;
-  }
+  /* Ya nace deshabilitado, así que este camino no se recorre. Se deja escrito
+   * para que quede claro que tampoco escribiría si se forzara. */
+  if (t && t.id === 'btn-confirmar') { return; }
 });
 
 pintar();

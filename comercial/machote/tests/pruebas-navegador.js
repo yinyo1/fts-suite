@@ -323,10 +323,24 @@ await sembrarMachotes(p);
    * ⚠️ La ENTREGA se mide siempre con la suite completa, sin `SOLO`. */
   const SOLO = process.env.SOLO ? new RegExp(process.env.SOLO, 'i') : null;
   let saltadas = 0;
+  let pausadas = 0;
   const paso = async (n, fn) => {
     if (SOLO && !SOLO.test(n)) { saltadas++; return; }
     try { await fn(); console.log('✓', n); ok++; }
     catch (e) { console.log('✗', n, '→', e.message); mal++; }
+  };
+
+  /* ⚠️ EN PAUSA, Y SE DICE. Para una prueba cuyo comportamiento está APAGADO a
+   * propósito. No se borra —la volveremos a necesitar— y no se cuela como
+   * verde: sale con su propio símbolo, con el porqué y con la condición para
+   * revivirla, y el resumen la cuenta aparte. Un candado apagado que se pinta
+   * como aprobado es justo el vacío que se lee como respuesta (CLAUDE.md
+   * §20 #11); una prueba apagada que se cuenta como pasada, también. */
+  const pausada = (n, porque) => {
+    if (SOLO && !SOLO.test(n)) { saltadas++; return; }
+    pausadas++;
+    console.log('⏸', n);
+    console.log('   EN PAUSA ·', porque);
   };
   /* Navegar a una ruta, con el estado LIMPIO.
    *
@@ -3464,7 +3478,7 @@ await sembrarMachotes(q);
       await q.goto(BASE); await q.waitForTimeout(900);
       const href = await q.$eval('.fila a.item', a => a.getAttribute('href'));
       await q.goto(BASE + href); await q.waitForTimeout(900);
-      await q.click('#btnOrden'); await q.waitForTimeout(400);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(400);
 
       /* El machote sale de `window.DEMO`, NO de `leerLocal()`: en el primer
        * arranque la demo vive sólo en memoria y no se escribe en el navegador
@@ -3497,7 +3511,7 @@ await sembrarMachotes(q);
       await q.goto(BASE); await q.waitForTimeout(900);
       const href = await q.$eval('.fila a.item', a => a.getAttribute('href'));
       await q.goto(BASE + href); await q.waitForTimeout(900);
-      await q.click('#btnOrden'); await q.waitForTimeout(400);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(400);
       const antes = Number((await q.textContent('#or-total')).replace(/[^0-9.]/g, ''));
       const pu = Number((await q.textContent('.or-t tbody tr:first-child td:nth-child(4)')).replace(/[^0-9.]/g, ''));
       await q.fill('.or-t tbody tr:first-child input.cel.n', '2');
@@ -3515,7 +3529,7 @@ await sembrarMachotes(q);
       await q.goto(BASE); await q.waitForTimeout(900);
       const href = await q.$eval('.fila a.item', a => a.getAttribute('href'));
       await q.goto(BASE + href); await q.waitForTimeout(900);
-      await q.click('#btnOrden'); await q.waitForTimeout(400);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(400);
       const t = (await q.textContent('.estorbos')).replace(/\s+/g, ' ');
       /* ⚠️ V1.30 · ESTA ASERCIÓN SE DIO LA VUELTA, y por una razón: hasta
        * V1.29 exigía que la lista dijera que `comercial/orden-crear` NO
@@ -3622,89 +3636,17 @@ const CP = { pago: { dias: 30, termino_texto: 'Crédito 30 días',
     await q.goto(BASE); await q.waitForTimeout(900);
     const href = await q.$eval('.fila a.item', a => a.getAttribute('href'));
     await q.goto(BASE + href); await q.waitForTimeout(900);
-    await q.click('#btnOrden'); await q.waitForTimeout(400);
+    await q.click('#btnDatosOrden'); await q.waitForTimeout(400);
   };
 
-  await paso('V1.30 · el botón NO da por creada la orden: si el servidor no contesta que sí, no se dice que sí', async () => {
-    /* El servidor apagado contesta el 404 PROPIO de n8n —`{code, message,
-     * hint}`, sin `ok`—, que es el caso real mientras Esteban no encienda el
-     * webhook. Lo que se mide: que la pantalla lo diga con SUS palabras y que
-     * NO aparezca por ningún lado la pantalla de «Orden creada». */
-    const q = await ordPagina({ code: 404, message: 'The requested webhook is not registered.' });
-    try {
-      await abrirOrden(q);
-      await q.click('#or-crear'); await q.waitForTimeout(900);
+  pausada('V1.30 · el botón NO da por creada la orden: si el servidor no contesta que sí, no se dice que sí',
+    'emite la orden, y `crearOrden` está apagada desde la V1.48: contesta EMISION_APAGADA antes de tocar la red, así que no hay respuesta del servidor que mirar. Lo que la sustituye mientras tanto es «V1.48 · las dos escrituras irreversibles no salen ni forzándolas».');
 
-      const t = (await q.textContent('#modalOrden')).replace(/\s+/g, ' ');
-      if (/Orden creada/i.test(t))
-        throw new Error('pintó la orden como creada sin que el servidor lo dijera: ' + t.slice(0, 140));
-      if (!/no est[áa] encendid/i.test(t))
-        throw new Error('no dice que el servidor está apagado: ' + t.slice(0, 200));
-      /* Y el botón tiene que volver a estar disponible: dejarlo muerto
-       * obligaría a recargar para reintentar algo que sí se puede reintentar. */
-      if (await q.$eval('#or-crear', el => el.disabled))
-        throw new Error('dejó el botón inservible después de un fallo recuperable');
-      console.log('    ' + t.slice(t.indexOf('No se creó'), t.indexOf('No se creó') + 96) + '…');
-    } finally { await q.close(); }
-  });
+  pausada('V1.30 · la pantalla pinta lo que el SERVIDOR releyó de Odoo, no sus propios números',
+    'emite la orden, y `crearOrden` está apagada desde la V1.48: contesta EMISION_APAGADA antes de tocar la red, así que no hay respuesta del servidor que mirar. Lo que la sustituye mientras tanto es «V1.48 · las dos escrituras irreversibles no salen ni forzándolas».');
 
-  await paso('V1.30 · la pantalla pinta lo que el SERVIDOR releyó de Odoo, no sus propios números', async () => {
-    /* El servidor devuelve un subtotal DISTINTO del que la pantalla calculó.
-     * Es el caso que importa: si la pantalla pintara lo suyo, un descuadre
-     * real sería invisible justo cuando hace falta verlo. */
-    const q = await ordPagina({
-      ok: true, orden_creada: true, odoo_so_id: 99001, odoo_so_name: 'SO-PRUEBA-1',
-      estado: 'draft', moneda: 'MXN', lista_precios: 'Public Pricelist (MXN)',
-      empresa: 'SERVICIOS FTS', subtotal: 12345.67, impuesto: 1975.31, total: 14320.98,
-      total_machote: 99999.99, cuadra: false, moneda_correcta: true,
-      ligada_en_la_base: true, vence_el: '2026-10-14',
-      avisos: ['El subtotal de la orden (12345.67) no cuadra con el machote (99999.99).'],
-      mensaje: 'La orden SO-PRUEBA-1 se creo, pero hay que mirarla.'
-    });
-    try {
-      await abrirOrden(q);
-      await q.click('#or-crear'); await q.waitForTimeout(900);
-
-      const t = (await q.textContent('#modalOrden')).replace(/\s+/g, ' ');
-      if (!/Orden creada/i.test(t)) throw new Error('no pintó la pantalla de creada: ' + t.slice(0, 140));
-      if (!/SO-PRUEBA-1/.test(t)) throw new Error('no pintó el nombre que dio el servidor');
-      if (!/12,345\.67/.test(t))
-        throw new Error('no pintó el subtotal del SERVIDOR: ' + t.slice(0, 220));
-      if (!/no cuadra/i.test(t))
-        throw new Error('no avisó del descuadre, que es lo único que hacía falta ver');
-      if (!/99,999\.99/.test(t))
-        throw new Error('no dice contra qué no cuadra');
-      console.log('    subtotal del servidor 12,345.67 · avisa que no cuadra contra 99,999.99');
-    } finally { await q.close(); }
-  });
-
-  await paso('V1.30 · si la orden ya existía, lleva al mismo sitio y NO inventa importes', async () => {
-    /* Apretar dos veces tiene que terminar donde termina apretar una. Y como
-     * esta respuesta no trae importes, la pantalla NO puede rellenarlos con
-     * los suyos: sería un read-back que no hubo. */
-    const q = await ordPagina({
-      ok: true, ya_existia: true, orden_creada: false,
-      odoo_so_id: 12088, odoo_so_name: 'SO11889',
-      mensaje: 'Esta cotizacion ya tiene su orden en Odoo: SO11889.'
-    });
-    try {
-      await abrirOrden(q);
-      await q.click('#or-crear'); await q.waitForTimeout(900);
-
-      const t = (await q.textContent('#modalOrden')).replace(/\s+/g, ' ');
-      if (!/Orden creada/i.test(t)) throw new Error('no llevó al mismo sitio: ' + t.slice(0, 140));
-      if (!/SO11889/.test(t)) throw new Error('no dice cuál es la orden que ya existía');
-      if (!/ya ten[ií]a su orden/i.test(t))
-        throw new Error('no avisa que no se creó otra: ' + t.slice(0, 200));
-      /* Lo que NO puede pasar: que aparezca el total del machote disfrazado de
-       * subtotal de Odoo. El subtotal tiene que salir vacío. */
-      const sub = await q.$eval('#modalOrden .or-t tbody tr:first-child td:last-child',
-        el => el.textContent.trim());
-      if (sub !== '—')
-        throw new Error('inventó un subtotal que el servidor no dio: ' + sub);
-      console.log('    mismo destino · subtotal «—» en vez de un número inventado');
-    } finally { await q.close(); }
-  });
+  pausada('V1.30 · si la orden ya existía, lleva al mismo sitio y NO inventa importes',
+    'emite la orden, y `crearOrden` está apagada desde la V1.48: contesta EMISION_APAGADA antes de tocar la red, así que no hay respuesta del servidor que mirar. Lo que la sustituye mientras tanto es «V1.48 · las dos escrituras irreversibles no salen ni forzándolas».');
 
   await paso('V1.30 · el desglose viaja SIN romper el cuadre al centavo, y sin costos', async () => {
     /* La regla dura del desglose: la suma de los renglones tiene que dar
@@ -3908,7 +3850,7 @@ const CP = { pago: { dias: 30, termino_texto: 'Crédito 30 días',
        * clic es exactamente lo que se quiere probar. */
       const antes = await q.evaluate(() => JSON.stringify(window.MachoteAlmacen.leerLocal()));
 
-      await q.click('#btnOrden'); await q.waitForTimeout(400);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(400);
       await q.click('#or-siguiente'); await q.waitForTimeout(400);
       await q.click('#or-enviar'); await q.waitForTimeout(1500);
 
@@ -3931,7 +3873,7 @@ const CP = { pago: { dias: 30, termino_texto: 'Crédito 30 días',
       await q.goto(BASE); await q.waitForTimeout(900);
       const href = await q.$eval('.fila a.item', a => a.getAttribute('href'));
       await q.goto(BASE + href); await q.waitForTimeout(900);
-      await q.click('#btnOrden'); await q.waitForTimeout(400);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(400);
       await q.click('#or-siguiente'); await q.waitForTimeout(400);
       const t = (await q.textContent('.corr')).replace(/\s+/g, ' ');
       /* Cambió la copia el 8-sep al elegirse el camino A: ya no es "no está
@@ -3981,7 +3923,7 @@ const CP = { pago: { dias: 30, termino_texto: 'Crédito 30 días',
         const c = window.MachoteCalc.calcular(m);
         return [c.costo, c.costoMo, c.costoMat].map(n => Math.round(n));
       });
-      await q.click('#btnOrden'); await q.waitForTimeout(400);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(400);
       await q.click('#or-siguiente'); await q.waitForTimeout(400);
       const [hoja] = await Promise.all([ctx.waitForEvent('page'), q.click('#or-pdf')]);
       await hoja.waitForLoadState('domcontentloaded');
@@ -4031,7 +3973,7 @@ const CP = { pago: { dias: 30, termino_texto: 'Crédito 30 días',
       await q.goto(BASE + href); await q.waitForTimeout(900);
       const antes = await q.evaluate(() => JSON.stringify(window.MachoteAlmacen.leerLocal()));
 
-      await q.click('#btnOrden'); await q.waitForTimeout(400);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(400);
       await q.click('#or-siguiente'); await q.waitForTimeout(400);
       if (!(await q.$('#or-pdf-odoo'))) throw new Error('no existe el botón de traer el PDF');
       await q.click('#or-pdf-odoo'); await q.waitForTimeout(700);
@@ -4056,7 +3998,7 @@ const CP = { pago: { dias: 30, termino_texto: 'Crédito 30 días',
       await q.goto(BASE); await q.waitForTimeout(900);
       const href = await q.$eval('.fila a.item', a => a.getAttribute('href'));
       await q.goto(BASE + href); await q.waitForTimeout(900);
-      await q.click('#btnOrden'); await q.waitForTimeout(400);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(400);
       await q.click('#or-siguiente'); await q.waitForTimeout(400);
       const c = await q.$eval('#or-pdf-odoo', el => {
         const r = el.getBoundingClientRect();
@@ -4225,7 +4167,7 @@ const CP = { pago: { dias: 30, termino_texto: 'Crédito 30 días',
       await q.goto(BASE); await q.waitForTimeout(900);
       const href = await q.$eval('[data-hist]', el => '#/m/' + el.getAttribute('data-hist'));
       await q.goto(BASE + href); await q.waitForTimeout(900);
-      await q.click('#btnOrden'); await q.waitForTimeout(400);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(400);
 
       // Apagado por omisión: es la excepción, no la costumbre.
       if (await q.$eval('[data-desg="0"]', el => el.checked))
@@ -4439,7 +4381,7 @@ await sembrarMachotes(q);
           sueltos: campos.filter(c => !c.disabled).length,
           /* La barra fija vive FUERA de `#hoja`: se comprueba aparte porque el
            * trabado de la hoja no la alcanza. */
-          pasar_a_orden: !!document.querySelector('#btnOrden'),
+          pasar_a_orden: !!document.querySelector('#btnDatosOrden'),
           revisar: !!document.querySelector('.fija a[href^="#/rev/"]')
         };
       });
@@ -6642,7 +6584,7 @@ await sembrarMachotes(q);
     const q = await cliPagina();
     try {
       await abrirElPrimero(q);
-      await q.click('#btnOrden'); await q.waitForTimeout(600);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(600);
 
       if (!await q.$eval('#or-crear', el => el.disabled))
         throw new Error('dejó apretar «Crear la orden» sin cliente de Odoo');
@@ -6670,7 +6612,7 @@ await sembrarMachotes(q);
                  nombre: m.nombre, id: m.id };
       });
 
-      await q.click('#btnOrden'); await q.waitForTimeout(600);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(600);
       await q.evaluate(() => {
         const d = document.querySelector('details.estorbos'); if (d) d.open = true;
       });
@@ -6706,7 +6648,7 @@ await sembrarMachotes(q);
     const q = await cliPagina();
     try {
       await abrirElPrimero(q);
-      await q.click('#btnOrden'); await q.waitForTimeout(600);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(600);
       await q.evaluate(() => {
         const d = document.querySelector('details.estorbos'); if (d) d.open = true;
       });
@@ -7017,50 +6959,8 @@ await sembrarMachotes(q);
     }, j);
   };
 
-  await paso('V1.33 · lo que viaja al servidor son BLOQUES y COMPROMISOS, no líneas sueltas', async () => {
-    /* El contrato con `comercial/orden-crear-v2`. Se mide el cuerpo REAL que
-     * sale del navegador, interceptando el fetch: leer el código no prueba
-     * qué se manda (CLAUDE.md §8). */
-    const q = await ordPagina({ ok: true });
-    try {
-      await sembrarPlantillas(q);
-      await q.addInitScript(() => {
-        window.__cuerpos = [];
-        const orig = window.fetch;
-        window.fetch = function (u, o) {
-          try {
-            if (String(u).indexOf('/comercial/orden-crear') >= 0 && o && o.body)
-              window.__cuerpos.push(JSON.parse(o.body));
-          } catch (e) {}
-          return orig.apply(this, arguments);
-        };
-      });
-      await abrirOrden(q);
-      await q.click('#or-crear'); await q.waitForTimeout(900);
-
-      const r = await q.evaluate(() => {
-        const c = (window.__cuerpos || [])[0] || null;
-        return c ? { url_v2: true, tiene_bloques: Array.isArray(c.bloques),
-                     tiene_compromisos: !!c.compromisos,
-                     sin_lineas: c.lineas === undefined,
-                     sin_a_mano: c.a_mano === undefined,
-                     compromisos: c.compromisos,
-                     tipos: (c.bloques || []).map(b => b.display_type) } : null;
-      });
-      if (!r) throw new Error('no salió ningún cuerpo al servidor');
-      if (!r.tiene_bloques) throw new Error('no manda `bloques`');
-      if (!r.tiene_compromisos) throw new Error('no manda `compromisos`');
-      if (!r.sin_lineas || !r.sin_a_mano)
-        throw new Error('sigue mandando el contrato viejo (`lineas` / `a_mano`)');
-      if (r.tipos.indexOf('line_section') < 0) throw new Error('no viajó ninguna sección');
-      if (r.tipos.indexOf('line_note') < 0) throw new Error('no viajó ninguna nota');
-      if (r.tipos.indexOf(null) < 0) throw new Error('no viajó ninguna línea con precio');
-      const c = r.compromisos;
-      for (const k of ['pago_dias', 'incoterm_code', 'entrega_texto', 'moneda', 'vigencia_dias'])
-        if (c[k] === undefined) throw new Error('falta el compromiso ' + k + ' en el cuerpo');
-      console.log('    bloques[' + r.tipos.length + '] + los cinco compromisos · sin lineas[] ni a_mano');
-    } finally { await q.close(); }
-  });
+  pausada('V1.33 · lo que viaja al servidor son BLOQUES y COMPROMISOS, no líneas sueltas',
+    'emite la orden, y `crearOrden` está apagada desde la V1.48: contesta EMISION_APAGADA antes de tocar la red, así que no hay respuesta del servidor que mirar. Lo que la sustituye mientras tanto es «V1.48 · las dos escrituras irreversibles no salen ni forzándolas».');
 
   await paso('V1.33 · los hitos de pago tienen que sumar 100, y si no, lo dice y bloquea', async () => {
     const q = await ordPagina({ ok: true });
@@ -10254,7 +10154,11 @@ await sembrarMachotes(q);
     for (let i = 0; i < 30 && !abierto; i++) {
       abierto = await q.evaluate(() => {
         const bs = Array.prototype.slice.call(document.querySelectorAll('button, a'));
-        const b2 = bs.find(x => /orden de venta|pasar a orden/i.test(x.textContent || ''));
+        /* V1.48 · el cuadro se abre ahora desde «Datos de la orden». El botón
+         * que decía «Pasar a orden» se llama «Confirmar orden» y lleva al flujo
+         * de confirmación, que es otra cosa. */
+        const b2 = bs.find(x => /orden de venta|pasar a orden|^datos$/i
+                                  .test(x.textContent || ''));
         if (!b2) return false; b2.click(); return true;
       });
       if (!abierto) await q.waitForTimeout(200);
@@ -10555,8 +10459,10 @@ await sembrarMachotes(q);
         localStorage.setItem('fts_machote_v1', JSON.stringify({
           v: 1, guardado_at: new Date().toISOString(), machotes: [cfg.m], handoff: {} }));
         localStorage.setItem('fts_machote_sync_v1', JSON.stringify({
-          'M-9146': { machote_id: 'uuid-146', version: 4, folio: 77, folio_txt: 'COT-0146',
-                      subido_at: new Date().toISOString(), huella: 'x' } }));
+          'M-9146': Object.assign({ machote_id: 'uuid-146', version: 4, folio: 77,
+                      folio_txt: 'COT-0146',
+                      subido_at: new Date().toISOString(), huella: 'x' },
+                      cfg.sync || {}) }));
       } catch (e) {}
       const orig = window.fetch;
       window.fetch = function (u, init) {
@@ -10603,7 +10509,10 @@ await sembrarMachotes(q);
     }, { m: MACHOTES_FIXTURE[0] && Object.assign(
            JSON.parse(JSON.stringify(MACHOTES_FIXTURE[0])), { id: 'M-9146' }),
          total: (o.total === undefined ? 1546 : o.total),
-         extra: o.extra || null, extra0: o.extra0 || null });
+         extra: o.extra || null, extra0: o.extra0 || null,
+         /* Campos extra para la libreta de sincronización: la liga con la orden
+          * vive ahí, y sin ella el camino del machote no tiene a qué confirmar. */
+         sync: o.sync || null });
     await q.goto(BASE);
     await q.waitForTimeout(800);
     return q;
@@ -11020,6 +10929,209 @@ await sembrarMachotes(q);
     } finally { await cerrar146(q); }
   });
 
+  /* ═══ V1.48 · UN SOLO FLUJO, Y EL PASO FINAL APAGADO ════════════════════
+   * Lo que estas cuatro pruebas cuidan NO es que la pantalla se vea bien: es
+   * que las dos escrituras irreversibles NO SALGAN, y que la decisión de si se
+   * puede confirmar siga saliendo de una sola función aunque ahora se entre
+   * por un paso más. `window.__llamadas` guarda toda petición a `/comercial/`,
+   * así que «no escribió» se puede EXIGIR, no suponer. */
+
+  await paso('V1.48 · las dos escrituras irreversibles no salen ni forzándolas', async () => {
+    /* La prueba del encargo: «no se puede disparar ni forzándolo». Se llaman
+     * las funciones DIRECTO, saltándose el botón —que es justo lo que haría
+     * alguien desde la consola, u otra pantalla que mañana las llame—, y se
+     * exige que ni siquiera lleguen a la red. */
+    const q = await ordPagina146({ total: 3 });
+    try {
+      const r = await q.evaluate(async () => {
+        const A = window.MachoteAlmacen;
+        const antes = window.__llamadas.length;
+        const emitir = await A.crearOrden('M-9146', [], {}, null);
+        const confirmar = await A.confirmar('uuid-146', 4);
+        const nuevas = window.__llamadas.slice(antes).map(
+                         x => ({ u: x.url, modo: x.cuerpo && x.cuerpo.modo }));
+        return {
+          emitir: emitir && emitir.error, confirmar: confirmar && confirmar.error,
+          emitirOk: emitir && emitir.ok, confirmarOk: confirmar && confirmar.ok,
+          encendidaE: A.emisionEncendida(), encendidaC: A.confirmacionEncendida(),
+          red: nuevas
+        };
+      });
+      if (r.emitir !== 'EMISION_APAGADA')
+        throw new Error('crearOrden no está apagada: ' + r.emitir);
+      if (r.confirmar !== 'CONFIRMACION_APAGADA')
+        throw new Error('confirmar no está apagada: ' + r.confirmar);
+      if (r.emitirOk !== false || r.confirmarOk !== false)
+        throw new Error('contestaron ok=true estando apagadas');
+      if (r.encendidaE !== false || r.encendidaC !== false)
+        throw new Error('los interruptores dicen encendido');
+      /* Lo que de verdad importa: NO tocaron la red. Un `ok:false` después de
+       * haber posteado habría creado la orden igual — que es exactamente el
+       * defecto que esto viene a tapar. */
+      const malas = r.red.filter(x => x.u.indexOf('orden-crear') >= 0 ||
+        (x.u.indexOf('/comercial/confirmar') >= 0 && x.modo === 'confirmar'));
+      if (malas.length)
+        throw new Error('salió a la red estando apagada: ' + JSON.stringify(malas));
+      console.log('    crearOrden y confirmar contestan apagado ANTES de la red · 0 peticiones');
+    } finally { await cerrar146(q); }
+  });
+
+  await paso('V1.48 · el paso 1 hace la MISMA pregunta por los dos caminos', async () => {
+    const q = await ordPagina146({ total: 3 });
+    try {
+      const r = await q.evaluate(() => {
+        const F = window.ConfirmarFlujo;
+        const orden = { id: 80000, nombre: 'SO-P-0',
+                        machote: { id: 'uuid-146', nombre: 'Cotización de prueba' },
+                        machotes_mas: 0 };
+        const m = window.MachoteApp.todos()[0];
+        /* Desde la ORDEN falta el machote; desde el MACHOTE falta la orden.
+         * Es el mismo par, con distinta mitad puesta. */
+        const a = F.candidatos({ desde: 'orden', orden: orden, machotes: [] });
+        const b = F.candidatos({ desde: 'machote', machote: { odoo_so_id: 80000 },
+                                 ordenes: [orden] });
+        /* Y la distinción que no se puede perder: una lista corta NO es una
+         * lista vacía, y ninguna de las dos es «no hay». */
+        const corta = F.candidatos({ desde: 'orden', machotes: [],
+          orden: { id: 1, machote: { id: 'u1', nombre: 'A' }, machotes_mas: 2 } });
+        return { aQue: a.que, aN: a.lista.length, aPral: a.lista[0] && a.lista[0].principal,
+                 bQue: b.que, bN: b.lista.length,
+                 cortaParcial: corta.parcial, aParcial: a.parcial,
+                 tieneM: !!m };
+      });
+      if (r.aQue !== 'machote') throw new Error('desde la orden no pregunta por el machote');
+      if (r.bQue !== 'orden') throw new Error('desde el machote no pregunta por la orden');
+      if (r.aN !== 1 || r.bN !== 1) throw new Error('no encontró la candidata: ' + r.aN + '/' + r.bN);
+      if (r.aPral !== true) throw new Error('no marcó cuál manda');
+      if (r.aParcial !== false) throw new Error('dijo parcial teniendo la lista completa');
+      if (r.cortaParcial !== true)
+        throw new Error('el servidor dice 3 ligados y sólo tiene 1, y no lo dijo');
+      console.log('    desde la orden → elige machote · desde el machote → elige orden · ' +
+                  'lista corta ≠ lista vacía');
+    } finally { await cerrar146(q); }
+  });
+
+  await paso('V1.48 · desde la ORDEN se llega al paso final y no se escribe nada', async () => {
+    const q = await ordPagina146({ total: 3 });
+    try {
+      /* La ficha de una orden es su propia ruta, no un desplegable de la
+       * lista: se entra por donde se entra de verdad. */
+      await q.evaluate(() => { location.hash = '#/ordenes'; });
+      await q.waitForTimeout(700);
+      await q.evaluate(() => { location.hash = '#/so/80000'; });
+      await q.waitForTimeout(900);
+      const r = await q.evaluate(async () => {
+        const esperar = (ms) => new Promise(r => setTimeout(r, ms));
+        const b = document.querySelector('#orConfirmar');
+        if (!b) return { error: 'no hay botón de confirmar en la ficha' };
+        const antes = window.__llamadas.length;
+        b.click();
+        await esperar(250);
+        const velo = document.getElementById('cfVelo');
+        const abierto = !!(velo && velo.classList.contains('abierto'));
+        const ok1 = document.getElementById('cfOk');
+        const pedido = ok1 ? ok1.disabled : null;   // con UNA sola, igual hay que elegirla
+        const radio = document.querySelector('input[name=cfSel]');
+        if (radio) { radio.checked = true; radio.dispatchEvent(new Event('change')); }
+        await esperar(80);
+        const tras = ok1 ? ok1.disabled : null;
+        if (ok1) ok1.click();
+        await esperar(400);
+        const pu = document.getElementById('puVelo');
+        const ok3 = document.getElementById('puOk');
+        return {
+          abierto: abierto, pedido: pedido, tras: tras,
+          checklist: !!(pu && pu.classList.contains('abierto')),
+          finalApagado: ok3 ? ok3.disabled : null,
+          finalTexto: ok3 ? ok3.textContent : null,
+          diceApagado: !!document.querySelector('.pu-final'),
+          /* La url NO alcanza: `/comercial/confirmar` es multi-modo y `evaluar`
+           * es una LECTURA —es la que el checklist necesita para pintar—. Lo
+           * que no puede salir es el modo `confirmar`. Filtrar por url habría
+           * dado una prueba que falla con el sistema sano. */
+          red: window.__llamadas.slice(antes).map(
+                 x => ({ u: x.url, modo: x.cuerpo && x.cuerpo.modo }))
+        };
+      });
+      if (r.error) throw new Error(r.error);
+      if (!r.abierto) throw new Error('el paso 1 no abrió');
+      if (r.pedido !== true)
+        throw new Error('con una sola candidata se saltó la elección');
+      if (r.tras !== false) throw new Error('elegir no habilitó el continuar');
+      if (!r.checklist) throw new Error('no llegó al checklist');
+      if (r.finalApagado !== true)
+        throw new Error('el paso final NO está apagado: ' + r.finalTexto);
+      if (!r.diceApagado) throw new Error('no dice por qué está apagado');
+      const malas = r.red.filter(x => x.u.indexOf('orden-crear') >= 0 ||
+        (x.u.indexOf('/comercial/confirmar') >= 0 && x.modo === 'confirmar'));
+      if (malas.length) throw new Error('escribió: ' + JSON.stringify(malas));
+      console.log('    orden → paso 1 → checklist → paso 3 apagado · 0 escrituras · ' +
+                  '"' + String(r.finalTexto).trim() + '"');
+    } finally { await cerrar146(q); }
+  });
+
+  await paso('V1.48 · desde el MACHOTE se llega al paso final y no se escribe nada', async () => {
+    /* La liga con la orden vive en la libreta de sincronización: sin ella el
+     * machote no tiene a qué confirmar, y el paso 1 diría —con razón— que no
+     * hay ninguna. */
+    const q = await ordPagina146({ total: 3,
+      sync: { odoo_so_id: 80000, odoo_so_name: 'SO-P-0' } });
+    try {
+      await q.evaluate(() => { location.hash = '#/m/M-9146'; });
+      await q.waitForTimeout(700);
+      const r = await q.evaluate(async () => {
+        const esperar = (ms) => new Promise(r => setTimeout(r, ms));
+        const b = document.getElementById('btnOrden');
+        if (!b) return { error: 'no hay botón en el machote' };
+        const etiqueta = (b.textContent || '').trim();
+        const antes = window.__llamadas.length;
+        b.click();
+        await esperar(300);
+        const velo = document.getElementById('cfVelo');
+        const abierto = !!(velo && velo.classList.contains('abierto'));
+        const ok1 = document.getElementById('cfOk');
+        const pedido = ok1 ? ok1.disabled : null;
+        const radio = document.querySelector('input[name=cfSel]');
+        if (radio) { radio.checked = true; radio.dispatchEvent(new Event('change')); }
+        await esperar(80);
+        if (ok1) ok1.click();
+        await esperar(450);
+        const pu = document.getElementById('puVelo');
+        const ok3 = document.getElementById('puOk');
+        return {
+          etiqueta: etiqueta,
+          abierto: abierto, pedido: pedido,
+          checklist: !!(pu && pu.classList.contains('abierto')),
+          finalApagado: ok3 ? ok3.disabled : null,
+          finalTexto: ok3 ? (ok3.textContent || '').trim() : null,
+          diceApagado: !!document.querySelector('.pu-final'),
+          /* La url NO alcanza: `/comercial/confirmar` es multi-modo y `evaluar`
+           * es una LECTURA —es la que el checklist necesita para pintar—. Lo
+           * que no puede salir es el modo `confirmar`. Filtrar por url habría
+           * dado una prueba que falla con el sistema sano. */
+          red: window.__llamadas.slice(antes).map(
+                 x => ({ u: x.url, modo: x.cuerpo && x.cuerpo.modo }))
+        };
+      });
+      if (r.error) throw new Error(r.error);
+      /* El nombre importa: describe lo que la persona viene a hacer, no el
+       * medio. Y es lo que el encargo pidió con todas sus letras. */
+      if (!/confirmar orden/i.test(r.etiqueta))
+        throw new Error('el botón no se llama «Confirmar orden»: «' + r.etiqueta + '»');
+      if (!r.abierto) throw new Error('el botón no abre el paso 1');
+      if (r.pedido !== true) throw new Error('con una sola candidata se saltó la elección');
+      if (!r.checklist) throw new Error('no llegó al checklist desde el machote');
+      if (r.finalApagado !== true)
+        throw new Error('el paso final NO está apagado: ' + r.finalTexto);
+      if (!r.diceApagado) throw new Error('no dice por qué está apagado');
+      const malas = r.red.filter(x => x.u.indexOf('orden-crear') >= 0 ||
+        (x.u.indexOf('/comercial/confirmar') >= 0 && x.modo === 'confirmar'));
+      if (malas.length) throw new Error('escribió: ' + JSON.stringify(malas));
+      console.log('    botón «' + r.etiqueta + '» → paso 1 → checklist → paso 3 apagado · ' +
+                  '0 escrituras');
+    } finally { await cerrar146(q); }
+  });
+
   await paso('sin errores de consola propios del prototipo', async () => {
     if (errs.length) throw new Error(errs.slice(0, 4).join(' | '));
     if (delEntorno.length) console.log('   (' + delEntorno.length +
@@ -11027,7 +11139,11 @@ await sembrarMachotes(q);
       'del vigilante, que no se puede pedir por file://)');
   });
 
-  console.log('\n' + ok + ' pasaron, ' + mal + ' fallaron.' +
+  if (pausadas) console.log('\n⏸ ' + pausadas + ' prueba(s) EN PAUSA: prueban la emisión de ' +
+    'la orden, que está apagada a propósito (V1.48). Se revive con los tres cambios de ' +
+    'docs/comercial/POR-QUE-NO-SE-PODIA-CONFIRMAR.md + poner EMITIR_ENCENDIDO en true.');
+  console.log('\n' + ok + ' pasaron, ' + mal + ' fallaron' +
+              (pausadas ? ', ' + pausadas + ' en pausa' : '') + '.' +
               (saltadas ? '  (' + saltadas + ' saltadas por SOLO=' + process.env.SOLO + ')' : ''));
   if (errs.length) { console.log('\nErrores de consola:'); errs.slice(0, 10).forEach(e => console.log('  ' + e)); }
   await b.close();

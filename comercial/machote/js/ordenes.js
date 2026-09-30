@@ -542,6 +542,10 @@
 
     var c = host.querySelector('#orConfirmar');
     if (c) c.addEventListener('click', function () {
+      /* V1.48 · ya NO salta directo al checklist: entra por el paso 1, que es
+       * el mismo componente que usa el machote. Aquí la orden viene puesta y
+       * lo que falta elegir es QUÉ MACHOTE MANDA. */
+      if (G.ConfirmarFlujo) { G.ConfirmarFlujo.abrir({ orden: f, desde: 'orden' }); return; }
       if (!G.PuertaConfirmar) return;
       G.PuertaConfirmar.abrir({ orden: f, desde: 'orden' });
     });
@@ -614,6 +618,12 @@
 
   G.Ordenes = {
     montar: montar,
+    /* Las filas que esta pantalla tiene cargadas. Es público a propósito: el
+     * paso 1 del flujo de confirmación las usa para enseñar cliente y estado
+     * de la orden candidata. Antes se llamaba a un `G.MachoteOrdenes` que NO
+     * EXISTE, y eso no truena: devuelve vacío, y vacío se lee como «no hay
+     * órdenes ligadas» (CLAUDE.md §20 #13). */
+    cargadas: function () { return (_st && _st.filas) ? _st.filas : []; },
     /* Para las pruebas: sembrar filas sin servidor, y leer el estado. */
     _sembrar: function (filas, total) {
       _st.filas = filas || []; _st.total = total || (filas || []).length;

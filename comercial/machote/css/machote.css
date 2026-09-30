@@ -2594,12 +2594,22 @@ table.or-tab td.num { text-align: right; }
 .pu-velo { position: fixed; inset: 0; background: rgba(0,0,0,.42); z-index: 50;
   display: none; align-items: flex-start; justify-content: center; padding: 18px; overflow: auto; }
 .pu-velo.abierto { display: flex; }
+/* ⚠️ El cuadro es una COLUMNA con tope de alto, y el cuerpo se queda con lo que
+ * sobre. Antes el alto del cuerpo era `calc(100vh - 200px)`: un hueco FIJO de
+ * 200px para la cabecera y el pie. En cuanto uno de los dos envuelve —y a 380px
+ * envuelven los dos: el título se lleva su renglón y el pie apila los botones—
+ * la suma pasa de 200 y el cuadro se sale por abajo. Medido: a 380x780 el botón
+ * del paso 3 terminaba en 790. En la captura se ve como un borde cortado, y es
+ * peor de lo que parece: el botón al que hay que llegar queda FUERA. */
 .pu-modal { background: var(--fondo, #fff); border-radius: 12px; max-width: 760px;
-            width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+            width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,.3);
+            display: flex; flex-direction: column;
+            max-height: calc(100vh - 36px); max-height: calc(100dvh - 36px); }
 .pu-cab { display: flex; align-items: center; gap: 10px; padding: 13px 16px;
           border-bottom: 1px solid var(--linea2, #ececec); }
 .pu-cab h3 { margin: 0; font-size: 16px; flex: 1; }
-.pu-cuerpo { padding: 16px; max-height: calc(100vh - 200px); overflow: auto; }
+.pu-cuerpo { padding: 16px; overflow: auto; flex: 1 1 auto; min-height: 0; }
+.pu-cab, .pu-pie { flex: none; }   /* si se encogen, el botón final desaparece */
 .pu-pie { padding: 12px 16px; border-top: 1px solid var(--linea2, #ececec);
           display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
 /* ⚠️ El `.btn` del módulo está pensado para ocupar la fila de un formulario,
@@ -2691,3 +2701,53 @@ table.or-tab td.num { text-align: right; }
   table.or-tab tbody { grid-template-columns: 1fr; }
   .or-hoja { height: 66vh; }
 }
+
+/* ═══ V1.48 · El paso 1 del flujo de confirmación ═══════════════════════════
+ * Reusa el velo y el modal del checklist (`.pu-velo` / `.pu-modal`): son un
+ * solo flujo de tres pasos, y si el primero se viera distinto parecerían dos.
+ * ⚠️ Nombres nuevos con prefijo `cf-`. Reusar una clase que ya existe en el
+ * módulo hereda lo que esa clase ya significaba en otro sitio, y eso no se ve
+ * en el diff — sólo en la captura (CLAUDE.md §20 #12, el caso de `.kpi`). */
+.cf-lista{display:flex;flex-direction:column;gap:8px;margin:12px 0}
+.cf-op{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;
+       border:1px solid var(--linea,#dcdcdc);border-radius:9px;cursor:pointer;
+       background:#fff;min-height:var(--toque,44px)}
+.cf-op:hover{background:var(--papel,#f6f7f8)}
+.cf-op input{margin:2px 0 0;flex:none;width:18px;height:18px}
+.cf-op .cf-nm{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto}
+.cf-op .cf-nm .tiny{color:var(--suave,#6b6b6b)}
+/* El que manda va marcado, y la marca no es sólo color: el color solo no
+ * distingue para quien no lo ve. */
+.cf-op .chip-mini{align-self:flex-start}
+
+/* El paso 3 apagado. Va DENTRO del cuerpo del checklist, después del
+ * veredicto, para que se lea en el orden en que ocurre. */
+.pu-final{margin-top:14px}
+.pu-final ul{margin:6px 0 0;padding-left:18px}
+.pu-final li{margin:3px 0}
+
+/* El título del cuadro NO se recorta en angosto. `.pu-cab h3` trae
+ * `white-space:nowrap` + `text-overflow:ellipsis`, que a 380 px dejaba
+ * «Confirm…» — el título del cuadro, recortado a la mitad. Se vio en la
+ * captura, no en el diff. La cabecera envuelve y el título se lleva el
+ * renglón entero; la insignia y la × se van abajo. */
+@media (max-width: 520px) {
+  .pu-cab { flex-wrap: wrap; }
+  .pu-cab h3 { flex: 1 1 100%; white-space: normal; overflow: visible; }
+  .pu-cab .chip-mini { order: 2; }
+  .pu-cab .btn { order: 3; margin-left: auto; }
+}
+
+
+/* Botón chico para ir dentro de una línea de texto, no en una barra. */
+/* Chico de aspecto, NO de area de toque: el minimo son 40px de alto y la suite
+ * lo exige. Un boton de 28px se pica mal con el pulgar, y este vive metido en
+ * una linea de texto, que es justo donde mas facil se falla. */
+/* ⚠️ `width: auto` NO sobra: `shared/fts-styles.css` define `.btn{width:100%}`
+ * para el kiosko, donde los botones son de pantalla completa, y cada contexto
+ * de este módulo lo tiene que deshacer. Sin esto el botón sale de ancho
+ * completo dentro de la línea y se lee como la acción principal de la tarjeta,
+ * que es lo contrario de lo que es. `flex:none` no basta: no deshace un ancho.
+ * Es el mismo tropiezo que el botón de copiar de la V1.47. */
+.btn.peq { min-height: 40px; padding: 0 10px; font-size: 12px;
+            width: auto; flex: none; align-self: center; }
