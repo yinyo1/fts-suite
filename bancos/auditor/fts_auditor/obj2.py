@@ -325,6 +325,21 @@ class Obj2:
                 fila[f"pata{p}"] = "ROJO" if "ROJO" in rs else ("AMARILLO" if "AMARILLO" in rs else "VERDE")
             por_estado.append(fila)
         cod = Counter(x["codigo"] for x in self.hall if x["resultado"] in ("ROJO", "AMARILLO"))
+        # un código que se repite más de 10 veces va como UN hallazgo con la lista de estados y movimientos
+        # (el detalle por mes ya viaja en cotejo_meses); los conteos y las patas por estado se calcularon antes
+        grupos = defaultdict(list)
+        for x in self.hall:
+            grupos[(x["pata"], x["resultado"], x["codigo"])].append(x)
+        compactos = []
+        for (pata, res, codigo), xs in grupos.items():
+            if len(xs) <= 10 or codigo.startswith("O2_BASE_"):
+                compactos += xs
+                continue
+            movs = sorted({i for x in xs for i in (x["evidencia"].get("movimientos") or [])})
+            compactos.append({"pata": pata, "resultado": res, "codigo": codigo, "estado_id": None, "archivo_id": None,
+                              "evidencia": {"n": len(xs), "estados": sorted({x["estado_id"] for x in xs if x["estado_id"]}),
+                                            **({"movimientos": movs} if movs else {})}})
+        self.hall = compactos
         fc = self.filas_cotejo.values()
         tot = {k: sum(r[k] for r in fc) for k in ("banco_n", "emp_n", "faltan_n", "sobran_n", "odoo_n")}
         conteos = {
