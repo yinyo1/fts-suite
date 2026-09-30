@@ -57,7 +57,7 @@
    *   2. el `?v=` de la URL con la que el navegador lo bajó,
    *   3. la que declara cada pieza que se carga aparte (hoy el motor).
    * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
-  const VERSION_ARCHIVO = 'V1.47';
+  const VERSION_ARCHIVO = 'V1.48';
 
   const VERSION_URL = (function () {
     try {
@@ -3708,8 +3708,12 @@
        * captura, no el diff—: quedaba un botón vivo para convertir en orden la
        * cotización de otro. «Revisar» sí se queda: es de sólo lectura y es
        * justo para lo que dirección abre un machote ajeno. */
-      (G.MachoteOrden && !ajeno(m)   /* pasar a orden es del DUEÑO, no de quien tiene prestado */
-        ? '<button class="btn fantasma" id="btnOrden" title="Ver cómo se pasaría a orden de venta">Pasar a orden</button>'
+      /* V1.48 · deja de llamarse «Pasar a orden». Se llama CONFIRMAR ORDEN, y
+       * abre el flujo único: elegir el par → el checklist → el paso final, que
+       * hoy está apagado. El nombre viejo describía el medio (crear una orden);
+       * el nuevo describe lo que la persona viene a hacer. */
+      (G.ConfirmarFlujo && !ajeno(m)   /* confirmar es del DUEÑO, no de quien tiene prestado */
+        ? '<button class="btn fantasma" id="btnOrden" title="Elegir la orden, revisar los candados y llegar al paso final">Confirmar orden</button>'
         : '') +
       /* PRESTAR es del dueño y sólo del dueño (decisión 1 de la propuesta:
        * quien sabe que no puede meterle mano ahora es él). Y sólo tiene
@@ -3810,7 +3814,11 @@
     /* El segundo argumento es cómo se GUARDA. La pantalla de la orden puede
      * cambiar el cliente cuando falta, y sin esto ese cambio se quedaría en
      * memoria: `tocado` es lo que lo marca para subir. */
-    if (bo) bo.onclick = () => G.MachoteOrden.abrir(m, (mm) => tocado(mm));
+    /* UNA sola pieza para los dos caminos. Desde aquí se trae puesta la mitad
+     * «qué cotización manda» y falta elegir la ORDEN; desde la vista de órdenes
+     * es al revés. Si cada camino armara su propio flujo, en un mes dirían
+     * cosas distintas de la misma verdad (CLAUDE.md §20 #4). */
+    if (bo) bo.onclick = () => G.ConfirmarFlujo.abrir({ desde: 'machote', machote: m });
     const bp = $('#btnPrestar');
     if (bp) bp.onclick = () => G.MachotePrestamo.abrir(m, personasDelEquipo(), vMachote);
     const bc = $('#btnCeder');

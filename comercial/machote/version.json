@@ -1,11 +1,17 @@
 {
-  "version": "V1.47",
-  "build": "V1.47",
+  "version": "V1.48",
+  "build": "V1.48",
   "fecha": "2026-09-30",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.48",
+      "pr": null,
+      "fecha": "2026-09-30",
+      "nota": "UN SOLO FLUJO DE CONFIRMACION, CON EL PASO FINAL APAGADO (#294 - Estacion 3). El boton del machote deja de llamarse 'Pasar a orden' y se llama CONFIRMAR ORDEN: el nombre viejo describia el medio, el nuevo describe lo que la persona viene a hacer. Los dos caminos -el machote y la vista de ordenes- entran ahora por la MISMA pieza de tres pasos: elegir el par, el checklist, y confirmar. || LA ASIMETRIA ERA APARENTE: se pedia 'elegir la SO' desde el machote y 'elegir el machote' desde la vista de ordenes, y es UNA sola pregunta. Lo que la confirmacion necesita es un PAR -a que orden se escribe y que cotizacion manda- y cada camino llega con una mitad puesta, asi que el paso 1 es un solo componente que pregunta por la que falta. Con una sola candidata IGUAL hay que aceptarla: es la orden que va a recibir siete escrituras irreversibles, y una pantalla que se salta sola el unico paso donde se lee lo que va a pasar entrena a no leer. Ligar varios machotes a la vez no se construyo: con la regla de 'varios y uno que manda', lo que la confirmacion consume es el que manda, y ligar los demas es mantenimiento de la liga. || LAS DOS ESCRITURAS IRREVERSIBLES ESTAN APAGADAS, y se apagan en la UNICA PUERTA por la que salen -crearOrden y confirmar, en almacen.js- y no en el boton que las llama: un boton deshabilitado es una sugerencia -queda la consola, queda otra pantalla, queda el siguiente que escriba un camino nuevo-, la puerta no. El motivo vive en un solo sitio y la pantalla lo PREGUNTA en vez de traer su copia. || POR QUE: medido el 29-sep, orden-crear-v2 tarda ~29 minutos -tres lecturas de Odoo sin executeOnce- y el navegador corta a los 10 s: contestaba error y creaba la orden igual (corridas 119858 y 119865, success a los 28min41s y 28min46s, con SO11905 y SO11906 detras). La reserva anti-duplicado dura 2 minutos y la corrida tarda 29, asi que un segundo clic la encuentra caducada -eso ultimo es resta de dos numeros medidos y NO se ejercio, porque probarlo cuesta una orden de mas. || NADIE ALCANZO A USARLO SOBRE DATOS REALES: las unicas ordenes con la huella de la suite -renglones sin product_id, o productos creados al vuelo por el usuario del conector- son de cliente de prueba. || El paso 3 se VE y se LLEGA a el: dice que esta apagado, por que, y las tres condiciones para encenderlo, que son de workflows ACTIVOS y no se aplican desde aqui."
+    },
     {
       "version": "V1.47",
       "pr": null,

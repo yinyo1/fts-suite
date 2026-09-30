@@ -1365,6 +1365,16 @@ que confirmar, postear, validar o cerrar después se prueba **hasta ese paso**, 
 hasta el `create`. Misma familia que el `create` que devuelve id y descarta campos
 en silencio (§9): allá se perdía un campo, aquí se pierde una transición.
 
+### ⚠️ Estado vivo · comercial: las dos escrituras a Odoo están APAGADAS (V1.48, 30-sep-2026)
+`crearOrden` y `confirmar` de `comercial/machote/js/almacen.js` devuelven
+`EMISION_APAGADA` / `CONFIRMACION_APAGADA` **antes de tocar la red**. Los
+interruptores son `EMITIR_ENCENDIDO` y `CONFIRMAR_ENCENDIDO`, una línea cada uno.
+**No los enciendas sin los tres cambios de
+[`docs/comercial/POR-QUE-NO-SE-PODIA-CONFIRMAR.md`](docs/comercial/POR-QUE-NO-SE-PODIA-CONFIRMAR.md)**
+— son de workflows ACTIVOS y los aplica Esteban. El flujo se recorre entero sin
+escribir: botón «Confirmar orden» → paso 1 (elegir el par) → checklist → paso 3
+apagado. Si una sesión futura ve «no se puede confirmar», **es a propósito**.
+
 ### 23. Que el archivo esté en el repo no quiere decir que el dominio lo publique
 **Entre `main` y lo que sirve Pages hay un PASO, y ese paso tira cosas.** GitHub
 Pages construye con Jekyll, y Jekyll **no publica los archivos ni las carpetas

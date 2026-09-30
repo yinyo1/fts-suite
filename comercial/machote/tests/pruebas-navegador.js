@@ -10555,8 +10555,10 @@ await sembrarMachotes(q);
         localStorage.setItem('fts_machote_v1', JSON.stringify({
           v: 1, guardado_at: new Date().toISOString(), machotes: [cfg.m], handoff: {} }));
         localStorage.setItem('fts_machote_sync_v1', JSON.stringify({
-          'M-9146': { machote_id: 'uuid-146', version: 4, folio: 77, folio_txt: 'COT-0146',
-                      subido_at: new Date().toISOString(), huella: 'x' } }));
+          'M-9146': Object.assign({ machote_id: 'uuid-146', version: 4, folio: 77,
+                      folio_txt: 'COT-0146',
+                      subido_at: new Date().toISOString(), huella: 'x' },
+                      cfg.sync || {}) }));
       } catch (e) {}
       const orig = window.fetch;
       window.fetch = function (u, init) {
@@ -10603,7 +10605,10 @@ await sembrarMachotes(q);
     }, { m: MACHOTES_FIXTURE[0] && Object.assign(
            JSON.parse(JSON.stringify(MACHOTES_FIXTURE[0])), { id: 'M-9146' }),
          total: (o.total === undefined ? 1546 : o.total),
-         extra: o.extra || null, extra0: o.extra0 || null });
+         extra: o.extra || null, extra0: o.extra0 || null,
+         /* Campos extra para la libreta de sincronización: la liga con la orden
+          * vive ahí, y sin ella el camino del machote no tiene a qué confirmar. */
+         sync: o.sync || null });
     await q.goto(BASE);
     await q.waitForTimeout(800);
     return q;
@@ -11017,6 +11022,209 @@ await sembrarMachotes(q);
       if (r.sin.indexOf('sin-precio-local') >= 0)
         throw new Error('inventó la abstención sin que el servidor mandara nada');
       console.log('    con la llave: 5 candados + la abstención dicha · sin ella: como la V1.46');
+    } finally { await cerrar146(q); }
+  });
+
+  /* ═══ V1.48 · UN SOLO FLUJO, Y EL PASO FINAL APAGADO ════════════════════
+   * Lo que estas cuatro pruebas cuidan NO es que la pantalla se vea bien: es
+   * que las dos escrituras irreversibles NO SALGAN, y que la decisión de si se
+   * puede confirmar siga saliendo de una sola función aunque ahora se entre
+   * por un paso más. `window.__llamadas` guarda toda petición a `/comercial/`,
+   * así que «no escribió» se puede EXIGIR, no suponer. */
+
+  await paso('V1.48 · las dos escrituras irreversibles no salen ni forzándolas', async () => {
+    /* La prueba del encargo: «no se puede disparar ni forzándolo». Se llaman
+     * las funciones DIRECTO, saltándose el botón —que es justo lo que haría
+     * alguien desde la consola, u otra pantalla que mañana las llame—, y se
+     * exige que ni siquiera lleguen a la red. */
+    const q = await ordPagina146({ total: 3 });
+    try {
+      const r = await q.evaluate(async () => {
+        const A = window.MachoteAlmacen;
+        const antes = window.__llamadas.length;
+        const emitir = await A.crearOrden('M-9146', [], {}, null);
+        const confirmar = await A.confirmar('uuid-146', 4);
+        const nuevas = window.__llamadas.slice(antes).map(
+                         x => ({ u: x.url, modo: x.cuerpo && x.cuerpo.modo }));
+        return {
+          emitir: emitir && emitir.error, confirmar: confirmar && confirmar.error,
+          emitirOk: emitir && emitir.ok, confirmarOk: confirmar && confirmar.ok,
+          encendidaE: A.emisionEncendida(), encendidaC: A.confirmacionEncendida(),
+          red: nuevas
+        };
+      });
+      if (r.emitir !== 'EMISION_APAGADA')
+        throw new Error('crearOrden no está apagada: ' + r.emitir);
+      if (r.confirmar !== 'CONFIRMACION_APAGADA')
+        throw new Error('confirmar no está apagada: ' + r.confirmar);
+      if (r.emitirOk !== false || r.confirmarOk !== false)
+        throw new Error('contestaron ok=true estando apagadas');
+      if (r.encendidaE !== false || r.encendidaC !== false)
+        throw new Error('los interruptores dicen encendido');
+      /* Lo que de verdad importa: NO tocaron la red. Un `ok:false` después de
+       * haber posteado habría creado la orden igual — que es exactamente el
+       * defecto que esto viene a tapar. */
+      const malas = r.red.filter(x => x.u.indexOf('orden-crear') >= 0 ||
+        (x.u.indexOf('/comercial/confirmar') >= 0 && x.modo === 'confirmar'));
+      if (malas.length)
+        throw new Error('salió a la red estando apagada: ' + JSON.stringify(malas));
+      console.log('    crearOrden y confirmar contestan apagado ANTES de la red · 0 peticiones');
+    } finally { await cerrar146(q); }
+  });
+
+  await paso('V1.48 · el paso 1 hace la MISMA pregunta por los dos caminos', async () => {
+    const q = await ordPagina146({ total: 3 });
+    try {
+      const r = await q.evaluate(() => {
+        const F = window.ConfirmarFlujo;
+        const orden = { id: 80000, nombre: 'SO-P-0',
+                        machote: { id: 'uuid-146', nombre: 'Cotización de prueba' },
+                        machotes_mas: 0 };
+        const m = window.MachoteApp.todos()[0];
+        /* Desde la ORDEN falta el machote; desde el MACHOTE falta la orden.
+         * Es el mismo par, con distinta mitad puesta. */
+        const a = F.candidatos({ desde: 'orden', orden: orden, machotes: [] });
+        const b = F.candidatos({ desde: 'machote', machote: { odoo_so_id: 80000 },
+                                 ordenes: [orden] });
+        /* Y la distinción que no se puede perder: una lista corta NO es una
+         * lista vacía, y ninguna de las dos es «no hay». */
+        const corta = F.candidatos({ desde: 'orden', machotes: [],
+          orden: { id: 1, machote: { id: 'u1', nombre: 'A' }, machotes_mas: 2 } });
+        return { aQue: a.que, aN: a.lista.length, aPral: a.lista[0] && a.lista[0].principal,
+                 bQue: b.que, bN: b.lista.length,
+                 cortaParcial: corta.parcial, aParcial: a.parcial,
+                 tieneM: !!m };
+      });
+      if (r.aQue !== 'machote') throw new Error('desde la orden no pregunta por el machote');
+      if (r.bQue !== 'orden') throw new Error('desde el machote no pregunta por la orden');
+      if (r.aN !== 1 || r.bN !== 1) throw new Error('no encontró la candidata: ' + r.aN + '/' + r.bN);
+      if (r.aPral !== true) throw new Error('no marcó cuál manda');
+      if (r.aParcial !== false) throw new Error('dijo parcial teniendo la lista completa');
+      if (r.cortaParcial !== true)
+        throw new Error('el servidor dice 3 ligados y sólo tiene 1, y no lo dijo');
+      console.log('    desde la orden → elige machote · desde el machote → elige orden · ' +
+                  'lista corta ≠ lista vacía');
+    } finally { await cerrar146(q); }
+  });
+
+  await paso('V1.48 · desde la ORDEN se llega al paso final y no se escribe nada', async () => {
+    const q = await ordPagina146({ total: 3 });
+    try {
+      /* La ficha de una orden es su propia ruta, no un desplegable de la
+       * lista: se entra por donde se entra de verdad. */
+      await q.evaluate(() => { location.hash = '#/ordenes'; });
+      await q.waitForTimeout(700);
+      await q.evaluate(() => { location.hash = '#/so/80000'; });
+      await q.waitForTimeout(900);
+      const r = await q.evaluate(async () => {
+        const esperar = (ms) => new Promise(r => setTimeout(r, ms));
+        const b = document.querySelector('#orConfirmar');
+        if (!b) return { error: 'no hay botón de confirmar en la ficha' };
+        const antes = window.__llamadas.length;
+        b.click();
+        await esperar(250);
+        const velo = document.getElementById('cfVelo');
+        const abierto = !!(velo && velo.classList.contains('abierto'));
+        const ok1 = document.getElementById('cfOk');
+        const pedido = ok1 ? ok1.disabled : null;   // con UNA sola, igual hay que elegirla
+        const radio = document.querySelector('input[name=cfSel]');
+        if (radio) { radio.checked = true; radio.dispatchEvent(new Event('change')); }
+        await esperar(80);
+        const tras = ok1 ? ok1.disabled : null;
+        if (ok1) ok1.click();
+        await esperar(400);
+        const pu = document.getElementById('puVelo');
+        const ok3 = document.getElementById('puOk');
+        return {
+          abierto: abierto, pedido: pedido, tras: tras,
+          checklist: !!(pu && pu.classList.contains('abierto')),
+          finalApagado: ok3 ? ok3.disabled : null,
+          finalTexto: ok3 ? ok3.textContent : null,
+          diceApagado: !!document.querySelector('.pu-final'),
+          /* La url NO alcanza: `/comercial/confirmar` es multi-modo y `evaluar`
+           * es una LECTURA —es la que el checklist necesita para pintar—. Lo
+           * que no puede salir es el modo `confirmar`. Filtrar por url habría
+           * dado una prueba que falla con el sistema sano. */
+          red: window.__llamadas.slice(antes).map(
+                 x => ({ u: x.url, modo: x.cuerpo && x.cuerpo.modo }))
+        };
+      });
+      if (r.error) throw new Error(r.error);
+      if (!r.abierto) throw new Error('el paso 1 no abrió');
+      if (r.pedido !== true)
+        throw new Error('con una sola candidata se saltó la elección');
+      if (r.tras !== false) throw new Error('elegir no habilitó el continuar');
+      if (!r.checklist) throw new Error('no llegó al checklist');
+      if (r.finalApagado !== true)
+        throw new Error('el paso final NO está apagado: ' + r.finalTexto);
+      if (!r.diceApagado) throw new Error('no dice por qué está apagado');
+      const malas = r.red.filter(x => x.u.indexOf('orden-crear') >= 0 ||
+        (x.u.indexOf('/comercial/confirmar') >= 0 && x.modo === 'confirmar'));
+      if (malas.length) throw new Error('escribió: ' + JSON.stringify(malas));
+      console.log('    orden → paso 1 → checklist → paso 3 apagado · 0 escrituras · ' +
+                  '"' + String(r.finalTexto).trim() + '"');
+    } finally { await cerrar146(q); }
+  });
+
+  await paso('V1.48 · desde el MACHOTE se llega al paso final y no se escribe nada', async () => {
+    /* La liga con la orden vive en la libreta de sincronización: sin ella el
+     * machote no tiene a qué confirmar, y el paso 1 diría —con razón— que no
+     * hay ninguna. */
+    const q = await ordPagina146({ total: 3,
+      sync: { odoo_so_id: 80000, odoo_so_name: 'SO-P-0' } });
+    try {
+      await q.evaluate(() => { location.hash = '#/m/M-9146'; });
+      await q.waitForTimeout(700);
+      const r = await q.evaluate(async () => {
+        const esperar = (ms) => new Promise(r => setTimeout(r, ms));
+        const b = document.getElementById('btnOrden');
+        if (!b) return { error: 'no hay botón en el machote' };
+        const etiqueta = (b.textContent || '').trim();
+        const antes = window.__llamadas.length;
+        b.click();
+        await esperar(300);
+        const velo = document.getElementById('cfVelo');
+        const abierto = !!(velo && velo.classList.contains('abierto'));
+        const ok1 = document.getElementById('cfOk');
+        const pedido = ok1 ? ok1.disabled : null;
+        const radio = document.querySelector('input[name=cfSel]');
+        if (radio) { radio.checked = true; radio.dispatchEvent(new Event('change')); }
+        await esperar(80);
+        if (ok1) ok1.click();
+        await esperar(450);
+        const pu = document.getElementById('puVelo');
+        const ok3 = document.getElementById('puOk');
+        return {
+          etiqueta: etiqueta,
+          abierto: abierto, pedido: pedido,
+          checklist: !!(pu && pu.classList.contains('abierto')),
+          finalApagado: ok3 ? ok3.disabled : null,
+          finalTexto: ok3 ? (ok3.textContent || '').trim() : null,
+          diceApagado: !!document.querySelector('.pu-final'),
+          /* La url NO alcanza: `/comercial/confirmar` es multi-modo y `evaluar`
+           * es una LECTURA —es la que el checklist necesita para pintar—. Lo
+           * que no puede salir es el modo `confirmar`. Filtrar por url habría
+           * dado una prueba que falla con el sistema sano. */
+          red: window.__llamadas.slice(antes).map(
+                 x => ({ u: x.url, modo: x.cuerpo && x.cuerpo.modo }))
+        };
+      });
+      if (r.error) throw new Error(r.error);
+      /* El nombre importa: describe lo que la persona viene a hacer, no el
+       * medio. Y es lo que el encargo pidió con todas sus letras. */
+      if (!/confirmar orden/i.test(r.etiqueta))
+        throw new Error('el botón no se llama «Confirmar orden»: «' + r.etiqueta + '»');
+      if (!r.abierto) throw new Error('el botón no abre el paso 1');
+      if (r.pedido !== true) throw new Error('con una sola candidata se saltó la elección');
+      if (!r.checklist) throw new Error('no llegó al checklist desde el machote');
+      if (r.finalApagado !== true)
+        throw new Error('el paso final NO está apagado: ' + r.finalTexto);
+      if (!r.diceApagado) throw new Error('no dice por qué está apagado');
+      const malas = r.red.filter(x => x.u.indexOf('orden-crear') >= 0 ||
+        (x.u.indexOf('/comercial/confirmar') >= 0 && x.modo === 'confirmar'));
+      if (malas.length) throw new Error('escribió: ' + JSON.stringify(malas));
+      console.log('    botón «' + r.etiqueta + '» → paso 1 → checklist → paso 3 apagado · ' +
+                  '0 escrituras');
     } finally { await cerrar146(q); }
   });
 

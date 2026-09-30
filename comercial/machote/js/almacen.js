@@ -1395,6 +1395,46 @@
     return { id: meta.odoo_so_id, nombre: meta.odoo_so_name || null };
   }
 
+  /* ═══ LAS DOS ESCRITURAS IRREVERSIBLES, APAGADAS A PROPÓSITO ═════════════
+   *
+   * `crearOrden` crea la orden en Odoo. `confirmar` la confirma. Las dos están
+   * apagadas, y se apagan AQUÍ —en la única puerta por la que salen— y no en
+   * el botón que las llama. Un botón deshabilitado es una sugerencia: queda la
+   * consola, queda otra pantalla que llame a la misma función, y queda el
+   * siguiente que escriba un camino nuevo sin enterarse. La puerta no.
+   *
+   * POR QUÉ, y es medido, no supuesto (29-sep-2026, #294):
+   * `comercial/orden-crear-v2` tarda ~29 minutos en contestar —tres lecturas
+   * de Odoo sin `executeOnce`, que se repiten una vez por renglón—. El
+   * navegador corta a los 10 s y enseña un error, pero la orden SÍ se crea:
+   * las corridas 119858 y 119865 terminaron en `success` a los 28 min 41 s y
+   * 28 min 46 s, con SO11905 y SO11906 detrás. Quien ve el error asume que no
+   * pasó nada y vuelve a picarle; la reserva que impide el duplicado dura 2
+   * minutos y la corrida tarda 29, así que el segundo clic encuentra la
+   * reserva caducada. (Eso último es resta de dos números medidos y NO se
+   * ejerció: probarlo cuesta una orden de más.)
+   *
+   * QUÉ TIENE QUE PASAR PARA ENCENDERLAS: los tres cambios de
+   * `docs/comercial/POR-QUE-NO-SE-PODIA-CONFIRMAR.md` §Resumen. Son de
+   * workflows ACTIVOS, así que los aplica Esteban, no esta rama. */
+  var EMITIR_ENCENDIDO = false;      // ← el interruptor. Una linea.
+  var CONFIRMAR_ENCENDIDO = false;   // ← el otro.
+  var EMISION_APAGADA = {
+    ok: false,
+    error: 'EMISION_APAGADA',
+    mensaje: 'Crear la orden en Odoo está apagado a propósito. El webhook tarda ~29 ' +
+             'minutos y el navegador corta a los 10 s: contestaba error y creaba la orden ' +
+             'de todos modos, y un segundo clic creaba una segunda. Se enciende cuando se ' +
+             'apliquen los tres cambios de POR-QUE-NO-SE-PODIA-CONFIRMAR.md. ' +
+             'Mientras tanto, las órdenes se crean a mano en Odoo.'
+  };
+  var CONFIRMACION_APAGADA = {
+    ok: false,
+    error: 'CONFIRMACION_APAGADA',
+    mensaje: 'Confirmar en Odoo está apagado a propósito, para poder recorrer todo el ' +
+             'flujo sin que nada llegue a Odoo. No es una falla ni te falta un permiso.'
+  };
+
   /** Crea la orden de venta en Odoo desde este machote.
    *
    *  ── LO QUE ESTA FUNCIÓN NO HACE ──
@@ -1407,6 +1447,8 @@
    *  misma regla que gobierna la marca de «enviada» — el clic no es prueba
    *  (hallazgo #15, el ✓ antes del POST). */
   function crearOrden(idPantalla, bloques, compromisos, leadId) {
+    /* Antes que la sesión, antes que la red, antes que nada: no sale. */
+    if (!EMITIR_ENCENDIDO) return Promise.resolve(EMISION_APAGADA);
     var ses = sesion();
     if (!ses) {
       return Promise.resolve({ ok: false, error: 'SIN_SESION',
@@ -1636,6 +1678,8 @@
    *  confirmar es congelar números, y si el machote se movió debajo, los
    *  números que se congelarían no son los que quien aprieta está viendo. */
   function confirmar(uuid, versionLeida) {
+    /* El paso final del flujo. Se llega, se ve, y no escribe. */
+    if (!CONFIRMAR_ENCENDIDO) return Promise.resolve(CONFIRMACION_APAGADA);
     var ses = sesion();
     if (!ses) {
       return Promise.resolve({ ok: false, error: 'SIN_SESION',
@@ -1647,6 +1691,16 @@
 
   G.MachoteAlmacen = {
     nombre: 'postgres+cache',
+
+    /* El estado de los dos interruptores, para que la PANTALLA pregunte en vez
+     * de traer su propia copia del motivo. Si cada pantalla escribiera el suyo,
+     * el dia que se enciendan quedaria una jurando que sigue apagado. */
+    emisionEncendida: function () { return EMITIR_ENCENDIDO; },
+    confirmacionEncendida: function () { return CONFIRMAR_ENCENDIDO; },
+    motivoApagado: function (cual) {
+      return cual === 'confirmar' ? CONFIRMACION_APAGADA.mensaje : EMISION_APAGADA.mensaje;
+    },
+
     disponible: function () { return VIVO; },
 
     // Síncrono: la caché de este navegador. Es con lo que arranca la pantalla,
