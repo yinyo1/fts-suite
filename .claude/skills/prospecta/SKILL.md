@@ -664,6 +664,37 @@ manda a Rissia creyendo que es la última. Vuelve a subirla.
 
 ---
 
+## 5b · El motor 3 con personas adentro (semana 1)
+
+Tres comandos, y ninguno lo corre Pablo ni Rissia: ellos sólo abren archivos.
+
+```bash
+# los cuatro papeles de la semana, con el sha256 de cada uno
+python3 herramientas/paquete_semana1.py --salida <dir> --sube-el 2026-09-30
+
+# el puente: lee la hoja de OneDrive y escribe los toques en Postgres
+python3 herramientas/cargar_toques.py --hoja <el .xlsx> --socket <dir> --puerto <p>
+python3 herramientas/cargar_toques.py --hoja <el .xlsx> --ensayo       # valida, no escribe
+python3 herramientas/cargar_toques.py --hoja <el .xlsx> --exigir-todo  # o todas, o ninguna
+
+# el tablero del viernes
+python3 herramientas/tablero.py --socket <dir> --puerto <p>
+```
+
+**La hoja de toques no lleva nombres, y no es pudor.** El lazo mide (cuenta,
+planta, puesto, canal, resultado, fecha); el nombre no entra en ninguna de las
+cuentas. Y la hoja viaja por OneDrive, que es el canal que nadie audita. Si una
+celda de `puesto` trae un correo o algo que parece un nombre completo, `cargar_toques`
+**rechaza esa fila** y dice por qué.
+
+**Si el tablero avisa de un toque sin destinatario, no lo ignores.** En la tabla de
+canales se ve igual que trabajo hecho, y no lo es. Ya pasó una vez: una carga que
+se cayó entre dos escrituras dejó uno. Ahora una fila entra completa o no entra,
+pero el aviso queda como reja.
+
+**La primera semana corre `--exigir-todo`.** Una hoja nueva se llena mal, y es
+mejor arreglar las siete filas juntas que quedarse con tres cargadas y cuatro no.
+
 ## Lo que tú decides, y el código no puede
 
 El reparto es una línea nítida: **Python es dueño de las compuertas — orden,

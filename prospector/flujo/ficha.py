@@ -130,7 +130,25 @@ INTERLOCUTOR = (
       "higiene", "medio ambiente", "ambiental",
       # #346: el vocabulario de la casa, medido en la planilla.
       "reliability", "confiabilidad", "rme", "asset management",
-      "activos", "superintendente", "superintendent")),
+      "activos", "superintendente", "superintendent",
+      # `supervisor` entra por decision de Esteban en #363. La razon es un caso
+      # real: un supervisor de la planta de Monterrey de una panificadora esta
+      # corriendo una prueba de producto CON FTS -- hilo abierto en el buzon, con
+      # laboratorio externo-- y el filtro lo mandaba a `otros`. Un supervisor de
+      # planta conoce el equipo, sabe que falla y abre la puerta al que firma.
+      #
+      # COLISIONA, Y HAY QUE SABERLO. La palabra suelta caza tambien al
+      # supervisor de VENTAS, de CALL CENTER, CONTABLE, de LIMPIEZA y de ALMACEN,
+      # que no son interlocutores de nada para FTS. Medido sobre el corpus real de
+      # 68 puestos de la corrida humana: NINGUNO de esos aparece, y el unico que
+      # cambia de clase es un `Packing Supervisor` -- piso de planta, que es el
+      # espiritu de la decision--. Asi que el riesgo esta declarado y no es
+      # teorico-pero-probable: es teorico. La lista de colisiones queda en el
+      # issue de #363 como decision pendiente, y NO se resuelve sola metiendo
+      # esas palabras a la lista negra, porque «ventas» no es lo mismo que
+      # «reclutamiento»: un gerente de ventas del cliente no compra agua, pero
+      # tampoco es un puesto que NUNCA decide nada.
+      "supervisor")),
     ("compras", "Compras y abastecimiento",
      ("compras", "purchasing", "procurement", "comprador", "buyer",
       "abastecimiento", "supply chain", "cadena de suministro",
