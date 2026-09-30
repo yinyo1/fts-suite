@@ -1,8 +1,9 @@
-"""Objetivo 2 (issue #365) con datos SINTÉTICOS en memoria: cotejo con Odoo, anomalías y clasificación.
-No necesita base: la foto del Objetivo 2 es un JSON y aquí se arma a mano."""
+"""Objetivo 2 (issue #365) con datos SINTÉTICOS: cotejo con Odoo, anomalías y clasificación.
+Casi todas corren en memoria (la foto es un JSON armado a mano); la última usa una base de PRUEBA con las consultas reales."""
 from datetime import datetime, timezone
 
 from fts_auditor.obj2 import Obj2
+
 
 AHORA = datetime(2026, 9, 30, 2, 0, tzinfo=timezone.utc)
 CTAS = [{"id": 1, "alias": "General", "numero_mask": "…0011", "moneda": "MXN", "journal_odoo": 8, "activa": True},
@@ -54,9 +55,10 @@ def escenario():
     base = {"leido_at": "2026-09-30T02:00:00Z", "rol": "bancos_auditor", "cuentas": CTAS, "estados": estados, "movimientos": movs,
             "clasificacion": clas, "reglas_er": [{"id": 1, "prioridad": 20, "destino": "excluir_traspaso", "campo": "descripcion",
                                                   "patron": "TRASPASO", "subcategoria": None}],
-            "cotejo_servicio": {"corrida_id": 5, "filas": [{"movimiento_id": 1, "journal_id": 8, "odoo_line_id": 900, "estado": "exacto"},
-                                                          {"movimiento_id": 2, "journal_id": 8, "odoo_line_id": 901, "estado": "probable"},
-                                                          {"movimiento_id": 80, "journal_id": 96, "odoo_line_id": 903, "estado": "exacto"}]},
+            # el servicio (v_cotejo_odoo agregado) sólo cubre la General de agosto; la Nómina queda "sin cubrir"
+            "cotejo_servicio": {"corrida_id": 5, "por_mes": [{"journal_id": 8, "periodo": "2026-08", "exactos": 1, "probables": 1,
+                                                             "banco_sin_odoo": total[10][1] + total[10][3] - 2, "odoo_sin_banco": 1,
+                                                             "movimientos_banco": total[10][1] + total[10][3]}]},
             "dias_inhabiles": [], "ultima_obj2": None, "marcados_prev": []}
     return base, odoo
 
@@ -72,9 +74,18 @@ def test_cotejo_por_cuenta_y_mes_y_dos_caminos():
     assert gen["emp_n"] == 2 and gen["sobran_n"] == 1 and gen["faltan_n"] == gen["banco_n"] - 2
     assert all(v["ok"] for v in r["verificaciones"]), r["verificaciones"]
     c = r["conteos"]["comparacion_servicio"]
-    assert c["ambos"] == 3 and c["solo_auditor"] == 0 and c["solo_servicio"] == 0
+    assert (c["emparejados_auditor"], c["emparejados_servicio"], c["sobran_auditor"], c["sobran_servicio"]) == (2, 2, 1, 1)
+    assert c["faltan_auditor"] == c["faltan_servicio"] and c["cubiertos_por_servicio"] == gen["banco_n"]
+    assert not cod(r, "O2_CAMINOS_DE_COTEJO_DIFIEREN") and not cod(r, "O2_COTEJO_SERVICIO_OTRA_BASE")
     assert cod(r, "O2_MES_NO_CUADRA_CON_ODOO", "AMARILLO")        # crónico: AMARILLO, no ROJO
-    assert cod(r, "O2_COTEJO_SERVICIO_NO_CUBRE", "AMARILLO")
+    assert cod(r, "O2_COTEJO_SERVICIO_NO_CUBRE", "AMARILLO")[0]["evidencia"]["n"] == 1     # la Nómina de agosto
+
+
+def test_si_el_servicio_empareja_distinto_se_marca():
+    base, odoo = escenario()
+    base["cotejo_servicio"]["por_mes"][0]["exactos"] = 9
+    r = Obj2(base, odoo, {"desde": "2024-01"}, AHORA).correr()
+    assert cod(r, "O2_CAMINOS_DE_COTEJO_DIFIEREN", "AMARILLO")
 
 
 def test_primera_corrida_es_linea_base_sin_rojo():
@@ -125,3 +136,29 @@ def test_apagado_no_corre():
     base, odoo = escenario()
     r = Obj2(base, odoo, {"activo": False}, AHORA).correr()
     assert r["conteos"]["objetivo2"] == "APAGADO" and not r["hallazgos"]
+
+
+def test_las_consultas_reales_con_sus_roles(base_limpia):
+    """lectura_obj2.sql (bancos_lector) y lectura_obj2_previa.sql (bancos_auditor) contra una base de PRUEBA sembrada
+    por el servicio: corren con sus roles de sólo lectura y lo que devuelven alimenta a Obj2."""
+    import json
+    import os
+    import subprocess
+    from pathlib import Path
+    from test_objetivo1 import estados_general, sembrar
+    from fts_auditor.obj2_cli import adaptar
+    sembrar(estados_general([1, 2, 3]))
+    n8n = Path(__file__).resolve().parents[1] / "n8n"
+
+    def q(f):
+        out = subprocess.run(["psql", os.environ["DATABASE_URL"], "-v", "ON_ERROR_STOP=1", "-1", "-qAt", "-f", str(n8n / f)],
+                             check=True, capture_output=True, text=True).stdout.strip()
+        return json.loads(out)
+    datos, previa = q("lectura_obj2.sql"), q("lectura_obj2_previa.sql")
+    assert datos["rol"] == "bancos_lector" and previa["rol"] == "bancos_auditor"
+    b = adaptar(datos, previa)
+    assert len(b["estados"]) == 3 and len(b["movimientos"]) == 9 and b["ultima_obj2"] is None
+    r = Obj2(b, [], {"desde": "2026-01"}, AHORA).correr()
+    assert r["conteos"]["movimientos"] == 9 and all(v["ok"] for v in r["verificaciones"])
+    assert r["conteos"]["cotejo"]["faltan_n"] == 9                      # sin líneas de Odoo: todo falta, y es AMARILLO
+    assert r["veredicto"] == "AMARILLO"

@@ -19,15 +19,44 @@ def _items(ruta, nodo):
     return [it["json"] for r in run for it in r["data"]["main"][0]]
 
 
+def adaptar(datos: dict, previa: dict) -> dict:
+    """De las vistas de bancos_lector (claves por diario de Odoo) a la forma que usa Obj2."""
+    cuentas, estados, movs, clas = {}, [], [], []
+    for e in datos.get("estados") or []:
+        j = e["journal_odoo"]
+        if j is None:
+            continue
+        cuentas[j] = {"id": j, "numero_mask": e["numero_mask"], "moneda": e["moneda"], "journal_odoo": j}
+        estados.append({"id": e["estado_id"], "archivo_id": None, "cuenta_id": j, "periodo": e["periodo"],
+                        "total_cargos": e["total_cargos"], "num_cargos": e["num_cargos"], "total_abonos": e["total_abonos"], "num_abonos": e["num_abonos"]})
+    for m in datos.get("movimientos") or []:
+        if m["journal_odoo"] is None:
+            continue
+        movs.append({"id": m["movimiento_id"], "estado_id": m["estado_id"], "cuenta_id": m["journal_odoo"], "renglon": m["renglon"],
+                     "fecha_operacion": m["fecha_operacion"], "codigo": m["codigo"], "descripcion": m["descripcion"],
+                     "referencia": m["referencia"], "contraparte": m["contraparte"], "cargo": m["cargo"], "abono": m["abono"]})
+        if m.get("version_clasificacion") is not None:
+            clas.append({"movimiento_id": m["movimiento_id"], "categoria": m["categoria"], "subcategoria": m["subcategoria"],
+                         "contraparte": m["contraparte"], "es_traspaso_interno": m["es_traspaso_interno"],
+                         "par_traspaso_id": m["par_traspaso_id"], "regla": m["regla"]})
+    return {"leido_at": datos["leido_at"], "rol": datos["rol"], "cuentas": list(cuentas.values()), "estados": estados, "movimientos": movs,
+            "clasificacion": clas, "reglas_er": datos.get("reglas_er") or [], "cotejo_servicio": datos.get("cotejo_servicio") or {},
+            "dias_inhabiles": previa.get("dias_inhabiles") or [], "ultima_obj2": previa.get("ultima_obj2"),
+            "marcados_prev": previa.get("marcados_prev") or []}
+
+
 def foto(ruta, d: Path):
-    b = _items(ruta, "Postgres - Leer base Obj2 (bancos_auditor)")[0]["d"]
-    if b.get("rol") != "bancos_auditor":
-        raise SystemExit("la lectura no se hizo con el rol bancos_auditor")
+    datos = _items(ruta, "Postgres - Leer datos Obj2 (bancos_lector)")[0]["d"]
+    previa = _items(ruta, "Postgres - Auditoria previa (bancos_auditor)")[0]["d"]
+    if datos.get("rol") != "bancos_lector" or previa.get("rol") != "bancos_auditor":
+        raise SystemExit("la lectura no se hizo con los roles de sólo lectura (bancos_lector / bancos_auditor)")
     o = _items(ruta, "Code - Odoo compacto")[0]
     d.mkdir(parents=True, exist_ok=True)
+    b = adaptar(datos, previa)
     (d / "base_obj2.json").write_text(json.dumps(b, ensure_ascii=False))
     (d / "odoo.json").write_text(json.dumps(o, ensure_ascii=False))
-    print("base", b["leido_at"], len(b.get("movimientos") or []), "movimientos ·", "odoo", o["n_odoo"], "líneas", o["leido_at"])
+    print("base", b["leido_at"], len(b["movimientos"]), "movimientos,", len(b["estados"]), "estados · odoo", o["n_odoo"], "líneas", o["leido_at"],
+          "· auditoría previa", (b["ultima_obj2"] or {}).get("id"))
 
 
 def publico(r: dict, tipo: str) -> str:
@@ -38,8 +67,9 @@ def publico(r: dict, tipo: str) -> str:
               + (" · línea base (primera corrida)" if c["linea_base"] else ""),
               f"  - meses cotejados: {c['meses_cotejados']} · movimientos del banco: {c['movimientos']} · líneas de Odoo leídas: {c['lineas_odoo']}",
               f"  - cotejo (auditor): emparejados {t['emp_n']} ({c['pct_emparejado']} %) · faltan en Odoo {t['faltan_n']} · sobran en Odoo {t['sobran_n']}",
-              f"  - segundo camino (cotejo del servicio, corrida {cmp['corrida_servicio']}): cubre {cmp['cubiertos_por_servicio']} de {cmp['movs_en_alcance']} · "
-              f"emparejados en ambos {cmp['ambos']} · sólo auditor {cmp['solo_auditor']} · sólo servicio {cmp['solo_servicio']}",
+              f"  - segundo camino (cotejo del servicio, corrida {cmp['corrida_servicio']}, en los meses que cubre: {cmp['cubiertos_por_servicio']} de {cmp['movs_en_alcance']}): "
+              f"emparejados {cmp['emparejados_auditor']} auditor / {cmp['emparejados_servicio']} servicio · faltan {cmp['faltan_auditor']} / {cmp['faltan_servicio']} · "
+              f"sobran {cmp['sobran_auditor']} / {cmp['sobran_servicio']}",
               f"  - verificaciones por dos caminos: {c['verificaciones_ok']} de {c['verificaciones']} cuadran · sin clasificar {c['pct_sin_clasificar']} %"]
     if c["hallazgos_por_codigo"]:
         lineas.append("  - hallazgos por código: " + ", ".join(f"`{k}` {v}" for k, v in c["hallazgos_por_codigo"].items()))

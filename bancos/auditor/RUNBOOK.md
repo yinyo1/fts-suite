@@ -58,10 +58,12 @@ Correr sólo la salud: pasos 2 y 4 y después `python -m fts_auditor F evento --
 sin bajar PDFs). Si todo está VERDE, no registrar ni comentar nada (cerrar en silencio).
 
 ## Objetivo 2 (issue #365): cotejo con Odoo, anomalías y clasificación
+Lee con roles de SÓLO LECTURA que ya existen: los datos con `bancos_lector` (vistas `v_*`, incluido el cotejo del
+servicio por diario y mes como segundo camino) y la auditoría anterior con `bancos_auditor`. **Sin migración nueva.**
 Corre **en el barrido de las 16:47, después del Objetivo 1 y sólo si éste salió VERDE** (una base que no es fiel a
 los PDFs no se coteja). Parámetros en `config.json` → `obj2` (`activo`, `desde`, umbrales, `jeeves: false`).
 1. `execute_workflow` de `fts_bancos_auditor_obj2_lectura` (trigger `Auditor O2 (entrada)`, body `{}`) y
-   `get_workflow_execution` con `includeData` y `nodeNames ["Postgres - Leer base Obj2 (bancos_auditor)","Code - Odoo compacto"]`
+   `get_workflow_execution` con `includeData` y `nodeNames ["Postgres - Leer datos Obj2 (bancos_lector)","Postgres - Auditoria previa (bancos_auditor)","Code - Odoo compacto"]`
    (el resultado queda en un archivo). Odoo se lee **sólo** con el nodo Odoo de n8n (credencial `Odoo FTS`), nunca se escribe.
 2. `python -m fts_auditor.obj2_cli foto <archivo> F2 && python -m fts_auditor.obj2_cli auditar F2 barrido_diario`
    → `resultado_obj2.json`, `informe_obj2.html` (PRIVADO), `publico_obj2.md`.

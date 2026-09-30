@@ -1,7 +1,7 @@
 """Objetivo 2 del auditor (issue #365): cotejo banco vs Odoo, anomalías y clasificación básica.
 
-Entrada: la foto del Objetivo 2 (bancos/auditor/n8n/lectura_obj2.sql con rol bancos_auditor + líneas de
-Odoo de SOLO LECTURA ya compactadas por n8n). El auditor NUNCA escribe en la base ni en Odoo.
+Entrada: la foto del Objetivo 2 (bancos/auditor/n8n/lectura_obj2.sql con bancos_lector, lectura_obj2_previa.sql con
+bancos_auditor, y las líneas de Odoo de SOLO LECTURA ya compactadas por n8n; ver obj2_cli.adaptar). El auditor NUNCA escribe en la base ni en Odoo.
 
 Criterio rector (Esteban): anomalía = algo que CAMBIÓ, se SALIÓ DE RANGO o es ACCIONABLE HOY.
 Una condición crónica (p. ej. meses viejos sin capturar en Odoo) va en AMARILLO y no manda correo.
@@ -153,26 +153,41 @@ class Obj2:
                sum(r["emp_n"] + r["sobran_n"] for r in filas.values()))
         self.v("cotejo · líneas de Odoo leídas = en meses con estado + en meses sin estado", odoo_total_n,
                sum(r["odoo_n"] for r in filas.values()) + sin_estado_n)
-        # camino 2: el cotejo del servicio (bancos.cotejo_odoo, otra regla: referencia primero)
+        # camino 2: el cotejo del servicio (bancos.v_cotejo_odoo de su última corrida, por diario y mes; otra regla:
+        # referencia primero). Se comparan por cuenta y mes los emparejados, los que faltan y los que sobran.
         cs = self.b.get("cotejo_servicio") or {}
-        serv = {x["movimiento_id"]: x["estado"] for x in (cs.get("filas") or []) if x.get("movimiento_id")}
-        en_scope = {m["id"] for m in self.movs}
-        cubiertos = en_scope & set(serv)
-        serv_emp = {i for i in cubiertos if serv[i] in ("exacto", "probable")}
-        aud_emp = set(self.emparejado) & cubiertos
-        ambos, solo_aud, solo_serv = len(aud_emp & serv_emp), len(aud_emp - serv_emp), len(serv_emp - aud_emp)
-        self.comparacion = {"corrida_servicio": cs.get("corrida_id"), "movs_en_alcance": len(en_scope),
-                            "cubiertos_por_servicio": len(cubiertos), "emparejados_auditor": len(aud_emp),
-                            "emparejados_servicio": len(serv_emp), "ambos": ambos, "solo_auditor": solo_aud, "solo_servicio": solo_serv}
-        faltan_serv = len(en_scope) - len(cubiertos)
-        if faltan_serv:
-            self.h(1, "AMARILLO", "O2_COTEJO_SERVICIO_NO_CUBRE", n=faltan_serv,
-                   corrida=cs.get("corrida_id"), nota="movimientos cargados después del último cotejo del servicio (21:10)")
-        base_cmp = max(len(cubiertos), 1)
-        difiere = solo_aud + solo_serv
-        if difiere > max(2, base_cmp * 0.02):
-            self.h(1, "AMARILLO", "O2_CAMINOS_DE_COTEJO_DIFIEREN", ambos=ambos, solo_auditor=solo_aud, solo_servicio=solo_serv,
-                   movimientos=sorted((aud_emp ^ serv_emp))[:200])
+        serv = {(int(x["journal_id"]), x["periodo"]): x for x in (cs.get("por_mes") or []) if int(x["journal_id"]) in JOURNALS}
+        cmp_meses, cubiertos, sin_cubrir = [], 0, 0
+        sa = ss = fa = fs = oa = os_ = 0
+        for (cid, per), r in sorted(filas.items()):
+            j = self.cuentas[cid]["journal_odoo"]
+            x = serv.get((j, per))
+            if x is None or not int(x["movimientos_banco"] or 0):
+                sin_cubrir += r["banco_n"]
+                continue
+            cubiertos += r["banco_n"]
+            se = int(x["exactos"] or 0) + int(x["probables"] or 0)
+            sa += r["emp_n"]; ss += se; fa += r["faltan_n"]; fs += int(x["banco_sin_odoo"] or 0)
+            oa += r["sobran_n"]; os_ += int(x["odoo_sin_banco"] or 0)
+            cmp_meses.append({"journal": j, "periodo": per, "banco_auditor": r["banco_n"], "banco_servicio": int(x["movimientos_banco"]),
+                              "emp_auditor": r["emp_n"], "emp_servicio": se, "faltan_auditor": r["faltan_n"], "faltan_servicio": int(x["banco_sin_odoo"] or 0),
+                              "sobran_auditor": r["sobran_n"], "sobran_servicio": int(x["odoo_sin_banco"] or 0)})
+        self.cmp_meses = cmp_meses
+        self.comparacion = {"corrida_servicio": cs.get("corrida_id"), "movs_en_alcance": len(self.movs), "cubiertos_por_servicio": cubiertos,
+                            "emparejados_auditor": sa, "emparejados_servicio": ss, "faltan_auditor": fa, "faltan_servicio": fs,
+                            "sobran_auditor": oa, "sobran_servicio": os_}
+        # el servicio y el auditor deben ver los mismos movimientos del banco en los meses que ambos cubren
+        distintos = [m for m in cmp_meses if m["banco_auditor"] != m["banco_servicio"]]
+        if distintos:
+            self.h(1, "AMARILLO", "O2_COTEJO_SERVICIO_OTRA_BASE", meses=[f"{m['journal']}:{m['periodo']}" for m in distintos][:50],
+                   nota="el último cotejo del servicio vio otros movimientos (corrió antes de una carga)")
+        if sin_cubrir:
+            self.h(1, "AMARILLO", "O2_COTEJO_SERVICIO_NO_CUBRE", n=sin_cubrir, corrida=cs.get("corrida_id"),
+                   nota="movimientos en meses que el último cotejo del servicio (21:10) todavía no incluye")
+        dif = abs(sa - ss)
+        if dif > max(2, 0.02 * max(cubiertos, 1)):
+            self.h(1, "AMARILLO", "O2_CAMINOS_DE_COTEJO_DIFIEREN", emparejados_auditor=sa, emparejados_servicio=ss,
+                   meses=[m for m in cmp_meses if m["emp_auditor"] != m["emp_servicio"]][:60])
         # lo crónico: meses con faltantes / sobrantes (AMARILLO, sin correo)
         for (cid, per), r in sorted(filas.items()):
             eid = next(e["id"] for e in self.est.values() if (e["cuenta_id"], e["periodo"]) == (cid, per))
@@ -181,6 +196,7 @@ class Obj2:
                        faltan_n=r["faltan_n"], faltan_monto=str(r["faltan_monto"]), sobran_n=r["sobran_n"], sobran_monto=str(r["sobran_monto"]))
         # lo que cambió: estaba en Odoo en la auditoría anterior y ya no
         antes = self.marcados_prev.get("O2_BASE_EMPAREJADOS", set())
+        en_scope = {m["id"] for m in self.movs}
         perdidos = sorted(i for i in antes if i in en_scope and i not in self.emparejado)
         if perdidos and self.prev is not None:
             self.h(1, "ROJO", "O2_DEJO_DE_ESTAR_EN_ODOO", movimientos=perdidos[:200], n=len(perdidos))
@@ -323,4 +339,4 @@ class Obj2:
                  for (c, p), r in sorted(self.filas_cotejo.items())]
         return {"version": VERSION, "objetivo": 2, "veredicto": veredicto, "conteos": conteos, "por_estado": por_estado,
                 "hallazgos": self.hall, "verificaciones": self.verif, "cotejo_meses": meses, "categorias": self.categorias,
-                "destinos_er": self.destinos_er, "leido_at": self.b.get("leido_at"), "auditado_at": self.ahora.isoformat()}
+                "destinos_er": self.destinos_er, "comparacion_por_mes": self.cmp_meses, "leido_at": self.b.get("leido_at"), "auditado_at": self.ahora.isoformat()}
