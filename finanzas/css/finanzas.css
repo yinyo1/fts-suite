@@ -44,6 +44,8 @@ html, body { font-family: 'IBM Plex Sans', sans-serif; background: var(--paper);
 a.nav-item { text-decoration: none; color: rgba(255,255,255,0.85); }
 a.nav-item:hover { color: white; }
 .nav-item.active { background: rgba(255,255,255,0.08); color: white; border-left-color: var(--amber); }
+/* Submenú (#370): un módulo con `parent` en el manifest va sangrado debajo de su padre. */
+.nav-item.nav-sub { padding-left: 38px; font-size: 12.5px; }
 .nav-item .badge { margin-left: auto; background: var(--amber); color: var(--navy); font-size: 10px; padding: 1px 6px; border-radius: 8px; font-weight: 600; font-family: 'IBM Plex Mono'; }
 .nav-item .badge.red { background: var(--red); color: white; }
 .nav-item .badge.green { background: var(--green); color: white; }

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Data Bancos · Prototipo</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#f4f6f8; --card:#ffffff; --ink:#1a2733; --ink2:#5b6b7a; --line:#dde4ea;
+  --accent:#0b6e4f; --accent2:#0d8a63; --chipbg:#e8f0ec; --chipon:#0b6e4f; --chipink:#0b6e4f;
+  --neg:#b3372f; --pos:#0b6e4f; --th:#eef2f5; --hover:#f0f5f2; --warn:#8a6d1a; --warnbg:#fbf3d8;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10161c; --card:#1a222b; --ink:#e8eef3; --ink2:#93a3b1; --line:#2b3짓641;--line:#2b3641;
+    --accent:#3ecf8e; --accent2:#2fae76; --chipbg:#1f2f28; --chipon:#153527; --chipink:#3ecf8e;
+    --neg:#ff7b6e; --pos:#3ecf8e; --th:#202a34; --hover:#20302a; --warn:#e6c664; --warnbg:#2e2a17;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10161c; --card:#1a222b; --ink:#e8eef3; --ink2:#93a3b1; --line:#2b3641;
+  --accent:#3ecf8e; --accent2:#2fae76; --chipbg:#1f2f28; --chipon:#153527; --chipink:#3ecf8e;
+  --neg:#ff7b6e; --pos:#3ecf8e; --th:#202a34; --hover:#20302a; --warn:#e6c664; --warnbg:#2e2a17;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,'Segoe UI',Roboto,sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:14px 12px 40px}
+header.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+h1{font-size:19px;margin:0}
+.badge{background:var(--accent);color:#fff;font-size:11px;font-weight:700;border-radius:20px;padding:2px 10px;letter-spacing:.4px}
+.sub{color:var(--ink2);font-size:12px;margin:2px 0 12px}
+.note{background:var(--warnbg);color:var(--warn);border:1px solid var(--warn);border-radius:8px;padding:8px 10px;font-size:12px;margin-bottom:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.f{display:flex;flex-direction:column;gap:4px;min-width:130px;flex:1}
+.f label{font-size:11px;color:var(--ink2);font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+input[type=date],input[type=search],select{
+  background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px;font-size:14px;width:100%}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+button.sel{position:relative;display:flex;justify-content:space-between;align-items:center;gap:6px;width:100%;
+  background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px;font-size:14px;cursor:pointer;text-align:left}
+button.sel .caret{color:var(--ink2);font-size:11px}
+#ctasMenu label small{color:var(--ink2)}
+#ctasMenu .sep{border-top:1px solid var(--line);margin:6px 0}
+.chip{border:1px solid var(--line);background:var(--chipbg);color:var(--chipink);border-radius:20px;
+  padding:6px 12px;font-size:12.5px;font-weight:600;cursor:pointer;user-select:none}
+.chip.on{background:var(--chipon);color:#fff;border-color:var(--chipon)}
+:root[data-theme="dark"] .chip.on,html[data-theme="dark"] .chip.on{color:var(--chipink)}
+.shortcuts .chip{font-weight:500}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.count{font-size:12.5px;color:var(--ink2)}
+.btns{display:flex;gap:8px;align-items:center}
+button.b{border:none;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer}
+.b.csv{background:var(--bg);border:1px solid var(--accent);color:var(--accent)}
+.b.xlsx{background:var(--accent);color:#fff}
+.b.dots{background:var(--bg);border:1px solid var(--line);color:var(--ink);font-size:18px;line-height:1;padding:7px 12px;position:relative}
+.menu{position:absolute;right:0;top:110%;background:var(--card);border:1px solid var(--line);border-radius:10px;
+  box-shadow:0 6px 24px rgba(0,0,0,.18);padding:8px;z-index:30;min-width:210px;text-align:left}
+.menu h4{margin:2px 6px 6px;font-size:11px;color:var(--ink2);text-transform:uppercase;letter-spacing:.4px}
+.menu label{display:flex;gap:8px;align-items:center;padding:6px;font-size:13px;border-radius:6px;cursor:pointer}
+.menu label:hover{background:var(--hover)}
+.tblbox{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:13px}
+th{background:var(--th);text-align:left;padding:9px 10px;font-size:11.5px;text-transform:uppercase;
+  letter-spacing:.3px;color:var(--ink2);cursor:pointer;white-space:nowrap;position:sticky;top:0}
+th .arr{font-size:10px}
+td{padding:8px 10px;border-top:1px solid var(--line);white-space:nowrap}
+td.desc{white-space:normal;min-width:200px;max-width:340px}
+td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+td.neg{color:var(--neg)} td.pos{color:var(--pos)}
+tr:hover td{background:var(--hover)}
+.cta{font-size:11px;color:var(--ink2)}
+tfoot td{background:var(--th);font-weight:700;border-top:2px solid var(--line)}
+.sums{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:13px}
+.sum{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.sum b{display:block;font-size:11px;color:var(--ink2);text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px}
+.empty{padding:34px 12px;text-align:center;color:var(--ink2)}
+details{margin-top:14px;font-size:12.5px;color:var(--ink2)}
+details summary{cursor:pointer;font-weight:600}
+details table{min-width:0;font-size:12px;margin-top:8px}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);max-width:92vw}
+dialog textarea{width:min(560px,86vw);height:200px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;font:12px monospace;padding:8px}
+@media (max-width:640px){ .f{min-width:46%} .btns{width:100%;justify-content:flex-end} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>🏦 Data Bancos</h1>
+    <span class="badge">PROTOTIPO v0.1</span>
+  </header>
+  <div class="sub">Instrumentos de pago → Centro de transacciones → Data Bancos · Fuente: base master bancaria (movimientos triple-verificados contra estado de cuenta) · <span id="stamp"></span></div>
+  <div class="note">⚠️ Vista de validación con <b>datos DEMO</b> (montos y referencias ficticias con la forma de los reales). Cobertura simulada igual a la real: 2026 y 2024 parcial; 2025 aparecerá conforme Gerardo cargue el rezago. Chase no vive en esta base: se consulta en Odoo.</div>
+
+  <div class="card">
+    <div class="filters">
+      <div class="f"><label>Desde</label><input type="date" id="fDesde"></div>
+      <div class="f"><label>Hasta</label><input type="date" id="fHasta"></div>
+      <div class="f" style="flex:2;min-width:180px"><label>Buscar en descripción</label><input type="search" id="fTxt" placeholder="spei, nómina, referencia…"></div>
+      <div class="f" style="max-width:150px"><label>Tipo</label>
+        <select id="fTipo"><option value="">Todos</option><option value="cargo">Cargos</option><option value="abono">Abonos</option></select>
+      </div>
+      <div class="f" style="min-width:190px"><label>Cuentas</label>
+        <button type="button" class="sel" id="btnCtas"><span id="ctasLbl">Todas (3)</span><span class="caret">▾</span>
+          <div class="menu" id="ctasMenu" hidden style="left:0;right:auto;min-width:240px"></div>
+        </button>
+      </div>
+    </div>
+    <div style="margin-top:10px" class="chips shortcuts">
+      <span class="chip" data-atajo="mes">Este mes</span>
+      <span class="chip" data-atajo="mespasado">Mes pasado</span>
+      <span class="chip" data-atajo="anio">Este año</span>
+      <span class="chip" data-atajo="todo">Todo</span>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="count" id="count"></div>
+    <div class="btns">
+      <button class="b csv" id="btnCsv">⬇ CSV</button>
+      <button class="b xlsx" id="btnXlsx">⬇ Excel</button>
+      <button class="b dots" id="btnDots">⋮
+        <div class="menu" id="menu" hidden>
+          <h4>Columnas visibles</h4>
+          <div id="menuCols"></div>
+        </div>
+      </button>
+    </div>
+  </div>
+
+  <div class="tblbox"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+  <div class="sums" id="sums"></div>
+
+  <details>
+    <summary>ℹ️ Mapa de campos (de dónde sale cada columna en producción)</summary>
+    <table>
+      <tr><td><b>Fecha</b></td><td>bancos.movimientos.fecha (fecha de operación del estado)</td></tr>
+      <tr><td><b>Monto</b></td><td>bancos.movimientos.monto con signo (cargo negativo, abono positivo)</td></tr>
+      <tr><td><b>Descripción</b></td><td>bancos.movimientos.descripcion, texto literal del estado de cuenta</td></tr>
+      <tr><td><b>Banco / Cuenta / Moneda</b></td><td>catálogo bancos.estados → cuenta enmascarada y divisa</td></tr>
+      <tr><td><b>Referencia</b></td><td>bancos.movimientos.referencia</td></tr>
+      <tr><td><b>Mes del estado</b></td><td>bancos.estados.periodo (el PDF de origen)</td></tr>
+      <tr><td><b>Fuente</b></td><td>archivo canónico + sha256 (trazabilidad al PDF)</td></tr>
+    </table>
+  </details>
+</div>
+
+<dialog id="dlg"><h3 style="margin-top:0">Contenido CSV</h3><p class="cta">La descarga directa no está disponible en esta vista; copia el contenido:</p><textarea id="dlgTxt"></textarea><p style="text-align:right"><button class="b xlsx" onclick="document.getElementById('dlg').close()">Cerrar</button></p></dialog>
+
+<script>
+"use strict";
+/* ============ DATOS DEMO (generados con la forma de los reales) ============ */
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;var t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const CUENTAS=[
+ {id:"gral", banco:"BBVA", nombre:"General MXN", masc:"…3326", mon:"MXN"},
+ {id:"nom",  banco:"BBVA", nombre:"Nómina MXN",  masc:"…1293", mon:"MXN"},
+ {id:"usd",  banco:"BBVA", nombre:"Dólares",     masc:"…4211", mon:"USD"}
+];
+const PLANT={
+ gral:[["SPEI ENVIADO PROVEEDOR REF ", -1, 3500, 180000],["SPEI RECIBIDO COBRANZA FACT A-", 1, 20000, 900000],
+   ["PAGO NOMINA QUINCENA TRASPASO", -1, 80000, 240000],["FONDEO JEEVES TARJETA", -1, 40000, 160000],
+   ["TRASPASO PAYANA FONDEO", -1, 25000, 120000],["COMISION MEMBRESIA EMPRESARIAL", -1, 450, 1800],
+   ["IVA COMISION", -1, 70, 290],["DEPOSITO EN EFECTIVO PRACTICAJA", 1, 4000, 30000],
+   ["PAGO SAT IMPUESTOS FEDERALES", -1, 30000, 220000],["PAGO CFE SUMINISTRO", -1, 3000, 18000]],
+ nom:[["DISPERSION DE NOMINA LOTE ", -1, 60000, 210000],["TRASPASO RECIBIDO CTA GENERAL", 1, 70000, 230000],
+   ["COMISION DISPERSION", -1, 120, 600],["DEVOLUCION DISPERSION RECHAZADA", 1, 2500, 9000]],
+ usd:[["WIRE TRANSFER RECEIVED CUSTOMER INV ", 1, 3000, 45000],["INTL TRANSFER SENT SUPPLIER REF ", -1, 1500, 24000],
+   ["ACCOUNT MAINTENANCE FEE", -1, 15, 45],["FX PURCHASE USD", 1, 5000, 30000]]
+};
+const MESES=[]; // cobertura demo = cobertura real: 2024 ene-jun (parcial) + 2026 ene-sep
+for(let m=1;m<=6;m++)MESES.push([2024,m]);
+for(let m=1;m<=9;m++)MESES.push([2026,m]);
+const R=rng(20260930), DATA=[];
+let seq=1000;
+for(const [y,m] of MESES){
+  for(const c of CUENTAS){
+    const n = c.id==="gral" ? 14+Math.floor(R()*8) : c.id==="nom" ? 5+Math.floor(R()*3) : 3+Math.floor(R()*3);
+    for(let i=0;i<n;i++){
+      const p=PLANT[c.id][Math.floor(R()*PLANT[c.id].length)];
+      const dia=1+Math.floor(R()*28);
+      const monto=Math.round((p[2]+R()*(p[3]-p[2]))*100)/100*p[1];
+      const ref=String(700000+Math.floor(R()*299999));
+      DATA.push({fecha:`${y}-${String(m).padStart(2,"0")}-${String(dia).padStart(2,"0")}`,
+        monto, desc:p[0]+(p[0].endsWith(" ")?String(2000+Math.floor(R()*8000)):""),
+        banco:c.banco, cuenta:`${c.nombre} ${c.masc}`, cid:c.id, mon:c.mon, ref,
+        tipo:monto<0?"cargo":"abono", periodo:`${y}-${String(m).padStart(2,"0")}`,
+        fuente:`BBVA_${c.nombre.replace(" ","-")}_${y}-${String(m).padStart(2,"0")}.pdf`});
+      seq++;
+    }
+  }
+}
+DATA.sort((a,b)=>b.fecha.localeCompare(a.fecha));
+
+/* ============ COLUMNAS ============ */
+const COLS=[
+ {k:"fecha",t:"Fecha",def:1},{k:"monto",t:"Monto",def:1,num:1},{k:"mon",t:"Moneda",def:1},{k:"desc",t:"Descripción",def:1},
+ {k:"banco",t:"Banco",def:1},{k:"cuenta",t:"Cuenta",def:1},
+ {k:"ref",t:"Referencia",def:0},{k:"tipo",t:"Tipo",def:0},{k:"periodo",t:"Mes del estado",def:0},{k:"fuente",t:"Fuente (PDF)",def:0}
+];
+let visible; try{visible=JSON.parse(localStorage.getItem("db_cols_v2"))||null}catch(e){visible=null}
+if(!Array.isArray(visible)||!visible.length) visible=COLS.filter(c=>c.def).map(c=>c.k);
+function saveCols(){try{localStorage.setItem("db_cols_v2",JSON.stringify(visible))}catch(e){}}
+
+/* ============ ESTADO DE FILTROS ============ */
+const S={desde:"2026-01-01",hasta:"2026-09-30",txt:"",tipo:"",ctas:new Set(CUENTAS.map(c=>c.id)),sort:"fecha",dir:-1};
+const $=id=>document.getElementById(id);
+$("fDesde").value=S.desde; $("fHasta").value=S.hasta;
+$("stamp").textContent="Datos al 2026-09-30 07:00";
+
+/* droplist de cuentas (multi-selección) */
+const ctasMenu=$("ctasMenu"), ctasLbl=$("ctasLbl");
+function pintaCtasLbl(){
+  const sel=CUENTAS.filter(c=>S.ctas.has(c.id));
+  ctasLbl.textContent = sel.length===CUENTAS.length ? `Todas (${CUENTAS.length})`
+    : sel.length===0 ? "Ninguna" : sel.length===1 ? `${sel[0].nombre} ${sel[0].masc}` : `${sel.length} cuentas`;
+}
+function armaCtasMenu(){
+  ctasMenu.innerHTML="<h4>Cuentas</h4>";
+  const lt=document.createElement("label");
+  const cbt=document.createElement("input"); cbt.type="checkbox"; cbt.checked=S.ctas.size===CUENTAS.length;
+  cbt.onchange=()=>{ if(cbt.checked)CUENTAS.forEach(c=>S.ctas.add(c.id)); else S.ctas.clear(); armaCtasMenu(); pintaCtasLbl(); render(); };
+  lt.appendChild(cbt); lt.appendChild(document.createTextNode("Todas"));
+  ctasMenu.appendChild(lt);
+  const sep=document.createElement("div"); sep.className="sep"; ctasMenu.appendChild(sep);
+  for(const c of CUENTAS){
+    const l=document.createElement("label");
+    const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=S.ctas.has(c.id);
+    cb.onchange=()=>{ if(cb.checked)S.ctas.add(c.id); else S.ctas.delete(c.id); cbt.checked=S.ctas.size===CUENTAS.length; pintaCtasLbl(); render(); };
+    l.appendChild(cb);
+    const tx=document.createElement("span"); tx.innerHTML=`${c.banco} ${c.nombre} <small>${c.masc} · ${c.mon}</small>`;
+    l.appendChild(tx); ctasMenu.appendChild(l);
+  }
+}
+armaCtasMenu(); pintaCtasLbl();
+$("btnCtas").onclick=e=>{ if(e.target.closest(".menu"))return; ctasMenu.hidden=!ctasMenu.hidden; };
+document.addEventListener("click",e=>{ if(!e.target.closest("#btnCtas")) ctasMenu.hidden=true; });
+/* atajos de fecha */
+document.querySelectorAll("[data-atajo]").forEach(ch=>ch.onclick=()=>{
+  const hoy=new Date("2026-09-30");
+  const y=hoy.getFullYear(), m=hoy.getMonth();
+  const f=(d)=>d.toISOString().slice(0,10);
+  if(ch.dataset.atajo==="mes"){S.desde=f(new Date(y,m,1));S.hasta=f(new Date(y,m+1,0));}
+  if(ch.dataset.atajo==="mespasado"){S.desde=f(new Date(y,m-1,1));S.hasta=f(new Date(y,m,0));}
+  if(ch.dataset.atajo==="anio"){S.desde=`${y}-01-01`;S.hasta=f(hoy);}
+  if(ch.dataset.atajo==="todo"){S.desde="2024-01-01";S.hasta=f(hoy);}
+  $("fDesde").value=S.desde;$("fHasta").value=S.hasta;render();
+});
+$("fDesde").onchange=e=>{S.desde=e.target.value;render()};
+$("fHasta").onchange=e=>{S.hasta=e.target.value;render()};
+$("fTxt").oninput=e=>{S.txt=e.target.value.toLowerCase();render()};
+$("fTipo").onchange=e=>{S.tipo=e.target.value;render()};
+
+/* menú 3 puntitos */
+const menu=$("menu"), mc=$("menuCols");
+for(const c of COLS){
+  const l=document.createElement("label");
+  const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=visible.includes(c.k);
+  cb.onchange=()=>{ if(cb.checked)visible.push(c.k); else visible=visible.filter(k=>k!==c.k); saveCols(); render(); };
+  l.appendChild(cb); l.appendChild(document.createTextNode(c.t)); mc.appendChild(l);
+}
+$("btnDots").onclick=e=>{ if(e.target.closest(".menu"))return; menu.hidden=!menu.hidden; };
+document.addEventListener("click",e=>{ if(!e.target.closest("#btnDots")) menu.hidden=true; });
+
+/* ============ RENDER ============ */
+function filtrados(){
+  return DATA.filter(r=> r.fecha>=S.desde && r.fecha<=S.hasta && S.ctas.has(r.cid)
+    && (!S.tipo||r.tipo===S.tipo) && (!S.txt||r.desc.toLowerCase().includes(S.txt)||r.ref.includes(S.txt)));
+}
+const fmt=(n,mon)=>new Intl.NumberFormat("es-MX",{style:"currency",currency:mon}).format(n);
+const num=(n)=>new Intl.NumberFormat("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
+function render(){
+  const rows=filtrados().slice().sort((a,b)=>{
+    let va=a[S.sort],vb=b[S.sort];
+    if(S.sort==="monto"){va=Math.abs(va);vb=Math.abs(vb)}
+    return (va<vb?-1:va>vb?1:0)*S.dir;
+  });
+  const cols=COLS.filter(c=>visible.includes(c.k));
+  const thead=document.querySelector("#tbl thead"), tbody=document.querySelector("#tbl tbody");
+  thead.innerHTML="<tr>"+cols.map(c=>`<th data-k="${c.k}">${c.t} <span class="arr">${S.sort===c.k?(S.dir<0?"▼":"▲"):""}</span></th>`).join("")+"</tr>";
+  thead.querySelectorAll("th").forEach(th=>th.onclick=()=>{const k=th.dataset.k; if(S.sort===k)S.dir*=-1; else{S.sort=k;S.dir=k==="fecha"?-1:1} render();});
+  if(!rows.length){ const msg=S.ctas.size===0?"Selecciona al menos una cuenta en el filtro de Cuentas.":"Sin movimientos con este filtro.<br><span class=\"cta\">Recuerda: 2025 aún no está cargado en la base; llega con el rezago de Gerardo.</span>"; tbody.innerHTML=`<tr><td colspan="${cols.length}"><div class="empty">${msg}</div></td></tr>`; }
+  else tbody.innerHTML=rows.slice(0,400).map(r=>"<tr>"+cols.map(c=>{
+    if(c.k==="monto")return `<td class="num ${r.monto<0?"neg":"pos"}">${num(r.monto)}</td>`;
+    if(c.k==="desc")return `<td class="desc">${r.desc}</td>`;
+    return `<td>${r[c.k]}</td>`;
+  }).join("")+"</tr>").join("");
+  /* pie: conteo + sumas POR MONEDA, nunca mezcladas */
+  const porMon={};
+  rows.forEach(r=>{const o=porMon[r.mon]??={n:0,car:0,abo:0}; o.n++; if(r.monto<0)o.car+=r.monto; else o.abo+=r.monto;});
+  $("count").textContent=`${rows.length} movimientos ${rows.length>400?"(mostrando 400; la descarga lleva todos)":""}`;
+  $("sums").innerHTML=Object.entries(porMon).map(([m,o])=>
+    `<div class="sum"><b>${m} · ${o.n} mov</b>Abonos ${fmt(o.abo,m)} · Cargos ${fmt(o.car,m)} · <b style="display:inline">Neto ${fmt(o.abo+o.car,m)}</b></div>`).join("")||"";
+}
+render();
+
+/* ============ DESCARGAS ============ */
+let dls=null;
+if(window.claude&&claude.use){claude.use("downloads").then(d=>{dls=d}).catch(()=>{});}
+const nombre=(ext)=>{
+  const c=[...S.ctas].join("-");
+  return `data-bancos_${S.desde}_${S.hasta}_${c}.${ext}`;
+};
+function matriz(){
+  const cols=COLS.filter(c=>visible.includes(c.k));
+  const rows=filtrados().slice().sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  return {head:cols.map(c=>c.t), body:rows.map(r=>cols.map(c=>c.k==="monto"?r.monto:r[c.k]))};
+}
+$("btnCsv").onclick=async()=>{
+  const {head,body}=matriz();
+  const esc=v=>{v=String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  const csv="\uFEFF"+[head.map(esc).join(","),...body.map(f=>f.map(esc).join(","))].join("\r\n");
+  if(dls){ try{await dls.save({filename:nombre("csv"),data:csv});}catch(e){if(e&&e.code==="declined")return; abrir(csv);} }
+  else abrir(csv);
+};
+function abrir(csv){ $("dlgTxt").value=csv; $("dlg").showModal(); }
+$("btnXlsx").onclick=async()=>{
+  const {head,body}=matriz();
+  const ws=XLSX.utils.aoa_to_sheet([head,...body.map(f=>f.map((v,i)=>head[i]==="Fecha"?new Date(v+"T12:00:00"):v))],{cellDates:true});
+  ws["!cols"]=head.map(h=>({wch:h==="Descripción"?42:h==="Fuente (PDF)"?34:14}));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Data Bancos");
+  const buf=XLSX.write(wb,{type:"array",bookType:"xlsx"});
+  if(dls){ try{await dls.save({filename:nombre("xlsx"),data:buf});}catch(e){ if(e&&e.code!=="declined") alert("Descarga no disponible en esta vista; usa CSV."); } }
+  else alert("Descarga directa no disponible en esta vista; usa el botón CSV para copiar el contenido.");
+};
+</script>
+</body>
+</html>

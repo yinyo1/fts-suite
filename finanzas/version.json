@@ -1,9 +1,14 @@
 {
-  "version": "V1.10",
-  "fecha": "2026-09-14",
+  "version": "V1.11",
+  "fecha": "2026-09-30",
   "modulo": "finanzas",
   "esquema": "V<mayor>.<menor de dos dígitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.11",
+      "pr": null,
+      "nota": "Data Bancos (#370): submenu de Instrumentos de pago → Centro de transacciones. Explorador y descargador de la base bancaria (esquema bancos), replica del prototipo aprobado (docs/bancos/prototipo-data-bancos.html) con la paleta de la suite. Pagina propia finanzas/data-bancos/ con SuiteAuth y scope NUEVO bancos_data:read; motor fin/bancos-data (cgysm7v5mzDtpA77) y fin/bancos-data-exportar (Pj3Bbnf4NO2jp9dC), solo lectura como bancos_lector, filtro/orden/paginacion de 500 en servidor, sumas por moneda nunca mezcladas, CSV con BOM armado en el servidor y XLSX en el navegador. El manifest estrena `parent` para pintar el renglon sangrado. De paso se cierra una deriva: el badge de Instrumentos de pago decia V1.09 con version.json en V1.10 (V1.10 no bumpeo IP_BUILD) y el gate visual de bancos estaba ROJO en main (92/95); ahora los dos dicen V1.11."
+    },
     {
       "version": "V1.10",
       "pr": null,
