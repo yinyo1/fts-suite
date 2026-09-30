@@ -4,7 +4,130 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Prototipo · Órdenes de venta en la suite</title>
-<link rel="stylesheet" href="_comun.css" />
+<style id="comun">
+/* ═══ GENERADO desde _comun.css por sellar.js — NO editar aquí ═══
+ * Va inline a propósito: Jekyll no publica archivos que empiezan con `_`,
+ * así que enlazarlo por fuera llega vacío al dominio.
+ * Para cambiarlo: edita _comun.css y corre `node sellar.js`. */
+/* ═══ Prototipos de la Estación 3 · hoja de estilo común ═══
+ *
+ * ⚠️ NO la enlaces con <link>. Su nombre empieza con `_`, y GitHub Pages
+ * construye con Jekyll, que NO publica los archivos que empiezan con `_`:
+ * enlazarla se ve bien en disco y llega VACÍA al dominio — que es justo lo
+ * que dejó los cuatro prototipos sin formato hasta el 30-sep-2026.
+ * Esta hoja va INLINE dentro de cada prototipo. Ésta es la fuente única:
+ * edítala aquí y corre `node comercial/prototipos/e3/sellar.js`.
+ *
+ * Los mismos tokens del módulo de machote, para que estas pantallas se vean
+ * de la MISMA familia que la suite y no como una maqueta de otro sitio.
+ * No es el CSS de producción: es una copia recortada, a propósito, para que
+ * estos archivos sean autocontenidos y se puedan abrir con doble clic.
+ */
+:root{
+  --tinta:#1c1c1c; --suave:#6b6b6b; --linea:#dcdcdc; --linea2:#ececec;
+  --fondo:#fff; --papel:#f6f7f8; --cab:#eef1f4;
+  --acento:#0969da; --verde:#1a7f37; --ambar:#9a6700; --rojo:#cf222e;
+  --toque:44px;
+  --azul-banda:#1f4e79;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--papel);color:var(--tinta);
+     font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;}
+.mono{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.tiny{font-size:12px;color:var(--suave);line-height:1.45}
+.n-ok{color:var(--verde)} .n-warn{color:var(--ambar)} .n-bad{color:var(--rojo)}
+
+/* ── el marco ── */
+.topbar{background:var(--fondo);border-bottom:1px solid var(--linea);
+        padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+        position:sticky;top:0;z-index:10}
+.topbar b{font-size:15px}
+.wrap{max-width:1080px;margin:0 auto;padding:16px}
+.card{background:var(--fondo);border:1px solid var(--linea);border-radius:10px;
+      padding:16px;margin-bottom:14px}
+h2{font-size:19px;margin:0 0 4px} h3{font-size:15px;margin:18px 0 8px}
+.sub{color:var(--suave);font-size:13px;margin:0 0 14px}
+
+/* ── la marca de prototipo, que NO se puede confundir con producción ── */
+.demo{background:#3d2b00;color:#ffdf8a;padding:9px 16px;font-size:12.5px;
+      line-height:1.5;border-bottom:2px solid #8a6d00}
+.demo b{color:#fff}
+
+/* ── pastillas de estado ── */
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;
+      border-radius:20px;white-space:nowrap;vertical-align:middle}
+.pill.ok{background:#dafbe1;color:#116329} .pill.bad{background:#ffebe9;color:#a40e26}
+.pill.warn{background:#fff8c5;color:#7d4e00} .pill.neu{background:var(--papel);color:var(--suave)}
+.pill.info{background:#ddf4ff;color:#0a3069}
+
+/* ── candados ── */
+.candado{border:1px solid var(--linea);border-left:4px solid var(--linea);
+         border-radius:8px;padding:12px 14px;margin:10px 0;background:var(--fondo)}
+.candado.pasa{border-left-color:var(--verde)}
+.candado.frena{border-left-color:var(--rojo);background:#fffbfa}
+.candado.avisa{border-left-color:var(--ambar);background:#fffdf5}
+.candado h4{margin:0 0 4px;font-size:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.candado p{margin:5px 0 0;font-size:13px;line-height:1.5}
+.codigo{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;
+        background:var(--papel);border:1px solid var(--linea);border-radius:4px;padding:1px 6px}
+
+/* ── botones ── */
+.btn{min-height:var(--toque);padding:0 16px;border-radius:8px;border:1px solid var(--linea);
+     background:var(--fondo);color:var(--tinta);font-size:14px;font-weight:600;cursor:pointer;
+     display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn:hover{background:var(--papel)}
+.btn.pri{background:var(--acento);border-color:var(--acento);color:#fff}
+.btn.pri:disabled{background:#8fb8e8;border-color:#8fb8e8;cursor:not-allowed}
+.btn.peli{color:var(--rojo);border-color:#ffc9c9}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+
+/* ── tablas y números ── */
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--linea2)}
+th{background:var(--cab);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;
+   color:#44546a;font-weight:700}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.tabla-caja{overflow-x:auto;border:1px solid var(--linea);border-radius:8px}
+
+/* ── campos ── */
+label.campo{display:block;margin:12px 0}
+label.campo>span{display:block;font-size:12px;font-weight:700;color:#44546a;margin-bottom:5px}
+input[type=text],input[type=number],input[type=date],select,textarea{
+  width:100%;min-height:var(--toque);padding:9px 11px;border:1px solid var(--linea);
+  border-radius:8px;font:inherit;background:var(--fondo);color:var(--tinta)}
+textarea{min-height:80px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--acento);outline-offset:-1px}
+.rejilla{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:0 14px}
+
+/* ── el bloque de los cuatro números ── */
+.cuatro{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.num-caja{border:1px solid var(--linea);border-radius:10px;padding:14px;background:var(--fondo)}
+.num-caja .et{font-size:11.5px;font-weight:700;color:#44546a;text-transform:uppercase;
+              letter-spacing:.04em;display:flex;align-items:center;gap:6px}
+.num-caja .vl{font-size:23px;font-weight:700;margin:7px 0 2px;font-variant-numeric:tabular-nums}
+.num-caja .nt{font-size:11.5px;color:var(--suave);line-height:1.4}
+.num-caja.sin .vl{color:var(--suave)}
+
+/* ── banda de advertencia del reporte ── */
+.banda{border:1px solid #f0c36d;background:#fffbe6;border-radius:9px;padding:13px 15px;margin:14px 0}
+.banda h4{margin:0 0 6px;font-size:14px;color:#7d4e00}
+.banda p{margin:5px 0;font-size:13px;line-height:1.55}
+
+@media (max-width:720px){
+  .wrap{padding:12px}
+  .card{padding:13px;border-radius:9px}
+  .topbar{padding:9px 12px}
+}
+
+/* ── el aviso duro, compartido: el que nadie debe poder no ver ──────────────
+ * Vive aqui y no en cada prototipo porque los tres dicen lo MISMO. Dos copias
+ * del mismo aviso se separan en cuanto una se corrige (CLAUDE.md §20 #4). */
+.alto{background:#fff0ef;border:1px solid #ffc9c9;border-left:4px solid var(--rojo);
+      border-radius:9px;padding:13px 15px;margin:0 0 14px}
+.alto h3{margin:0 0 5px;font-size:14.5px;color:#a40e26}
+.alto p{margin:5px 0 0;font-size:13px;line-height:1.5}
+.alto .codigo{background:#fff}
+</style>
 <style>
 /* ═══ Los tokens de Odoo 19, medidos del código fuente de la versión ═══════
  * Copiados de `comercial/machote/css/odoo19.css` para que este archivo abra
@@ -158,8 +281,16 @@ table.o19 tbody tr.sel{background:#efe8ee}
   table.o19 tbody{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:9px}
   table.o19 tr{border:1px solid var(--linea);border-radius:9px;
                margin-bottom:0;padding:6px 4px;background:#fff}
+  /* ⚠️ SIN `flex-wrap:wrap` aquí, y es a propósito. El valor de la celda es un
+   * elemento anónimo: si se le deja envolver, en cuanto no cabe al lado de la
+   * etiqueta de 92px se baja a un renglón propio de ANCHO COMPLETO, pegado al
+   * margen izquierdo — y entonces unas fichas alinean y otras no, en la misma
+   * pantalla. Se vio en la captura de 900, no en el código. Sin envolver, el
+   * valor se queda en su columna y parte adentro, que es lo que se quería.
+   * La única celda que sí necesita envolver es `.mach`, y lo pide ella. */
   table.o19 td{border-bottom:0;display:flex;gap:10px;align-items:baseline;
-               height:auto;padding:4px 8px;flex-wrap:wrap}
+               height:auto;padding:4px 8px;flex-wrap:nowrap;min-width:0}
+  table.o19 td>*{min-width:0}
   table.o19 td::before{content:attr(data-th);flex:0 0 92px;
     font-size:var(--o19-fs-label);text-transform:uppercase;letter-spacing:.04em;
     color:#44546a;font-weight:700}
@@ -180,10 +311,10 @@ table.o19 tbody tr.sel{background:#efe8ee}
 <body>
 
 <div class="demo">
-  <b>PROTOTIPO — no toca Odoo, no guarda nada.</b>
-  Todos los clientes, folios e importes de abajo están <b>inventados</b>: este archivo
-  vive en un repositorio público. Sirve para que decidas la FORMA antes de que se
-  construya, no para ver datos.
+  <b>MAQUETA &#183; no es una pantalla conectada.</b> Todos los clientes, folios e importes de abajo
+  est&#225;n <b>inventados</b>: este archivo vive en un repositorio p&#250;blico. No lee Odoo, no guarda
+  nada y ning&#250;n bot&#243;n escribe. Sirve para decidir <b>la forma</b> antes de construirla, no para
+  ver datos. Issue <b>#294</b>.
 </div>
 
 <div class="topbar">
@@ -194,6 +325,21 @@ table.o19 tbody tr.sel{background:#efe8ee}
 </div>
 
 <div class="wrap">
+
+  <div class="alto">
+    <h3>&#9888; Hoy NO uses el bot&#243;n de &#171;Pasar a orden de venta&#187; del machote</h3>
+    <p><b>Contesta error y de todas formas crea la orden</b>, casi media hora despu&#233;s. Medido el
+      29-sep: el navegador corta la espera a los <b>10 segundos</b> y ense&#241;a un fallo, pero el
+      proceso del servidor sigui&#243; corriendo y termin&#243; bien a los <b>28 min 41 s</b> y
+      <b>28 min 46 s</b>, dejando dos &#243;rdenes creadas en Odoo.</p>
+    <p>Quien ve el error asume que no pas&#243; nada y <b>vuelve a picarle</b>. La reserva que impide
+      el duplicado dura <b>2 minutos</b> y la corrida tarda <b>29</b>: para cuando se pica otra
+      vez, la reserva ya caduc&#243;. <span class="tiny">(Esto &#250;ltimo sale de restar los dos n&#250;meros
+      medidos; el doble clic no se prob&#243; a prop&#243;sito, porque probarlo crea una orden de m&#225;s.)</span></p>
+    <p><b>Mientras no se arregle, las &#243;rdenes se crean a mano en Odoo.</b> El porqu&#233; y el arreglo
+      exacto est&#225;n en <span class="codigo">docs/comercial/POR-QUE-NO-SE-PODIA-CONFIRMAR.md</span>.</p>
+  </div>
+
 
 <!-- ════════════════════════ 1 · LA LISTA ════════════════════════ -->
 <div class="vista on" id="vLista">
@@ -439,33 +585,35 @@ table.o19 tbody tr.sel{background:#efe8ee}
 </div>
 
 <script>
-/* Datos INVENTADOS. Nada de esto sale de Odoo: el repositorio es público y en él
- * no entran nombres de cliente, importes ni contactos. */
+/* Datos INVENTADOS, los importes incluidos. Nada de esto sale de Odoo: el
+ * repositorio es público y en él no entran nombres de cliente, importes reales
+ * ni contactos. Los montos de abajo son redondos a propósito, para que nadie
+ * los confunda con una cifra de la empresa. */
 var FILAS = [
   { n:'SO11902', e:'q', cli:'Industrias Inventadas del Norte',
     d:'Mantenimiento de centro de control de motores', po:'', cot:'Ricardo', cotOk:true,
-    t:'— MXN', fol:'COT-0077', fd:'Planta 2 · MCC' },
+    t:'$845,000.00 MXN', fol:'COT-0077', fd:'Planta 2 · MCC' },
   { n:'SO11901', e:'q', cli:'Manufacturas Ficticias',
     d:'Proyecto de control de agua', po:'', cot:'Ricardo', cotOk:true,
-    t:'— USD', usa:true, fol:null, fd:null },
+    t:'$62,400.00 USD', usa:true, fol:null, fd:null },
   { n:'SO11900', e:'q', cli:'Alimentos Imaginarios',
     d:'Mantenimiento preventivo y diagnóstico de tableros', po:'', cot:'Monty', cotOk:null,
-    t:'— MXN', fol:'COT-0074', fd:'Tableros · preventivo' },
+    t:'$128,500.00 MXN', fol:'COT-0074', fd:'Tableros · preventivo' },
   { n:'SO11899', e:'s', cli:'Química Supuesta',
     d:'Fabricación de almacén para residuos', po:'5000-INVENT', cot:'Monty', cotOk:null,
-    t:'— MXN', fol:'COT-0071', fd:'Almacén de residuos' },
+    t:'$1,940,000.00 MXN', fol:'COT-0071', fd:'Almacén de residuos' },
   { n:'SO11898', e:'s', cli:'Industrias Inventadas del Norte',
     d:'', po:'17244-X', cot:'Aldo', cotOk:false,
-    t:'— MXN', fol:'COT-0069', fd:'Diagnóstico de agua' },
+    t:'$310,750.00 MXN', fol:'COT-0069', fd:'Diagnóstico de agua' },
   { n:'SO11897', e:'q', cli:'Ensambles Hipotéticos',
     d:'Adecuación eléctrica para nueva línea', po:'', cot:'Aldo', cotOk:false,
-    t:'— MXN', fol:null, fd:null },
+    t:'$97,200.00 MXN', fol:null, fd:null },
   { n:'SO11896', e:'c', cli:'Metales Supuestos',
     d:'Reubicación de polipasto', po:'', cot:'', cotOk:null,
-    t:'— MXN', fol:null, fd:null },
+    t:'$455,000.00 MXN', fol:null, fd:null },
   { n:'SO11895', e:'s', cli:'Plásticos Ficticios',
     d:'Cubierta de acero inoxidable para resguardo', po:'151441', cot:'Monty', cotOk:null,
-    t:'— MXN', fol:'COT-0066', fd:'Cubierta inox 304' }
+    t:'$76,300.00 MXN', fol:'COT-0066', fd:'Cubierta inox 304' }
 ];
 var ETIQ = { q:'Cotización', s:'Orden de venta', c:'Cancelada' };
 

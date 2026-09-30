@@ -1365,6 +1365,41 @@ que confirmar, postear, validar o cerrar después se prueba **hasta ese paso**, 
 hasta el `create`. Misma familia que el `create` que devuelve id y descarta campos
 en silencio (§9): allá se perdía un campo, aquí se pierde una transición.
 
+### 23. Que el archivo esté en el repo no quiere decir que el dominio lo publique
+**Entre `main` y lo que sirve Pages hay un PASO, y ese paso tira cosas.** GitHub
+Pages construye con Jekyll, y Jekyll **no publica los archivos ni las carpetas
+cuyo nombre empieza con `_`**. El archivo está commiteado, el despliegue sale
+`success`, el `sha` del despliegue es el de `main`, y aun así la petición devuelve
+404. Se cura con un `.nojekyll` vacío en la raíz — que este repo **no tenía**
+hasta el 30-sep-2026.
+
+*(Origen: los cuatro prototipos de la Estación 3 enlazaban `_comun.css`, que trae
+el `body`, la retícula, las tarjetas, los botones y TODOS los colores. En el
+dominio se veían en Times New Roman, sin tarjetas y **sin el propio aviso de que
+son maquetas** —el aviso también es CSS—. La sesión anterior había «verificado el
+despliegue» comparando el sha del HTML servido contra el del repo: los HTML eran
+idénticos, y el que faltaba era otro archivo que nadie comparó.)*
+
+**Lo que se midió y lo que no, que es la parte que importa:** se reprodujo el
+síntoma exacto interceptando esa única petición en el navegador local —Times New
+Roman, `margin:8px`, sin retícula, sin aviso— y se comprobó que al meter el CSS
+dentro del HTML bloquear la petición **ya no cambia nada**. Lo que **no** se pudo
+observar desde el contenedor es el 404 en el dominio, porque `yinyo1.github.io`
+está bloqueado por la política de red (§9). Lo que lo sostiene es que el repo no
+tiene `.nojekyll`, no tiene `_config.yml`, no tiene workflow de Actions —o sea
+Pages construye con el Jekyll por omisión— y `_comun.css` era **el único archivo
+servido del repo cuyo nombre empieza con `_`**, así que tampoco había un
+contraejemplo. Se confirma en un clic abriendo esa URL en un navegador de verdad.
+
+**Regla operativa:** un recurso que el navegador pide por separado —hoja de
+estilo, guion, fuente, imagen, JSON— **no se da por desplegado porque su fuente
+esté en `main`**. Y para algo que tiene que verse igual en un disco, en una rama
+y en el dominio, la defensa de raíz no es acordarse de la regla de Jekyll: es **no
+tener la segunda petición**. El estilo va dentro del archivo, generado desde una
+fuente única (`comercial/prototipos/e3/sellar.js`), no copiado a mano. Es la misma
+familia del §20 #10 —el archivo bien y el camino mal— y de §20 #12: **verificar
+que el archivo servido es idéntico al tuyo NO es lo mismo que verlo pintado.**
+
 ---
 
 ---

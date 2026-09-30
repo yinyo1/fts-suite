@@ -19,3 +19,8 @@ node_modules/
 # archivo después NO la borra del historial: si se cuela, es una filtración, no
 # un typo.
 docs/trazabilidad/_privado/
+
+# Salidas de las capturas de prueba. Son PNG regenerables que pesan y que además
+# pueden traer datos de pantalla; el repo es público. Se miran en la máquina y
+# lo que queda en el repo es la conclusión, no la imagen.
+comercial/machote/tests/_capturas-*/

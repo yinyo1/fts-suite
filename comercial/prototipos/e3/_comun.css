@@ -1,5 +1,12 @@
 /* ═══ Prototipos de la Estación 3 · hoja de estilo común ═══
  *
+ * ⚠️ NO la enlaces con <link>. Su nombre empieza con `_`, y GitHub Pages
+ * construye con Jekyll, que NO publica los archivos que empiezan con `_`:
+ * enlazarla se ve bien en disco y llega VACÍA al dominio — que es justo lo
+ * que dejó los cuatro prototipos sin formato hasta el 30-sep-2026.
+ * Esta hoja va INLINE dentro de cada prototipo. Ésta es la fuente única:
+ * edítala aquí y corre `node comercial/prototipos/e3/sellar.js`.
+ *
  * Los mismos tokens del módulo de machote, para que estas pantallas se vean
  * de la MISMA familia que la suite y no como una maqueta de otro sitio.
  * No es el CSS de producción: es una copia recortada, a propósito, para que
@@ -100,3 +107,12 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--acento);outline-
   .card{padding:13px;border-radius:9px}
   .topbar{padding:9px 12px}
 }
+
+/* ── el aviso duro, compartido: el que nadie debe poder no ver ──────────────
+ * Vive aqui y no en cada prototipo porque los tres dicen lo MISMO. Dos copias
+ * del mismo aviso se separan en cuanto una se corrige (CLAUDE.md §20 #4). */
+.alto{background:#fff0ef;border:1px solid #ffc9c9;border-left:4px solid var(--rojo);
+      border-radius:9px;padding:13px 15px;margin:0 0 14px}
+.alto h3{margin:0 0 5px;font-size:14.5px;color:#a40e26}
+.alto p{margin:5px 0 0;font-size:13px;line-height:1.5}
+.alto .codigo{background:#fff}
