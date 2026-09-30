@@ -38,15 +38,19 @@ PLAN = [
      "La fuente que nadie mas tiene. En Ragasa destapo dos cotizaciones que Odoo "
      "no tenia; en Hershey, un NDA firmado. Contesta '¿hay historia?', que NO es "
      "la misma pregunta que '¿es cliente?'."),
-    ("M0c", "llamadas", ["outlook_personas"],
-     "search_people DOS veces: con el DOMINIO y con el NOMBRE de la empresa "
+    ("M0c", "llamadas", ["outlook_remitentes", "outlook_hilos_por_nombre"],
+     "el buzon DOS veces: `outlook_email_search(sender='@dominio')` y "
+     "`outlook_email_search(query='<empresa>')` leyendo los REMITENTES "
      "(--etiqueta via_dominio / via_nombre)",
      "Devuelve CONTACTOS IMPLICITOS: gente que de verdad le escribio a FTS desde "
      "esa casa, con su correo LITERAL. Es la clase mas fuerte de ancla que hay, y "
-     "una llamada sin credito. Medido en Hershey: 14 configuraciones de busqueda "
-     "web dieron 5 nombres y ningun gerente; una sola llamada aqui dio dos correos "
-     "reales que desempataron el patron. Va ANTES de los directorios a proposito: "
-     "el ancla tiene que estar puesta cuando el patron se contraste."),
+     "una llamada sin credito. Medido en #355 sobre diez cuentas: encontro a las "
+     "CUATRO personas que ya le habian escrito a FTS, y NINGUNA de las cuatro "
+     "estaba en la planilla del humano con Sales Navigator -- los dos conjuntos "
+     "son disjuntos--. Va ANTES de los directorios a proposito: el ancla tiene "
+     "que estar puesta cuando el patron se contraste. "
+     "NO USES `search_people`: no contesta por dominio ni por nombre de empresa, "
+     "y esta corregido desde #355 (ver catalogo.DESCARTADAS)."),
     ("M3", "vias", ["camara", "normalizacion", "congreso"],
      "TRES vias: camara del giro, organismo de NORMALIZACION del sector, y "
      "congreso o feria",

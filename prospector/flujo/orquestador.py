@@ -525,7 +525,7 @@ def main(argv=None) -> int:
                    "challenge", "ficha", "estado", "tope", "fusionar",
                    "conectores", "entregar", "sembrar", "tramo", "paquete",
                    "importar", "alias", "donde-se-hizo", "donde-falta",
-                   "senal", "regenera", "aprendizaje"):
+                   "senal", "regenera", "aprendizaje", "consultas"):
         s = sub.add_parser(nombre)
         if nombre == "estado":
             # `estado` sin --empresa resume TODAS las corridas de la sesion.
@@ -538,7 +538,7 @@ def main(argv=None) -> int:
         # padron, y ahi se declara aparte con su ayuda propia.
         if nombre not in ("listo", "conectores", "prospecta", "iniciar", "padron",
                           "donde-se-hizo", "donde-falta", "regenera",
-                          "aprendizaje"):
+                          "aprendizaje", "consultas"):
             s.add_argument("--ciudad", default=None,
                            help="la planta, cuando la empresa tiene varias. Sin "
                                 "esto, si hay mas de una, el comando se niega en "
@@ -596,6 +596,31 @@ def main(argv=None) -> int:
                            help="la URL de donde salio, si la hay. La ficha la "
                                 "necesita: una fuente sin liga ni fecha no es "
                                 "una fuente, es una afirmacion")
+        if nombre == "consultas":
+            s.add_argument("--puestos", required=True,
+                           help="los puestos, separados por ';'")
+            s.add_argument("--ciudad", default="",
+                           help="la planta. Un puesto de planta se pregunta con "
+                                "y sin ella; uno corporativo, nunca con ella (R2)")
+            s.add_argument("--pais", default="",
+                           help="si es Mexico se agrega la forma "
+                                "site:mx.linkedin.com/in (catalogo.FORMAS_M5)")
+            s.add_argument("--alias", default="",
+                           help="otros nombres de la empresa, separados por ';' "
+                                "(R4)")
+            s.add_argument("--siglas", default="",
+                           help="lo que M2 cosecho, 'GWP=Global Workplace "
+                                "Projects;LOM=LEGO Operaciones de Mexico' (R3)")
+            s.add_argument("--json", action="store_true")
+        if nombre == "buscar":
+            s.add_argument("--perfiles", type=int, default=None,
+                           help="M5: cuantos PERFILES DE LA EMPRESA devolvio "
+                                "esta consulta. No es --resultados (que cuenta "
+                                "lo que contesto el buscador, aunque sea de otra "
+                                "empresa) ni los contactos (que ya pasaron el "
+                                "filtro de valor). Es el dato que el detector "
+                                "temprano necesita, y CERO es una respuesta. Sin "
+                                "declararlo el detector NO corta")
             s.add_argument("--etiqueta", default=None,
                            help="cuando lo distinto no es la fuente sino la forma "
                                 "de preguntar (M7: forma_empresa / forma_nombre)")
@@ -1118,6 +1143,47 @@ def main(argv=None) -> int:
             print(f"  {r['nada_se_movio_solo']}\n")
             return 0
 
+        if a.cmd == "consultas":
+            # M4 · el motor de combinaciones. NO TOCA RED: genera la lista y ya.
+            from flujo.combinaciones import (consultas_de_m5,
+                                             cuantas_agrega_cada_regla)
+
+            puestos = [x.strip() for x in a.puestos.split(";") if x.strip()]
+            alias = [x.strip() for x in (a.alias or "").split(";") if x.strip()]
+            siglas = {}
+            for par in (a.siglas or "").split(";"):
+                if "=" in par:
+                    k, v = par.split("=", 1)
+                    siglas[k.strip()] = v.strip()
+            cs = consultas_de_m5(a.empresa, puestos,
+                                 ciudad=a.ciudad or None,
+                                 pais=a.pais or None,
+                                 alias_de_empresa=alias,
+                                 siglas_de_la_casa=siglas)
+            if a.json:
+                print(json.dumps({"consultas": cs,
+                                  "por_regla": cuantas_agrega_cada_regla(cs)},
+                                 ensure_ascii=False, indent=2))
+                return 0
+            print(f"  M4 · {len(cs)} consulta(s) para M5, de "
+                  f"{len(puestos)} puesto(s). NO se gasto red.")
+            if not a.pais:
+                print("  OJO: sin --pais no se dispara site:mx.linkedin.com/in, "
+                      "y en #353 esa forma rescato cuatro contactos de planta.")
+            actual = None
+            for x in cs:
+                if x["puesto"] != actual:
+                    actual = x["puesto"]
+                    print(f"\n  -- {actual}")
+                marca = ",".join(x["reglas"]) or "-"
+                print(f"     [{marca:<11}] {x['texto']}")
+            print()
+            print("  Lo que agrego cada regla de #355: "
+                  f"{cuantas_agrega_cada_regla(cs)}")
+            print("  Gastalas de arriba hacia abajo y declara --perfiles en cada "
+                  "una: sin ese dato el detector temprano no corta.")
+            return 0
+
         c = _cargar(a.empresa, getattr(a, "ciudad", None))
 
         if a.cmd in ("siguiente", "estado"):
@@ -1546,6 +1612,8 @@ def main(argv=None) -> int:
             # ANTES de registrar: si el bloque anterior quedo abierto en diez, se
             # corrige aqui, que es donde todavia tiene arreglo.
             c.exigir_bloque_cerrado()
+            # Y el buzon y Odoo ANTES de gastar red (#355). Ver la compuerta.
+            c.exigir_ola0_antes_de_gastar_red(a.modulo, a.fuente)
             contactos = []
             if a.datos:
                 d = json.loads(a.datos)
@@ -1554,7 +1622,8 @@ def main(argv=None) -> int:
             b = c.registrar_busqueda(
                 a.modulo, a.clave, a.consulta, a.fuente, a.resultados,
                 nota=a.nota, contactos=contactos, etiqueta=a.etiqueta,
-                liga=a.liga)
+                liga=a.liga,
+                perfiles_de_la_empresa=getattr(a, "perfiles", None))
             c.guardar(_ruta_de(c, a))
             m = c.mod(a.modulo)
             print(f"[{a.modulo}] busqueda registrada: {a.fuente} · "
@@ -1571,6 +1640,22 @@ def main(argv=None) -> int:
             # el agente de #306 recorto la salida con `| tail -1`, vio una linea en
             # blanco y repitio la consulta. Una confirmacion que solo esta arriba no
             # sirve cuando la salida se recorta, y recortarla es lo normal.
+            # DETECTOR TEMPRANO (#355). Se avisa aqui y no en `bloque`: aqui es
+            # donde el agente esta a punto de gastar la consulta siguiente.
+            if a.modulo == "M5":
+                corta, razon = c.corta_m5_por_limite_de_fuente()
+                if corta:
+                    canal, por_que = c.canal_de_la_cuenta()
+                    print()
+                    print("  ◼ CORTA M5 — LIMITE DE FUENTE")
+                    print(f"    {razon}.")
+                    print("    NO gastes mas consultas de personas aqui: cada "
+                          "intento cuesta y no puede traer nada.")
+                    print(f"    Canal de la cuenta: {canal}. {por_que}")
+                    print("    Cierra M5 con `cerrar --modulo M5 --estado "
+                          "no_aplicaba --razon \"limite de fuente\"` y sigue "
+                          "con el resto del plan: M1, M2, M3 y M12 NO dependen "
+                          "de que los perfiles esten indexados.")
             fila = len(c.mod(a.modulo).registros)
             print(f"REGISTRADA · [{a.modulo}] fila {fila} · {a.resultados} "
                   f"resultado(s) · gasto {c.presupuesto.gastadas + c.bloque_pendiente()[0]}"

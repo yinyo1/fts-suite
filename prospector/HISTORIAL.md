@@ -1671,3 +1671,70 @@ Cero escrituras a Odoo · cero Lusha · purga no ejecutada · `fts-mcp-odoo` int
 la planilla sólo en sesión, nunca al repo · sin datos personales en el repo ni en el
 issue — y el guardia lo demostró: atrapó la dirección de la cámara en
 `senales-documentadas.json` y quedó enmascarada.
+
+---
+
+# #355 (cierre) — Las cuatro reglas aplicadas, y rinden DOS de ocho
+
+Continuación de #355. **1,113 pruebas**, versión **0.17.0**.
+
+## El motor de combinaciones no existía
+
+R1 a R4 estaban aprobadas y *descritas en prosa*: el agente armaba las consultas
+de M5 a mano leyendo el documento. Ahora son `flujo/combinaciones.py` y
+`./prospector consultas`, con su disparador y su razón escrita. Una regla que
+depende de que alguien se acuerde no es una regla.
+
+## Y el rendimiento medido no es el que el issue anterior dejaba suponer
+
+Re-corridos los ocho casos de clase (b) de LEGO, Bimbo y Nemak, **las reglas
+rescataron dos**: un *Global Purchasing Performance Manager* por R1+R2 y un *Head
+of GWP Projects LOM* por R3 —y a ésa el buscador la entrega con el título público
+*Project Director*, que es la razón de que la sigla nunca pegara—. Los otros seis
+siguen en cero.
+
+> «R1 rinde 9 de 12» era una **proyección** mía sobre un caso medido, y el número
+> medido es **dos**. Queda escrito en la prueba para que nadie vuelva a leerlo
+> como un resultado.
+
+La cobertura pasa de **23 a 25 de 55: 42% → 45%**.
+
+Y hay un segundo resultado que vale más de lo que parece: las consultas de R1–R4
+trajeron **seis contactos de valor que la planilla humana no tiene**, con el título
+exacto en la empresa exacta —entre ellos el *Head of Global Workplace Projects*
+para todas las Américas, que está por encima del que el humano encontró—. El
+método encuentra **un** interlocutor válido, no **la** persona; medir «la misma
+persona» subestima lo que la herramienta entrega.
+
+## El detector corta, y corta donde debía
+
+Cuprum corta a las doce; Ragasa no. Eso era el punto del criterio estrecho, y
+funciona. Tres cosas que se sostienen con prueba: el silencio no corta —una
+consulta sin `--perfiles` deja la compuerta quieta—, doce consultas de un solo
+corpus tampoco, y el corte mira las doce primeras mientras la ficha mira todas.
+
+## M0c estuvo roto desde que nació
+
+`search_people` no contesta por dominio. La contraprueba es de una línea:
+**`search_people("fts.mx")` devuelve cero** con el buzón de FTS lleno de
+direcciones de fts.mx. El módulo llevaba declarada esa fuente desde el principio y
+nunca pudo funcionar. Corregido, encuentra a las **cuatro** personas que ya le
+habían escrito a FTS.
+
+## Una compuerta nueva, y dónde vive
+
+`buscar` rechaza una consulta de red con la OLA 0 abierta. Ponerla en
+`registrar_busqueda` rompió **127 pruebas** que construyen corridas a mano para
+hablar de otra cosa; vive en la CLI, junto a `exigir_bloque_cerrado`, por la misma
+razón que ésa: la CLI es el flujo real y una prueba que tiene que montar media
+corrida para probar un detalle deja de decir lo que prueba.
+
+## Restricciones del turno
+
+Cero escrituras a Odoo · cero Lusha · purga no ejecutada · `fts-mcp-odoo` intacto ·
+la planilla sólo en sesión · sin datos personales en el repo ni en el issue.
+
+**Y una restricción que no elegí:** el conector de Odoo no estuvo disponible en la
+sesión, así que la constancia de `datos/odoo-declarado.json` es la lectura del
+29-sep. El exportador la declara con su fecha y la **vence a los siete días**, que
+es exactamente el caso que ese mecanismo existe para cubrir.

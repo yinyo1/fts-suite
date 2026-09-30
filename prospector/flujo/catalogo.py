@@ -48,6 +48,20 @@ DESCARTADAS = {
     "google_places": (
         "No hay llave y no la va a haber por ahora. Hueco declarado, nunca "
         "simulado ni sustituido en silencio."),
+    "search_people_por_dominio": (
+        "NO CONTESTA POR DOMINIO. Medido el 29-sep-2026 sobre las diez cuentas de "
+        "la corrida humana: `search_people('lego.com')`, `('metalsa.com')`, "
+        "`('nemak.com')` y `('cuprum.com')` devuelven CERO. Y la contraprueba que "
+        "lo cierra: `search_people('fts.mx')` tambien devuelve cero, con el buzon "
+        "de FTS lleno de direcciones de fts.mx. Empata contra NOMBRES de persona "
+        "-- `search_people('rissia')` si contesta--, no contra dominios. M0c "
+        "estuvo declarado asi desde que nacio y nunca pudo funcionar. La via que "
+        "SI encuentra a quien escribio desde esa casa es "
+        "`outlook_email_search(sender='@dominio')`."),
+    "search_people_por_nombre_de_empresa": (
+        "Tampoco. Misma medicion: `search_people('Metalsa')`, `('Nemak')`, "
+        "`('LEGO')` y `('Cuprum')` devuelven CERO. Empata contra nombres y "
+        "correos de PERSONAS, no de empresas."),
     "smtp_directo": (
         "El catch-all de Microsoft 365 contesta que si a todo, incluso a "
         "buzones inventados. Un 250 OK no prueba nada."),
@@ -57,11 +71,30 @@ DESCARTADAS = {
 PERMITIDAS = {
     "M0":  ["odoo"],
     "M0b": ["outlook"],
-    # M0c · `search_people` de Microsoft 365. Dos vias: por DOMINIO y por NOMBRE
-    # de la empresa. Son dos preguntas distintas a la misma fuente: el dominio
-    # trae a quien escribio desde esa casa; el nombre trae a quien Graph asocia
-    # con la marca aunque escriba desde otro dominio.
-    "M0c": ["outlook_personas"],
+    # M0c · QUIEN DE ESA CASA YA LE ESCRIBIO A FTS. Corregido en #355: la
+    # herramienta decia `search_people` y search_people NO contesta por dominio
+    # ni por nombre de empresa -- ver `DESCARTADAS`, con la medicion--. Estuvo
+    # declarado asi desde que nacio y nunca pudo funcionar.
+    #
+    # Las dos vias que SI funcionan, y son dos poblaciones distintas:
+    #
+    #   outlook_remitentes        `outlook_email_search(sender='@dominio')`.
+    #                             Quien escribio DESDE esa casa. Es la clase mas
+    #                             fuerte de ancla que hay: el correo no se deriva
+    #                             de un patron, la persona lo uso.
+    #   outlook_hilos_por_nombre  `outlook_email_search(query='<empresa>')` y se
+    #                             leen los REMITENTES. Caza a quien escribe SOBRE
+    #                             esa empresa desde otro dominio -- una camara, un
+    #                             despacho, un alias de grupo--. Asi salio el
+    #                             evento de camara que cerro el hueco de Metalsa.
+    #
+    # OJO CON LA SEGUNDA. Devuelve tambien el corpus de notificaciones de
+    # LinkedIn que llega al buzon de FTS, y eso NO es un ancla: da nombre y
+    # puesto y nunca un correo. Es fuente de CONTACTOS -- nivel parcial-- y
+    # `confianza` la trata como tal por su raiz. Confundirlas es lo que el
+    # barrido de #336 ya rechazo una vez, cuando una invitacion de LinkedIn se
+    # habia colado como si fuera senal de negocio.
+    "M0c": ["outlook_remitentes", "outlook_hilos_por_nombre"],
     "M13": ["denue"],
     # `theorg` entro por la corrida de Cuprum del 24-sep-2026: un agregador de
     # ORGANIGRAMAS publicados. Es un directorio de personas como los demas -- y

@@ -17,14 +17,22 @@ from __future__ import annotations
 
 import pytest
 
+from flujo.compuertas import (
+    CONSULTAS_PARA_CORTAR_POR_LIMITE_DE_FUENTE as N_CORTE,
+)
 from flujo.confianza import Contacto
 from flujo.estado import Corrida
 from flujo.ficha import (
-    CONSULTAS_M5_PARA_DECLARAR_LIMITE_DE_FUENTE,
     aviso_de_cuenta_sin_buscador_publico,
     busqueda_armada_para_sales_navigator,
     sin_presencia_en_buscador_publico,
 )
+
+# El umbral y el criterio los movio la decision de #355: de 8 consultas con
+# «ninguna entrego un contacto» a 12 con las TRES FORMAS cubiertas y cero
+# PERFILES de la empresa. Este alias mantiene legible el resto del archivo.
+CONSULTAS_M5_PARA_DECLARAR_LIMITE_DE_FUENTE = N_CORTE
+FORMAS = ("simple", "linkedin_global", "linkedin_mx")
 
 
 def _corrida_con_m5_seco(cuantas: int, empresa: str = "Ragasa",
@@ -32,10 +40,15 @@ def _corrida_con_m5_seco(cuantas: int, empresa: str = "Ragasa",
     """Una corrida que pregunto `cuantas` veces por personas y no trajo ninguna."""
     c = Corrida(empresa, ciudad)
     for i in range(cuantas):
+        # Las tres formas se rotan a proposito: el corte las EXIGE cubiertas, y
+        # doce consultas de un solo corpus no prueban nada. Y cada una declara
+        # `perfiles_de_la_empresa=0`, porque el silencio no corta.
         c.registrar_busqueda(
             "M5", "bloques_secos",
-            f"site:mx.linkedin.com/in {empresa} puesto numero {i}",
-            "linkedin_publico", 0)
+            f"consulta de personas numero {i} para {empresa}",
+            "linkedin_publico", 0,
+            etiqueta=FORMAS[i % len(FORMAS)],
+            perfiles_de_la_empresa=0)
     return c
 
 
@@ -45,6 +58,7 @@ def _corrida_con_m5_que_si_trajo(empresa: str = "LEGO") -> Corrida:
     c.registrar_busqueda("M5", "bloques_secos",
                          f"site:linkedin.com/in {empresa} maintenance manager",
                          "linkedin_publico", 1,
+                         etiqueta="linkedin_global",
                          contactos=[Contacto(None, "Maintenance Manager",
                                              empresa)])
     return c
@@ -56,7 +70,7 @@ def test_ocho_consultas_secas_declaran_el_limite():
     es, razon = sin_presencia_en_buscador_publico(
         _corrida_con_m5_seco(CONSULTAS_M5_PARA_DECLARAR_LIMITE_DE_FUENTE))
     assert es is True
-    assert "8 consultas" in razon, razon
+    assert f"{N_CORTE} consultas" in razon, razon
 
 
 # ---------------------------------------------------------------------------
@@ -90,7 +104,8 @@ def test_otros_modulos_secos_no_cuentan():
     c = Corrida("Ragasa", "Monterrey")
     for i in range(20):
         c.registrar_busqueda("M1", "directorios",
-                             f"ragasa.com.mx directorio {i}", "leadiq", 0)
+                             f"ragasa.com.mx directorio {i}", "leadiq", 0,
+                             perfiles_de_la_empresa=0)
     es, _ = sin_presencia_en_buscador_publico(c)
     assert es is False
 

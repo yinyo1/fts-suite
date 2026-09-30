@@ -130,6 +130,126 @@ def ya_vencida(caduca: str, hoy: date) -> bool:
     return str(caduca)[:10] < hoy.isoformat()
 
 
+# ============================= LO QUE ODOO YA TIENE, antes de emitir el CSV (#355)
+#
+# Encontrado en #355 y es el defecto que mas caro sale de los tres: el exportador
+# emitia el CSV de `crm.lead` SIN preguntarle a Odoo si la cuenta ya tenia algo.
+# Bimbo tiene una oportunidad abierta desde nov-2024 en etapa «Revisar» -- etapa
+# TRABAJADA, no la inicial: alguien la movio--. Subir el CSV habria creado un lead
+# duplicado en una cuenta que ya se estaba trabajando, y el duplicado no se nota
+# hasta que dos personas llaman a la misma planta la misma semana.
+#
+# POR QUE UN ARCHIVO DECLARADO Y NO UNA LECTURA. Python no puede llamar a Odoo: el
+# conector vive detras de MCP, igual que Outlook. Asi que la lectura la hace el
+# agente y `datos/odoo-declarado.json` es su constancia -- el mismo patron que
+# `conectores`, donde Python es dueño de la compuerta y el agente de la llamada--.
+#
+# Y LA CONSTANCIA VENCE. Un archivo de hace un mes es peor que ninguno: da
+# confianza sin tenerla. Pasada su vigencia cada fila sale marcada
+# `SIN_CONSULTAR_A_ODOO`, que es el marcador de NO SUBIR.
+RUTA_ODOO_DECLARADO = os.path.join(RAIZ, "datos", "odoo-declarado.json")
+
+NUEVA = "nueva"
+CON_OPORTUNIDAD = "ya tiene oportunidad abierta (no subir, enlazar)"
+CON_LEAD_RECIENTE = "ya tiene lead reciente (no subir)"
+SIN_CONSULTAR = "SIN_CONSULTAR_A_ODOO (no subir)"
+
+# Un lead de hace un anio en la etapa inicial ya no frena nada: nadie lo trabajo y
+# la senal que lo origino caduco. Noventa dias es el plazo mas largo de
+# `DIAS_POR_TIPO_DE_SENAL` (obra nueva y ampliacion van a 120, pero esos ya los
+# filtra `ya_vencida`), asi que es el corte que no contradice al reloj.
+DIAS_PARA_QUE_UN_LEAD_SIGA_SIENDO_RECIENTE = 90
+
+
+def _leer_odoo_declarado(ruta: str | None = None) -> dict:
+    try:
+        with open(ruta or RUTA_ODOO_DECLARADO, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def odoo_vigente(declarado: dict, hoy: date) -> tuple[bool, str]:
+    """¿La lectura de Odoo sirve todavia? (bool, razon)."""
+    if not declarado or not declarado.get("leido_el"):
+        return (False, "no hay constancia de haber leido Odoo")
+    try:
+        leido = date.fromisoformat(str(declarado["leido_el"])[:10])
+    except ValueError:
+        return (False, f"la fecha de lectura '{declarado['leido_el']}' no se pudo "
+                       f"leer")
+    dias = (hoy - leido).days
+    vig = int(declarado.get("vigencia_dias") or 7)
+    if dias > vig:
+        return (False, f"la lectura de Odoo es del {leido.isoformat()}, hace "
+                       f"{dias} dias, y vence a los {vig}. Una constancia vieja "
+                       f"da confianza sin tenerla: vuelve a leer Odoo")
+    return (True, f"leido el {leido.isoformat()}, hace {dias} dia(s)")
+
+
+def estado_en_odoo(empresa: str, declarado: dict, hoy: date) -> tuple[str, str]:
+    """(marca, por que) de esta cuenta segun lo que Odoo ya tiene.
+
+    Tres marcas, y la diferencia entre las dos ultimas no es de forma:
+
+      nueva                        -> se sube
+      ya tiene oportunidad abierta -> NO se sube: se ENLAZA. Hay trabajo humano
+                                      encima, y un lead nuevo lo duplica
+      ya tiene lead reciente       -> NO se sube: es el mismo lead que alguien
+                                      creo hace poco, probablemente esta corrida
+    """
+    vigente, razon_vig = odoo_vigente(declarado, hoy)
+    if not vigente:
+        return (SIN_CONSULTAR, razon_vig)
+    iniciales = {str(x).strip().lower()
+                 for x in declarado.get("etapas_iniciales") or []}
+    emp = _plano_empresa(empresa)
+    fila = next((c for c in declarado.get("cuentas") or []
+                 if _plano_empresa(c.get("empresa")) == emp), None)
+    if fila is None:
+        return (SIN_CONSULTAR,
+                f"'{empresa}' no esta en la lectura de Odoo. No se supone que no "
+                f"tiene nada: se supone que no se pregunto por ella")
+    leads = fila.get("leads") or []
+    if not leads:
+        return (NUEVA, "sin lead ni oportunidad en Odoo"
+                       + (f" · {fila['nota']}" if fila.get("nota") else ""))
+    trabajados = [l for l in leads
+                  if str(l.get("etapa", "")).strip().lower() not in iniciales]
+    if trabajados:
+        l = trabajados[0]
+        return (CON_OPORTUNIDAD,
+                f"lead {l.get('id')} del {l.get('fecha')} en etapa "
+                f"«{l.get('etapa')}», que NO es una etapa inicial: alguien lo "
+                f"movio. Enlaza la tarjeta a ese lead en vez de crear otro")
+    recientes = []
+    for l in leads:
+        try:
+            f = date.fromisoformat(str(l.get("fecha"))[:10])
+        except (TypeError, ValueError):
+            continue
+        if (hoy - f).days <= DIAS_PARA_QUE_UN_LEAD_SIGA_SIENDO_RECIENTE:
+            recientes.append((l, (hoy - f).days))
+    if recientes:
+        l, dias = recientes[0]
+        return (CON_LEAD_RECIENTE,
+                f"lead {l.get('id')} del {l.get('fecha')}, hace {dias} dia(s), "
+                f"en etapa inicial. Subir otro lo duplica")
+    l = leads[0]
+    return (NUEVA,
+            f"el unico lead ({l.get('id')}, {l.get('fecha')}) esta en etapa "
+            f"inicial y tiene mas de "
+            f"{DIAS_PARA_QUE_UN_LEAD_SIGA_SIENDO_RECIENTE} dias: nadie lo "
+            f"trabajo y su senal caduco, asi que ya no frena nada")
+
+
+def _plano_empresa(nombre) -> str:
+    import unicodedata
+    t = unicodedata.normalize("NFD", str(nombre or "").strip().lower())
+    t = "".join(c for c in t if unicodedata.category(c) != "Mn")
+    return " ".join(t.split())
+
+
 def exportar(destino: str, hoy: date | None = None) -> dict:
     hoy = hoy or date.today()
     with open(lb.RUTA, encoding="utf-8") as f:
@@ -141,16 +261,28 @@ def exportar(destino: str, hoy: date | None = None) -> dict:
     paquetes.sort(key=lambda t: -(t[0]["puntaje_del_evaluador"] or 0))
 
     os.makedirs(destino, exist_ok=True)
-    filas_suben, filas_archiva, filas_vencidas, detalle = [], [], [], []
+    odoo = _leer_odoo_declarado()
+    odoo_ok, odoo_razon = odoo_vigente(odoo, hoy)
+    filas_suben, filas_archiva, filas_vencidas, filas_en_odoo = [], [], [], []
+    detalle = []
     for pq, c in paquetes:
         fila = io.lineas(pq, hoy)[0]
         veredicto = pq["senal_origen"]["veredicto"]
         caduca_, por_que_ = io.razon_de_caducidad(pq, hoy)
         vencida = ya_vencida(caduca_, hoy)
+        marca, por_que_odoo = estado_en_odoo(c.get("empresa"), odoo, hoy)
+        fila["_odoo_ya_tiene"] = f"{marca} — {por_que_odoo}"
         if veredicto not in VEREDICTOS_QUE_SE_SUBEN:
             filas_archiva.append(fila)
         elif vencida:
             filas_vencidas.append(fila)
+        elif marca != NUEVA:
+            # EL ORDEN IMPORTA: primero el veredicto, luego el reloj, y al final
+            # Odoo. Una `archiva` con oportunidad abierta sigue siendo `archiva`
+            # -- no se sube por tener historia-- y una vencida sigue siendo una
+            # decision de persona. Odoo solo saca del archivo de SUBIR lo que el
+            # radar y el reloj ya habian aprobado.
+            filas_en_odoo.append(fila)
         else:
             filas_suben.append(fila)
         contactos = pq["contactos_de_valor"]
@@ -205,6 +337,12 @@ def exportar(destino: str, hoy: date | None = None) -> dict:
              "`date_deadline` esta en el pasado y naceria un lead atrasado. Lo que "
              "hay que decidir es si se reabren, y entonces la caducidad se "
              "recalcula desde hoy y queda escrito que se reabrio vencida"),
+            (filas_en_odoo,
+             f"crm-lead-etapa1-{len(filas_en_odoo)}-tarjetas-YA-ESTAN-EN-ODOO.csv",
+             "el radar y el reloj las aprobaron, y Odoo YA TIENE algo de esa "
+             "cuenta: un lead reciente o una oportunidad que alguien movio. NO "
+             "se suben. La de la oportunidad se ENLAZA a la que ya existe; la "
+             "del lead reciente probablemente es el mismo lead"),
             (filas_archiva,
              f"crm-lead-etapa1-{len(filas_archiva)}-tarjetas-archiva-NO-subir.csv",
              "archiva: referencia, NO se suben. Son material del lazo 1 -- si una "
@@ -228,10 +366,14 @@ def exportar(destino: str, hoy: date | None = None) -> dict:
     return {
         "archivos": archivos,
         "tarjetas_totales": (len(filas_suben) + len(filas_vencidas)
-                             + len(filas_archiva)),
+                             + len(filas_archiva) + len(filas_en_odoo)),
         "se_suben": len(filas_suben),
         "vencidas": len(filas_vencidas),
-        "no_se_suben": len(filas_archiva) + len(filas_vencidas),
+        "ya_estan_en_odoo": len(filas_en_odoo),
+        "odoo_consultado": odoo_ok,
+        "odoo_razon": odoo_razon,
+        "no_se_suben": (len(filas_archiva) + len(filas_vencidas)
+                        + len(filas_en_odoo)),
         "filtro": (f"D9: solo {' y '.join(VEREDICTOS_QUE_SE_SUBEN)} se suben a "
                    "Odoo, Y SOLO si su senal no caduco todavia. Las `archiva` y las "
                    "vencidas van a archivos marcados, no se tiran: las primeras son "

@@ -9,7 +9,8 @@ import json, os
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 
-from .compuertas import (EstadoModulo, Presupuesto, CompuertaCerrada, AGOTADO,
+from .compuertas import (corta_por_limite_de_fuente,
+                        EstadoModulo, Presupuesto, CompuertaCerrada, AGOTADO,
                          TAMANO_BLOQUE, TRAMO_INCREMENTO,
                          Busqueda)
 from .catalogo import PERMITIDAS
@@ -45,7 +46,9 @@ MODULOS_DEL_LOOP = ("M5", "M6", "M7")
 DESCRIPCION = {
     "M0":  "Odoo · contactos ya cotizados -> patron REAL + vocabulario",
     "M0b": "Outlook · historia de cuenta -> ¿ya es cliente?",
-    "M0c": "search_people · contactos IMPLICITOS del dominio -> CORREO LITERAL (ancla dura)",
+    "M0c": "buzon por REMITENTE (sender=@dominio) y por nombre · contactos "
+           "IMPLICITOS -> CORREO LITERAL (ancla dura). NO search_people: no "
+           "contesta por dominio (#355)",
     "M13": "DENUE · padron -> identidad y dominio_correo (entrada de M1)",
     "M1":  "Directorios (MINIMO 3, contrastados) -> patron con %",
     "M2":  "Vacantes · careers, Indeed, Glassdoor -> vocabulario de la casa",
@@ -251,11 +254,61 @@ class Corrida:
                 return i
         return 0
 
+    # ---------------------------------------- el buzon va ANTES de gastar (#355)
+    #
+    # LA MEDICION QUE LO OBLIGA. El hueco de Metalsa llevaba declarado desde el
+    # 28-sep, y su propia nota proponia cerrarlo *«con una consulta dirigida de
+    # prensa, que cuesta una consulta web»*. Lo cerro un correo de camara que
+    # llevaba en el buzon desde el 24-jul: estaba GRATIS. Y la vuelta a la via
+    # interna encontro cuatro personas que ya le habian escrito a FTS, con correo
+    # verificado e hilo abierto, que una semana de Sales Navigator no encontro.
+    #
+    # El orden ya estaba en `OLAS` -- OLA 0 primero-- pero eso solo ordena el
+    # PLAN: nada impedia registrar una consulta de red con la ola 0 abierta. Esta
+    # compuerta lo impide.
+    #
+    # UN HUECO DECLARADO LA SATISFACE. Si el buzon no se puede leer, se cierra el
+    # modulo con `sin_acceso` y su razon, y la compuerta se abre: lo que exige es
+    # HABER PREGUNTADO, no haber encontrado.
+    MODULOS_DE_LA_OLA_0 = ("M0", "M0b", "M0c")
+
+    # DONDE SE LLAMA, y por que ahi. En el handler de `buscar` de la CLI, junto
+    # a `exigir_bloque_cerrado()`, no dentro de `registrar_busqueda`. La razon es
+    # la misma que la de esa otra: la CLI es el flujo real -- el agente siempre
+    # pasa por `./prospector buscar`-- y las pruebas que construyen `Corrida(...)`
+    # a mano son fixtures que no representan una corrida. Ponerla en
+    # `registrar_busqueda` obligaba a 127 pruebas a cerrar la ola 0 para poder
+    # hablar de otra cosa, y una prueba que tiene que montar media corrida para
+    # probar un detalle deja de decir lo que prueba.
+    def exigir_ola0_antes_de_gastar_red(self, modulo: str, fuente: str) -> None:
+        if modulo in self.MODULOS_DE_LA_OLA_0:
+            return
+        if (fuente or "").strip().lower() in self.SIN_RED:
+            return                      # el motor de combinaciones no gasta red
+        abiertos = [m for m in self.MODULOS_DE_LA_OLA_0
+                    if not self.mod(m).cerrado]
+        if not abiertos:
+            return
+        raise CompuertaCerrada(
+            f"[{modulo}] la OLA 0 sigue abierta: falta cerrar "
+            f"{', '.join(abiertos)}. El buzon y Odoo van ANTES de gastar una "
+            f"consulta web, y no es preferencia: en #355 el hueco de Metalsa "
+            f"llevaba un mes declarado proponiendo cerrarse «con una consulta "
+            f"dirigida de prensa», y lo cerro un correo que estaba en el buzon "
+            f"desde el 24-jul. Estaba gratis. Y la via interna dio cuatro "
+            f"personas que YA le escribieron a FTS -- correo verificado, hilo "
+            f"abierto-- que una semana de Sales Navigator no encontro.\n"
+            f"  Si el buzon o Odoo no se pueden leer, dilo y sigue: "
+            f"`cerrar --modulo {abiertos[0]} --estado sin_acceso --razon \"...\"`. "
+            f"Lo que esta compuerta exige es HABER PREGUNTADO, no haber "
+            f"encontrado.")
+
     def registrar_busqueda(self, modulo: str, clave: str, consulta: str,
                            fuente: str, resultados: int, nota: str = "",
                            contactos: list | None = None,
                            etiqueta: str | None = None,
-                           liga: str = "") -> Busqueda:
+                           liga: str = "",
+                           perfiles_de_la_empresa: int | None = None) -> Busqueda:
         """Registra trabajo EJECUTADO. Es lo unico que mueve un contador."""
         fila = self.fila_duplicada(modulo, consulta)
         if fila:
@@ -283,8 +336,14 @@ class Corrida:
             if not x.modulo_origen:
                 x.modulo_origen = modulo
         claves = [self.agregar(x, contar_hit=False).clave for x in contactos]
+        # Si la consulta trajo contactos, trajo perfiles de la empresa: no hace
+        # falta declararlo aparte, y dejar que quedara en None seria pedir un
+        # dato que el registro ya tiene.
+        if perfiles_de_la_empresa is None and claves:
+            perfiles_de_la_empresa = len(claves)
         b = m.registrar_busqueda(clave, consulta, fuente, resultados, nota,
-                                 claves, etiqueta=etiqueta, liga=liga)
+                                 claves, etiqueta=etiqueta, liga=liga,
+                                 perfiles_de_la_empresa=perfiles_de_la_empresa)
         self._recalcular_hits()
         return b
 
@@ -1509,6 +1568,46 @@ class Corrida:
                                         autorizado_por_humano=autorizado_por_humano)
 
     # ----------------------------------------------------------------- el loop
+    def limite_de_fuente(self) -> tuple[bool, str]:
+        """¿El buscador publico no tiene a esta empresa? (bool, razon).
+
+        DETECTOR TEMPRANO, aprobado en #355. Es la UNICA definicion del limite
+        de fuente en toda la herramienta: la compuerta que corta M5 y el aviso
+        que la ficha pone en la capa limpia leen de aqui, para que no puedan
+        decir cosas distintas -- que es lo que pasaria con dos numeros--.
+        """
+        return corta_por_limite_de_fuente(self._busquedas_de_m5(),
+                                          solo_las_primeras=False)
+
+    def _busquedas_de_m5(self) -> list:
+        return [b for b in self.busquedas() if b.modulo == "M5"]
+
+    def corta_m5_por_limite_de_fuente(self) -> tuple[bool, str]:
+        """El DETECTOR TEMPRANO: ¿se corta M5 ahora, a las doce consultas?
+
+        Distinto de `limite_de_fuente()`, que mira todas y es lo que la ficha
+        declara al final. Ver `compuertas.corta_por_limite_de_fuente`.
+        """
+        return corta_por_limite_de_fuente(self._busquedas_de_m5(),
+                                          solo_las_primeras=True)
+
+    def canal_de_la_cuenta(self) -> tuple[str, str]:
+        """El canal que el RADAR recomienda para la cuenta entera, y por que.
+
+        Normalmente no recomienda ninguno: el canal es por contacto y lo deriva
+        `paquete.canal_de` de la evidencia de cada uno. La excepcion es la cuenta
+        con limite de fuente: ahi no hay contactos de los que derivar nada, y lo
+        que el motor 3 necesita saber es que esa cuenta se trabaja por Sales
+        Navigator -- no que se quedo sin gente--.
+        """
+        es, razon = self.limite_de_fuente()
+        if not es:
+            return ("", "")
+        return ("sales_navigator",
+                f"El buscador publico no tiene a esta empresa ({razon}). Los "
+                f"contactos de planta salen por Sales Navigator, con sesion en "
+                f"la ciudad de la planta. La ficha entrega la busqueda armada.")
+
     def que_detiene_el_loop(self) -> str:
         """La razon por la que el lazo YA no puede seguir, o '' si puede."""
         if self.presupuesto.saturado:

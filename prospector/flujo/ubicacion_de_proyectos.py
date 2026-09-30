@@ -51,6 +51,13 @@ RUTA = os.path.join(_DATOS, "ubicacion-de-proyectos.json")
 # "cuantas cuentas tienen su planta declarada" no se puede contestar -- solo se
 # sabe cuantas SI, nunca cuantas faltan--.
 RUTA_CUENTAS = os.path.join(_DATOS, "cuentas-con-proyecto.json")
+# RELACION CON UN GRUPO (#355, tarea 7). Otro archivo porque es otro eje: este
+# contesta «en que planta se hizo cada proyecto» y aquel «que relacion hay con el
+# grupo». Un alta de proveedor en el portal de un corporativo es una PUERTA --
+# ahorra el tramite y da interlocutor en compras-- y no es una venta a la planta.
+# Mezclarlos repetiria el error de #310 con otra cara, y con una cara peor: un
+# alta da confianza de cliente sin ser una.
+RUTA_GRUPOS = os.path.join(_DATOS, "relacion-de-grupo.json")
 
 # La unica fuente que hay, y por eso se escribe: que el dato venga de la cabeza
 # del dueno no lo hace menos cierto, lo hace NO AUDITABLE. Escrito, al menos se
@@ -143,17 +150,51 @@ def veredicto(empresa: str, ciudad: str | None,
                    "primera llamada."}
 
 
+def relacion_de_grupo(empresa: str, ruta: str = "") -> dict:
+    """La relacion con el GRUPO de esta empresa, si hay alguna declarada.
+
+    Empata por nombre de empresa contra la lista de empresas del grupo, en los
+    dos sentidos: «Qualtia» empata con la entrada de Xignux, y «Xignux / Qualtia
+    Alimentos» tambien -- porque asi la nombra la planilla y asi quedo en Odoo--.
+    """
+    try:
+        with open(ruta or RUTA_GRUPOS, encoding="utf-8") as f:
+            d = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    e = _plano(empresa)
+    if not e:
+        return {}
+    for g in d.get("grupos") or []:
+        for miembro in g.get("empresas") or []:
+            m = _plano(miembro)
+            if not m:
+                continue
+            if m == e or m in e or e in m:
+                return g
+    return {}
+
+
 def carta_de_presentacion(empresa: str, ciudad: str | None,
                           datos: dict | None = None) -> str:
     """La frase que la ficha puede sostener. Literal, para que nadie la adorne."""
     v = veredicto(empresa, ciudad, datos)
+    g = relacion_de_grupo(empresa)
+    # La linea del GRUPO se agrega SIEMPRE que exista, incluso cuando no hay
+    # historia de planta: son dos hechos distintos y los dos se sostienen. Lo que
+    # no se puede es fundirlos en «ya somos proveedores de ustedes».
+    extra = ""
+    if g:
+        extra = ("  " + g.get("linea_para_la_carta", "")
+                 + "  OJO: " + g.get("lo_que_NO_se_puede_decir", ""))
     if v["veredicto"] == SIN_HISTORIA_DECLARADA:
         return ("Sin historia declarada: no afirmes nada sobre proyectos previos "
-                "en esta planta hasta que alguien declare donde se hicieron.")
+                "en esta planta hasta que alguien declare donde se hicieron."
+                + extra)
     if v["veredicto"] == HISTORIA_AQUI:
         que = "; ".join(r.get("que", "") for r in v["aqui"] if r.get("que"))
         return (f"FTS ya trabajo EN ESTA PLANTA: {que or 'proyecto declarado'}. "
-                "Se puede decir 'ya trabajamos en su planta'.")
+                "Se puede decir 'ya trabajamos en su planta'." + extra)
     que = "; ".join(sorted({r.get("que", "") for r in v["en_otras"]
                             if r.get("que")}))
     canales = sorted({r.get("canal", "") for r in v["en_otras"] if r.get("canal")})
@@ -163,7 +204,7 @@ def carta_de_presentacion(empresa: str, ciudad: str | None,
             + (f", via {', '.join(canales)}" if canales else "")
             + (f" — {que}" if que else "")
             + ". NO digas 'ya trabajamos en su planta': esta planta es fria, y la "
-              "afirmacion se cae en la primera llamada.")
+              "afirmacion se cae en la primera llamada." + extra)
 
 
 def contacto_es_puerta_a(empresa: str, ciudad: str | None, referencia: str,

@@ -125,7 +125,7 @@ def test_d2_los_cuatro_numeros_aprobados():
 
 def test_d2_un_rebote_duro_es_definitivo():
     d = Dato(campo="correo")
-    d.observar("camara", "test@ejemplo.mx").observar("outlook_personas",
+    d.observar("camara", "test@ejemplo.mx").observar("outlook_remitentes",
                                                     "test@ejemplo.mx")
     d.desmentir("rebote")
     assert d.nivel == "desmentido"

@@ -103,6 +103,20 @@ class Busqueda:
     etiqueta: str | None = None   # cuando lo que distingue NO es la fuente sino
                                   # la forma de preguntar (M7: por empresa vs
                                   # por nombre, las dos contra pdf_publico)
+    # DETECTOR TEMPRANO de limite de fuente (#355). ¿Esta consulta devolvio
+    # algun perfil DE LA EMPRESA? No es `resultados` y no es `hallazgos`:
+    #
+    #   resultados  -- cuantas cosas contesto el buscador. En #353 una consulta
+    #                  de un puesto de Bimbo devolvio nueve resultados, todos de
+    #                  gestoras de fondos. Nueve resultados, cero perfiles.
+    #   hallazgos   -- los contactos que PASARON el filtro de valor. Un
+    #                  recepcionista de la empresa no es hallazgo, y sin embargo
+    #                  prueba que el buscador SI tiene a la empresa.
+    #
+    # Asi que hace falta el dato de en medio, y lo declara quien corrio la
+    # consulta. `None` significa NO DECLARADO, y el detector NO corta a ciegas:
+    # el silencio nunca corta.
+    perfiles_de_la_empresa: int | None = None
 
     @property
     def via(self) -> str:
@@ -139,6 +153,109 @@ class Busqueda:
 
     def a_dict(self) -> dict:
         return asdict(self)
+
+
+# ----------------------------------------- DETECTOR TEMPRANO de limite de fuente
+#
+# Aprobado por Esteban en #355, con N = 12 y las TRES formas cubiertas.
+#
+# El caso: en #353, tres de diez cuentas devolvieron CERO perfiles de la empresa
+# con el bloque completo de M5 -- las tres formas, con alias de marca y con ancla
+# de geografia--. Cuprum es el caso limpio: cuatro configuraciones, cero
+# perfiles. M5 es ~60% del gasto de una corrida, asi que en una cuenta asi ese
+# 60% se va entero para llegar a cero: con el tope adaptativo de 60 consultas por
+# planta son ~48 consultas que no podian traer nada.
+#
+# POR QUE DOCE, Y POR QUE LAS TRES FORMAS. El numero solo no alcanza: doce
+# consultas todas con `site:linkedin.com/in` no prueban que el buscador no tenga
+# a la empresa, prueban que ESE CORPUS no la tiene -- que es exactamente el error
+# que #353 encontro, y por el que `site:mx.linkedin.com/in` existe--. Asi que la
+# compuerta exige las dos cosas: doce consultas Y las tres formas presentes.
+#
+# POR QUE «CERO PERFILES DE LA EMPRESA» Y NO «CERO PUESTOS DE PLANTA». El
+# criterio amplio cubriria tambien a Ragasa -- donde el buscador SI tiene
+# perfiles de la empresa pero no los de planta-- y Esteban lo rechazo con la
+# razon correcta: distinguir un puesto de planta de uno corporativo es justo lo
+# que el filtro NO hace solo. Un criterio que depende de una distincion que la
+# herramienta no sabe hacer cortaria cuentas buenas.
+#
+# CONSECUENCIA MEDIDA, y hay que decirla: Cuprum corta y Ragasa NO. Ragasa llega
+# al final del bloque y declara su limite por ROL en la ficha, que es menos
+# ahorro y mas honesto.
+CONSULTAS_PARA_CORTAR_POR_LIMITE_DE_FUENTE = 12
+FORMAS_QUE_EL_CORTE_EXIGE_CUBIERTAS = 3
+
+
+def corta_por_limite_de_fuente(busquedas_de_m5,
+                               solo_las_primeras: bool = True
+                               ) -> tuple[bool, str]:
+    """¿El buscador publico no tiene a esta empresa? (bool, razon).
+
+    UN CRITERIO, DOS ALCANCES. El criterio es siempre el mismo -- doce consultas,
+    las tres formas cubiertas, cero perfiles de la empresa-- y lo que cambia es
+    CUANTAS consultas se miran, porque son dos preguntas distintas:
+
+      solo_las_primeras=True  (el CORTE, y es el valor por omision)
+          Mira las primeras doce. Tiene que ser asi: un detector que mirara
+          todas no ahorraria nada, que es el punto de que sea temprano.
+
+      solo_las_primeras=False (la DECLARACION en la ficha, al final)
+          Mira TODAS. Si la consulta cuarenta trajo un perfil, la ficha no puede
+          decir que la empresa no esta indexada: seria falso, y mandaria a la
+          vendedora a Sales Navigator por un limite que no existe.
+
+    Los dos alcances pueden discrepar, y cuando lo hacen los dos tienen razon:
+    el corte se disparo con la evidencia que habia a las doce, y la ficha lo
+    desmiente con la que hubo despues. Eso no es una contradiccion, es lo que
+    pasa cuando se decide temprano -- y es el riesgo que la decision de #355
+    acepta a cambio de ~48 consultas--.
+
+    Tres condiciones, y las tres tienen que cumplirse:
+
+      1. Se corrieron al menos doce consultas.
+      2. Esas doce cubren las tres formas de M5 (`Busqueda.etiqueta`).
+      3. Las doce declararon `perfiles_de_la_empresa` y las doce dieron CERO.
+
+    La tercera es la que impide cortar a ciegas: una consulta que no declaro el
+    dato deja el corte SIN disparar, y la razon lo dice. El silencio nunca corta.
+    """
+    todas = list(busquedas_de_m5)
+    n = CONSULTAS_PARA_CORTAR_POR_LIMITE_DE_FUENTE
+    if len(todas) < n:
+        return (False, f"apenas {len(todas)} de {n} consultas: todavia no se "
+                       f"puede decir que el buscador no tenga a la empresa")
+    primeras = todas[:n] if solo_las_primeras else todas
+
+    cuantas = len(primeras)
+    formas = {(b.etiqueta or "").strip().lower() for b in primeras}
+    formas.discard("")
+    if len(formas) < FORMAS_QUE_EL_CORTE_EXIGE_CUBIERTAS:
+        return (False,
+                f"{cuantas} consultas cubren {len(formas)} forma(s) de "
+                f"{FORMAS_QUE_EL_CORTE_EXIGE_CUBIERTAS} "
+                f"({', '.join(sorted(formas)) or 'ninguna declarada'}). Doce "
+                f"consultas de un solo corpus no prueban que el buscador no "
+                f"tenga a la empresa: prueban que ESE corpus no la tiene")
+
+    sin_declarar = [b for b in primeras if b.perfiles_de_la_empresa is None]
+    if sin_declarar:
+        return (False,
+                f"{len(sin_declarar)} de las {cuantas} consultas no "
+                f"declararon si trajeron algun perfil de la empresa. El corte "
+                f"NO se dispara a ciegas: declara `--perfiles N` en cada "
+                f"consulta de M5, y cero es una respuesta valida")
+
+    con_perfil = [b for b in primeras if (b.perfiles_de_la_empresa or 0) > 0]
+    if con_perfil:
+        return (False,
+                f"{len(con_perfil)} de las {cuantas} consultas SI trajeron "
+                f"perfil de la empresa: el buscador la tiene, y lo que falla es "
+                f"otra cosa -- orden, vocabulario o redaccion-- que se arregla "
+                f"aqui y no en Sales Navigator")
+
+    return (True,
+            f"{cuantas} consultas, las {len(formas)} formas cubiertas, y CERO "
+            f"perfiles de la empresa en todas. El limite es de la fuente")
 
 
 # ------------------------------------------------------------ (b) presupuesto
@@ -380,9 +497,11 @@ AGOTADO = {
     "M0b": ("consultas", 1, POR_REGISTRO,
             "al menos una consulta por empresa"),
     "M0c": ("llamadas", 2, POR_FUENTE,
-            "las DOS llamadas a search_people: por dominio y por nombre de la "
-            "empresa. Cero contactos cuenta: significa que FTS no tiene historia "
-            "con esa casa, y eso es una respuesta"),
+            "las DOS consultas al buzon: por REMITENTE (sender=@dominio) y por "
+            "nombre de la empresa leyendo los remitentes. Cero contactos cuenta: "
+            "significa que FTS no tiene historia con esa casa, y eso es una "
+            "respuesta. La via de search_people se descarto en #355: no contesta "
+            "por dominio -- medido--"),
     "M13": ("cortes", 1, POR_REGISTRO,
             "corte vigente cargado"),
     "M1":  ("directorios", 3, POR_FUENTE,
@@ -437,12 +556,14 @@ class EstadoModulo:
                            resultados: int, nota: str = "",
                            hallazgos: list[str] | None = None,
                            etiqueta: str | None = None,
-                           liga: str = "") -> Busqueda:
+                           liga: str = "",
+                           perfiles_de_la_empresa: int | None = None) -> Busqueda:
         """La UNICA forma de hacer subir un contador de agotado."""
         b = Busqueda(modulo=self.modulo, clave=clave, consulta=consulta,
                      fuente=fuente, resultados=resultados, nota=nota,
                      liga=liga, hallazgos=list(hallazgos or []),
-                     etiqueta=etiqueta)
+                     etiqueta=etiqueta,
+                     perfiles_de_la_empresa=perfiles_de_la_empresa)
         self.registros.append(b)
         return b
 

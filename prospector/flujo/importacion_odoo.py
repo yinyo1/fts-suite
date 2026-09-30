@@ -41,6 +41,13 @@ COLUMNAS = (
     "name", "type", "partner_name", "city", "email_from", "phone",
     "contact_name", "function", "date_deadline", "source_id", "medium_id",
     "campaign_id", "tag_ids", "description",
+    # NO ES UNA COLUMNA DE ODOO, y por eso va al final y con este nombre (#355).
+    # Odoo la ignora al importar -- no existe ese campo-- y esta aqui para QUIEN
+    # ABRE EL ARCHIVO: dice si esa cuenta ya tiene lead u oportunidad, que es la
+    # pregunta que el exportador no hacia y que costaba un lead duplicado en
+    # Bimbo. Si un dia molesta al importar, se quita del CSV de subir; lo que no
+    # se quita es la revision.
+    "_odoo_ya_tiene",
 )
 
 # ----------------------------------------------------------------- caducidad

@@ -535,31 +535,24 @@ def aviso_de_senal_sin_fecha(c: Corrida) -> str:
 # concluye lo contrario -- que la herramienta fallo, o que la planta no tiene
 # gente--. Las dos conclusiones son falsas y las dos cuestan.
 #
-# Cuantas consultas de M5 hacen falta para poder decirlo. Con dos o tres
-# consultas secas lo honesto es "todavia no se sabe". El bloque de #353 se corrio
-# con ocho o mas por cuenta antes de declarar clase (c), y ese es el numero que
-# se deja escrito: es el que se midio, no un redondeo.
-CONSULTAS_M5_PARA_DECLARAR_LIMITE_DE_FUENTE = 8
+# UNA SOLA DEFINICION, y por eso esto ya no calcula nada. Hasta la 0.16.0 esta
+# funcion tenia su propio umbral de 8 consultas y su propio criterio -- «ninguna
+# entrego un contacto»--, distinto del que el detector temprano de #355 usa: 12
+# consultas, las tres formas cubiertas, y cero PERFILES de la empresa. Dos
+# numeros y dos criterios para el mismo hecho garantizan que un dia la compuerta
+# corte y la ficha no lo diga, o al contrario.
+#
+# Ahora los dos leen de `Corrida.limite_de_fuente()`, que es
+# `compuertas.corta_por_limite_de_fuente`. El numero vive en un solo lugar.
 
 
 def sin_presencia_en_buscador_publico(c: Corrida) -> tuple[bool, str]:
     """¿El buscador publico no tiene a esta empresa? (bool, razon legible).
 
-    Se LEE de lo que la corrida ya gasto -- no cuesta una consulta mas--:
-    si M5 corrio su bloque completo y ninguna de sus consultas entrego un
-    contacto, el limite es de la fuente y la ficha tiene que decirlo.
-
-    Deliberadamente NO decide nada: no corta el gasto ni cambia el plan. Cortar
-    antes es el DETECTOR TEMPRANO, y eso cambia cuanto se gasta, asi que es
-    decision de Esteban y no de esta funcion.
+    Delega en la corrida. Se conserva como nombre porque es el que la capa
+    limpia usa y el que las pruebas de #353 fijaron.
     """
-    m5 = [b for b in c.busquedas() if b.modulo == "M5"]
-    if len(m5) < CONSULTAS_M5_PARA_DECLARAR_LIMITE_DE_FUENTE:
-        return (False, "")
-    con_hallazgo = [b for b in m5 if b.hallazgos]
-    if con_hallazgo:
-        return (False, "")
-    return (True, f"{len(m5)} consultas de personas, ninguna con resultado")
+    return c.limite_de_fuente()
 
 
 def busqueda_armada_para_sales_navigator(c: Corrida) -> str:
@@ -615,6 +608,64 @@ def aviso_de_cuenta_sin_buscador_publico(c: Corrida) -> str:
         'los va a traer, y cada intento cuesta.'
         + busqueda_armada_para_sales_navigator(c)
         + '</div>')
+
+
+# --------------------------------------------- LO QUE SALIO DEL BUZON, PRIMERO
+#
+# Tarea 6 de #355. La corrida de #353 lo demostro dos veces: el hueco de Metalsa
+# lo cerro un correo que llevaba dos meses en el buzon -- su propia nota proponia
+# cerrarlo gastando una consulta de prensa-- y la via interna dio cuatro personas
+# que YA le habian escrito a FTS, con correo verificado e hilo abierto, que una
+# semana de Sales Navigator no encontro.
+#
+# Si eso no sale ARRIBA en la ficha, quien llama lo trata como un dato mas de la
+# lista. Y no es un dato mas: es la diferencia entre «vi que van a ampliar la
+# planta» y «me escribiste en octubre sobre el taller de mantenimiento».
+#
+# VA CON SU FECHA, siempre. Un hilo de hace un mes y uno de hace dos anios abren
+# conversaciones distintas, y sin la fecha quien llama no puede saber cual tiene.
+FUENTES_INTERNAS = ("odoo", "outlook", "outlook_remitentes",
+                    "outlook_hilos_por_nombre", "outlook_personas")
+
+
+def lo_que_salio_del_buzon(c: Corrida) -> list[dict]:
+    """Las busquedas de la OLA 0 que TRAJERON algo, con su fecha, las primeras.
+
+    Se leen del registro, no de una lista aparte: lo que la ficha muestra es lo
+    que la corrida gasto, y no hay forma de que digan cosas distintas.
+    """
+    fuera = []
+    for b in c.busquedas():
+        if b.modulo not in ("M0", "M0b", "M0c"):
+            continue
+        if not b.resultados:
+            continue                     # cero es una respuesta, no una noticia
+        fuera.append({"modulo": b.modulo, "fuente": b.fuente,
+                      "consulta": b.consulta, "resultados": b.resultados,
+                      "nota": b.nota, "fecha": (b.ts or "")[:10]})
+    return fuera
+
+
+def bloque_de_lo_interno(c: Corrida) -> str:
+    """«Esto ya estaba en casa», arriba de la linea de tiempo de la web."""
+    filas = lo_que_salio_del_buzon(c)
+    if not filas:
+        return ""
+    lis = []
+    for f in filas:
+        de_donde = {"M0": "Odoo", "M0b": "el buzon",
+                    "M0c": "el buzon, por remitente"}.get(f["modulo"], f["modulo"])
+        detalle = html.escape(f["nota"] or f["consulta"])
+        lis.append(f'<li><b>{html.escape(f["fecha"])}</b> — '
+                   f'{f["resultados"]} en {de_donde}: {detalle}</li>')
+    return ('<div class="card" style="margin:0 0 12px">'
+            '<div class="sub-h">Esto ya estaba en casa</div>'
+            '<p class="nota-g">Salio de Odoo y del buzon de FTS, no de la web. '
+            'Es lo primero que hay que leer: una persona que ya nos escribio '
+            'pesa mas que cualquier nota de prensa, y con ella la llamada no '
+            'empieza en frio.</p>'
+            f'<ul style="margin:0 0 0 18px;padding:0">{"".join(lis)}</ul>'
+            '</div>')
 
 
 def linea_de_tiempo(c: Corrida) -> str:
@@ -1161,6 +1212,7 @@ def modo_limpio(c: Corrida) -> str:
     tl = linea_de_tiempo(c)
     bl_sin_fecha = aviso_de_senal_sin_fecha(c)
     bl_sin_buscador = aviso_de_cuenta_sin_buscador_publico(c)
+    bl_interno = bloque_de_lo_interno(c)
     bl_porque = (f'<p style="margin:0 0 12px">{html.escape(c.por_que_ahora)}</p>'
                  if c.por_que_ahora else _hueco(
                      "razon de oportunidad escrita",
@@ -1402,6 +1454,7 @@ def modo_limpio(c: Corrida) -> str:
 <div class="card">
 <h2>Por que ahora</h2>
 {bl_porque}
+{bl_interno}
 {bl_sin_fecha}
 {tl or '<p class="nt">Sin senal registrada en esta corrida.</p>'}
 </div>

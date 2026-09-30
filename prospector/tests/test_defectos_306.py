@@ -73,7 +73,7 @@ def test_MODO_DE_FALLA_la_procedencia_tecnica_SIGUE_oculta_en_limpio():
     x = c.agregar(Contacto(nombre="Ana Ficticia", puesto="Gerente de EHS",
                            empresa="Coficab", revision_humana=True,
                            motivo_revision="por confirmar"))
-    x.dato("puesto").observar("outlook_personas", "Gerente de EHS",
+    x.dato("puesto").observar("outlook_remitentes", "Gerente de EHS",
                               forma="firma de correo")
     html = fichamod.modo_limpio(c)
     limpia = html[:html.index('<details class="tec">')]
@@ -81,9 +81,9 @@ def test_MODO_DE_FALLA_la_procedencia_tecnica_SIGUE_oculta_en_limpio():
     # procedencia no desaparecio -- eso la volveria inauditable-- : bajo a la
     # pestana, que es exactamente lo que este rediseno queria.
     assert "Ana Ficticia" in limpia
-    assert "outlook_personas" not in limpia
+    assert "outlook_remitentes" not in limpia
     assert "firma de correo" not in limpia
-    assert "outlook_personas" in html, "la procedencia sigue existiendo, abajo"
+    assert "outlook_remitentes" in html, "la procedencia sigue existiendo, abajo"
 
 
 def test_MODO_DE_FALLA_el_que_YA_NO_ESTA_no_aparece_en_por_confirmar():
@@ -306,6 +306,13 @@ def test_buscar_CONFIRMA_en_la_ultima_linea_con_el_numero_de_fila(sesion, capsys
     agente recorto con `| tail -1`, vio una linea en blanco, creyo que la busqueda
     habia fallado y la repitio. Ahora la ULTIMA linea lo dice."""
     c = _corrida()
+    # La OLA 0 se cierra antes: desde #355 la CLI no deja registrar una consulta
+    # de red con el buzon y Odoo sin preguntar. Aqui se cierran como huecos
+    # declarados, que es lo que la compuerta acepta -- exige haber PREGUNTADO, no
+    # haber encontrado--.
+    for m in c.MODULOS_DE_LA_OLA_0:
+        c.marcar_cobertura(m, "sin_acceso", "fixture de prueba: no hay conector")
+        c.cerrar_modulo(m, "sin_acceso", "fixture de prueba")
     c.guardar(orq._ruta("Coficab", "Pesqueria"))
     assert orq.main(["buscar", "--empresa", "Coficab", "--ciudad", "Pesqueria",
                      "--modulo", "M5", "--clave", "k",

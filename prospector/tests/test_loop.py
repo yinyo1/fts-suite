@@ -75,7 +75,7 @@ def _cascada_cerrada(n_contactos: int = 3) -> Corrida:
     plan = [
         ("M0", "contactos_recorridos", ["odoo"]),
         ("M0b", "consultas", ["outlook"]),
-        ("M0c", "llamadas", ["outlook_personas", "outlook_personas"]),
+        ("M0c", "llamadas", ["outlook_remitentes", "outlook_remitentes"]),
         ("M13", "cortes", ["denue"]),
         ("M1", "directorios", ["leadiq", "rocketreach", "signalhire"]),
         ("M2", "bolsas", ["vacante", "vacante", "vacante"]),

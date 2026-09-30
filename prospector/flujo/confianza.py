@@ -54,11 +54,18 @@ A_PROCEDENCIA = {
 RAICES = {
     "odoo": "fts_interno",
     "outlook": "fts_interno",
-    # `search_people` es la MISMA raiz que Outlook: las dos salen del historial
-    # de comunicacion de FTS. Que las dos coincidan NO son dos confirmaciones
-    # independientes -es la trampa de la independencia del #4-, y darle raiz
-    # propia habria sido inflar el n_raices con la misma casa dos veces.
+    # Las dos vias de M0c son la MISMA raiz que Outlook: las tres salen del
+    # historial de comunicacion de FTS. Que dos coincidan NO son dos
+    # confirmaciones independientes -es la trampa de la independencia del #4-, y
+    # darles raiz propia habria sido inflar el n_raices con la misma casa dos
+    # veces.
+    #
+    # `outlook_personas` era `search_people`, que NO contesta por dominio ni por
+    # nombre de empresa (#355, medido). Se conserva la llave porque hay corridas
+    # viejas en disco que la traen, y quitarla las dejaria sin raiz.
     "outlook_personas": "fts_interno",
+    "outlook_remitentes": "fts_interno",
+    "outlook_hilos_por_nombre": "fts_interno",
     "leadiq": "directorio",
     "rocketreach": "directorio",
     "zoominfo": "directorio",
@@ -168,10 +175,20 @@ RAZON_MAYORIA = 3.0
 # y la segunda es la que ancla.
 FUENTES_ANCLA = {
     "outlook",            # una direccion real en un hilo
-    "outlook_personas",   # un CONTACTO IMPLICITO: alguien que de verdad escribio
+    "outlook_personas",   # la llave vieja de M0c, conservada para las corridas
+                          # que ya estan en disco
+    "outlook_remitentes", # un CONTACTO IMPLICITO: alguien que de verdad escribio
                           # a FTS desde ese dominio. Es la clase mas fuerte de
                           # ancla que hay, porque no es una direccion citada
                           # dentro de un texto: es una con la que hubo trafico.
+                          # Medido en #355: en las diez cuentas de la corrida
+                          # humana esta via encontro a las CUATRO personas que ya
+                          # le habian escrito a FTS, y ninguna de las cuatro
+                          # estaba en la planilla del humano.
+    # `outlook_hilos_por_nombre` NO esta aqui a proposito. Esa via devuelve
+    # tambien el corpus de notificaciones de LinkedIn que llega al buzon de FTS,
+    # que da nombre y puesto y NUNCA un correo. Tratarla como ancla haria que un
+    # puesto leido en una notificacion subiera un correo a `confirmado`.
     "odoo",               # una direccion real en el CRM
     "pdf_publico",        # una direccion impresa en un documento indexado
     "padron_gobierno",    # idem, en un padron oficial

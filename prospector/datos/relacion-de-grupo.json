@@ -1,0 +1,20 @@
+{
+  "que_es": "RELACION CON UN GRUPO, que NO es lo mismo que historia en una planta ni que un proyecto entregado. Un alta de proveedor en el portal de compras de un corporativo es una puerta abierta: significa que FTS puede facturar sin volver a pasar por alta, y que alguien de compras del grupo ya aprobo su expediente. No significa que se le haya vendido a la planta que se esta prospectando.",
+  "por_que_es_otro_archivo": "`ubicacion-de-proyectos.json` contesta «en que PLANTA se hizo cada proyecto». Esto contesta otra cosa: «que relacion hay con el GRUPO». Mezclarlas repetiria el error que ese archivo existe para evitar -- que una corrida concluya «ya trabajamos en su planta» porque encontro algo de esa cuenta--. Un alta de proveedor es todavia mas facil de sobre-leer: da confianza de cliente sin ser una venta.",
+  "que_NO_lleva": "Ni una persona, ni un importe, ni un numero de proveedor.",
+  "corte": "2026-09-30",
+  "grupos": [
+    {
+      "grupo": "Xignux",
+      "empresas": ["Xignux", "Qualtia", "Qualtia Alimentos", "Viakon", "Voltrak",
+                   "Prolec", "Prolec GE", "Magnekon"],
+      "relacion": "alta_de_proveedor",
+      "desde": "2025-01",
+      "evidencia": "Portal de compras del grupo: el perfil de proveedor de FTS se actualizo en ene-2025 y el grupo lo reviso en feb-2025. Y hay trafico despues del alta: notificaciones de pago de una empresa del grupo en jun-2025 y jun-2026, lo que prueba que el alta no quedo en tramite.",
+      "procedencia": "buzon de FTS, hallado el 29-sep-2026 en la via interna de #353. Sin nombres: los correos son del portal y de tesoreria, no de personas.",
+      "linea_para_la_carta": "FTS ya esta dado de alta como PROVEEDOR DEL GRUPO Xignux, y hay pagos del grupo despues del alta. Eso ahorra el tramite de alta y da un interlocutor en compras corporativas.",
+      "lo_que_NO_se_puede_decir": "«Ya somos proveedores de ustedes». La relacion es con el GRUPO y con OTRA de sus empresas, no con esta planta. Dicho asi se cae en cuanto el de la planta busque su numero de orden y no encuentre ninguno -- que es el mismo error que Coficab/Pesqueria (#310), con otra cara--.",
+      "por_que_igual_vale": "Un alta vigente cambia la conversacion de compras: no hay que abrir expediente, no hay que pasar validacion de proveedor nuevo, y el de compras de la planta puede verificarlo en su propio sistema en un minuto. Es una puerta, y se nombra como puerta."
+    }
+  ]
+}

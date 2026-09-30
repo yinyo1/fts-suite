@@ -39,6 +39,36 @@ Llamarlos es tuyo, y llamarlos de verdad:
 |---|---|---|
 | **Odoo** (M0) | una lectura a `res.partner` con el nombre de la cuenta | dice si la cuenta **ya tiene relación**, y una cuenta con historia se trabaja al revés que una fría |
 | **Outlook** (M0b) | una búsqueda en el buzón con el nombre de la cuenta | la **más rentable cuando hay historia**: los correos literales de un hilo son **anclas**, y ninguna otra fuente las da |
+| **Outlook por remitente** (M0c) | `outlook_email_search(sender="@dominio")` **y** `outlook_email_search(query="<empresa>")` leyendo los remitentes | quién de esa casa **ya le escribió a FTS**. Medido en #355 sobre diez cuentas: encontró a las **cuatro** personas que ya habían contestado, y **ninguna** estaba en la planilla de una semana de Sales Navigator |
+
+> ### 🔴 `search_people` NO sirve para esto, y estuvo declarado así desde que M0c nació
+>
+> **[calculado] #355.** `search_people("lego.com")`, `("metalsa.com")`,
+> `("nemak.com")` y `("cuprum.com")` devuelven **cero**. Y la contraprueba que
+> cierra el caso es la más simple: **`search_people("fts.mx")` también devuelve
+> cero**, con el buzón de FTS lleno de direcciones de fts.mx. Empata contra
+> **nombres de persona**, no contra dominios ni nombres de empresa.
+>
+> La vía que sí encuentra a quien escribió desde esa casa es
+> `outlook_email_search` con `sender` puesto al dominio. Está corregido en
+> `catalogo.PERMITIDAS["M0c"]`, y las dos formas viejas quedaron en
+> `catalogo.DESCARTADAS` con su medición.
+>
+> **Ojo con la segunda vía.** Buscar por nombre de empresa devuelve también el
+> corpus de notificaciones de LinkedIn que llega al buzón: eso da nombre y puesto
+> y **nunca un correo**, así que es fuente de **contactos**, no un ancla. Por eso
+> `outlook_hilos_por_nombre` **no** está en `FUENTES_ANCLA`.
+
+> ### 🚦 El buzón y Odoo van ANTES de gastar una consulta web. Ahora es compuerta.
+>
+> `buscar` **rechaza** una consulta de red mientras M0, M0b o M0c sigan abiertos.
+> No es preferencia: en #353 el hueco de Metalsa llevaba un mes declarado
+> proponiendo cerrarse *«con una consulta dirigida de prensa»*, y lo cerró un
+> correo de cámara que estaba en el buzón **desde el 24-jul**. Estaba gratis.
+>
+> **Un hueco declarado abre la compuerta.** Si el conector no contesta:
+> `cerrar --modulo M0b --estado sin_acceso --razon "..."`. Lo que exige es **haber
+> preguntado**, no haber encontrado.
 | **WebSearch** | una consulta cualquiera | sin ella no hay OLA 1 ni motor. En una cuenta sin historia pone el **100% del valor** (medido en #295) |
 
 Y **registra lo que contestaron de verdad**:
@@ -392,6 +422,45 @@ por qué en ese orden; tú corres la búsqueda y registras lo que contestó:
 > **La compuerta exige que la consulta esté escrita; no puede comprobar que se
 > corrió.** Ese hueco lo cierras tú. Registrar una búsqueda que no corriste
 > convierte la herramienta en un generador de fichas falsas.
+
+### Las consultas de M5 las arma el motor, no tú
+
+```bash
+./prospector consultas --empresa "<empresa>" \
+  --puestos "Gerente de Mantenimiento;Global Purchasing Performance Manager" \
+  --ciudad "<planta>" --pais Mexico \
+  --alias "International Motors" \
+  --siglas "GWP=Global Workplace Projects;LOM=LEGO Operaciones de Mexico"
+```
+
+**No gasta red.** Aplica las cuatro reglas aprobadas en #355 y te dice cuál puso
+cada consulta:
+
+| | |
+|---|---|
+| **R1** | el puesto **entre comillas** cuando tiene 3 palabras o más. Medido: un puesto de cuatro palabras da cero con las palabras sueltas y sale con la frase |
+| **R2** | `Global` / `Corporate` / `Regional` / `Nacional` → **sin ancla de planta**. Ese puesto no vive en una planta |
+| **R3** | las **siglas** que M2 cosechó, **expandidas**. `GWP` no se indexa como palabra; `Global Workplace Projects` sí |
+| **R4** | **todos los nombres** de la empresa. Navistar / International Motors le costó al repo un barrido completo |
+
+Gástalas **de arriba hacia abajo** y declara `--perfiles` en cada una.
+
+### `--perfiles` en M5: el dato que decide si se corta
+
+```bash
+./prospector buscar ... --modulo M5 --etiqueta linkedin_mx --perfiles 0
+```
+
+**No es `--resultados`.** `--resultados` cuenta lo que contestó el buscador,
+aunque sea de otra empresa: en #353 una consulta de un puesto de una panificadora
+devolvió nueve resultados, **todos de gestoras de fondos**. Nueve resultados, cero
+perfiles. `--perfiles` cuenta los perfiles **de la empresa**, y cero es una
+respuesta.
+
+Con él, a las **12 consultas** —y sólo si cubriste las **tres formas**— `buscar`
+te avisa si **corta M5 por límite de fuente** y te da la búsqueda de Sales
+Navigator armada. **Sin declararlo, el detector no corta**: el silencio nunca
+corta.
 
 **`--resultados 0` es válido y cuenta.** Cero resultados es una respuesta: haber
 preguntado bien y no encontrar nada es trabajo hecho.

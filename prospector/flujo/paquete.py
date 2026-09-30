@@ -183,6 +183,9 @@ def armar(c) -> dict:
             "ubicacion": x.ubicacion_respecto_a(c.ciudad, c.alias_de_ubicacion),
             "modulo_origen": x.modulo_origen,
         })
+    _limite_hay, _limite_razon = c.limite_de_fuente()
+    _canal_cuenta, _canal_por_que = c.canal_de_la_cuenta()
+
     return {
         "version": 1,
         "emitido": datetime.now(timezone.utc).isoformat(),
@@ -228,6 +231,19 @@ def armar(c) -> dict:
         "tope": c.presupuesto.tope_por_cuenta,
         "cerro_porque": c.que_detiene_el_loop() or "no cerro todavia",
         "estado_editado_a_mano": c.editada_a_mano,
+        # LIMITE DE FUENTE, y el canal que el radar recomienda POR LA CUENTA
+        # (#355). Normalmente el canal es por contacto y lo deriva `canal_de` de
+        # la evidencia de cada uno. La excepcion es la cuenta que el buscador
+        # publico no tiene: ahi no hay contactos de los que derivar nada, y lo
+        # que el motor 3 necesita saber es que esa cuenta se trabaja por Sales
+        # Navigator -- no que se quedo sin gente--. Sin este dato la tarjeta
+        # llega con cero contactos y parece una cuenta mala.
+        "limite_de_fuente": {
+            "hay": _limite_hay,
+            "razon": _limite_razon,
+            "canal_de_la_cuenta": _canal_cuenta or None,
+            "canal_por_que": _canal_por_que or None,
+        },
         # --- lo que el motor 3 NO debe inventar ---
         "canales_que_no_emite": CANALES_QUE_NO_EMITE,
         "advertencia": (

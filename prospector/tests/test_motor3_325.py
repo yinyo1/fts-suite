@@ -157,7 +157,7 @@ def test_h4_la_llave_de_reciclaje_sale_de_un_dominio_observado():
     c = _corrida(fuente="correo_propio")
     x = c.agregar(Contacto(empresa="Ejemplo", nombre="Ana Ficticia",
                         puesto="Gerente de Mantenimiento", cercania_decision=6))
-    x.dato("correo").observar("outlook_personas", "test@ejemplo.mx")
+    x.dato("correo").observar("outlook_remitentes", "test@ejemplo.mx")
     p = pq.armar(c)
     assert p["dominio_correo"] == "ejemplo.mx"
     assert p["llave_de_reciclaje"] == "ejemplo.mx|monterrey"
@@ -199,7 +199,7 @@ def test_h4_la_llave_de_reciclaje_no_es_la_de_la_corrida():
 # ==============================================================  H5 · desmentido
 def test_h5_un_rebote_le_gana_a_dos_fuentes_que_coincidian():
     d = Dato(campo="correo")
-    d.observar("camara", "test@ejemplo.mx").observar("outlook_personas",
+    d.observar("camara", "test@ejemplo.mx").observar("outlook_remitentes",
                                                    "test@ejemplo.mx")
     assert d.nivel == CONFIRMADO
     d.desmentir("rebote", fecha="2026-10-02")

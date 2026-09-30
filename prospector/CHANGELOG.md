@@ -3,6 +3,120 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.17.0 — 2026-09-30
+
+Las cuatro reglas aplicadas, el detector temprano cortando, el exportador
+preguntandole a Odoo, y M0c corregido despues de haber estado roto desde que
+nacio. **1,113 pruebas** (eran 1,033).
+
+### R1 a R4 · el motor de combinaciones existe, y antes no
+
+`flujo/combinaciones.py` + `./prospector consultas`. Hasta la 0.16.0 el motor de
+M4 estaba **descrito en prosa** y el agente armaba las consultas a mano: una
+regla que depende de que alguien se acuerde no es una regla. Ahora las cuatro son
+codigo, con su disparador y su razon:
+
+* **R1** el puesto entre comillas cuando tiene **3 palabras o mas**. El corte es
+  tres y no dos a proposito: con dos, la frase exacta pierde el orden invertido,
+  que en espaniol es comun.
+* **R2** `Global` / `Corporate` / `Regional` / `Nacional` → **sin ancla de
+  planta**. Con frontera de palabra: *Globalization* no dispara.
+* **R3** las siglas que M2 cosecho, **expandidas**. Una sigla que M2 **no**
+  expandio NO se toca: inventarle una expansion seria inventar vocabulario.
+* **R4** todos los nombres de la empresa, no el legal.
+
+**LA MEDICION, y no es la que el issue de #355 dejaba suponer.** Re-corridos los
+ocho casos de clase (b) de LEGO, Bimbo y Nemak, las reglas rescataron **DOS**:
+un *Global Purchasing Performance Manager* (R1+R2) y un *Head of GWP Projects LOM*
+(R3). Los otros seis siguen en cero. Queda escrito en
+`tests/test_combinaciones_355.py` como constancia, porque «R1 rinde 9 de 12» era
+una proyeccion y el numero medido es dos.
+
+### El detector temprano corta M5, y Cuprum corta mientras Ragasa no
+
+`compuertas.corta_por_limite_de_fuente`. **12 consultas, las TRES formas
+cubiertas, cero perfiles de la empresa.** Tres cosas que valen decirse:
+
+**El silencio nunca corta.** `Busqueda` gana `perfiles_de_la_empresa`, que **no
+es** `resultados` (lo que contesto el buscador, aunque sea de otra empresa) ni
+`hallazgos` (lo que paso el filtro de valor). Una consulta que no lo declara deja
+el corte sin disparar, y la razon lo dice.
+
+**Doce de un solo corpus no cortan.** Es el error de #353 con otra cara: doce
+consultas con `site:linkedin.com/in` prueban que **ese** corpus no tiene a la
+empresa. Por eso `site:mx.linkedin.com/in` existe.
+
+**UN criterio, DOS alcances.** El corte mira las primeras doce; la ficha, al
+final, mira **todas**. Pueden discrepar, y cuando lo hacen los dos tienen razon:
+el corte se disparo con la evidencia que habia a las doce. Es el riesgo que la
+decision acepta a cambio de ~48 consultas. Y la ficha ya **no calcula por su
+cuenta**: delega, porque dos numeros para el mismo hecho garantizan que un dia la
+compuerta corte y la ficha no lo diga.
+
+La cuenta clase (c) **entra** al motor 3 con tarjeta y con
+`limite_de_fuente.canal_de_la_cuenta = sales_navigator` en el paquete. Sin ese
+dato la tarjeta llega con cero contactos y parece una cuenta mala.
+
+### El exportador de etapa 1 le pregunta a Odoo antes de emitir
+
+Cada fila sale marcada `nueva` · `ya tiene oportunidad abierta (no subir,
+enlazar)` · `ya tiene lead reciente (no subir)` · `SIN_CONSULTAR_A_ODOO`. Bimbo
+sale marcada por su oportunidad de **nov-2024 en etapa «Revisar»** — etapa
+trabajada, no la inicial: alguien la movio.
+
+**Y la constancia VENCE.** `datos/odoo-declarado.json` se declara con su fecha y
+vale siete dias; pasados, todo sale `SIN_CONSULTAR_A_ODOO`. Un archivo de hace un
+mes es peor que ninguno: da confianza sin tenerla.
+
+**El orden es veredicto → reloj → Odoo.** Una `archiva` con oportunidad abierta
+sigue siendo `archiva`: tener historia no la vuelve subible. Odoo solo **saca**
+del archivo de subir lo que el radar y el reloj ya habian aprobado.
+
+### M0c estuvo roto desde que nacio
+
+`search_people` **no contesta por dominio ni por nombre de empresa**, y M0c lo
+declaraba como su fuente desde el principio. La contraprueba que cierra el caso es
+la mas simple de todas: **`search_people("fts.mx")` devuelve cero** con el buzon
+de FTS lleno de direcciones de fts.mx. Empata contra nombres de persona.
+
+Corregido a dos vias reales: `outlook_email_search(sender="@dominio")` — quien
+escribio **desde** esa casa, la clase mas fuerte de ancla que hay — y
+`outlook_email_search(query="<empresa>")` leyendo remitentes, que caza a quien
+escribe **sobre** esa empresa desde otro dominio. Asi salio el evento de camara
+que cerro el hueco de Metalsa.
+
+**Re-corrido sobre las diez cuentas: encuentra a las CUATRO** personas que ya le
+habian escrito a FTS, en cuatro familias de interlocutor distintas. La segunda via
+**no** es ancla: devuelve tambien el corpus de notificaciones de LinkedIn, que da
+nombre y puesto y nunca un correo.
+
+### El buzon y Odoo antes de gastar, y ahora es compuerta
+
+`buscar` **rechaza** una consulta de red con M0, M0b o M0c abiertos. El orden ya
+estaba en `OLAS`, pero eso solo ordenaba el plan. Va en la CLI y no en
+`registrar_busqueda` por la misma razon que `exigir_bloque_cerrado`: la CLI es el
+flujo real, y una prueba que tiene que montar media corrida para probar un detalle
+deja de decir lo que prueba.
+
+**Un hueco declarado la abre:** exige haber **preguntado**, no haber encontrado.
+
+Y la ficha lo pone donde se lee: «Esto ya estaba en casa», **arriba** de la linea
+de tiempo de la web, con su fecha. Cero resultados no entra — cuenta como trabajo
+hecho, pero no es material para la conversacion.
+
+### La puerta de Xignux, nombrada como puerta
+
+`datos/relacion-de-grupo.json`. FTS esta dado de alta como proveedor en el portal
+de compras del grupo desde ene-2025, y hay pagos de una empresa del grupo en
+jun-2025 y jun-2026: el alta no quedo en tramite. La carta de Qualtia, Viakon,
+Voltrak, Prolec y Magnekon lo dice **y dice lo que no se puede decir** — «ya somos
+proveedores de ustedes» se cae en cuanto el de la planta busque su numero de orden
+y no encuentre ninguno.
+
+Archivo aparte de `ubicacion-de-proyectos.json` a proposito: ese contesta «en que
+planta se hizo cada proyecto» y este «que relacion hay con el grupo». Un alta da
+confianza de cliente **sin ser una**, que es el error de #310 con una cara peor.
+
 ## 0.16.0 — 2026-09-29
 
 Cierre de la prueba de cobertura (#353): la tercera configuración de M5 con su

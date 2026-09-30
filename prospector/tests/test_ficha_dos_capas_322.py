@@ -49,7 +49,7 @@ def _corrida_rica(empresa="Coficab", ciudad="Pesqueria") -> Corrida:
     a = c.agregar(Contacto(nombre="Ana Ficticia", puesto="Gerente de Mantenimiento",
                            empresa=empresa, cercania_decision=10))
     d = a.dato("patron_correo")
-    d.observar("outlook_personas", "nombre.apellido@ejemplo.com", forma="first.last")
+    d.observar("outlook_remitentes", "nombre.apellido@ejemplo.com", forma="first.last")
     d.observar("camara", "nombre.apellido@ejemplo.com", forma="first.last")
     a.dato("planta").observar("buscador", f"Coficab {ciudad}")
     # puesto sin persona: sigue siendo una puerta
