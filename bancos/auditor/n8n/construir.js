@@ -136,3 +136,31 @@ export default workflow('fts-bancos-auditor-resumen', 'fts_bancos_auditor_resume
 fs.writeFileSync(path.join(salida, 'auditor_eventos.sdk.js'), eventos);
 fs.writeFileSync(path.join(salida, 'auditor_resumen.sdk.js'), resumen);
 console.log('ok eventos/resumen', eventos.length, resumen.length);
+
+// ── Objetivo 2 (issue #365): lectura de la base (rol bancos_auditor) + Odoo SOLO LECTURA ──
+const ODOO = "{ odooApi: { id: 'Wansi69xesEqEiY1', name: 'Odoo FTS' } }";
+const obj2 = `import { workflow, node, trigger, expr } from '@n8n/workflow-sdk';
+const entrada = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { name: 'Auditor O2 (entrada)',
+  parameters: { httpMethod: 'POST', path: 'fts-bancos-auditor-obj2-lectura-6d21a4', responseMode: 'onReceived', options: {} } } });
+const probar = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Probar (a mano)' } });
+const base = node({ type: 'n8n-nodes-base.postgres', version: 2.6, config: { name: 'Postgres - Leer base Obj2 (bancos_auditor)', executeOnce: true,
+  parameters: { operation: 'executeQuery', query: ${J(leer('lectura_obj2.sql'))}, options: {} }, credentials: ${PG} } });
+const odoo = node({ type: 'n8n-nodes-base.odoo', version: 2, config: { name: 'Odoo - Lineas de banco (solo lectura)', executeOnce: true, alwaysOutputData: true,
+  parameters: { resource: 'custom', operation: 'getAll', authentication: 'odooApi',
+    customResource: { __rl: true, mode: 'id', value: 'account.move.line' }, returnAll: true,
+    options: { fieldsList: 'id,date,balance,amount_currency,move_id,payment_id,journal_id' },
+    filters: { filter: [
+      { fieldName: 'journal_id', operator: 'in', value: expr('{{ [8, 96, 75] }}') },
+      { fieldName: 'parent_state', operator: 'equal', value: 'posted' },
+      { fieldName: 'date', operator: 'greaterOrEqual', value: '2024-01-01' },
+      { fieldName: 'account_id.account_type', operator: 'equal', value: 'asset_cash' },
+      { fieldName: 'company_id', operator: 'equal', value: expr('{{ 1 }}') }] } },
+  credentials: ${ODOO} } });
+const compacto = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Code - Odoo compacto', executeOnce: true,
+  parameters: { jsCode: ${J(leer('code/obj2_odoo.js'))} } } });
+export default workflow('fts-bancos-auditor-obj2-lectura', 'fts_bancos_auditor_obj2_lectura')
+  .add(entrada).to(base).to(odoo).to(compacto)
+  .add(probar).to(base);
+`;
+fs.writeFileSync(path.join(salida, 'auditor_obj2_lectura.sdk.js'), obj2);
+console.log('ok obj2', obj2.length);

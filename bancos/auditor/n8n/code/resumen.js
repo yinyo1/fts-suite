@@ -10,14 +10,14 @@ if (!a.length) {
   html = '<p>Hoy (' + esc(r.hoy) + ') no quedó registrada ninguna auditoría. Revisa que las revisiones programadas de Claude Code sigan corriendo.</p>';
 } else {
   const malas = a.filter(x => x.veredicto !== 'VERDE');
-  const ult = a.filter(x => x.tipo === 'barrido_diario' || x.tipo === 'barrido_mensual').pop() || a[a.length - 1];
+  const ult = a.filter(x => (x.objetivo || 1) === 1 && (x.tipo === 'barrido_diario' || x.tipo === 'barrido_mensual')).pop() || a[a.length - 1];
   if (!malas.length) {
     asunto = 'fts-bancos auditor: VERDE';
     html = '<p>Base = PDFs: ' + esc(ult.n_estados) + ' estados, ' + esc(ult.n_movimientos) + ' movimientos, triple verificado.</p>';
   } else {
     const peor = malas.some(x => x.veredicto === 'ROJO') ? 'ROJO' : 'AMARILLO';
     asunto = 'fts-bancos auditor: ' + peor + ' hoy (' + malas.length + ' de ' + a.length + ')';
-    html = '<p>Auditorías de hoy:</p><ul>' + a.map(x => '<li>' + esc(x.hora) + ' · ' + esc(x.tipo) + ' · <b>' + esc(x.veredicto) + '</b> · Objetivo 1 ' + esc(x.objetivo1) +
+    html = '<p>Auditorías de hoy:</p><ul>' + a.map(x => '<li>' + esc(x.hora) + ' · ' + esc(x.tipo) + ' · <b>' + esc(x.veredicto) + '</b> · Objetivo ' + esc(x.objetivo || 1) + ' ' + esc(x.objetivo1) +
       ' · ' + esc(x.n_estados) + ' estados, ' + esc(x.n_movimientos) + ' movimientos' + (x.codigos ? ' · ' + esc(Object.entries(x.codigos).map(([k, v]) => k + ' ' + v).join(', ')) : '') +
       (x.onedrive_ruta ? ' · <a href="' + esc(x.onedrive_ruta) + '">informe</a>' : '') + '</li>').join('') + '</ul>';
   }

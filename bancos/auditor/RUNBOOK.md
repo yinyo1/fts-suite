@@ -57,8 +57,23 @@ Vive en `bancos/auditor/config.json`:
 Correr sólo la salud: pasos 2 y 4 y después `python -m fts_auditor F evento --alcance ,` (alcance vacío = sólo la sección E,
 sin bajar PDFs). Si todo está VERDE, no registrar ni comentar nada (cerrar en silencio).
 
-## Objetivo 2 (anomalías, clasificación, cotejo con Odoo)
-**No construido** en esta sesión y **apagado**: no corre ni reporta hasta que el Objetivo 1 esté en VERDE, y se activa en otra sesión.
+## Objetivo 2 (issue #365): cotejo con Odoo, anomalías y clasificación
+Corre **en el barrido de las 16:47, después del Objetivo 1 y sólo si éste salió VERDE** (una base que no es fiel a
+los PDFs no se coteja). Parámetros en `config.json` → `obj2` (`activo`, `desde`, umbrales, `jeeves: false`).
+1. `execute_workflow` de `fts_bancos_auditor_obj2_lectura` (trigger `Auditor O2 (entrada)`, body `{}`) y
+   `get_workflow_execution` con `includeData` y `nodeNames ["Postgres - Leer base Obj2 (bancos_auditor)","Code - Odoo compacto"]`
+   (el resultado queda en un archivo). Odoo se lee **sólo** con el nodo Odoo de n8n (credencial `Odoo FTS`), nunca se escribe.
+2. `python -m fts_auditor.obj2_cli foto <archivo> F2 && python -m fts_auditor.obj2_cli auditar F2 barrido_diario`
+   → `resultado_obj2.json`, `informe_obj2.html` (PRIVADO), `publico_obj2.md`.
+3. `python -m fts_auditor.obj2_cli registro F2 barrido_diario --sesion <id>` y `execute_workflow TtQNRBTA3FBmQ9jn`
+   (trigger `Auditor (registrar)`) con `F2/registro_obj2.json`. Se guarda con `objetivo = 2`.
+4. En #365 **sólo** `publico_obj2.md` (conteos, % y execution IDs; nada de montos ni contrapartes).
+
+Qué es ROJO (correo sólo a Esteban): lo **nuevo** desde la auditoría anterior del Objetivo 2 (posible duplicado,
+monto atípico, cargo alto en día inhábil, traspaso sin pareja cuyo mes par sí está, un movimiento que antes estaba
+en Odoo y ya no) y cualquier cifra cuyos **dos caminos** no cuadren. Lo crónico (meses sin capturar en Odoo) es
+AMARILLO y no manda correo. La primera corrida fija la línea base. Patas: 1 cotejo, 2 anomalías, 3 clasificación.
+Jeeves: apagado hasta sus primeros archivos reales (supuesto J2 de #352).
 
 ## Disparo a mano (o Routine nueva desde la UI de claude.ai con los conectores n8n y GitHub)
 Prompt corto, sirve igual para una sesión nueva:
