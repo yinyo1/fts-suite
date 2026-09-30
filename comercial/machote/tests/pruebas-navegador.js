@@ -10254,7 +10254,11 @@ await sembrarMachotes(q);
     for (let i = 0; i < 30 && !abierto; i++) {
       abierto = await q.evaluate(() => {
         const bs = Array.prototype.slice.call(document.querySelectorAll('button, a'));
-        const b2 = bs.find(x => /orden de venta|pasar a orden/i.test(x.textContent || ''));
+        /* V1.48 · el cuadro se abre ahora desde «Datos de la orden». El botón
+         * que decía «Pasar a orden» se llama «Confirmar orden» y lleva al flujo
+         * de confirmación, que es otra cosa. */
+        const b2 = bs.find(x => /orden de venta|pasar a orden|datos de la orden/i
+                                  .test(x.textContent || ''));
         if (!b2) return false; b2.click(); return true;
       });
       if (!abierto) await q.waitForTimeout(200);

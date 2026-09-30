@@ -3715,6 +3715,18 @@
       (G.ConfirmarFlujo && !ajeno(m)   /* confirmar es del DUEÑO, no de quien tiene prestado */
         ? '<button class="btn fantasma" id="btnOrden" title="Elegir la orden, revisar los candados y llegar al paso final">Confirmar orden</button>'
         : '') +
+      /* ⚠️ Y el cuadro de DATOS se queda, con puerta propia.
+       * Al mandar «Confirmar orden» al flujo nuevo, el cuadro viejo —donde se
+       * CAPTURAN el contacto, la decisión de IVA, la orden de compra y el
+       * anticipo— se quedó sin forma de abrirse. No es un detalle: los mensajes
+       * del checklist terminan en «Arriba, en DATOS», o sea que mandan a una
+       * pantalla a la que ya no se podía llegar, y los seis candados nunca
+       * habrían pasado. Lo cazaron 28 pruebas viejas; el diff se veía bien.
+       * Va en secundario: confirmar es lo que se viene a hacer, capturar es lo
+       * que hay que haber hecho antes. */
+      (G.MachoteOrden && !ajeno(m)
+        ? '<button class="btn fantasma" id="btnDatosOrden" title="Capturar el contacto, el IVA, la orden de compra y el anticipo">Datos de la orden</button>'
+        : '') +
       /* PRESTAR es del dueño y sólo del dueño (decisión 1 de la propuesta:
        * quien sabe que no puede meterle mano ahora es él). Y sólo tiene
        * sentido si la cotización ya llegó al servidor: prestar algo que
@@ -3819,6 +3831,11 @@
      * es al revés. Si cada camino armara su propio flujo, en un mes dirían
      * cosas distintas de la misma verdad (CLAUDE.md §20 #4). */
     if (bo) bo.onclick = () => G.ConfirmarFlujo.abrir({ desde: 'machote', machote: m });
+    const bDatos = $('#btnDatosOrden');
+    /* El segundo argumento es cómo se GUARDA. La pantalla puede cambiar el
+     * cliente cuando falta, y sin esto ese cambio se quedaría en memoria:
+     * `tocado` es lo que lo marca para subir. */
+    if (bDatos) bDatos.onclick = () => G.MachoteOrden.abrir(m, (mm) => tocado(mm));
     const bp = $('#btnPrestar');
     if (bp) bp.onclick = () => G.MachotePrestamo.abrir(m, personasDelEquipo(), vMachote);
     const bc = $('#btnCeder');
