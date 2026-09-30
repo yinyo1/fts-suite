@@ -92,15 +92,18 @@
       // Por qué importa: sin dirección no hay enlace profundo, ni marcador, ni
       // botón atrás, y un panel con dos entradas (Finanzas y Operaciones) no se
       // puede expresar sin ella — terminarías con dos copias que se separan.
+      // `parent` (#370): el renglón es un SUBMENÚ de otro módulo y se pinta sangrado debajo de él.
+      // Aditivo como `url`: sin `parent`, la clase no cambia.
+      var cls = 'nav-item' + (m.parent ? ' nav-sub' : '');
       if (m.url) {
-        html += '<a class="nav-item" data-route="' + esc(m.id) + '" href="' + esc(m.url) + '">' +
+        html += '<a class="' + cls + '" data-route="' + esc(m.id) + '" href="' + esc(m.url) + '">' +
                   '<span class="state-dot ' + mode + '" title="' + mode + '"></span>' +
                   '<span class="icon">' + esc(m.icon || '') + '</span>' +
                   '<span>' + esc(m.name) + '</span>' +
                 '</a>';
         return;
       }
-      html += '<div class="nav-item" data-route="' + esc(m.id) + '" onclick="FinRouter.navigate(\'' + esc(m.id) + '\')">' +
+      html += '<div class="' + cls + '" data-route="' + esc(m.id) + '" onclick="FinRouter.navigate(\'' + esc(m.id) + '\')">' +
                 '<span class="state-dot ' + mode + '" title="' + mode + '"></span>' +
                 '<span class="icon">' + esc(m.icon || '') + '</span>' +
                 '<span>' + esc(m.name) + '</span>' +
