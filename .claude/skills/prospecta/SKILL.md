@@ -59,6 +59,33 @@ Llamarlos es tuyo, y llamarlos de verdad:
 > y **nunca un correo**, así que es fuente de **contactos**, no un ancla. Por eso
 > `outlook_hilos_por_nombre` **no** está en `FUENTES_ANCLA`.
 
+> ### 🚦 Las tres reglas que #355 y #361 dejaron, en una lista
+>
+> **1. El orden interno primero, y ya es compuerta.** `buscar` rechaza una consulta
+> de red con M0, M0b o M0c abiertos. No la rodees cerrando los módulos en falso: un
+> hueco declarado (`--estado sin_acceso --razon "..."`) la abre y queda escrito.
+>
+> **2. Cuando la ficha declara el límite, no insistas.** Dos avisos distintos, y la
+> respuesta es la misma —**pasar a Sales Navigator con la búsqueda armada que la
+> ficha entrega**— pero lo que dicen no es lo mismo:
+>
+> | El aviso dice | Qué pasó | Qué hacer |
+> |---|---|---|
+> | «**Esta empresa no aparece en el buscador público**» | 12 consultas, las 3 formas, **cero perfiles de la empresa** | Cierra M5 y pasa las **cuatro** familias a SN. Seguir aquí no puede traer nada |
+> | «**Falta con quien hablar en N familias**» | La empresa **sí** está indexada; esas familias quedaron vacías | Pasa a SN **sólo esas N familias**. Las que ya tienen a alguien no se vuelven a buscar: SN es el trabajo caro |
+>
+> El segundo es el caso **normal**, no el raro. Medido en Ragasa: el buscador
+> devuelve perfiles de la empresa y no devuelve los de planta.
+>
+> **3. La constancia de Odoo vence a los siete días — reléela antes de exportar.**
+> `datos/odoo-declarado.json` lleva su fecha. Pasada la vigencia, `exportar_etapa1`
+> marca **todas** las filas `SIN_CONSULTAR_A_ODOO` y no se sube nada. Y cuando la
+> leas, **busca los leads por nombre del lead, no sólo por `partner_id`**: en #361
+> eso destapó tres oportunidades —una con cotización enviada y una ganada— que
+> cuelgan del partner de un **intermediario**, porque FTS le vende a esas plantas a
+> través de un proveedor de tratamiento. Buscar sólo por partner las había declarado
+> «sin nada en Odoo».
+
 > ### 🚦 El buzón y Odoo van ANTES de gastar una consulta web. Ahora es compuerta.
 >
 > `buscar` **rechaza** una consulta de red mientras M0, M0b o M0c sigan abiertos.
@@ -636,6 +663,37 @@ copia de OneDrive quedó vieja, y una copia vieja es peor que ninguna: él se la
 manda a Rissia creyendo que es la última. Vuelve a subirla.
 
 ---
+
+## 5b · El motor 3 con personas adentro (semana 1)
+
+Tres comandos, y ninguno lo corre Pablo ni Rissia: ellos sólo abren archivos.
+
+```bash
+# los cuatro papeles de la semana, con el sha256 de cada uno
+python3 herramientas/paquete_semana1.py --salida <dir> --sube-el 2026-09-30
+
+# el puente: lee la hoja de OneDrive y escribe los toques en Postgres
+python3 herramientas/cargar_toques.py --hoja <el .xlsx> --socket <dir> --puerto <p>
+python3 herramientas/cargar_toques.py --hoja <el .xlsx> --ensayo       # valida, no escribe
+python3 herramientas/cargar_toques.py --hoja <el .xlsx> --exigir-todo  # o todas, o ninguna
+
+# el tablero del viernes
+python3 herramientas/tablero.py --socket <dir> --puerto <p>
+```
+
+**La hoja de toques no lleva nombres, y no es pudor.** El lazo mide (cuenta,
+planta, puesto, canal, resultado, fecha); el nombre no entra en ninguna de las
+cuentas. Y la hoja viaja por OneDrive, que es el canal que nadie audita. Si una
+celda de `puesto` trae un correo o algo que parece un nombre completo, `cargar_toques`
+**rechaza esa fila** y dice por qué.
+
+**Si el tablero avisa de un toque sin destinatario, no lo ignores.** En la tabla de
+canales se ve igual que trabajo hecho, y no lo es. Ya pasó una vez: una carga que
+se cayó entre dos escrituras dejó uno. Ahora una fila entra completa o no entra,
+pero el aviso queda como reja.
+
+**La primera semana corre `--exigir-todo`.** Una hoja nueva se llena mal, y es
+mejor arreglar las siete filas juntas que quedarse con tres cargadas y cuatro no.
 
 ## Lo que tú decides, y el código no puede
 

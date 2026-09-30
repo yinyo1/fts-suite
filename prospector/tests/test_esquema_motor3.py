@@ -191,12 +191,32 @@ def _fresco(pg):
     assert r.returncode == 0, r.stderr
 
 
+# Un fallo de CONEXION no dice nada sobre una regla del esquema. El cluster de
+# estas pruebas es desechable y en un contenedor se lo puede llevar la memoria a
+# media corrida; cuando eso pasa, `psql` devuelve no-cero y el mensaje habla del
+# socket, no de un CHECK. Una prueba que se pone roja por eso es una prueba FLOJA
+# -- y una floja entrena a ignorar el rojo, que es peor que no tener la prueba--.
+# Paso una vez en #365, con tres clusters levantados a la vez.
+NO_ES_LA_REGLA = ("could not connect", "no such file or directory",
+                  "connection to server", "server closed the connection",
+                  "the database system is")
+
+
+def _se_murio_el_cluster(r) -> bool:
+    e = (getattr(r, "stderr", "") or "").lower()
+    return any(t in e for t in NO_ES_LA_REGLA)
+
+
 def _psql(pg, sql, archivo=None):
     sock, puerto = pg
     cmd = ["psql", "-h", sock, "-U", "postgres", "-p", puerto, "-tA",
            "-v", "ON_ERROR_STOP=1"]
     cmd += ["-f", archivo] if archivo else ["-c", sql]
-    return subprocess.run(cmd, capture_output=True, text=True)
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode and _se_murio_el_cluster(r):
+        pytest.skip(f"el Postgres de prueba dejo de contestar: "
+                    f"{r.stderr.strip()[:120]}")
+    return r
 
 
 def test_el_esquema_aplica_en_postgres_de_verdad(pg):

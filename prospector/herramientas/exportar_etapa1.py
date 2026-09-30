@@ -218,10 +218,20 @@ def estado_en_odoo(empresa: str, declarado: dict, hoy: date) -> tuple[str, str]:
                   if str(l.get("etapa", "")).strip().lower() not in iniciales]
     if trabajados:
         l = trabajados[0]
+        # BAJO QUE PARTNER cuelga el lead, cuando no es el de la planta. Se
+        # descubrio en #361: tres oportunidades de estas cuentas viven bajo el
+        # partner de un INTERMEDIARIO -- FTS le vende a esas plantas a traves de
+        # un proveedor de tratamiento-- y la lectura anterior no las vio porque
+        # busco solo por `partner_id` de la planta. Quien vaya a enlazar la
+        # tarjeta necesita saberlo: el lead no esta donde lo va a buscar.
+        bajo = (l.get("bajo_partner") or "").strip()
+        donde = (f" OJO: ese lead NO cuelga del partner de la planta, cuelga de "
+                 f"{bajo}. Buscalo por su id, no por la cuenta." if bajo else "")
         return (CON_OPORTUNIDAD,
                 f"lead {l.get('id')} del {l.get('fecha')} en etapa "
                 f"«{l.get('etapa')}», que NO es una etapa inicial: alguien lo "
-                f"movio. Enlaza la tarjeta a ese lead en vez de crear otro")
+                f"movio. Enlaza la tarjeta a ese lead en vez de crear otro."
+                + donde)
     recientes = []
     for l in leads:
         try:

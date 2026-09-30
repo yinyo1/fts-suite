@@ -220,7 +220,15 @@ def test_las_tres_compuertas_dicen_sin_datos_en_la_semana_1(base):
     import cargar_piloto as cp
     from flujo.aprendizaje import los_tres_lazos
     from flujo.base_motor3 import cierres_para_el_aprendizaje
-    cp.cargar(base)
+    # Si el cluster se murio ENTRE la comprobacion del fixture y esta linea, lo
+    # que falla es el contenedor, no la compuerta. Se salta, no se pone rojo:
+    # paso en #365 con tres clusters levantados a la vez.
+    try:
+        cp.cargar(base)
+    except SinPostgres as e:
+        if not base.vive():
+            pytest.skip(f"el Postgres de prueba dejo de contestar: {str(e)[:120]}")
+        raise
     cierres = cierres_para_el_aprendizaje(base)
     assert cierres == []
     r = los_tres_lazos(cierres)

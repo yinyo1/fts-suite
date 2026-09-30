@@ -3,6 +3,137 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.19.0 — 2026-09-30 (tercer turno del dia)
+
+El motor 3 listo para recibir a dos personas que no van a abrir la herramienta:
+`supervisor` en el vocabulario, los cuatro papeles de la semana 1 generables de un
+comando, el puente Excel -> Postgres, y el tablero del viernes. **1,166 pruebas**
+(eran 1,137).
+
+### `supervisor` es interlocutor de valor, y las dos rejas que eso destapo
+
+Decision de Esteban en #363, sobre un caso real: un supervisor de planta que esta
+corriendo una prueba de producto CON FTS es interlocutor de valor, no contexto.
+`supervisor` entra a la familia de mantenimiento/planta en `ficha.INTERLOCUTOR`.
+
+Se midio antes de aplicar: en el corpus real el cambio mueve **1** puesto de
+`contexto` a `valor` en la corrida humana y **1** en los que salieron del buzon.
+Poco, y el costo esta del otro lado: `supervisor` suelto tambien caza supervisores
+que no deciden nada de esto. Dos de esas colisiones eran defectos viejos de la
+lista negra, alcanzables recien ahora, y se cerraron:
+
+- `reclutami` — la lista tenia `reclutad`, que no caza «Reclutamiento».
+- `hr` — tenia `"rh "` (la forma en espaniol, con espacio, o sea solo al final del
+  titulo) y no la inglesa suelta. Sin esto «HR Supervisor» salia como interlocutor.
+
+Las **cinco** colisiones que quedan (ventas, call center, nomina, seguridad
+patrimonial, produccion) estan declaradas en `tests/test_supervisor_es_valor_365.py`
+como decision pendiente. No se agregaron a una lista que significa «nunca decide
+nada» sin que Esteban lo decida.
+
+### `reunion_agendada`: el mejor desenlace no se aplana dentro de «contesto»
+
+Nuevo valor del enum `resultado_de_toque`. Podia haber entrado dentro de
+`respuesta_positiva` y NO se hizo: una reunion agendada es el mejor desenlace que el
+piloto puede producir, y meterla dentro de «contesto» tira justo la senal que los
+tres lazos miden. Para que el proximo valor no se pierda en uno de cuatro sitios,
+las tuplas repetidas de `aprendizaje.py` son ahora `CUENTAN_COMO_RESPUESTA` y
+`EL_CANAL_FUNCIONO`.
+
+### Los cuatro papeles de la semana 1, de un comando
+
+`herramientas/paquete_semana1.py --salida DIR --sube-el AAAA-MM-DD` emite la
+tarjeta de Hershey, la hoja de una pagina para Pablo, los seis encargos de la
+semana y la hoja de toques en Excel, **con el sha256 de cada uno**. Regenerable por
+diseno: tres veces en turnos anteriores un papel escrito a mano quedo viejo en
+silencio, y el hash es lo que deja saber, dentro de un mes, cual version se leyo.
+
+### El registro de toques sin linea de comandos
+
+`registro-de-toques.xlsx` — siete columnas, dos con lista desplegable, una segunda
+hoja de instrucciones — y `herramientas/cargar_toques.py`, que la lee y escribe los
+toques. **Sin nombres en la hoja**: puesto y cuenta bastan para el lazo, y la hoja
+viaja por OneDrive, que es el canal que nadie audita. Valida canal, resultado,
+fecha, que la cuenta exista, que tenga tarjeta ABIERTA, y rechaza una celda de
+`puesto` que traiga un correo o algo que parezca un nombre completo.
+
+**Una fila es UNA sola sentencia.** La primera version mandaba tres llamadas de
+`psql` por fila — contacto, toque, destinatario—, o sea tres transacciones. La
+prueba de este turno se cayo entre la segunda y la tercera y dejo en la base un
+`toque` sin destinatario: una fila que dice que se toco a alguien sin decir a
+quien, y que en el tablero se ve **igual que trabajo hecho**. Ahora las tres
+escrituras van en una sentencia con CTEs que modifican datos: la fila entra
+completa o no entra. Probado con un `resultado` que el enum no conoce — la base lo
+rechaza y los conteos no se mueven—.
+
+### El tablero del viernes
+
+`herramientas/tablero.py` lee Postgres y pinta en una pantalla: tarjetas por estado
+(con `vencida_sin_trabajar` en su propio renglon, porque sumarla a `cerrada`
+esconde el unico numero que mide al equipo en vez de medir al radar), toques por
+canal y resultado, lo que vence esta semana, las tres compuertas del aprendizaje, y
+**anomalias**: el toque sin destinatario, un contacto con nombre (la hoja nunca
+pone nombres: si hay uno entro por otra via), y las tarjetas abiertas que cuelgan
+de una senal sin fecha, cuya caducidad se conto desde el dia de la carga y por eso
+se ven mas frescas de lo que son.
+
+Sin base **no pinta ceros**: un tablero de ceros se lee igual que una semana sin
+trabajo. Ninguna consulta pide el nombre de nadie, y una prueba mira el SQL para
+que siga siendo cierto cuando alguien agregue una seccion.
+
+### Dos pruebas flojas, arregladas de paso
+
+Con tres clusters de Postgres levantados a la vez, una corrida de la suite dejo
+**2 rojas y 7 saltadas** donde antes hubo 1,166 verdes; en aislado las dos pasan.
+La causa no era el esquema: el cluster desechable se murio a media prueba y un
+fallo de CONEXION se estaba leyendo como si la regla no hubiera disparado. Ahora
+`_psql` y la carga del piloto distinguen las dos cosas y **se saltan** cuando el
+contenedor se llevo el cluster. Una prueba que se pone roja por eso entrena a
+ignorar el rojo, que es peor que no tenerla.
+
+## 0.18.0 — 2026-09-30 (segundo turno del dia)
+
+La cobertura funcional medida, la tabla de los 32 cerrada, Odoo releido con tres
+oportunidades que la lectura anterior no vio, y la ficha declarando el limite POR
+FAMILIA. **1,127 pruebas** (eran 1,113).
+
+### La ficha declara el limite por FAMILIA, no todo-o-nada
+
+`ficha.familias_sin_interlocutor` + `aviso_de_familias_sin_interlocutor`. El aviso
+de #353 solo sabia decir «esta empresa no aparece en el buscador publico», y la
+correccion de #355 mostro que el caso NORMAL es intermedio: en Ragasa el buscador
+si devuelve perfiles de la empresa y lo que no devuelve son los de planta. Para ese
+caso la ficha no tenia nada que decir, asi que se veia completa -- con contactos,
+con senal-- sin avisar de que faltaba justo el que firma la orden.
+
+Ahora lo dice por familia y la busqueda de Sales Navigator sale **acotada a las
+familias vacias**: mandar a la vendedora a buscar las cuatro cuando dos ya tienen a
+alguien es mandarla a repetir el trabajo caro. Los dos avisos no se pisan: cuando la
+empresa no esta indexada, este se calla y habla el otro, que dice mas.
+
+### Odoo releido: tres oportunidades que no se vieron, y el punto ciego que las escondia
+
+La constancia del 29-sep busco leads **solo por `partner_id`** de la planta. FTS le
+vende a varias de estas cuentas **a traves de un intermediario**, asi que la
+contraparte del lead es el intermediario y el lead no cuelga del partner de la
+planta. Buscando tambien por nombre del lead aparecieron:
+
+* **Ragasa** — cotizacion ENVIADA de sep-2025, con fecha limite may-2026. La lectura
+  anterior la declaro «sin lead ni oportunidad».
+* **Nemak** — un PROYECTO GANADO de ago-2025 y una oportunidad calificada de
+  abr-2026. Tampoco tiene partner propio.
+* **Amazon** — un lead nuevo del 29-sep, creado despues de la lectura anterior. Y
+  «Amazon US» es un partner distinto con `customer_rank 1`: los dos partners de
+  Amazon no son un duplicado, son dos papeles.
+
+Es el MISMO punto ciego que `ubicacion-de-proyectos.json` documenta para Coficab
+(#310): la contraparte comercial apunta al distribuidor, no a la planta. El mensaje
+del exportador ahora lo dice -- *«ese lead NO cuelga del partner de la planta»*--
+porque quien vaya a enlazar la tarjeta no lo va a encontrar donde lo busque.
+
+**El mecanismo de vencimiento hizo su trabajo** en el camino: con la constancia del
+29-sep vencida al 20-oct, todas las filas salian `SIN_CONSULTAR_A_ODOO`.
+
 ## 0.17.0 — 2026-09-30
 
 Las cuatro reglas aplicadas, el detector temprano cortando, el exportador

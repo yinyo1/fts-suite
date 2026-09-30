@@ -61,6 +61,17 @@ DESTINOS = (CADUCA, RECICLA, EVOLUCIONA)
 # y repetirla aqui la dejaria desincronizada en la segunda correccion.
 RESULTADOS_DE_TOQUE = tuple(sorted(set(Dato.DESMIENTEN) | set(Dato.NO_DESMIENTEN)))
 
+# QUE CUENTA COMO «CONTESTO», en un solo lugar (#365). Estaba repetido como tupla
+# literal en cuatro sitios de este archivo, y al agregar `reunion_agendada` los
+# cuatro habrian tenido que cambiar a mano: el que se olvidara habria dejado una
+# reunion contando como silencio, que es el peor error posible en la metrica que
+# mide si el motor 3 sirve.
+CUENTAN_COMO_RESPUESTA = ("respuesta_positiva", "respuesta_negativa",
+                          "reunion_agendada")
+# Y que cuenta como que el CANAL funciono. Una negativa es respuesta y NO es exito:
+# prueba que el dato estaba bien y que el negocio dijo no.
+EL_CANAL_FUNCIONO = ("respuesta_positiva", "reunion_agendada")
+
 # ------------------------------------------------------------- las compuertas
 # CUANTAS tarjetas cerradas hacen falta antes de que cada lazo pueda mover algo.
 #
@@ -301,7 +312,7 @@ def lazo2_motor2(cierres: list[dict]) -> dict:
             canal = toque.get("canal") or "?"
             res = toque.get("resultado") or ""
             por_canal[canal]["usado"] += 1
-            if res == "respuesta_positiva":
+            if res in EL_CANAL_FUNCIONO:
                 por_canal[canal]["funciono"] += 1
             if toque.get("nivel_confianza_del_correo") == "candidato":
                 patrones[llave]["usados"] += 1
@@ -425,7 +436,7 @@ def lazo3_motor3(cierres: list[dict]) -> dict:
             d["caducaron_y_reciclaron"] += 1
         toques = t.get("toques") or []
         for i, x in enumerate(toques, 1):
-            if x.get("resultado") in ("respuesta_positiva", "respuesta_negativa"):
+            if x.get("resultado") in CUENTAN_COMO_RESPUESTA:
                 toques_hasta_responder.append(i)
                 break
 
@@ -536,8 +547,7 @@ def expediente_de_cierre(paquete: dict, destino: str, toques: list[dict],
             "resultado": res,
         })
     primera = next((x for x in limpios
-                    if x["resultado"] in ("respuesta_positiva",
-                                          "respuesta_negativa")), None)
+                    if x["resultado"] in CUENTAN_COMO_RESPUESTA), None)
     dias = None
     if primera and primera.get("fecha") and limpios and limpios[0].get("fecha"):
         try:
@@ -547,7 +557,7 @@ def expediente_de_cierre(paquete: dict, destino: str, toques: list[dict],
         except ValueError:
             dias = None
     funciono = next((x["canal"] for x in limpios
-                     if x["resultado"] == "respuesta_positiva"), None)
+                     if x["resultado"] in EL_CANAL_FUNCIONO), None)
     return {
         "version": 1,
         "emitido": datetime.now(timezone.utc).isoformat(),

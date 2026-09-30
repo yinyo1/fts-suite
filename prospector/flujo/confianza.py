@@ -553,6 +553,9 @@ class Dato:
                                "correcta. Es la mejor prueba de que el dato "
                                "estaba bien"),
         "respuesta_positiva": ("confirma el dato en vez de desmentirlo"),
+        "reunion_agendada": ("confirma el dato Y el negocio: no solo llego al "
+                             "buzon correcto, la persona acepto verse. Es el "
+                             "desenlace mas fuerte que un toque puede tener"),
     }
 
     def desmentir(self, que_paso: str, de_donde: str = "motor3_crm_odoo",
@@ -1146,7 +1149,7 @@ CERCANIA_CONTEXTO = 100
 # ya los nombraba contexto en prosa (§5: "IT o RH que solo mencionan la palabra
 # son contexto, no target"); aqui pasan a ser una compuerta.
 PUESTOS_NUNCA_DECISORES = (
-    "reclutad", "atraccion de talento", "atracción de talento",
+    "reclutad", "reclutami", "hr", "atraccion de talento", "atracción de talento",
     "recursos humanos", "capital humano", "rh ", "talent acquisition",
     "recruit", "headhunt",
     # DEFECTO B8 de #346: la lista estaba en ESPANOL y la mitad de los titulos de
@@ -1180,6 +1183,19 @@ PUESTOS_NUNCA_DECISORES = (
 #: de B6, y esta escrita como lista y no como regla adivinada desde el formato.
 TRONCOS_DE_LA_LISTA_NEGRA = (
     "reclutad",      # reclutador, reclutadora, reclutadores
+    "reclutami",     # reclutamiento. NO lo cazaba `reclutad` -- «reclutamiento»
+                     # tiene «reclutam», no «reclutad»-- y hasta #363 no importaba
+                     # porque ningun puesto de reclutamiento caia en una familia
+                     # de interlocutor. Al entrar `supervisor` si importa:
+                     # «Supervisor de Reclutamiento» habria salido como
+                     # interlocutor de MANTENIMIENTO. El defecto es viejo y
+                     # existia solo; la decision de #363 lo volvio alcanzable.
+    "hr",            # hr, hrbp, hris, hrm. La lista tenia `"rh "` -- la forma en
+                     # espaniol, y con espacio al final, asi que solo cazaba al
+                     # FINAL del titulo-- y no tenia la inglesa suelta. Sin esto
+                     # «HR Supervisor» salia como interlocutor de MANTENIMIENTO
+                     # despues de #363. Ninguna palabra industrial empieza por
+                     # `hr`, asi que el tronco no tiene con que chocar.
     "headhunt",      # headhunter, headhunting
     "recruit",       # recruiter, recruiting, recruitment
     "becari",        # becario, becaria, becarios

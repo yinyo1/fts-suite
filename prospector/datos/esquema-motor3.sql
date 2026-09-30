@@ -74,7 +74,13 @@ CREATE TYPE resultado_de_toque AS ENUM (
     -- los que NO desmienten nada
     'sin_respuesta',          -- el silencio NO es contra-evidencia
     'respuesta_negativa',     -- habla del NEGOCIO: el correo llego y era quien
-    'respuesta_positiva'      -- confirma el dato
+    'respuesta_positiva',     -- confirma el dato
+    -- REUNION AGENDADA. Agregado en #365, al armar la hoja que Rissia llena.
+    -- Podria haberse metido dentro de `respuesta_positiva` y NO se hizo: una
+    -- reunion es el mejor desenlace que el piloto puede producir, y aplanarla
+    -- dentro de «contesto» tira justo la senal que los tres lazos necesitan para
+    -- decir que canal convierte. Cuenta como respuesta y NO desmiente nada.
+    'reunion_agendada'
 );
 
 CREATE TYPE destino_de_tarjeta AS ENUM ('caduca', 'recicla', 'evoluciona');
