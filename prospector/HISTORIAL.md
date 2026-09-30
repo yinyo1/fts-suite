@@ -1784,3 +1784,60 @@ Cero escrituras a Odoo —sólo lectura— · cero Lusha · purga no ejecutada �
 `fts-mcp-odoo` intacto · la planilla sólo en sesión · sin datos personales en el repo
 ni en el issue. La ficha de Ragasa se generó con `nombre=None` en los dos contactos:
 en una corrida real el agente tendría los nombres del buzón, y aquí no entran.
+
+---
+
+# #368 (cierre) — El motor 3 recibe a dos personas, y una fila entra completa o no entra
+
+`0.19.0` · commit `efe2a07` · **1,166 pruebas** (eran 1,137). Cierre del turno de #363.
+
+## «supervisor» aplicado, medido de los dos lados
+
+Entra a la familia de mantenimiento/planta por decisión de Esteban. Se midió quitando
+la palabra del vocabulario en caliente y reclasificando el mismo corpus: **2 puestos
+pasan de contexto a valor** — 1 en la planilla de la corrida humana («Packing
+Supervisor»), 1 en los que salieron del buzón («Supervisor de planta»)—. Ninguno va en
+el otro sentido.
+
+El costo estaba del otro lado, y al medirlo salieron **dos defectos viejos** que el
+cambio volvió alcanzables: `reclutami` (la lista tenía `reclutad`, que no caza
+«Reclutamiento») y `hr` suelto (estaba sólo como `"rh "`, con espacio, o sea nada más
+al final del título). Los dos cerrados. Las **cinco** colisiones que quedan — ventas,
+call center, nómina, seguridad patrimonial, producción— están declaradas en la prueba
+como decisión pendiente: no metí «ventas» ni «producción» a una lista que significa
+«nunca decide nada» sin que Esteban lo decida.
+
+## El defecto que la prueba de la carga encontró
+
+La primera versión de `cargar_toques` mandaba **tres llamadas de `psql` por fila**
+—contacto, toque, destinatario—, o sea tres transacciones. La prueba se cayó entre la
+segunda y la tercera y dejó en la base un `toque` **sin destinatario**: una fila que
+dice que se tocó a alguien sin decir a quién, y que en el tablero del viernes se ve
+igual que trabajo hecho.
+
+Corrijo lo que dije mientras auditaba: atribuí ese toque huérfano a
+`cargar_piloto.verificar_reglas`. No era de ahí — `cargar_piloto` corrido en limpio
+deja `toque = 0`, verificado—; era de la propia carga a medias.
+
+Ahora **una fila es una sola sentencia**, con CTEs que modifican datos: entra completa
+o no entra. Probado empujando un `resultado` que el enum no conoce; la base lo rechaza
+y los conteos no se mueven. Y el aviso queda como reja: la carga y el tablero cuentan
+los toques sin destinatario y lo dicen.
+
+## Lo que el tablero destapó en su primera corrida
+
+**5 de las 6 tarjetas abiertas cuelgan de una señal sin fecha**, así que su caducidad
+se contó desde el día de la carga y no desde el hecho: se ven más frescas de lo que
+son y el orden de trabajo sale mal. Estaba en la vista `senal_incompleta` desde #359 y
+nadie lo miraba; ahora sale cada viernes hasta que se fechen.
+
+## Restricciones del turno
+
+Cero escrituras a Odoo · cero Lusha · purga no ejecutada · `fts-mcp-odoo` intacto
+(`5c4a23c`) · la planilla sólo en sesión · sin datos personales en el repo ni en el
+issue. Ni la hoja de toques, ni el tablero, ni los cuatro papeles llevan un nombre de
+persona: puesto y cuenta bastan para el lazo, y la hoja viaja por OneDrive, que es el
+canal que nadie audita.
+
+**Sigue abierto y sin tocar:** los datos personales en los issues públicos de este
+repo. Es acción hacia afuera y la decide Esteban.
