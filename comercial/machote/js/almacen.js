@@ -1638,6 +1638,42 @@
     });
   }
 
+  /** Buscar órdenes para LIGAR desde el paso 1 de la Confirmación.
+   *
+   *  Dos formas, y las dos van al mismo endpoint porque preguntan lo mismo con
+   *  distinta llave: por CLIENTE (el caso normal — la orden de esta cotización
+   *  es casi siempre una de las de su cliente) y por NÚMERO (cuando la orden
+   *  está a nombre de otro contacto, o cuando la cotización tiene el cliente
+   *  escrito a mano y no elegido del catálogo, así que no hay `cliente_id`).
+   *
+   *  ⚠️ AQUÍ NO HAY MODO DE EJEMPLO, Y ES A PROPÓSITO. `listarOrdenes` sí lo
+   *  tiene: esa pantalla es de lectura y hay que poder recorrerla. Ésta termina
+   *  en una liga, que es permanente en el rastro. Ofrecer candidatas inventadas
+   *  para ligar es exactamente cómo cuatro machotes de `window.DEMO` acabaron en
+   *  la base de producción (§20 #12c). Si el endpoint no está publicado, esto
+   *  contesta `ENDPOINT_APAGADO` y la pantalla lo dice con nombre y remedio.
+   */
+  function buscarOrdenes(op) {
+    var ses = sesion();
+    if (!ses) {
+      return Promise.resolve({ ok: false, error: 'SIN_SESION',
+        mensaje: 'No hay sesión: vuelve a entrar.' });
+    }
+    var o = op || {};
+    var q = String(o.q == null ? '' : o.q).trim();
+    var cid = (typeof o.cliente_id === 'number' && isFinite(o.cliente_id)) ? o.cliente_id : null;
+    /* El servidor rechaza la búsqueda vacía —traería las 1,546 y ninguna
+     * sirve—, pero decírselo aquí ahorra el viaje y da el mismo mensaje. */
+    if (!q && cid === null) {
+      return Promise.resolve({ ok: false, error: 'BUSQUEDA_VACIA',
+        mensaje: 'Dime el número de la orden o elige el cliente: sin una de las dos, ' +
+                 'la búsqueda traería todas y ninguna te sirve.' });
+    }
+    return postear(URL_ORDENES, {
+      token: ses.token, modo: 'buscar', q: q, cliente_id: cid
+    });
+  }
+
   /** Ligar un machote a una orden. El servidor decide si se puede: aquí no hay
    *  candado, sólo el viaje. */
   function ligarOrden(soId, soName, machoteUuid, principal) {
@@ -1750,6 +1786,7 @@
     evaluarConfirmacion: evaluarConfirmacion,
     confirmar: confirmar,
     listarOrdenes: listarOrdenes,
+    buscarOrdenes: buscarOrdenes,
     copiarDescripcion: copiarDescripcion,
     ligarOrden: ligarOrden,
     desligarOrden: desligarOrden,

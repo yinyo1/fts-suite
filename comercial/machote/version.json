@@ -1,11 +1,17 @@
 {
-  "version": "V1.49",
-  "build": "V1.49",
+  "version": "V1.50",
+  "build": "V1.50",
   "fecha": "2026-09-30",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.50",
+      "pr": null,
+      "fecha": "2026-09-30",
+      "nota": "EL PASO 1 DEJA LIGAR, Y YA NO ES UN CALLEJON (#294 - Estacion 3). Se reporto: al abrir Confirmar orden desde una cotizacion sin orden ligada, el dialogo ENUNCIABA el requisito -esta cotizacion no tiene ninguna orden ligada- y no daba ninguna manera de cumplirlo: solo Cancelar y un Continuar apagado. Es el mismo defecto que cazaron las 28 pruebas cuando el checklist mandaba Arriba, en DATOS a una pantalla que ya no se podia abrir. Un aviso correcto no salva a una pantalla sin salida. || LA PUERTA, EN LOS DOS SENTIDOS. Desde la cotizacion: se busca la orden en el servidor -entre las del cliente, que es el caso normal, o por numero cuando la orden esta a nombre de otro contacto o el cliente esta escrito a mano y no hay cliente_id- y se liga ahi mismo, siguiendo derecho al checklist. Pieza nueva js/orden-buscar.js, el espejo de orden-ligar.js: son dos porque de un lado la lista sale de la libreta local y del otro de Odoo, pero la ESCRITURA sigue siendo una sola -MachoteAlmacen.ligarOrden-. Desde la orden la puerta ya existia (OrdenLigar) y lo que faltaba era ofrecerla en ese punto en vez de mandar a buscarla. || Y SI DE VERDAD NO HAY ORDEN: se dice lo que SI se puede hacer, no un boton muerto. Lo mas probable es que la orden exista y solo le falte la liga -las 1,546 de Odoo se crearon antes de que la liga existiera-; si de verdad no existe, se crea en Odoo como hasta hoy y se vuelve a ligar. Emitirla desde aqui sigue apagado, con su motivo medido: orden-crear-v2 tarda ~29 min y el navegador corta a los 10 s. || COLISION DE CLASES CORREGIDA, Y NACIO DE UN COMENTARIO QUE ADVERTIA DE ELLA. El bloque de V1.48 decia nombres nuevos con prefijo cf- y cf- NO era nuevo: .cf-lista ya existia en la linea 1589 como lista con vinetas que usa confirmar.js. O sea que el paso 1 heredaba padding-left:20px y font-size:13px sin pedirlos, y -mas caro- le metia display:flex a los <ul class=cf-lista> del checklist, que ya existian. Renombrado a p1-, que se busco antes: cero usos. || ENDPOINT comercial/ordenes CONSTRUIDO E INACTIVO (y7... ver el comentario del #294): cuatro modos -listar con paginacion real sobre las 1,546 y el total y las ocultas EXACTOS del conjunto y no de la pagina, buscar para ligar, ligar y desligar-. El conteo sale de leer ids y no de un search_count por JSON-RPC a proposito: el RPC traeria una SEGUNDA llave al workflow y con ella toda la superficie del secreto en la ruta de error. Nace sin publicar: hasta que se publique, la busqueda contesta ENDPOINT_APAGADO y la pantalla lo dice con nombre y remedio en vez de un no se pudo generico."
+    },
     {
       "version": "V1.49",
       "pr": null,

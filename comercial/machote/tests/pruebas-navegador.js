@@ -10472,6 +10472,57 @@ await sembrarMachotes(q);
           try { cuerpo = JSON.parse((init && init.body) || '{}'); } catch (e) {}
           window.__llamadas.push({ url: url, cuerpo: cuerpo });
           if (url.indexOf('/comercial/ordenes') >= 0) {
+            /* ── V1.50 · el endpoint es MULTI-MODO y el doble tiene que serlo ──
+             * Contestar la forma de `listar` a una petición de `buscar` daría
+             * una prueba verde sobre un caso que no ocurre. El doble ramifica
+             * por `modo` igual que el workflow. */
+            const modo = (cuerpo && cuerpo.modo) || 'listar';
+
+            /* El webhook SIN PUBLICAR no contesta un error nuestro: contesta el
+             * 404 con JSON PROPIO de n8n. Se imita tal cual para poder medir que
+             * la pantalla lo traduce en vez de decir «no se pudo». */
+            if (cfg.apagado) {
+              return Promise.resolve({ ok: true, json: () => Promise.resolve(
+                { code: 404, message: 'The requested webhook is not registered.',
+                  hint: 'activate the workflow' }) });
+            }
+
+            if (modo === 'buscar') {
+              if (cfg.buscarVacio) {
+                return Promise.resolve({ ok: true, json: () => Promise.resolve(
+                  { ok: true, ordenes: [], total: 0, truncado: false,
+                    buscar_por: cuerpo.q ? 'numero' : 'cliente' }) });
+              }
+              const cand = [
+                { id: 80000, nombre: 'SO-P-0', estado: 'sent',
+                  cliente: 'Cliente inventado 0', total: 1000, moneda: 'MXN',
+                  fecha: '2026-09-01', ligada: false, ligada_a: null },
+                { id: 80001, nombre: 'SO-P-1', estado: 'sale',
+                  cliente: 'Cliente inventado 1', total: 2000, moneda: 'MXN',
+                  fecha: '2026-09-02', ligada: true, ligada_a: 'COT-0099' }
+              ];
+              return Promise.resolve({ ok: true, json: () => Promise.resolve(
+                { ok: true, ordenes: cand, total: cand.length,
+                  truncado: cfg.truncado === true,
+                  buscar_por: cuerpo.q ? 'numero' : 'cliente' }) });
+            }
+
+            if (modo === 'ligar') {
+              if (cfg.ligarFalla) {
+                return Promise.resolve({ ok: true, json: () => Promise.resolve(
+                  { ok: false, error: 'SIN_EFECTO',
+                    mensaje: 'La base no devolvió el renglón. La liga NO quedó.' }) });
+              }
+              /* Como el real: lo que vuelve es el `RETURNING` de la base. */
+              return Promise.resolve({ ok: true, json: () => Promise.resolve(
+                { ok: true, modo: 'ligar', liga: {
+                    id: 501, machote_id: (cuerpo && cuerpo.machote_id) || 'uuid-146',
+                    odoo_so_id: (cuerpo && cuerpo.odoo_so_id) || 80000,
+                    odoo_so_name: (cuerpo && cuerpo.odoo_so_name) || 'SO-P-0',
+                    principal: true, origen: 'manual', ligado_por: 'zz.prueba',
+                    ligado_at: new Date().toISOString() } }) });
+            }
+
             const desde = (cuerpo && cuerpo.desde) || 0;
             const lim = (cuerpo && cuerpo.limite) || 80;
             const filas = [];
@@ -10507,12 +10558,25 @@ await sembrarMachotes(q);
         return orig(u, init);
       };
     }, { m: MACHOTES_FIXTURE[0] && Object.assign(
-           JSON.parse(JSON.stringify(MACHOTES_FIXTURE[0])), { id: 'M-9146' }),
+           JSON.parse(JSON.stringify(MACHOTES_FIXTURE[0])), { id: 'M-9146' },
+           /* ⚠️ El machote de demostración trae `cliente_id` SIN DEFINIR —el
+            * cliente está escrito a mano—, o sea que el caso por omisión de
+            * estas pruebas es «no se puede buscar por cliente». Se midió al
+            * escribir las pruebas de V1.50: la primera versión esperaba una
+            * búsqueda por cliente que la pantalla, con razón, no hacía. Quien
+            * quiera ese camino pide `cid`. */
+           (o.cid === undefined ? {} : { cliente_id: o.cid })),
          total: (o.total === undefined ? 1546 : o.total),
          extra: o.extra || null, extra0: o.extra0 || null,
          /* Campos extra para la libreta de sincronización: la liga con la orden
           * vive ahí, y sin ella el camino del machote no tiene a qué confirmar. */
-         sync: o.sync || null });
+         sync: o.sync || null,
+         /* V1.50 · banderas del doble multi-modo. Por omisión ninguna cambia
+          * nada: una prueba que no las pide mide lo que medía antes. */
+         apagado: o.apagado === true,
+         buscarVacio: o.buscarVacio === true,
+         truncado: o.truncado === true,
+         ligarFalla: o.ligarFalla === true });
     await q.goto(BASE);
     await q.waitForTimeout(800);
     return q;
@@ -11195,6 +11259,367 @@ await sembrarMachotes(q);
       }
       console.log('    380 · 760 · 900 · 1280 · siete columnas en orden · la caja se desliza, ' +
                   'la página no · Total entero');
+    } finally { await cerrar146(q); }
+  });
+
+  /* ══ V1.50 · EL PASO 1 DEJA LIGAR, Y YA NO ES UN CALLEJÓN ════════════════
+   * Lo reportado: con una cotización SIN orden ligada, el diálogo enunciaba el
+   * requisito y no daba puerta para cumplirlo. La prueba que faltaba es
+   * literalmente el recorrido: sin orden ligada → ligar una → llegar al
+   * checklist. Sin ella, el defecto vuelve el día que alguien toque el paso 1,
+   * porque las pruebas de V1.48 siembran la liga YA puesta (`sync.odoo_so_id`)
+   * y nunca pasan por este camino. */
+  await paso('V1.50 · sin orden ligada el paso 1 DA PUERTA, no sólo el requisito', async () => {
+    /* Sin `sync.odoo_so_id`: es el caso que Esteban abrió. */
+    const q = await ordPagina146({ total: 3 });
+    try {
+      await q.evaluate(() => { location.hash = '#/m/M-9146'; });
+      await q.waitForTimeout(700);
+      const r = await q.evaluate(async () => {
+        const esperar = (ms) => new Promise(r => setTimeout(r, ms));
+        const b = document.getElementById('btnOrden');
+        if (!b) return { error: 'no hay botón en el machote' };
+        b.click();
+        await esperar(300);
+        const velo = document.getElementById('cfVelo');
+        const cuerpo = document.getElementById('cfCuerpo');
+        const puerta = document.getElementById('cfLigar');
+        const cont = document.getElementById('cfOk');
+        return {
+          abierto: !!(velo && velo.classList.contains('abierto')),
+          diceRequisito: /no tiene ninguna orden ligada/i.test(cuerpo ? cuerpo.textContent : ''),
+          hayPuerta: !!puerta,
+          puertaViva: puerta ? !puerta.disabled : null,
+          puertaTexto: puerta ? (puerta.textContent || '').trim() : null,
+          puertaAlto: puerta ? Math.round(puerta.getBoundingClientRect().height) : 0,
+          /* Continuar SIGUE apagado: no hay par que continuar todavía. Que la
+           * puerta exista no significa que el requisito se haya relajado. */
+          continuarApagado: cont ? cont.disabled : null,
+          /* Y se dice qué hacer si de verdad no hay orden, en vez de nada. */
+          hayQueSiNoHay: /todav[íi]a no tiene orden en Odoo/i.test(cuerpo ? cuerpo.textContent : '')
+        };
+      });
+      if (r.error) throw new Error(r.error);
+      if (!r.abierto) throw new Error('el paso 1 no abrió');
+      if (!r.diceRequisito) throw new Error('ya no dice cuál es el requisito');
+      if (!r.hayPuerta)
+        throw new Error('EL CALLEJÓN SIGUE: enuncia el requisito y no hay botón para cumplirlo');
+      if (!r.puertaViva) throw new Error('la puerta está deshabilitada, o sea sigue muerta');
+      if (r.puertaAlto < 40)
+        throw new Error('la puerta mide ' + r.puertaAlto + 'px de alto; el mínimo de toque es 40');
+      if (r.continuarApagado !== true)
+        throw new Error('Continuar debería seguir apagado: no hay par elegido');
+      if (!r.hayQueSiNoHay)
+        throw new Error('no se dice qué hacer si de verdad no existe la orden');
+      console.log('    «' + r.puertaTexto + '» · ' + r.puertaAlto + 'px · ' +
+                  'Continuar sigue apagado · y dice qué hacer si no existe');
+    } finally { await cerrar146(q); }
+  });
+
+  await paso('V1.50 · se busca, se liga y se LLEGA al checklist, sin escribir en Odoo', async () => {
+    /* `cid` = el cliente está ELEGIDO del catálogo, que es el caso normal y el
+     * único en que se puede buscar «sus» órdenes. Sin él la pantalla cae —con
+     * razón— en la búsqueda por número, que se mide en la prueba siguiente. */
+    const q = await ordPagina146({ total: 3, cid: 1247 });
+    try {
+      await q.evaluate(() => { location.hash = '#/m/M-9146'; });
+      await q.waitForTimeout(700);
+      const r = await q.evaluate(async () => {
+        const esperar = (ms) => new Promise(r => setTimeout(r, ms));
+        window.confirm = () => true; window.alert = () => {};
+        const antes = window.__llamadas.length;
+        document.getElementById('btnOrden').click();
+        await esperar(300);
+        document.getElementById('cfLigar').click();
+        await esperar(500);          // abre OrdenBuscar y busca por cliente solo
+
+        const ob = document.getElementById('obVelo');
+        const abrio = !!(ob && ob.classList.contains('abierto'));
+        const radios = document.querySelectorAll('input[name="obO"]');
+        /* Que la que YA está ligada a otra cotización se vea, no se esconda. */
+        const diceYaLigada = /ya tiene ligada COT-0099/i.test(ob ? ob.textContent : '');
+        const okAntes = document.getElementById('obOk');
+        const pedidoAntes = okAntes ? okAntes.disabled : null;
+
+        if (radios[0]) { radios[0].checked = true; radios[0].dispatchEvent(new Event('change')); }
+        await esperar(100);
+        const ok = document.getElementById('obOk');
+        const habilitado = ok ? !ok.disabled : false;
+        if (ok) ok.click();
+        await esperar(700);
+
+        const pu = document.getElementById('puVelo');
+        const ok3 = document.getElementById('puOk');
+        const llamadas = window.__llamadas.slice(antes).map(
+          x => ({ u: String(x.url).split('/webhook')[1] || x.url,
+                  modo: x.cuerpo && x.cuerpo.modo,
+                  so: x.cuerpo && x.cuerpo.odoo_so_id }));
+        return {
+          abrio: abrio, cuantas: radios.length, diceYaLigada: diceYaLigada,
+          pedidoAntes: pedidoAntes, habilitado: habilitado,
+          obCerrado: !!(ob && !ob.classList.contains('abierto')),
+          checklist: !!(pu && pu.classList.contains('abierto')),
+          finalApagado: ok3 ? ok3.disabled : null,
+          llamadas: llamadas
+        };
+      });
+      if (!r.abrio) throw new Error('no abrió el buscador de órdenes');
+      if (r.cuantas !== 2)
+        throw new Error('se esperaban 2 candidatas del servidor, llegaron ' + r.cuantas);
+      if (!r.diceYaLigada)
+        throw new Error('no se enseña que una candidata YA está ligada a otra cotización');
+      if (r.pedidoAntes !== true)
+        throw new Error('«Ligar y continuar» debería nacer apagado hasta elegir una');
+      if (!r.habilitado) throw new Error('elegir una candidata no habilitó el botón');
+      if (!r.obCerrado) throw new Error('el buscador no se cerró después de ligar');
+      if (!r.checklist)
+        throw new Error('NO se llegó al checklist después de ligar: el recorrido se corta');
+      if (r.finalApagado !== true)
+        throw new Error('el paso final tiene que seguir APAGADO');
+      /* Lo que viajó: buscar (lectura) y ligar (escritura en la BASE, no en
+       * Odoo). Lo que NO puede viajar es el modo `confirmar` ni `orden-crear`. */
+      const modos = r.llamadas.map(x => x.modo).filter(Boolean);
+      if (modos.indexOf('buscar') < 0) throw new Error('nunca se preguntó al servidor');
+      if (modos.indexOf('ligar') < 0) throw new Error('nunca se mandó la liga');
+      const prohibidas = r.llamadas.filter(
+        x => x.modo === 'confirmar' || /orden-crear/.test(x.u));
+      if (prohibidas.length)
+        throw new Error('viajó algo que escribe en Odoo: ' + JSON.stringify(prohibidas));
+      console.log('    2 candidatas · «ya tiene ligada» visible · liga → checklist · ' +
+                  'paso final apagado · modos: ' + modos.join(', '));
+    } finally { await cerrar146(q); }
+  });
+
+  await paso('V1.50 · con el cliente escrito a mano SE PUEDE, por número', async () => {
+    /* Éste no es un caso de borde: el machote de demostración trae el cliente
+     * escrito a mano (`cliente_id` sin definir), y `cliente-falta.js` existe
+     * justamente porque pasa seguido. Si la única forma de buscar fuera por
+     * cliente, esas cotizaciones tendrían un callejón MÁS escondido que el que
+     * V1.50 viene a tapar: uno que sólo aparece cuando el cliente no se eligió
+     * del catálogo. */
+    const q = await ordPagina146({ total: 3 });   // sin `cid`, a propósito
+    try {
+      await q.evaluate(() => { location.hash = '#/m/M-9146'; });
+      await q.waitForTimeout(700);
+      const r = await q.evaluate(async () => {
+        const esperar = (ms) => new Promise(r => setTimeout(r, ms));
+        window.confirm = () => true; window.alert = () => {};
+        document.getElementById('btnOrden').click();
+        await esperar(300);
+        document.getElementById('cfLigar').click();
+        await esperar(450);
+        const ob = document.getElementById('obVelo');
+        const t = ob ? ob.textContent : '';
+        const porCli = document.getElementById('obPorCli');
+        const caja = document.getElementById('obQ');
+        /* Arranca en «por número» sin que nadie lo pida, porque es la única que
+         * sirve; y dice POR QUÉ la otra no está disponible. */
+        const res = {
+          arrancaEnNumero: !!caja,
+          cliDeshabilitado: porCli ? porCli.disabled : null,
+          diceElPorque: /escrito a mano/i.test(t),
+          buscoSolo: (window.__llamadas || []).some(
+            x => x.cuerpo && x.cuerpo.modo === 'buscar')
+        };
+        if (caja) {
+          caja.value = '80000';
+          caja.dispatchEvent(new Event('input'));
+          document.getElementById('obGo').click();
+          await esperar(600);
+        }
+        const radios = document.querySelectorAll('input[name="obO"]');
+        res.candidatas = radios.length;
+        res.viajoQ = ((window.__llamadas || []).filter(
+          x => x.cuerpo && x.cuerpo.modo === 'buscar').pop() || {}).cuerpo;
+        if (radios[0]) { radios[0].checked = true; radios[0].dispatchEvent(new Event('change')); }
+        await esperar(80);
+        document.getElementById('obOk').click();
+        await esperar(700);
+        const pu = document.getElementById('puVelo');
+        res.checklist = !!(pu && pu.classList.contains('abierto'));
+        return res;
+      });
+      if (!r.arrancaEnNumero)
+        throw new Error('no arrancó en «por número», que es la única forma que sirve aquí');
+      if (r.cliDeshabilitado !== true)
+        throw new Error('ofrece buscar por cliente cuando no hay cliente_id: va a devolver vacío');
+      if (!r.diceElPorque)
+        throw new Error('deshabilita el botón y no dice por qué — eso es el callejón otra vez');
+      if (r.buscoSolo)
+        throw new Error('buscó sin cliente_id por su cuenta: eso trae vacío y se lee como «no hay»');
+      if (r.candidatas !== 2)
+        throw new Error('la búsqueda por número trajo ' + r.candidatas + ' candidatas');
+      if (!r.viajoQ || String(r.viajoQ.q) !== '80000')
+        throw new Error('no viajó el número tecleado: ' + JSON.stringify(r.viajoQ));
+      if (r.viajoQ.cliente_id !== null)
+        throw new Error('viajó un cliente_id inventado: ' + JSON.stringify(r.viajoQ.cliente_id));
+      if (!r.checklist) throw new Error('no se llegó al checklist');
+      console.log('    arranca por número · dice por qué · q=80000 · cliente_id null · ' +
+                  '2 candidatas · llega al checklist');
+    } finally { await cerrar146(q); }
+  });
+
+  await paso('V1.50 · con el endpoint SIN PUBLICAR se dice eso, con su remedio', async () => {
+    /* La trampa que esto mide: el 404 de un webhook sin publicar es JSON de
+     * n8n, no un error nuestro. Sin traducirlo, la pantalla dice «no se pudo
+     * contactar al servidor» y quien lo lee concluye que su cotización tiene
+     * algo malo — que es justo lo que pasó con la vista de órdenes. */
+    const q = await ordPagina146({ total: 3, apagado: true, cid: 1247 });
+    try {
+      await q.evaluate(() => { location.hash = '#/m/M-9146'; });
+      await q.waitForTimeout(700);
+      const r = await q.evaluate(async () => {
+        const esperar = (ms) => new Promise(r => setTimeout(r, ms));
+        document.getElementById('btnOrden').click();
+        await esperar(300);
+        document.getElementById('cfLigar').click();
+        await esperar(600);
+        const ob = document.getElementById('obVelo');
+        const t = ob ? ob.textContent : '';
+        return {
+          abrio: !!(ob && ob.classList.contains('abierto')),
+          diceApagado: /no est[áa] encendida en el servidor/i.test(t),
+          nombraElEndpoint: /comercial\/ordenes/.test(t),
+          diceQuienPuede: /administra la suite|un clic/i.test(t),
+          /* Y NO dice la mentira cómoda: no culpa a la cotización ni a la red. */
+          culpaALaRed: /no se pudo contactar al servidor/i.test(t),
+          hayCandidatas: document.querySelectorAll('input[name="obO"]').length
+        };
+      });
+      if (!r.abrio) throw new Error('no abrió el buscador');
+      if (!r.diceApagado) throw new Error('no dice que el endpoint no está encendido');
+      if (!r.nombraElEndpoint) throw new Error('no nombra cuál endpoint falta');
+      if (!r.diceQuienPuede) throw new Error('no dice quién lo puede encender');
+      if (r.culpaALaRed) throw new Error('echa la culpa a la red, que no es la causa');
+      if (r.hayCandidatas)
+        throw new Error('ofreció ' + r.hayCandidatas + ' candidatas inventadas para LIGAR; ' +
+                        'el modo de ejemplo no llega aquí a propósito (§20 #12c)');
+      console.log('    dice el motivo · nombra comercial/ordenes · dice quién lo enciende · ' +
+                  'cero candidatas inventadas');
+    } finally { await cerrar146(q); }
+  });
+
+  await paso('V1.50 · el checklist DA PUERTA a DATOS, que es donde manda', async () => {
+    /* MEDIDO, no supuesto: de los 8 candados que frenan en el caso peor, SIETE
+     * dicen «Arriba, en DATOS», y dentro del cuadro sólo había ×, Cancelar y el
+     * Confirmar apagado. El botón de DATOS del machote existe y está visible,
+     * pero `elementFromPoint` sobre su centro devuelve `puVelo`: el velo se come
+     * el clic. La pantalla que el mensaje nombra estaba TAPADA por la que lo
+     * dice. Mismo defecto del paso 1, un cuadro más adentro. */
+    const q = await ordPagina146({ total: 3,
+      sync: { odoo_so_id: 80000, odoo_so_name: 'SO-P-0' } });
+    try {
+      await q.evaluate(() => { location.hash = '#/m/M-9146'; });
+      await q.waitForTimeout(700);
+      const r = await q.evaluate(async () => {
+        const esperar = (ms) => new Promise(r => setTimeout(r, ms));
+        document.getElementById('btnOrden').click();
+        await esperar(300);
+        const radio = document.querySelector('input[name=cfSel]');
+        if (radio) { radio.checked = true; radio.dispatchEvent(new Event('change')); }
+        await esperar(80);
+        document.getElementById('cfOk').click();
+        await esperar(600);
+
+        const velo = document.getElementById('puVelo');
+        if (!velo || !velo.classList.contains('abierto')) return { error: 'no abrió el checklist' };
+        const pu = velo.querySelector('.pu-modal');
+        const duras = pu.querySelectorAll('.pu-c.frena');
+        const aDatos = Array.prototype.slice.call(duras)
+          .filter(c => /DATOS/i.test(c.textContent || '')).length;
+        const bd = document.getElementById('puDatos');
+        const res = { duras: duras.length, aDatos: aDatos, hayPuerta: !!bd,
+                      alto: bd ? Math.round(bd.getBoundingClientRect().height) : 0 };
+        if (bd) {
+          bd.click();
+          await esperar(600);
+          res.checklistCerrado = !velo.classList.contains('abierto');
+          /* Y DATOS tiene que quedar destapado: el defecto era justamente que
+           * el velo se comía el clic. Se comprueba con elementFromPoint, que es
+           * lo que lo detectó. */
+          /* ⚠️ DATOS no es un velo con clase `abierto`: `orden.js` CREA y
+           * QUITA `#modalOrden`. Existir es estar abierto. */
+          res.abrioDatos = !!document.getElementById('modalOrden');
+          const otro = document.getElementById('btnDatosOrden');
+          if (otro) {
+            const rr = otro.getBoundingClientRect();
+            const enc = document.elementFromPoint(
+              Math.round(rr.left + rr.width / 2), Math.round(rr.top + rr.height / 2));
+            res.loQueRecibeElClic = enc ? (enc.id || enc.className || enc.tagName) : null;
+          }
+        }
+        return res;
+      });
+      if (r.error) throw new Error(r.error);
+      if (!r.aDatos)
+        throw new Error('ningún candado manda a DATOS en esta fixtura: la prueba no mide nada');
+      if (!r.hayPuerta)
+        throw new Error('EL CALLEJÓN SIGUE: ' + r.aDatos + ' candados mandan a DATOS y el ' +
+                        'cuadro no ofrece manera de abrirlo');
+      if (r.alto < 40)
+        throw new Error('la puerta mide ' + r.alto + 'px; el mínimo de toque es 40');
+      if (!r.checklistCerrado)
+        throw new Error('el checklist no se cerró, así que su velo sigue tapando DATOS');
+      if (!r.abrioDatos)
+        throw new Error('se cerró el checklist y NO se abrió DATOS: peor que antes');
+      console.log('    ' + r.duras + ' frenan · ' + r.aDatos + ' mandan a DATOS · puerta de ' +
+                  r.alto + 'px · cierra el cuadro y abre DATOS');
+    } finally { await cerrar146(q); }
+  });
+
+  await paso('V1.50 · la lista de órdenes carga y PAGINA de verdad', async () => {
+    /* Encargado aparte: que la lista cargue y pagine. Se mide lo que VIAJA
+     * (`desde` avanza) y lo que LLEGA (los renglones cambian), no que el botón
+     * exista — una paginación que pide la misma página se ve idéntica. */
+    const q = await ordPagina146({ total: 1546 });
+    try {
+      await q.evaluate(() => { location.hash = '#/ordenes'; });
+      await q.waitForTimeout(1200);
+      const r = await q.evaluate(async () => {
+        const esperar = (ms) => new Promise(r => setTimeout(r, ms));
+        const dela = () => (window.__llamadas || []).filter(
+          x => /\/comercial\/ordenes/.test(x.url) &&
+               (!x.cuerpo || (x.cuerpo.modo || 'listar') === 'listar'))
+          .map(x => ({ desde: (x.cuerpo && x.cuerpo.desde) || 0,
+                       limite: (x.cuerpo && x.cuerpo.limite) || null }));
+        const numeros = () => Array.prototype.slice.call(
+          document.querySelectorAll('table.or-tab tbody tr td:first-child'))
+          .map(td => (td.textContent || '').trim()).filter(Boolean);
+
+        const pag1 = numeros();
+        const pedidas1 = dela();
+        /* El botón de «más» se busca por su TEXTO, no por un id que podría
+         * cambiar: lo que la persona ve es el texto. */
+        const botones = Array.prototype.slice.call(document.querySelectorAll('button'));
+        const mas = botones.filter(b => /m[áa]s|siguiente/i.test(b.textContent || ''))[0] || null;
+        if (mas) { mas.click(); await esperar(900); }
+        const pag2 = numeros();
+        return {
+          pag1: pag1.slice(0, 3), n1: pag1.length,
+          pedidas1: pedidas1,
+          hayMas: !!mas, textoMas: mas ? (mas.textContent || '').trim() : null,
+          pag2: pag2.slice(0, 3), n2: pag2.length,
+          pedidas2: dela(),
+          totalEnPantalla: /1,?546/.test(document.body.textContent || '')
+        };
+      });
+      if (!r.n1) throw new Error('la lista llegó vacía: no cargó nada');
+      if (!r.pedidas1.length) throw new Error('nunca se le pidió la página al servidor');
+      if (r.pedidas1[0].limite === null)
+        throw new Error('no viajó `limite`: entonces no está paginando, está pidiendo todo');
+      if (!r.totalEnPantalla)
+        throw new Error('el total de 1,546 no se ve: sin él, una página se lee como el todo');
+      if (!r.hayMas)
+        throw new Error('con 1,546 y una página de ' + r.n1 + ' no hay manera de ver el resto');
+      const desdes = r.pedidas2.map(x => x.desde);
+      if (Math.max.apply(null, desdes) <= 0)
+        throw new Error('se apretó «' + r.textoMas + '» y `desde` nunca avanzó: ' +
+                        JSON.stringify(desdes));
+      if (JSON.stringify(r.pag1) === JSON.stringify(r.pag2))
+        throw new Error('los renglones no cambiaron: pidió otra página y pintó la misma');
+      console.log('    página 1: ' + r.n1 + ' renglones (' + r.pag1.join(', ') + '…) → ' +
+                  '«' + r.textoMas + '» → desde=' + Math.max.apply(null, desdes) +
+                  ' (' + r.pag2.join(', ') + '…) · total 1,546 a la vista');
     } finally { await cerrar146(q); }
   });
 

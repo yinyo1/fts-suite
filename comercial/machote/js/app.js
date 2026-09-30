@@ -57,7 +57,7 @@
    *   2. el `?v=` de la URL con la que el navegador lo bajó,
    *   3. la que declara cada pieza que se carga aparte (hoy el motor).
    * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
-  const VERSION_ARCHIVO = 'V1.49';
+  const VERSION_ARCHIVO = 'V1.50';
 
   const VERSION_URL = (function () {
     try {
@@ -5259,6 +5259,12 @@
      * lo DICE: aquí sólo salen las de este navegador, no las de todo el
      * equipo. Un desplegable corto sin ese aviso se lee como «no hay más». */
     todos: function () { return ST.machotes; },
+    /* `tocado` se exporta para que la puerta a DATOS del checklist
+     * (`puerta.js`) guarde por ESTE camino y no por uno propio. Es el único que
+     * marca el pulso sucio, programa el guardado y refresca los pendientes: una
+     * segunda copia allá guardaría a medias y el que perdiera no dejaría rastro
+     * (§20 #4). No es un `setter` — es el aviso de «esto cambió». */
+    tocado: tocado,
     /* Y el directorio de gente, para que la franja del préstamo pueda decir
      * «Ricardo Hernández» donde el servidor sólo manda «ricardo.hernandez».
      * El nombre NO viaja en `machote_prestamo` a propósito: no hay tabla de
