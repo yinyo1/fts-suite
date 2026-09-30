@@ -1,0 +1,129 @@
+[
+ {
+  "paso": 1,
+  "ruta": "fin/bancos-data",
+  "cuerpo": {
+   "cuentas": null,
+   "desde": "2026-01-01",
+   "dir": -1,
+   "hasta": "2026-09-30",
+   "offset": 0,
+   "sort": "fecha",
+   "texto": "",
+   "tipo": ""
+  }
+ },
+ {
+  "paso": 2,
+  "ruta": "fin/bancos-data",
+  "cuerpo": {
+   "cuentas": null,
+   "desde": "2026-01-01",
+   "dir": -1,
+   "hasta": "2026-09-30",
+   "offset": 0,
+   "sort": "fecha",
+   "texto": "spei",
+   "tipo": ""
+  }
+ },
+ {
+  "paso": 3,
+  "ruta": "fin/bancos-data",
+  "cuerpo": {
+   "cuentas": [
+    "bbva-general-3326",
+    "bbva-nomina-1293"
+   ],
+   "desde": "2026-01-01",
+   "dir": -1,
+   "hasta": "2026-09-30",
+   "offset": 0,
+   "sort": "fecha",
+   "texto": "spei",
+   "tipo": ""
+  }
+ },
+ {
+  "paso": 4,
+  "ruta": "fin/bancos-data",
+  "cuerpo": {
+   "cuentas": [
+    "bbva-general-3326"
+   ],
+   "desde": "2026-01-01",
+   "dir": -1,
+   "hasta": "2026-09-30",
+   "offset": 0,
+   "sort": "fecha",
+   "texto": "spei",
+   "tipo": ""
+  }
+ },
+ {
+  "paso": 5,
+  "ruta": "fin/bancos-data",
+  "cuerpo": {
+   "cuentas": [
+    "bbva-general-3326"
+   ],
+   "desde": "2026-01-01",
+   "dir": 1,
+   "hasta": "2026-09-30",
+   "offset": 0,
+   "sort": "monto",
+   "texto": "spei",
+   "tipo": ""
+  }
+ },
+ {
+  "paso": 6,
+  "ruta": "fin/bancos-data-exportar",
+  "cuerpo": {
+   "cols": [
+    "fecha",
+    "monto",
+    "mon",
+    "desc",
+    "banco",
+    "cuenta",
+    "ref"
+   ],
+   "cuentas": [
+    "bbva-general-3326"
+   ],
+   "desde": "2026-01-01",
+   "dir": 1,
+   "formato": "csv",
+   "hasta": "2026-09-30",
+   "sort": "monto",
+   "texto": "spei",
+   "tipo": ""
+  }
+ },
+ {
+  "paso": 7,
+  "ruta": "fin/bancos-data-exportar",
+  "cuerpo": {
+   "cols": [
+    "fecha",
+    "monto",
+    "mon",
+    "desc",
+    "banco",
+    "cuenta",
+    "ref"
+   ],
+   "cuentas": [
+    "bbva-general-3326"
+   ],
+   "desde": "2026-01-01",
+   "dir": 1,
+   "formato": "filas",
+   "hasta": "2026-09-30",
+   "sort": "monto",
+   "texto": "spei",
+   "tipo": ""
+  }
+ }
+]
