@@ -1,11 +1,17 @@
 {
-  "version": "V1.48",
-  "build": "V1.48",
+  "version": "V1.49",
+  "build": "V1.49",
   "fecha": "2026-09-30",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.49",
+      "pr": null,
+      "fecha": "2026-09-30",
+      "nota": "LA VISTA DE ORDENES ES LISTA, NO TARJETAS (#294 - Estacion 3). Se reporto que salia en tarjetas: aqui vivia un @media (max-width:1039px) que convertia la tabla en fichas, o sea que cualquier navegador con la ventana a medias -casi cualquier laptop- veia otra cosa. Se quito. Lo que la hace caber en el telefono NO es cambiarla de forma: es que se DESPLACE DE LADO dentro de su caja. La pagina no se mueve -eso es lo que se siente roto-, se mueve la tabla. Si algo no cabe, se dice y se desliza. || SIETE COLUMNAS: Numero, Cliente, Descripcion, Machote, Cotizador, Total, Estado. Fuera quedaron Website, Salesperson, Activities, Company, Pricelist, Invoice Count, Creation Date y la PO del cliente: ninguna sirve para decidir si una orden se puede confirmar y todas roban ancho. Numero y Machote en el morado de Enterprise, Total a la derecha y SIN recortarse nunca -un rotulo cortado se ve cortado, un importe cortado se lee como OTRO importe-, Estado en pastilla con los colores de Odoo. || CABECERA con Nuevo en morado, titulo y la cuenta a la derecha; BARRA DE BUSQUEDA con los filtros como pastillas quitables; PIE que dice cuantos filtros estan puestos y cuantas ordenes esconden. Un filtro que no se anuncia se lee como registros que faltan. || LOS ANCHOS SALEN DE MEDIR: con min-width 880 la columna del Machote se llevaba 256 px -folio, descripcion y boton, nada envuelve- y Cliente quedaba en 97, o sea «Indust…». Los porcentajes no la defienden porque con max-width:1px el algoritmo automatico trata esas columnas como minimas. Lo que la defiende es un SUELO: Cliente 150, Descripcion 190, y el minimo de la tabla a 1000 px, a un pelo de los 990 que Odoo usa como ancho minimo de hoja. || Y UN CHOQUE DE NOMBRES que solo se vio MIRANDO: se reusaron `or-cab` y `or-pie`, que YA existen en este modulo -son la cabecera y el pie del cascaron de la orden- y traen un flex-direction: column-reverse a menos de 520 px. El pie de la lista salia con sus tres trozos AL REVES en el telefono. El CSS nuevo era correcto; el nombre estaba mal. Prefijo propio `orl-`. Mismo tropiezo que .kpi en la V1.34 y que cf-/cfx- en la V1.45."
+    },
     {
       "version": "V1.48",
       "pr": null,

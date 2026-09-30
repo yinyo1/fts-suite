@@ -11132,6 +11132,72 @@ await sembrarMachotes(q);
     } finally { await cerrar146(q); }
   });
 
+  await paso('V1.49 · la vista de órdenes es LISTA a los cuatro anchos, no tarjetas', async () => {
+    /* El encargo es explícito: lista en los dos anchos. Aquí vivía un
+     * `@media (max-width:1039px)` que la convertía en TARJETAS, así que
+     * cualquier navegador con la ventana a medias veía otra cosa — y eso fue
+     * justo lo que se reportó. Esta prueba existe para que no vuelva a entrar
+     * sin que nadie se entere: lo que se exige es el ENCABEZADO visible y las
+     * siete columnas, que es lo que una lista tiene y una tarjeta no.
+     *
+     * Y se exige también la otra mitad: que lo que se desplace de lado sea LA
+     * CAJA y no la PÁGINA. Una página que se mueve en horizontal se siente
+     * rota; una tabla ancha que se desliza es lo que uno espera de una tabla. */
+    const ROTULOS = ['Número', 'Cliente', 'Descripción', 'Machote',
+                     'Cotizador', 'Total', 'Estado'];
+    const q = await ordPagina146({ total: 1546,
+      extra: { total: 12845000.5, moneda: 'MXN' } });
+    try {
+      await q.evaluate(() => { location.hash = '#/ordenes'; });
+      await q.waitForTimeout(1100);
+      for (const w of [380, 760, 900, 1280]) {
+        await q.setViewportSize({ width: w, height: 900 });
+        await q.waitForTimeout(220);
+        const r = await q.evaluate(() => {
+          const thead = document.querySelector('table.or-tab thead');
+          const th = document.querySelectorAll('table.or-tab thead th');
+          const caja = document.querySelector('.or-caja');
+          const tot = document.querySelector('td.or-tot');
+          return {
+            cabeceraVisible: !!(thead && getComputedStyle(thead).display !== 'none'),
+            /* Si alguien vuelve a poner el modo tarjeta, las celdas dejan de
+             * ser `table-cell`. Es la firma exacta de lo que se quitó. */
+            celdaEsCelda: (function () {
+              const td = document.querySelector('table.or-tab tbody td');
+              return td ? getComputedStyle(td).display === 'table-cell' : false;
+            })(),
+            rotulos: Array.prototype.map.call(th, x => x.textContent.trim()),
+            paginaSeMueve: document.documentElement.scrollWidth > window.innerWidth,
+            cajaPuedeMoverse: caja ? caja.scrollWidth > caja.clientWidth + 1 : false,
+            /* El importe NO se recorta: su texto tiene que caber en su celda. */
+            totalRecortado: tot ? tot.scrollWidth > tot.clientWidth + 1 : null,
+            totalTexto: tot ? tot.textContent.trim() : null
+          };
+        });
+        if (!r.cabeceraVisible)
+          throw new Error(w + 'px: no hay encabezado de tabla — se volvió tarjetas');
+        if (!r.celdaEsCelda)
+          throw new Error(w + 'px: las celdas dejaron de ser `table-cell` — modo tarjeta');
+        if (r.rotulos.length !== 7)
+          throw new Error(w + 'px: ' + r.rotulos.length + ' columnas, no 7: ' + r.rotulos.join(','));
+        ROTULOS.forEach((x, i) => {
+          if (r.rotulos[i] !== x)
+            throw new Error(w + 'px: columna ' + (i + 1) + ' es «' + r.rotulos[i] +
+                            '» y debe ser «' + x + '»');
+        });
+        if (r.paginaSeMueve)
+          throw new Error(w + 'px: la PÁGINA se mueve de lado; debe moverse la caja');
+        if (r.totalRecortado)
+          throw new Error(w + 'px: el Total está RECORTADO («' + r.totalTexto +
+                          '»). Un importe cortado se lee como otro importe.');
+        if (w === 380 && !r.cajaPuedeMoverse)
+          throw new Error('380px: la caja no se desplaza, así que algo se está aplastando');
+      }
+      console.log('    380 · 760 · 900 · 1280 · siete columnas en orden · la caja se desliza, ' +
+                  'la página no · Total entero');
+    } finally { await cerrar146(q); }
+  });
+
   await paso('sin errores de consola propios del prototipo', async () => {
     if (errs.length) throw new Error(errs.slice(0, 4).join(' | '));
     if (delEntorno.length) console.log('   (' + delEntorno.length +
