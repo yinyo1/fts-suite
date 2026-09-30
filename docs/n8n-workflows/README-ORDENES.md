@@ -1,7 +1,33 @@
-# `comercial/ordenes` · el contrato, antes de construirlo
+# `comercial/ordenes` · el contrato
 
-**No está construido.** Esta nota existe para que quien lo haga no vuelva a
-derivar lo que ya se midió, y para que el contrato no se invente dos veces.
+> ## ✅ YA ESTÁ CONSTRUIDO · 30-sep-2026 (V1.50, #294)
+>
+> Workflow **`y9hucRX0ZEExjIub`**, 24 nodos, **INACTIVO**. Leído del servidor ese día:
+> `active: false` · `activeVersionId: null` · `triggerCount: 0` — nunca se ha publicado.
+>
+> **Se construyeron los CINCO modos** de esta nota: `listar`, `buscar`, `ligar`,
+> `desligar` y `descripcion`. Lo que sigue es el contrato que consume el navegador y
+> sigue vigente tal cual.
+>
+> **Dos decisiones que se apartan de lo que recomendaba esta nota, y por qué:**
+>
+> 1. **El total NO sale de un `search_count` por JSON-RPC.** Sale de leer los ids
+>    (`Odoo - ids`, ~1,500 números) y contar en un Code. El RPC obligaba a traer una
+>    **segunda llave** al workflow y con ella toda la superficie de §9 —un nodo que
+>    truena publica su entrada, o sea el secreto—. Leer ids es barato y deja el
+>    endpoint con **un solo secreto**, el del JWT. Se eligió el camino cuyo modo de
+>    fallo es soportable, no el más elegante. **Y sale mejor de lo que pedía el
+>    diseño:** como se filtra sobre el conjunto completo y no sobre la página,
+>    `ocultas` es exacto **del total**, no «de esta página».
+> 2. **`notIn` no existe en el nodo Odoo v1** (ya estaba medido aquí): el filtrado de
+>    prueba/canceladas/ajenas se hace **en el Code**, no en el dominio.
+>
+> **Para publicarlo:** un clic en n8n, y antes confirmar que `SUITE_JWT_SECRET` está en
+> el entorno. Detalle y censo de lo que se destrabó con eso en
+> [`docs/comercial/CENSO-CALLEJONES.md`](../comercial/CENSO-CALLEJONES.md).
+
+Esta nota existe para que quien lo toque no vuelva a derivar lo que ya se midió, y
+para que el contrato no se invente dos veces.
 
 ---
 

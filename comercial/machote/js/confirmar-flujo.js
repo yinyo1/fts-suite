@@ -178,14 +178,50 @@
       ' De ella salen el contacto, la decisión de IVA, la orden de compra y el anticipo.</p>';
 
     if (!cand.lista.length) {
+      /* ── LA PUERTA, Y POR QUÉ ESTE BLOQUE SE REESCRIBIÓ ───────────────────
+       * Aquí había un aviso que decía el requisito («hace falta una orden
+       * ligada») y nada más: sólo quedaban Cancelar y un Continuar apagado.
+       * Enunciar un requisito sin dar manera de cumplirlo es el mismo defecto
+       * que las 28 pruebas cazaron cuando el checklist mandaba «Arriba, en
+       * DATOS» a una pantalla que ya no se podía abrir. Un aviso correcto no
+       * salva a una pantalla sin salida.
+       *
+       * Desde la COTIZACIÓN la puerta existe y es server-side: buscar la orden
+       * entre las de su cliente, o por número, y ligarla aquí mismo.
+       * Desde la ORDEN la puerta ya existía —`OrdenLigar`, que elige entre los
+       * machotes de este navegador—, y lo que faltaba era ofrecerla en este
+       * punto en vez de mandar a buscarla. */
       h += '<div class="aviso bad"><strong>' + (esOrden
-        ? 'Esta cotización no tiene ninguna orden ligada.'
-        : 'Esta orden no tiene ningún machote ligado.') + '</strong> ' +
+        ? 'Esta cotización todavía no tiene ninguna orden ligada.'
+        : 'Esta orden todavía no tiene ninguna cotización ligada.') + '</strong> ' +
         (cand.parcial
-          ? 'Hay una liga registrada, pero lo ligado no está cargado en esta pantalla, ' +
-            'así que no se puede elegir desde aquí. No es que no exista.'
-          : 'Se liga antes de confirmar: es de donde salen los datos que el checklist revisa.') +
+          ? 'Hay una liga registrada, pero lo ligado no está cargado en esta pantalla. ' +
+            'No es que no exista: es que desde aquí no se puede elegir.'
+          : 'Se liga antes de confirmar: de la cotización salen el contacto, la ' +
+            'decisión de IVA, la orden de compra y el anticipo que el checklist revisa.') +
         '</div>';
+      /* La puerta va DENTRO del mismo diálogo y en el cuerpo, no en el pie: el
+       * pie es de Cancelar y Continuar, y un tercer botón ahí le cuesta un
+       * renglón a la barra en 380 — ya pasó con el botón de Datos. */
+      h += '<div class="p1-puertas">' +
+        '<button class="btn primario" id="cfLigar">' + (esOrden
+          ? 'Buscar la orden y ligarla'
+          : 'Elegir la cotización que manda') + '</button>' +
+        '</div>';
+      h += '<p class="p1-nota">' + (esOrden
+        ? 'Se busca en Odoo, no en este navegador: entre las órdenes de su cliente, o ' +
+          'por número si está a nombre de otro contacto. Al ligarla se sigue derecho al ' +
+          'checklist.'
+        : 'Se elige entre las cotizaciones de este navegador. Si la que buscas la ' +
+          'capturó alguien más, tiene que ligarla esa persona — su cotización no está ' +
+          'aquí.') + '</p>';
+      /* Y la pregunta que sigue —«¿y si no existe?»— se contesta aquí mismo,
+       * con el MISMO texto que usa el buscador. Un solo sitio: si mañana el
+       * camino para crear órdenes cambia, no queda una pantalla jurando lo
+       * viejo. */
+      if (esOrden && G.OrdenBuscar && G.OrdenBuscar.sinOrdenHTML) {
+        h += G.OrdenBuscar.sinOrdenHTML();
+      }
     } else {
       /* ⚠️ `parcial` significa cosas DISTINTAS en cada camino, y el mensaje
        * tiene que decir la que toca. Reusar un texto porque la bandera se
@@ -203,16 +239,16 @@
           'abierto la lista de órdenes. <em>Se puede continuar</em>: lo que decide es el ' +
           'servidor, y la liga está guardada.</div>';
       }
-      h += '<div class="cf-lista">';
+      h += '<div class="p1-lista">';
       cand.lista.forEach(function (x, i) {
         var sub = esOrden
           ? [x.cliente, x.estado].filter(Boolean).join(' · ')
           : (x.principal ? 'el principal, según el servidor'
                          : 'ligado, según este navegador');
-        h += '<label class="cf-op">' +
+        h += '<label class="p1-op">' +
           '<input type="radio" name="cfSel" value="' + i + '"' +
             (cand.lista.length === 1 || x.principal ? '' : '') + '>' +
-          '<span class="cf-nm"><strong>' + esc(x.nombre) + '</strong>' +
+          '<span class="p1-nm"><strong>' + esc(x.nombre) + '</strong>' +
             (x.principal ? ' <span class="chip-mini">manda</span>' : '') +
             (sub ? '<span class="tiny">' + esc(sub) + '</span>' : '') +
           '</span></label>';
@@ -228,6 +264,47 @@
     }
 
     cu.innerHTML = h;
+
+    /* ── El botón de la puerta ────────────────────────────────────────────────
+     * Los dos caminos acaban en el MISMO paso 2, así que el salto se arma aquí
+     * una vez y no en cada pieza: si cada selector llamara al checklist por su
+     * cuenta, el día que cambie lo que el checklist necesita se arreglaría uno
+     * y el otro seguiría pasándole lo de antes. */
+    var bLigar = cu.querySelector('#cfLigar');
+    if (bLigar) bLigar.addEventListener('click', function () {
+      var A = G.MachoteAlmacen;
+
+      if (esOrden) {
+        /* Falta la ORDEN → se busca en el servidor. */
+        if (!G.OrdenBuscar) { if (G.alert) G.alert('No está cargada la pieza que busca órdenes.'); return; }
+        var m = op.machote || {};
+        var uuid = (A && A.idServidor) ? A.idServidor(m.id) : null;
+        cerrar();
+        G.OrdenBuscar.abrir(m, uuid, function (orden) {
+          if (!G.PuertaConfirmar) return;
+          G.PuertaConfirmar.abrir({ orden: orden._f || { id: orden.id, nombre: orden.nombre },
+                                    machote: m, desde: op.desde });
+        });
+        return;
+      }
+
+      /* Falta el MACHOTE → la pieza que ya existía, sin una segunda copia. */
+      if (!G.OrdenLigar) { if (G.alert) G.alert('No está cargada la pieza que liga cotizaciones.'); return; }
+      var f = op.orden || {};
+      cerrar();
+      G.OrdenLigar.abrir(f.id, function (r) {
+        /* Lo que se le pasa al checklist sale de lo que la BASE devolvió, no de
+         * lo que se eligió en pantalla (§8). Si el `RETURNING` no trae el
+         * machote, no se adivina: se vuelve al paso 1, que ya lo verá ligado. */
+        var mid = r && r.liga && r.liga.machote_id;
+        if (mid && G.PuertaConfirmar) {
+          G.PuertaConfirmar.abrir({ orden: f, machote_id: mid, desde: op.desde });
+        } else {
+          abrir(op);
+        }
+      }, f.nombre);
+    });
+
     cu.querySelectorAll('input[name=cfSel]').forEach(function (r) {
       r.addEventListener('change', function () {
         elegido = cand.lista[Number(r.value)] || null;

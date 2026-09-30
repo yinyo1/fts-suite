@@ -265,6 +265,9 @@
     if (c) c.classList.remove('abierto');
   }
 
+  /* Qué cotización tiene delante el cuadro abierto. Lo pone `abrir`. */
+  var _abierto = null;
+
   /* `abrir` es lo que llaman los dos caminos. Lo único que cambia entre ellos
    * es la insignia que dice por dónde se entró — y eso es de diagnóstico, no
    * de decisión. */
@@ -301,6 +304,11 @@
 
     /* Primero se pinta SIN la respuesta del servidor, que todavía no llegó —y
      * eso sale como una dura que dice justo eso, no como un hueco. */
+    /* Lo que la puerta a DATOS necesita: el machote de ESTE cuadro. Vive aquí
+     * porque `pintar` se llama dos veces (antes y después del servidor) y el
+     * botón se vuelve a crear en cada pintada. */
+    _abierto = { machote: machote, ajeno: base.machoteAjeno, desde: o.desde };
+
     pintar(evaluar(base));
 
     var uuid = (orden.machote && orden.machote.id) || o.machote_id;
@@ -337,9 +345,80 @@
     return h + '</div>';
   }
 
+  /* ── LA PUERTA A DATOS, Y POR QUÉ HACÍA FALTA ────────────────────────────
+   * MEDIDO el 30-sep-2026, no deducido: de los 8 candados que frenan en el
+   * caso peor, SIETE terminan en «Arriba, en DATOS» — y dentro de este cuadro
+   * sólo había tres controles: ×, Cancelar y el Confirmar apagado. Peor: el
+   * botón de DATOS del machote SÍ existe y está visible, pero
+   * `document.elementFromPoint` sobre su centro devuelve `puVelo`, o sea que
+   * el velo de este cuadro se come el clic. La pantalla que el mensaje nombra
+   * está TAPADA por la pantalla que lo dice, y la única salida era «Cancelar»,
+   * que se lee como abandonar.
+   *
+   * Es el mismo defecto del paso 1 que reportó Esteban, un cuadro más adentro.
+   *
+   * Y cuando la cotización NO está en este navegador —el caso de la vista de
+   * órdenes con un machote ajeno— el botón NO se pone: ahí la puerta de verdad
+   * no existe, y ofrecerla sería peor que decirlo. */
+  function bloquePuerta(v) {
+    if (!_abierto) return '';
+    var duras = (v && v.duras) || [];
+    var aDatos = duras.filter(function (x) {
+      return x && /DATOS/i.test(String(x.donde || ''));
+    }).length;
+    if (!aDatos) return '';
+
+    if (!_abierto.machote) {
+      return '<div class="aviso warn"><strong>' + aDatos + ' de las cosas que faltan se ' +
+        'arreglan en DATOS de la cotización, y esa cotización no está en este ' +
+        'navegador.</strong> Se capturó en otra máquina, así que desde aquí no se puede ' +
+        'abrir: tiene que completarla quien la capturó. Lo que falta está en la lista de ' +
+        'arriba, tal cual, para podérselo pedir.</div>';
+    }
+    return '<div class="p1-puertas"><button class="btn primario" id="puDatos">' +
+      'Abrir DATOS de la cotización (' + aDatos + ' pendiente' + (aDatos === 1 ? '' : 's') +
+      ')</button></div>' +
+      '<p class="p1-nota">Se cierra este cuadro y se abre DATOS. Al terminar, vuelve a ' +
+      '«Confirmar orden»: los candados se vuelven a revisar desde cero.</p>';
+  }
+
   function pintar(v) {
     var cu = document.getElementById('puCuerpo');
     if (cu) cu.innerHTML = html(v) + bloqueFinal();
+
+    /* ⚠️ LA PUERTA VA ARRIBA, PEGADA AL VEREDICTO, Y ESO LO DIJO LA CAPTURA.
+     * Concatenada al final quedaba DESPUÉS de los ocho candados: quien lee
+     * «Arriba, en DATOS» en el primero tenía que bajar por los ocho para
+     * encontrar el botón. La prueba pasaba igual —el botón existía y
+     * funcionaba—, y a 1280 se veía de un golpe que no estaba donde se lee el
+     * problema. Se inserta después del primer `.aviso`, que es el veredicto.
+     * (§20 #12: una pantalla se revisa mirándola.) */
+    var hp = bloquePuerta(v);
+    if (cu && hp) {
+      var av = cu.querySelector('.aviso');
+      var caja = document.createElement('div');
+      caja.innerHTML = hp;
+      /* ⚠️ Con un `while` insertando ante `av.nextSibling`, cada nodo insertado
+       * se vuelve el ancla del siguiente y el bloque sale AL REVÉS: la nota
+       * quedaba encima del botón. Se vio en la captura de 1280, no en el
+       * código. Con un fragmento se inserta de una y en orden. */
+      var frag = document.createDocumentFragment();
+      while (caja.firstChild) frag.appendChild(caja.firstChild);
+      if (av && av.parentNode) av.parentNode.insertBefore(frag, av.nextSibling);
+      else cu.insertBefore(frag, cu.firstChild);
+    }
+
+    var bd = cu && cu.querySelector('#puDatos');
+    if (bd) bd.addEventListener('click', function () {
+      var m = _abierto && _abierto.machote;
+      if (!m || !G.MachoteOrden) return;
+      cerrar();
+      G.MachoteOrden.abrir(m, function (mm) {
+        /* Lo que el usuario acaba de capturar se guarda por el camino de
+         * siempre —esta pieza no escribe— y la pantalla de atrás se entera. */
+        if (G.MachoteApp && G.MachoteApp.tocado) G.MachoteApp.tocado(mm);
+      });
+    });
     var ok = document.getElementById('puOk');
     if (!ok) return;
     var A = G.MachoteAlmacen;

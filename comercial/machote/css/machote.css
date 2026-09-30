@@ -2723,20 +2723,36 @@ table.or-tab { min-width: 1000px; }
 /* ═══ V1.48 · El paso 1 del flujo de confirmación ═══════════════════════════
  * Reusa el velo y el modal del checklist (`.pu-velo` / `.pu-modal`): son un
  * solo flujo de tres pasos, y si el primero se viera distinto parecerían dos.
- * ⚠️ Nombres nuevos con prefijo `cf-`. Reusar una clase que ya existe en el
- * módulo hereda lo que esa clase ya significaba en otro sitio, y eso no se ve
- * en el diff — sólo en la captura (CLAUDE.md §20 #12, el caso de `.kpi`). */
-.cf-lista{display:flex;flex-direction:column;gap:8px;margin:12px 0}
-.cf-op{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;
+ * ⚠️ PREFIJO `p1-`, Y LA ADVERTENCIA DE AQUÍ NACIÓ EQUIVOCADA.
+ * Esto decía «nombres nuevos con prefijo cf-» — y `cf-` NO era nuevo: en la
+ * línea 1589 de este mismo archivo `.cf-lista` ya era una lista con viñetas
+ * (`padding-left:20px; font-size:13px`) que usa `confirmar.js`. O sea que el
+ * bloque de abajo (a) heredaba ese relleno y ese tamaño sin pedirlos, y (b)
+ * —más caro— le metía `display:flex` a los `<ul class="cf-lista">` del
+ * checklist, que ya existían y no son columnas flex. Advertir del choque en un
+ * comentario y a la vez cometerlo es exactamente §20 #12: el diff se lee bien.
+ * La comprobación que faltaba es de una línea: buscar el prefijo en el CSS
+ * ANTES de escribirlo, no después. `p1-` se buscó: cero usos. */
+.p1-lista{display:flex;flex-direction:column;gap:8px;margin:12px 0}
+.p1-op{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;
        border:1px solid var(--linea,#dcdcdc);border-radius:9px;cursor:pointer;
        background:#fff;min-height:var(--toque,44px)}
-.cf-op:hover{background:var(--papel,#f6f7f8)}
-.cf-op input{margin:2px 0 0;flex:none;width:18px;height:18px}
-.cf-op .cf-nm{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto}
-.cf-op .cf-nm .tiny{color:var(--suave,#6b6b6b)}
+.p1-op:hover{background:var(--papel,#f6f7f8)}
+.p1-op input{margin:2px 0 0;flex:none;width:18px;height:18px}
+.p1-op .p1-nm{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto}
+.p1-op .p1-nm .tiny{color:var(--suave,#6b6b6b)}
 /* El que manda va marcado, y la marca no es sólo color: el color solo no
  * distingue para quien no lo ve. */
-.cf-op .chip-mini{align-self:flex-start}
+.p1-op .chip-mini{align-self:flex-start}
+
+/* ── Las PUERTAS del paso 1 · cuando no hay nada ligado ─────────────────────
+ * Un requisito enunciado sin manera de cumplirlo es un callejón; esto es la
+ * puerta. Botones de ancho completo porque son la acción principal de esa
+ * pantalla, y `shared/fts-styles.css` ya pone `.btn{width:100%}` — aquí no se
+ * deshace a propósito. */
+.p1-puertas{display:flex;flex-direction:column;gap:8px;margin:12px 0}
+.p1-puertas .btn{width:100%}
+.p1-nota{font-size:12.5px;color:var(--suave,#6b6b6b);line-height:1.6;margin:10px 0 0}
 
 /* El paso 3 apagado. Va DENTRO del cuerpo del checklist, después del
  * veredicto, para que se lea en el orden en que ocurre. */
