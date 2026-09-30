@@ -3464,7 +3464,7 @@ await sembrarMachotes(q);
       await q.goto(BASE); await q.waitForTimeout(900);
       const href = await q.$eval('.fila a.item', a => a.getAttribute('href'));
       await q.goto(BASE + href); await q.waitForTimeout(900);
-      await q.click('#btnOrden'); await q.waitForTimeout(400);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(400);
 
       /* El machote sale de `window.DEMO`, NO de `leerLocal()`: en el primer
        * arranque la demo vive sólo en memoria y no se escribe en el navegador
@@ -3497,7 +3497,7 @@ await sembrarMachotes(q);
       await q.goto(BASE); await q.waitForTimeout(900);
       const href = await q.$eval('.fila a.item', a => a.getAttribute('href'));
       await q.goto(BASE + href); await q.waitForTimeout(900);
-      await q.click('#btnOrden'); await q.waitForTimeout(400);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(400);
       const antes = Number((await q.textContent('#or-total')).replace(/[^0-9.]/g, ''));
       const pu = Number((await q.textContent('.or-t tbody tr:first-child td:nth-child(4)')).replace(/[^0-9.]/g, ''));
       await q.fill('.or-t tbody tr:first-child input.cel.n', '2');
@@ -3515,7 +3515,7 @@ await sembrarMachotes(q);
       await q.goto(BASE); await q.waitForTimeout(900);
       const href = await q.$eval('.fila a.item', a => a.getAttribute('href'));
       await q.goto(BASE + href); await q.waitForTimeout(900);
-      await q.click('#btnOrden'); await q.waitForTimeout(400);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(400);
       const t = (await q.textContent('.estorbos')).replace(/\s+/g, ' ');
       /* ⚠️ V1.30 · ESTA ASERCIÓN SE DIO LA VUELTA, y por una razón: hasta
        * V1.29 exigía que la lista dijera que `comercial/orden-crear` NO
@@ -3622,7 +3622,7 @@ const CP = { pago: { dias: 30, termino_texto: 'Crédito 30 días',
     await q.goto(BASE); await q.waitForTimeout(900);
     const href = await q.$eval('.fila a.item', a => a.getAttribute('href'));
     await q.goto(BASE + href); await q.waitForTimeout(900);
-    await q.click('#btnOrden'); await q.waitForTimeout(400);
+    await q.click('#btnDatosOrden'); await q.waitForTimeout(400);
   };
 
   await paso('V1.30 · el botón NO da por creada la orden: si el servidor no contesta que sí, no se dice que sí', async () => {
@@ -3908,7 +3908,7 @@ const CP = { pago: { dias: 30, termino_texto: 'Crédito 30 días',
        * clic es exactamente lo que se quiere probar. */
       const antes = await q.evaluate(() => JSON.stringify(window.MachoteAlmacen.leerLocal()));
 
-      await q.click('#btnOrden'); await q.waitForTimeout(400);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(400);
       await q.click('#or-siguiente'); await q.waitForTimeout(400);
       await q.click('#or-enviar'); await q.waitForTimeout(1500);
 
@@ -3931,7 +3931,7 @@ const CP = { pago: { dias: 30, termino_texto: 'Crédito 30 días',
       await q.goto(BASE); await q.waitForTimeout(900);
       const href = await q.$eval('.fila a.item', a => a.getAttribute('href'));
       await q.goto(BASE + href); await q.waitForTimeout(900);
-      await q.click('#btnOrden'); await q.waitForTimeout(400);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(400);
       await q.click('#or-siguiente'); await q.waitForTimeout(400);
       const t = (await q.textContent('.corr')).replace(/\s+/g, ' ');
       /* Cambió la copia el 8-sep al elegirse el camino A: ya no es "no está
@@ -3981,7 +3981,7 @@ const CP = { pago: { dias: 30, termino_texto: 'Crédito 30 días',
         const c = window.MachoteCalc.calcular(m);
         return [c.costo, c.costoMo, c.costoMat].map(n => Math.round(n));
       });
-      await q.click('#btnOrden'); await q.waitForTimeout(400);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(400);
       await q.click('#or-siguiente'); await q.waitForTimeout(400);
       const [hoja] = await Promise.all([ctx.waitForEvent('page'), q.click('#or-pdf')]);
       await hoja.waitForLoadState('domcontentloaded');
@@ -4031,7 +4031,7 @@ const CP = { pago: { dias: 30, termino_texto: 'Crédito 30 días',
       await q.goto(BASE + href); await q.waitForTimeout(900);
       const antes = await q.evaluate(() => JSON.stringify(window.MachoteAlmacen.leerLocal()));
 
-      await q.click('#btnOrden'); await q.waitForTimeout(400);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(400);
       await q.click('#or-siguiente'); await q.waitForTimeout(400);
       if (!(await q.$('#or-pdf-odoo'))) throw new Error('no existe el botón de traer el PDF');
       await q.click('#or-pdf-odoo'); await q.waitForTimeout(700);
@@ -4056,7 +4056,7 @@ const CP = { pago: { dias: 30, termino_texto: 'Crédito 30 días',
       await q.goto(BASE); await q.waitForTimeout(900);
       const href = await q.$eval('.fila a.item', a => a.getAttribute('href'));
       await q.goto(BASE + href); await q.waitForTimeout(900);
-      await q.click('#btnOrden'); await q.waitForTimeout(400);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(400);
       await q.click('#or-siguiente'); await q.waitForTimeout(400);
       const c = await q.$eval('#or-pdf-odoo', el => {
         const r = el.getBoundingClientRect();
@@ -4225,7 +4225,7 @@ const CP = { pago: { dias: 30, termino_texto: 'Crédito 30 días',
       await q.goto(BASE); await q.waitForTimeout(900);
       const href = await q.$eval('[data-hist]', el => '#/m/' + el.getAttribute('data-hist'));
       await q.goto(BASE + href); await q.waitForTimeout(900);
-      await q.click('#btnOrden'); await q.waitForTimeout(400);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(400);
 
       // Apagado por omisión: es la excepción, no la costumbre.
       if (await q.$eval('[data-desg="0"]', el => el.checked))
@@ -4439,7 +4439,7 @@ await sembrarMachotes(q);
           sueltos: campos.filter(c => !c.disabled).length,
           /* La barra fija vive FUERA de `#hoja`: se comprueba aparte porque el
            * trabado de la hoja no la alcanza. */
-          pasar_a_orden: !!document.querySelector('#btnOrden'),
+          pasar_a_orden: !!document.querySelector('#btnDatosOrden'),
           revisar: !!document.querySelector('.fija a[href^="#/rev/"]')
         };
       });
@@ -6642,7 +6642,7 @@ await sembrarMachotes(q);
     const q = await cliPagina();
     try {
       await abrirElPrimero(q);
-      await q.click('#btnOrden'); await q.waitForTimeout(600);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(600);
 
       if (!await q.$eval('#or-crear', el => el.disabled))
         throw new Error('dejó apretar «Crear la orden» sin cliente de Odoo');
@@ -6670,7 +6670,7 @@ await sembrarMachotes(q);
                  nombre: m.nombre, id: m.id };
       });
 
-      await q.click('#btnOrden'); await q.waitForTimeout(600);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(600);
       await q.evaluate(() => {
         const d = document.querySelector('details.estorbos'); if (d) d.open = true;
       });
@@ -6706,7 +6706,7 @@ await sembrarMachotes(q);
     const q = await cliPagina();
     try {
       await abrirElPrimero(q);
-      await q.click('#btnOrden'); await q.waitForTimeout(600);
+      await q.click('#btnDatosOrden'); await q.waitForTimeout(600);
       await q.evaluate(() => {
         const d = document.querySelector('details.estorbos'); if (d) d.open = true;
       });
