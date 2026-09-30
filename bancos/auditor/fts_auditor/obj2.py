@@ -225,7 +225,9 @@ class Obj2:
             sentido = "cargo" if D(m["cargo"]) > 0 else "abono"
             grupos[(m["cuenta_id"], sentido, llave_contraparte(m, self.k.get(m["id"])))].append(m)
         for (cid, sentido, llave), ms in grupos.items():
-            if len(ms) < 7:
+            # sólo contrapartes identificadas (clasificación o movimiento): agrupar por las primeras palabras de la
+            # descripción («SPEI ENVIADO…») mezcla a muchos destinatarios y todo sale atípico (medido 30-sep: 136 falsos)
+            if len(ms) < 7 or not llave.startswith("C:"):
                 continue
             montos = [D(x[sentido]) for x in ms]
             for m in ms:

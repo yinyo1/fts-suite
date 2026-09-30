@@ -162,3 +162,14 @@ def test_las_consultas_reales_con_sus_roles(base_limpia):
     assert r["conteos"]["movimientos"] == 9 and all(v["ok"] for v in r["verificaciones"])
     assert r["conteos"]["cotejo"]["faltan_n"] == 9                      # sin líneas de Odoo: todo falta, y es AMARILLO
     assert r["veredicto"] == "AMARILLO"
+
+
+def test_sin_contraparte_identificada_no_hay_atipico():
+    """Agrupar por las primeras palabras de la descripción mezcla destinatarios: ahí no se juzgan montos (30-sep: 136 falsos)."""
+    base, odoo = escenario()
+    for m in base["movimientos"]:
+        m["contraparte"] = None
+    for k in base["clasificacion"]:
+        k["contraparte"] = None
+    r = Obj2(base, odoo, {"desde": "2024-01"}, AHORA).correr()
+    assert not cod(r, "O2_MONTO_ATIPICO")
