@@ -6,14 +6,15 @@ nombre, a qué carpeta, qué mandar a Rechazados y con qué motivo.
 """
 from __future__ import annotations
 
+import io
 import json
 import os
 import re
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
-from . import PARSER_VERSION, bbva, entrada, validar
+from . import PARSER_VERSION, bbva, entrada, jeeves, validar
 from .clasificar import VERSION_CLASIFICADOR, Regla, clasificar, emparejar, reglas_base
 from .cuentas import Catalogo, rfc_fts, Cuenta, cargar_de_entorno
 from .util import (NOMBRE_MES, fmt, mascara, periodo_anterior, periodo_siguiente,
@@ -324,16 +325,16 @@ def _rechazo(con, fila, nombre, tipo, estado, motivo, instruccion, corrida_id, c
 def _procesar_documento(con, fila, contenido, nombre, meta, corrida_id, catalogo: Catalogo, reglas) -> Item:
     ext = os.path.splitext(nombre.lower())[1]
     if not entrada.es_pdf(contenido):
+        # Jeeves y Payana se reconocen por CONTENIDO (encabezado del CSV, texto de la hoja), nunca por el nombre.
+        if jeeves.es_csv_jeeves(contenido):
+            return _procesar_csv_jeeves(con, fila, contenido, nombre, meta, corrida_id)
         if entrada.es_xlsx(contenido) or ext in (".csv", ".xlsx", ".xls", ".txt"):
-            destino = CARPETA_PAYANA if re.search(r"payana", nombre, re.I) else (CARPETA_JEEVES if re.search(r"jeeves", nombre, re.I) else None)
-            tipo = "payana" if destino == CARPETA_PAYANA else ("jeeves" if destino == CARPETA_JEEVES else "tabla_desconocida")
-            it = _rechazo(con, fila, nombre, tipo, "formato_no_soportado",
-                          "formato no soportado todavía (exportación CSV/XLSX sin parser de muestra)",
-                          "No hay que hacer nada: el archivo quedó guardado y se leerá cuando exista el parser de este formato.",
-                          corrida_id, "FORMATO_NO_SOPORTADO", accion="copiar" if destino else "rechazados")
-            if destino:
-                it.carpeta_destino, it.nombre_destino = destino, nombre
-            return it
+            if _tabla_es_payana(contenido):
+                return _payana_sin_parser(con, fila, nombre, corrida_id, "tabla")
+            return _rechazo(con, fila, nombre, "tabla_desconocida", "formato_no_soportado",
+                            "formato no soportado todavía (exportación CSV/XLSX sin parser de muestra)",
+                            "No hay que hacer nada: el archivo quedó guardado y se leerá cuando exista el parser de este formato.",
+                            corrida_id, "FORMATO_NO_SOPORTADO")
         return _rechazo(con, fila, nombre, "desconocido", "rechazado", "no es un PDF ni un ZIP",
                         "Suban el estado de cuenta en PDF (o un ZIP con los PDF).", corrida_id, "NO_ES_PDF")
     try:
@@ -356,13 +357,18 @@ def _procesar_documento(con, fila, contenido, nombre, meta, corrida_id, catalogo
     if sosp:
         return _rechazo(con, fila, nombre, "pdf", "sospechoso", "el PDF contiene texto que parece una instrucción dirigida a un sistema",
                         "Revisen el origen del archivo; no se procesó.", corrida_id, "SOSPECHOSO", detalle={"fragmento": sosp})
+    if jeeves.es_pdf_jeeves(texto):
+        return _procesar_pdf_jeeves(con, fila, contenido, nombre, corrida_id)
     es_bbva = bool(re.search(r"BBVA", texto) and bbva.RE_PERIODO.search(texto))
     if not es_bbva:
-        if re.search(r"JEEVES", texto, re.I) or re.search(r"PAYANA", texto, re.I):
-            tipo = "jeeves" if re.search(r"JEEVES", texto, re.I) else "payana"
-            it = _rechazo(con, fila, nombre, tipo, "formato_no_soportado", f"estado {tipo.title()} en PDF: formato todavía no soportado",
-                          "No hay que hacer nada: quedó guardado en su carpeta.", corrida_id, "FORMATO_NO_SOPORTADO", accion="copiar")
-            it.carpeta_destino, it.nombre_destino = (CARPETA_JEEVES if tipo == "jeeves" else CARPETA_PAYANA), nombre
+        if jeeves.texto_payana(texto):
+            return _payana_sin_parser(con, fila, nombre, corrida_id, "pdf")
+        if re.search(r"JEEVES", texto, re.I):
+            it = _rechazo(con, fila, nombre, "jeeves", "formato_no_soportado",
+                          "PDF de Jeeves que no es el estado de cuenta mensual (no trae 'Statement Period' y 'Balance Detail')",
+                          "Si es el estado de cuenta del ciclo, descárguenlo completo del portal de Jeeves y súbanlo de nuevo.",
+                          corrida_id, "JEEVES_NO_ES_ESTADO", accion="copiar")
+            it.carpeta_destino, it.nombre_destino = CARPETA_JEEVES, nombre
             return it
         if re.search(r"ESTADO\s+DE\s+CUENTA", texto, re.I):
             it = _rechazo(con, fila, nombre, "pdf_otro_banco", "formato_no_soportado",
@@ -477,6 +483,345 @@ def _procesar_documento(con, fila, contenido, nombre, meta, corrida_id, catalogo
     evento(con, corrida_id, "info", "VALIDADO", f"{cuenta.alias} {cuenta.mask} {periodo} V1/V2 ok", fila["sha256"])
     return Item(fila["sha256"], nombre, None, "bbva_estado", "validado", "copiar",
                 carpeta_destino=cuenta.carpeta_anio(periodo), nombre_destino=canonico, **base)
+
+
+# ── Jeeves (tarjeta de crédito) y Payana ──
+def _tabla_es_payana(contenido: bytes) -> bool:
+    """Payana en CSV/XLSX: por el texto de la hoja, nunca por el nombre."""
+    if entrada.es_xlsx(contenido):
+        import zipfile
+        try:
+            with zipfile.ZipFile(io.BytesIO(contenido)) as z:
+                t = " ".join(z.read(n).decode("utf-8", "ignore") for n in z.namelist()
+                             if n.startswith("xl/sharedStrings") or n.startswith("xl/worksheets/sheet1"))
+        except Exception:
+            return False
+        return jeeves.texto_payana(t)
+    return jeeves.texto_payana(contenido[:200000].decode("utf-8", "ignore"))
+
+
+def _payana_sin_parser(con, fila, nombre, corrida_id, forma) -> Item:
+    """Payana: se reconoce y se acomoda en su carpeta; el parser se construye cuando llegue un ejemplo real."""
+    it = _rechazo(con, fila, nombre, "payana", "formato_no_soportado", "recibido, sin parser (Payana)",
+                  "No hay que hacer nada: quedó guardado en la carpeta de Payana y se leerá cuando exista el lector de este formato.",
+                  corrida_id, "PAYANA_SIN_PARSER", accion="copiar")
+    it.carpeta_destino, it.nombre_destino = CARPETA_PAYANA, nombre
+    it.detalle = {"forma": forma}
+    return it
+
+
+def _nombre_libre(con, nombre: str) -> str:
+    """Si ya hay un archivo con ese nombre canónico (dos descargas del mismo día con contenido distinto), agrega _2, _3…"""
+    base, ext = os.path.splitext(nombre)
+    cand, n = nombre, 1
+    with con.cursor() as cur:
+        while True:
+            cur.execute("SELECT 1 FROM bancos.archivos WHERE nombre_canonico=%s", (cand,))
+            if not cur.fetchone():
+                return cand
+            n += 1
+            cand = f"{base}_{n}{ext}"
+
+
+def _procesar_pdf_jeeves(con, fila, contenido, nombre, corrida_id) -> Item:
+    try:
+        est = jeeves.parsear(contenido)
+    except jeeves.ErrorJeeves as e:
+        return _rechazo(con, fila, nombre, "jeeves", "rechazado", f"no se pudo leer el estado de Jeeves: {e.mensaje}",
+                        "Descarguen de nuevo el estado del ciclo desde el portal de Jeeves (PDF completo) y súbanlo.",
+                        corrida_id, e.codigo)
+    ciclo = est.ciclo
+    avisos = list(est.avisos)
+    if not est.razon_social_fts:
+        motivo = "estado de Jeeves de otra razón social (no dice Servicios FTS)"
+        _marcar(con, fila["id"], estado="rechazado", tipo_detectado="jeeves", periodo=ciclo, motivo=motivo)
+        evento(con, corrida_id, "aviso", "JEEVES_OTRA_RAZON_SOCIAL", motivo, fila["sha256"])
+        return Item(fila["sha256"], nombre, None, "jeeves", "rechazado", "otras", archivo_id=fila["id"],
+                    carpeta_destino=CARPETA_OTRAS, nombre_destino=f"Jeeves_Ajena_{ciclo}.pdf", periodo=ciclo, motivo=motivo,
+                    instruccion="Se guardó en 'Otras cuentas por identificar'. Si sí es de FTS, avisen a Esteban.")
+    ok1, d1 = jeeves.v1(est)
+    h = jeeves.huella(est)
+    canonico = jeeves.nombre_pdf(est)
+    carpeta = f"{CARPETA_JEEVES}/{ciclo[:4]}"
+    r = est.resumen
+    with con.cursor() as cur:
+        cur.execute("""SELECT c.id, c.huella, a.nombre_canonico FROM bancos.jeeves_ciclos_vigentes c
+                       JOIN bancos.archivos a ON a.id=c.archivo_id
+                       WHERE c.ciclo=%s AND c.archivo_id<>%s AND a.estado='validado' ORDER BY c.id LIMIT 1""", (ciclo, fila["id"]))
+        previo = cur.fetchone()
+        cur.execute("""INSERT INTO bancos.jeeves_ciclos (archivo_id, parser_version, ciclo, statement_date, periodo_inicio, periodo_fin,
+                         billing_method, razon_social_fts, previous_balance, payments, cashback, new_charges, late_fee, pay_fee,
+                         adjustment, amount_due, paginas, num_renglones, v1_ok, v1_detalle, huella, corrida_id)
+                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                       ON CONFLICT (archivo_id, parser_version) DO NOTHING RETURNING id""",
+                    (fila["id"], est.parser_version, ciclo, est.statement_date, est.periodo_inicio, est.periodo_fin, est.billing_method,
+                     est.razon_social_fts, r["previous_balance"], r["payments"], r["cashback"], r["new_charges"], r["late_fee"],
+                     r["pay_fee"], r["adjustment"], r["amount_due"], est.paginas, len(est.renglones), ok1, _j(d1), h, corrida_id))
+        nuevo = cur.fetchone()
+        if nuevo:
+            for x in est.renglones:
+                hx = sha256_bytes(f"{ciclo}|{x.pagina}|{x.renglon}|{x.fecha}|{x.tarjeta}|{x.monto_mxn}|{x.tipo}".encode())
+                cur.execute("""INSERT INTO bancos.jeeves_movimientos_pdf (ciclo_id, pagina, renglon, fecha, fecha_hora, usuario, comercio,
+                                 tarjeta, monto_mxn, monto_usd, tipo, hash) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                            (nuevo["id"], x.pagina, x.renglon, x.fecha, x.fecha_hora, x.usuario[:200] or None, x.comercio[:300] or None,
+                             x.tarjeta, x.monto_mxn, x.monto_usd, x.tipo, hx))
+    base = {"periodo": ciclo, "v1": ok1, "avisos": avisos, "archivo_id": fila["id"],
+            "detalle": {"renglones": len(est.renglones), "paginas": est.paginas, "huella": h, "v1": d1.get("texto")}}
+    if previo:
+        mismo = previo["huella"] == h
+        motivo = (f"copia del mismo estado que '{previo['nombre_canonico']}' (mismos renglones, otro archivo)" if mismo else
+                  f"conflicto de versión: ya existe el estado de Jeeves {ciclo} ('{previo['nombre_canonico']}') con renglones distintos; no se sobrescribió")
+        _marcar(con, fila["id"], estado="duplicado" if mismo else "rechazado", tipo_detectado="jeeves", periodo=ciclo, motivo=motivo)
+        evento(con, corrida_id, "aviso" if mismo else "rechazo", "DUPLICADO_LOGICO" if mismo else "CONFLICTO_VERSION", motivo, fila["sha256"])
+        return Item(fila["sha256"], nombre, None, "jeeves", "duplicado" if mismo else "rechazado", "duplicado" if mismo else "rechazados",
+                    motivo=motivo, carpeta_destino=f"{BUZON}/Duplicados" if mismo else None, nombre_destino=nombre if mismo else None,
+                    instruccion=None if mismo else "Hay dos estados distintos de Jeeves para el mismo ciclo. Confirmen en el portal cuál es el bueno.",
+                    **base)
+    if not ok1:
+        motivo = d1.get("texto") or "no cuadra"
+        _marcar(con, fila["id"], estado="no_cuadra", tipo_detectado="jeeves", periodo=ciclo, motivo=motivo, nombre_canonico=canonico)
+        evento(con, corrida_id, "rechazo", "NO_CUADRA", motivo, fila["sha256"])
+        return Item(fila["sha256"], nombre, None, "jeeves", "no_cuadra", "rechazados", motivo=motivo, nombre_destino=canonico,
+                    instruccion="Vuelvan a descargar el estado de ese ciclo del portal de Jeeves (PDF completo, todas las páginas) y súbanlo.",
+                    **base)
+    _marcar(con, fila["id"], estado="validado", tipo_detectado="jeeves", periodo=ciclo, nombre_canonico=canonico,
+            ruta_canonica=f"{carpeta}/{canonico}", motivo=None)
+    evento(con, corrida_id, "info", "VALIDADO", f"Jeeves {ciclo} V1 ok", fila["sha256"])
+    return Item(fila["sha256"], nombre, None, "jeeves", "validado", "copiar", carpeta_destino=carpeta, nombre_destino=canonico, **base)
+
+
+def _tarjetas_conocidas(con) -> set[str]:
+    """Tarjetas (últimos 4) de estados de Jeeves validados de Servicios FTS."""
+    with con.cursor() as cur:
+        cur.execute("""SELECT DISTINCT m.tarjeta FROM bancos.jeeves_movimientos_pdf m
+                       JOIN bancos.jeeves_ciclos c ON c.id=m.ciclo_id JOIN bancos.archivos a ON a.id=c.archivo_id
+                       WHERE a.estado IN ('validado','duplicado') AND c.razon_social_fts AND m.tarjeta IS NOT NULL""")
+        return {r["tarjeta"] for r in cur.fetchall()}
+
+
+def _procesar_csv_jeeves(con, fila, contenido, nombre, meta, corrida_id) -> Item:
+    try:
+        x = jeeves.parsear_csv(contenido)
+    except jeeves.ErrorJeeves as e:
+        return _rechazo(con, fila, nombre, "jeeves_csv", "rechazado", f"no se pudo leer el CSV de Jeeves: {e.mensaje}",
+                        "Descarguen de nuevo el CSV del año desde el portal de Jeeves y súbanlo sin abrirlo ni editarlo.", corrida_id, e.codigo)
+    if not x.filas or not x.anio:
+        return _rechazo(con, fila, nombre, "jeeves_csv", "rechazado", "el CSV de Jeeves no trae transacciones",
+                        "Revisen el filtro de fechas en el portal (un año completo) y descárguenlo de nuevo.", corrida_id, "CSV_VACIO")
+    avisos = list(x.avisos)
+    tarjetas = {t["tarjeta"] for t in x.filas if t.get("tarjeta")}
+    if x.empresa:
+        es_fts, forma = jeeves.razon_social_fts(x.empresa), "columna"
+    else:
+        conocidas = _tarjetas_conocidas(con)
+        if conocidas:
+            es_fts, forma = bool(tarjetas & conocidas), "tarjetas"
+        else:
+            es_fts, forma = True, "sin_verificar"
+            avisos.append("el CSV no trae la razón social y todavía no hay un estado de Jeeves validado con qué comparar las tarjetas: "
+                          "se toma como de Servicios FTS y V2 lo confirma contra el PDF del ciclo")
+    if not es_fts:
+        motivo = "CSV de Jeeves de otra razón social (ninguna tarjeta coincide con las de Servicios FTS)"
+        _marcar(con, fila["id"], estado="rechazado", tipo_detectado="jeeves_csv", motivo=motivo)
+        evento(con, corrida_id, "aviso", "JEEVES_OTRA_RAZON_SOCIAL", motivo, fila["sha256"])
+        return Item(fila["sha256"], nombre, None, "jeeves_csv", "rechazado", "otras", archivo_id=fila["id"],
+                    carpeta_destino=CARPETA_OTRAS, nombre_destino=f"Jeeves_Transacciones_Ajena_{x.anio}.csv", motivo=motivo,
+                    instruccion="Se guardó en 'Otras cuentas por identificar'. Si sí es de FTS, avisen a Esteban.")
+    descarga, fuente_fecha = jeeves.fecha_descarga(nombre, meta.get("subido_at"))
+    canonico = _nombre_libre(con, jeeves.nombre_csv(x.anio, descarga))
+    carpeta = f"{CARPETA_JEEVES}/{x.anio}"
+    uids = [t["unique_id"] for t in x.filas]
+    with con.cursor() as cur:
+        cur.execute("SELECT unique_id, version_hash FROM bancos.jeeves_transacciones WHERE unique_id = ANY(%s)", (uids,))
+        existentes: dict[str, set] = {}
+        for r in cur.fetchall():
+            existentes.setdefault(r["unique_id"], set()).add(r["version_hash"])
+        nuevas = versiones = repetidas = 0
+        a_insertar, vistos = [], set()
+        for t in x.filas:
+            clave = (t["unique_id"], t["version_hash"])
+            if clave in vistos:
+                continue
+            vistos.add(clave)
+            if t["unique_id"] not in existentes:
+                nuevas += 1
+                a_insertar.append(t)
+            elif t["version_hash"] not in existentes[t["unique_id"]]:
+                versiones += 1
+                a_insertar.append(t)
+            else:
+                repetidas += 1
+        cur.execute("""INSERT INTO bancos.jeeves_csv_cargas (archivo_id, parser_version, anio, fecha_descarga, fecha_de, columnas, filas,
+                         nuevas, versiones_nuevas, repetidas, razon_social, avisos, corrida_id)
+                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (archivo_id) DO NOTHING RETURNING id""",
+                    (fila["id"], jeeves.CSV_VERSION, x.anio, descarga, fuente_fecha, x.columnas, len(x.filas), nuevas, versiones,
+                     repetidas, forma, _j(avisos), corrida_id))
+        carga = cur.fetchone()
+        if carga:
+            for t in a_insertar:
+                cur.execute("""INSERT INTO bancos.jeeves_transacciones (unique_id, version_hash, carga_id, fecha_descarga, renglon_csv, tipo,
+                                 credit_debit, transaction_type, sub_transaction_type, created_at_utc, posted_at_utc, usuario, usuario_email,
+                                 status, monto_origen, moneda_origen, monto_mxn, monto_firmado, tipo_cambio, fx_fees, payment_description,
+                                 memo, payee, categoria, tiene_comprobante, comprobantes, tarjeta_nombre, tarjeta, tarjeta_tipo, sat_uuid,
+                                 sat_uuid_valido, sat_subtotal, sat_tax, sat_total, sat_emisor_rfc, sat_emisor_nombre, sat_status, extra)
+                               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                               ON CONFLICT (unique_id, version_hash) DO NOTHING""",
+                            (t["unique_id"], t["version_hash"], carga["id"], descarga, t["renglon_csv"], t["tipo"], t["credit_debit"],
+                             t["transaction_type"], t["sub_transaction_type"], t["created_at"], t["posted_at"], t["usuario"],
+                             t["usuario_email"], t["status"], t["monto_origen"], t["moneda_origen"], t["monto_mxn"], t["monto_firmado"],
+                             t["tipo_cambio"], t["fx_fees"], t["payment_description"], t["memo"], t["payee"], t["categoria"],
+                             t["tiene_comprobante"], t["comprobantes"], t["tarjeta_nombre"], t["tarjeta"], t["tarjeta_tipo"], t["sat_uuid"],
+                             t["sat_uuid_valido"], t["sat_subtotal"], t["sat_tax"], t["sat_total"], t["sat_emisor_rfc"],
+                             t["sat_emisor_nombre"], t["sat_status"], _j(t["extra"])))
+    _marcar(con, fila["id"], estado="validado", tipo_detectado="jeeves_csv", nombre_canonico=canonico,
+            ruta_canonica=f"{carpeta}/{canonico}", motivo=None)
+    evento(con, corrida_id, "info", "VALIDADO", f"Jeeves CSV {x.anio}: {nuevas} nuevas, {versiones} con cambios, {repetidas} repetidas",
+           fila["sha256"], {"anio": x.anio, "descarga": str(descarga)})
+    for a in avisos:
+        evento(con, corrida_id, "aviso", "AVISO", a, fila["sha256"])
+    return Item(fila["sha256"], nombre, None, "jeeves_csv", "validado", "copiar", carpeta_destino=carpeta, nombre_destino=canonico,
+                archivo_id=fila["id"], periodo=f"{x.anio}-12", avisos=avisos,
+                detalle={"anio": x.anio, "descarga": str(descarga), "fecha_de": fuente_fecha, "filas": len(x.filas), "nuevas": nuevas,
+                         "versiones_nuevas": versiones, "repetidas": repetidas, "columnas": x.columnas, "razon_social": forma})
+
+
+# ── Jeeves: V2 (CSV contra PDF), V3 (continuidad) y V4 (pagos contra BBVA), al cerrar la corrida ──
+PATRON_FONDEO_JEEVES = r"JE+V+E+[SD]"      # el mismo de bancos.reglas_edo_resultados (excluir_fondeo_jeeves)
+TIPOS_V2 = ("consumo", "devolucion", "pago", "cargo_jeeves", "ajuste")
+VENTANA_V4_DIAS = 3
+
+
+def _ultima_validacion(cur, ciclo, prueba):
+    cur.execute("SELECT resultado, diferencia, detalle FROM bancos.jeeves_validaciones WHERE ciclo=%s AND prueba=%s ORDER BY id DESC LIMIT 1",
+                (ciclo, prueba))
+    return cur.fetchone()
+
+
+def _registrar_validacion(cur, ciclo, prueba, resultado, ciclo_id, diferencia, detalle, corrida_id) -> bool:
+    prev = _ultima_validacion(cur, ciclo, prueba)
+    det = json.loads(_j(detalle))
+    if prev and prev["resultado"] == resultado and prev["diferencia"] == diferencia and prev["detalle"] == det:
+        return False
+    cur.execute("""INSERT INTO bancos.jeeves_validaciones (ciclo, prueba, resultado, ciclo_id, diferencia, detalle, corrida_id)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s)""", (ciclo, prueba, resultado, ciclo_id, diferencia, _j(detalle), corrida_id))
+    return True
+
+
+def _emparejar(a: list[dict], b: list[dict], dias: int) -> tuple[list, list, list]:
+    """Empareja por tipo, monto exacto y tarjeta (si ambas la traen), con la fecha más cercana dentro de ±dias."""
+    libres = list(b)
+    pares, solo_a = [], []
+    for x in sorted(a, key=lambda r: (str(r.get("fecha")), str(r.get("monto")))):
+        cands = [y for y in libres if y["tipo"] == x["tipo"] and y["monto"] == x["monto"]
+                 and (not x.get("tarjeta") or not y.get("tarjeta") or x["tarjeta"] == y["tarjeta"])
+                 and (x.get("fecha") is None or y.get("fecha") is None or abs((x["fecha"] - y["fecha"]).days) <= dias)]
+        if cands:
+            y = min(cands, key=lambda y: abs((x["fecha"] - y["fecha"]).days) if x.get("fecha") and y.get("fecha") else 0)
+            libres.remove(y)
+            pares.append((x, y))
+        else:
+            solo_a.append(x)
+    return pares, solo_a, libres
+
+
+def jeeves_validar(con, corrida_id) -> dict:
+    res = {"ciclos": 0, "v2": {}, "v3": {}, "v4": {}}
+    with con.cursor() as cur:
+        cur.execute("SELECT * FROM bancos.v_jeeves_ciclos ORDER BY ciclo")
+        ciclos = cur.fetchall()
+        if not ciclos:
+            return res
+        res["ciclos"] = len(ciclos)
+        try:
+            cur.execute("SAVEPOINT patron")
+            cur.execute("SELECT patron FROM bancos.reglas_edo_resultados WHERE destino='excluir_fondeo_jeeves' AND activa ORDER BY prioridad LIMIT 1")
+            r = cur.fetchone()
+            patron = r["patron"] if r else PATRON_FONDEO_JEEVES
+            cur.execute("RELEASE SAVEPOINT patron")
+        except Exception:
+            cur.execute("ROLLBACK TO SAVEPOINT patron")
+            patron = PATRON_FONDEO_JEEVES
+        # BBVA: cargos a Jeeves en estados validados, y los días que la base cubre
+        cur.execute("""SELECT m.id, m.fecha_operacion AS fecha, m.cargo AS monto, e.periodo_inicio, e.periodo_fin
+                       FROM bancos.movimientos m JOIN bancos.estados_vigentes e ON e.id=m.estado_id
+                       JOIN bancos.archivos a ON a.id=e.archivo_id
+                       WHERE a.estado='validado' AND m.cargo > 0 AND m.descripcion ~* %s""", (patron,))
+        fondeos = [{"id": r["id"], "fecha": r["fecha"], "monto": r["monto"], "tipo": "pago", "tarjeta": None} for r in cur.fetchall()]
+        cur.execute("""SELECT DISTINCT e.periodo_inicio, e.periodo_fin FROM bancos.estados_vigentes e JOIN bancos.archivos a ON a.id=e.archivo_id
+                       JOIN bancos.cuentas c ON c.id=e.cuenta_id WHERE a.estado='validado' AND c.moneda='MXN'""")
+        cubiertos = [(r["periodo_inicio"], r["periodo_fin"]) for r in cur.fetchall()]
+        cur.execute("SELECT * FROM bancos.v_jeeves_transacciones WHERE posted_at_utc IS NOT NULL")
+        trans = cur.fetchall()
+        anios_csv = {t["anio"] for t in trans}
+        por_ciclo = {c["ciclo"]: c for c in ciclos}
+        for c in ciclos:
+            ciclo, ini, fin = c["ciclo"], c["periodo_inicio"], c["periodo_fin"]
+            cur.execute("SELECT * FROM bancos.v_jeeves_movimientos_pdf WHERE ciclo=%s ORDER BY pagina, renglon", (ciclo,))
+            pdf = [{"id": m["movimiento_id"], "fecha": m["fecha"], "monto": m["monto_mxn"], "tipo": m["tipo"], "tarjeta": m["tarjeta"],
+                    "pagina": m["pagina"], "renglon": m["renglon"]} for m in cur.fetchall()]
+            # ── V2 ──
+            del_ciclo = [t for t in trans if ini <= t["posted_mty"].date() <= fin]
+            if not del_ciclo and not (ini.year in anios_csv or fin.year in anios_csv):
+                cambio = _registrar_validacion(cur, ciclo, "V2", "pendiente", c["ciclo_id"], None,
+                                               {"texto": f"falta el CSV de {fin.year}"}, corrida_id)
+                res["v2"][ciclo] = "pendiente"
+            else:
+                csvs = [{"id": t["unique_id"], "fecha": t["posted_mty"].date(), "monto": t["monto_firmado"], "tipo": t["tipo"],
+                         "tarjeta": t["tarjeta"]} for t in del_ciclo if t["monto_firmado"] is not None]
+                tipos_csv = {x["tipo"] for x in csvs}
+                comparables = [t for t in TIPOS_V2 if t in ("consumo", "devolucion", "pago") or t in tipos_csv]
+                por_tipo, dif_total = {}, Decimal("0")
+                for tp in comparables:
+                    sp = sum((x["monto"] for x in pdf if x["tipo"] == tp), Decimal("0"))
+                    sc = sum((x["monto"] for x in csvs if x["tipo"] == tp), Decimal("0"))
+                    por_tipo[tp] = {"pdf": str(sp), "csv": str(sc), "diferencia": str(sc - sp)}
+                    dif_total += abs(sc - sp)
+                ok = dif_total == 0
+                det = {"por_tipo": por_tipo, "csv_transacciones": len(csvs)}
+                if not ok:
+                    pares, solo_pdf, solo_csv = _emparejar([x for x in pdf if x["tipo"] in comparables],
+                                                           [x for x in csvs if x["tipo"] in comparables], 5)
+                    det["solo_en_pdf"] = [{k: str(v) for k, v in x.items()} for x in solo_pdf][:200]
+                    det["solo_en_csv"] = [{k: str(v) for k, v in x.items()} for x in solo_csv][:200]
+                _registrar_validacion(cur, ciclo, "V2", "ok" if ok else "falla", c["ciclo_id"], dif_total, det, corrida_id)
+                res["v2"][ciclo] = "ok" if ok else "falla"
+            # ── V3: el Amount Due del ciclo anterior es el Previous Balance de éste ──
+            ant = por_ciclo.get(periodo_anterior(ciclo))
+            if ant is None:
+                primero = ciclo == min(por_ciclo)
+                _registrar_validacion(cur, ciclo, "V3", "no_aplica", c["ciclo_id"], None,
+                                      {"texto": "primer ciclo en la base" if primero else f"falta el ciclo {periodo_anterior(ciclo)}"}, corrida_id)
+                res["v3"][ciclo] = "no_aplica"
+            else:
+                dif = c["previous_balance"] - ant["amount_due"]
+                _registrar_validacion(cur, ciclo, "V3", "ok" if dif == 0 else "falla", c["ciclo_id"], dif,
+                                      {"anterior": ant["ciclo"]}, corrida_id)
+                res["v3"][ciclo] = "ok" if dif == 0 else "falla"
+            # ── V4: cada pago a Jeeves tiene su cargo en BBVA (mismo monto, ±3 días) y viceversa ──
+            pagos = [dict(x, monto=-x["monto"], origen="pdf") for x in pdf if x["tipo"] == "pago"]
+            csv_pagos = [{"id": t["unique_id"], "fecha": t["posted_mty"].date(), "monto": -t["monto_firmado"], "tipo": "pago",
+                          "tarjeta": None, "origen": "csv"} for t in del_ciclo if t["tipo"] == "pago" and t["monto_firmado"] is not None]
+            _, csv_extra, _ = _emparejar(csv_pagos, [dict(p) for p in pagos], VENTANA_V4_DIAS)   # los del CSV que no están en el PDF
+            pagos_todos = pagos + csv_extra
+            ventana_ini, ventana_fin = ini - timedelta(days=VENTANA_V4_DIAS), fin + timedelta(days=VENTANA_V4_DIAS)
+            cubierto = any(a <= ini and b >= fin for a, b in cubiertos) or \
+                all(any(a <= d <= b for a, b in cubiertos) for d in [p["fecha"] for p in pagos_todos if p.get("fecha")])
+            fond = [dict(f) for f in fondeos if ini <= f["fecha"] <= fin or
+                    any(abs((f["fecha"] - p["fecha"]).days) <= VENTANA_V4_DIAS for p in pagos_todos if p.get("fecha"))]
+            pares, sin_bbva, bbva_sin = _emparejar([dict(p, tarjeta=None) for p in pagos_todos], fond, VENTANA_V4_DIAS)
+            bbva_sin = [f for f in bbva_sin if ini <= f["fecha"] <= fin]
+            if not cubierto and sin_bbva:
+                resultado = "pendiente"
+            else:
+                resultado = "ok" if not sin_bbva and not bbva_sin else "falla"
+            det = {"pagos": len(pagos_todos), "emparejados": len(pares),
+                   "pago_sin_cargo_en_bbva": [{k: str(v) for k, v in x.items()} for x in sin_bbva],
+                   "cargo_bbva_sin_pago_en_jeeves": [{k: str(v) for k, v in x.items()} for x in bbva_sin],
+                   "bbva_cubre_el_ciclo": cubierto}
+            dif = sum((x["monto"] for x in sin_bbva), Decimal("0")) - sum((x["monto"] for x in bbva_sin), Decimal("0"))
+            _registrar_validacion(cur, ciclo, "V4", resultado, c["ciclo_id"], dif, det, corrida_id)
+            res["v4"][ciclo] = resultado
+    return res
 
 
 # ── cierre de corrida: pares de traspasos, V3, huecos ──
@@ -622,6 +967,7 @@ def cerrar_corrida(con, corrida_id: int, catalogo: Catalogo, graph_ok: bool | No
     else:
         pares = emparejar_db(con, corrida_id, catalogo)
         v3 = v3_y_huecos(con, corrida_id, catalogo, hoy)
+        extra = {**(extra or {}), "jeeves": jeeves_validar(con, corrida_id)}
     with con.cursor() as cur:
         cur.execute("""SELECT
               count(*) FILTER (WHERE a.corrida_id=%(c)s) AS leidos,
