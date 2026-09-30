@@ -119,7 +119,7 @@ function seccionRezago(d) {
           falt.map(f => mesCorto(f.periodo) + ' (' + f.dias_habiles + ')').join(', ') + '.</li>';
       }
       for (const f of otros) {
-        h += '<li>' + esc(mes(f.periodo)) + ': ' + esc(f.detalle) + ' (' + f.dias_habiles + ').</li>';
+        h += '<li>' + (f.motivo === 'csv_anual' ? '' : esc(mes(f.periodo)) + ': ') + esc(f.detalle) + ' (' + f.dias_habiles + ').</li>';
       }
     }
     h += '</ul>';
@@ -178,7 +178,14 @@ function renderAcuse(d) {
   if (d.validados.length) {
     html += '<h3 style="margin:16px 0 6px">Validados</h3><ul style="margin:0">';
     for (const v of d.validados) {
-      html += '<li><b>' + esc(v.cuenta) + ', ' + esc(mes(v.periodo)) + '</b>: cuadra al centavo contra el resumen del banco.' +
+      if (v.tipo === 'jeeves_csv') {          // #352: el CSV del año no tiene "mes"; se reporta lo que trajo
+        const c = v.csv || {};
+        html += '<li><b>' + esc(v.cuenta) + '</b>: se leyó completo (' + (c.filas || 0) + ' transacciones: ' + (c.nuevas || 0) + ' nuevas, ' +
+          (c.versiones_nuevas || 0) + ' con cambios, ' + (c.repetidas || 0) + ' que ya estaban).' +
+          ' <span style="color:#555">(archivo ' + esc(v.archivo) + (v.zip ? ' dentro de ' + esc(v.zip) : '') + ')</span></li>';
+        continue;
+      }
+      html += '<li><b>' + esc(v.cuenta) + ', ' + esc(mes(v.periodo)) + '</b>: ' + (v.tipo === 'jeeves' ? 'cuadra al centavo contra el resumen del estado de cuenta (Balance Detail).' : 'cuadra al centavo contra el resumen del banco.') +
         ' <span style="color:#555">(archivo ' + esc(v.archivo) + (v.zip ? ' dentro de ' + esc(v.zip) : '') + '; el mes sale de la página 1, no del nombre)</span>' +
         (v.aviso ? '<br>Aviso: ' + esc(v.aviso) + '.' : '') + '</li>';
     }
