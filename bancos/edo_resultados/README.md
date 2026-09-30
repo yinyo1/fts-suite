@@ -18,7 +18,7 @@ HTML y los CSV privados de OneDrive, en `FTS Finanzas - Bancos/02 Base maestra d
 | `db/migrations/bancos/bancos_0007_*.sql` | Crea `reglas_edo_resultados`, las reglas editables de a qué renglón va cada egreso. |
 | `db/migrations/bancos/bancos_0008_*.sql` (v1) | Amplía las reglas (D2, D3, D6, Conmet por cliente). Agrega las tablas editables `nomina_oficina`, `partidas_identificadas` y `er_parametros`, la bitácora `er_calculos`, la vista `v_auditoria_estados` y el rol `bancos_er`. `bancos_er` lee como `bancos_lector` y **sólo inserta** en `er_calculos` y `partidas_identificadas`; no tiene UPDATE ni DELETE. |
 | `db/migrations/bancos/bancos_0009_*.sql` (Vista E) | Catálogo editable `destinos_edo_resultados`; `reclasificaciones`, de sólo inserción, con partes (hasta 5), archivo de origen y huella; vista `v_reclasificaciones`, donde la última carga de cada movimiento es la vigente; columna `origen` en las reglas. `bancos_er` sólo inserta. |
-| `db/migrations/bancos/bancos_0012_*.sql` (#364, sesión 1) | `respaldos_workflow`: copia del JSON de un workflow publicado antes de editarlo, de sólo inserción y sólo para el administrador (ningún rol de aplicación la lee, porque el JSON trae direcciones de correo). `er_candados` + `er_tomar_candado()` / `er_soltar_candado()`: el candado de versiones (abajo). Índice único `er_calculos_version_unica`. |
+| `db/migrations/bancos/bancos_0012_*.sql` (#364, sesión 1) | `respaldos_workflow`: copia del JSON de un workflow publicado antes de editarlo, de sólo inserción y sólo para el administrador (ningún rol de aplicación la lee, porque el JSON trae direcciones de correo). `er_candados` + `er_tomar_candado()` / `er_soltar_candado()`: el candado de versiones (abajo). Índice único `er_calculos_version_unica`. **Numeración:** la cabecera del archivo dice que el modelo del módulo en línea pasa a `bancos_0013`; eso quedó viejo. `bancos_0013` es del auditor (#365) y el modelo del módulo toma el siguiente número libre (previsto `bancos_0014`). La cabecera no se corrige porque el archivo ya está aplicado y un archivo aplicado no se edita (`db/README.md`, regla 2): el runner guarda su sha256 y responde `CHECKSUM_DISTINTO` si cambia. |
 | workflow n8n `fts_bancos_estado_resultados` (`LW3DVENZjlI3Kurp`) | El recálculo automático. Baja `calcular.js` **fijado por commit** (constante `CALC_SHA` en el nodo `Code - Disparo`). Desde #352 lee también `PG - Jeeves` (vistas `v_jeeves_*`) y el folio fiscal de las facturas de proveedor. |
 
 ## Reglas vigentes (v1.1)
@@ -77,7 +77,9 @@ reclasificación vigente del movimiento > regla de Esteban > reglas del v1 > cla
   - `PG - Candado`, después de `IF - Recalcular?`, llama a `bancos.er_tomar_candado(execution_id, 16)`. Si otra corrida lo tiene vigente, ésta no recalcula y sale por «Sin cambios».
   - La función devuelve la última corrida y la última versión **leídas después de tomar el candado**, y `Code - Calcular` numera sobre ellas.
   - `PG - Guardar` lo suelta con `bancos.er_soltar_candado(execution_id)` en la misma sentencia que inserta en `er_calculos`.
-  - Si una corrida truena o es de prueba (no guarda), el candado vence solo a los 16 min (el `executionTimeout` del workflow es de 900 s).
+  - **Ningún camino que tomó el candado termina sin soltarlo.** El único que no llega a `PG - Guardar` es `IF - Guardar?` en «no» (corrida de prueba o manual sin publicar); ahí `PG - Soltar candado` lo suelta antes de seguir. `er_soltar_candado` es idempotente: devuelve 1 si había uno vigente y 0 si no.
+  - El vencimiento de 16 min (el `executionTimeout` del workflow es de 900 s) queda **sólo** para cuando n8n truena a media corrida.
+  - `Code - Resumen` reporta `candado: { tomado, soltado_al_guardar, soltado_sin_guardar }`.
   - Red de seguridad: el índice único `er_calculos_version_unica` rechaza cualquier versión repetida.
 - **Respaldo:** antes de cualquier edit del workflow se guarda la versión publicada en `bancos.respaldos_workflow`, con el sha256 del JSON canónico (llaves ordenadas) verificado al insertar y al releer.
 - **Rollback:** `CALC_SHA` → el anterior del registro de abajo, y restaurar el JSON del respaldo (el id está en el registro).
@@ -89,7 +91,7 @@ Quien cambie `CALC_SHA` lee primero el valor vivo del nodo `Code - Disparo`, apu
 | fecha | anterior → nuevo | por qué | huella esperada | respaldo del workflow |
 |---|---|---|---|---|
 | 2026-09-29 | `404025d` → `5fa7c37` | v1.3: Jeeves desde su estado de cuenta (#352) | la misma que la v1.2 (sin archivos de Jeeves todavía) | versión n8n `f0b27082` (ya podada por retención) |
-| (pendiente, #364 sesión 1) | `5fa7c37` → commit mergeado de v1.3.1 | B11 paso 1: horas a proyecto por `x_studio_project_id`; **cambio de lector, sin efecto material** | una versión nueva: reparto de enero–mayo +0.01 a +0.05 pp, utilidad de operación de A/B/C sin cambio | `bancos.respaldos_workflow` id 1 (versión `59312dad`, sha256 `26a3b12a…`) |
+| 2026-09-30 | `5fa7c37` → `32db92e` (merge del PR #367) | B11 paso 1: horas a proyecto por `x_studio_project_id` (motor v1.3.1) + candado de versiones; **cambio de lector, sin efecto material** | versión 13, huella `eb33bee719f75d5dbd3f5b041e687046d5742bed0117b3b6d5e9ec9fea8c3ec2` (ejecución 120102; la misma que calculó la corrida de prueba 120100 y que reproduce el motor local con esos insumos). Reparto de enero–mayo +0.01 a +0.05 pp; utilidad de operación de A/B/C igual a la v12 | `bancos.respaldos_workflow` id 1 (versión n8n `59312dad`, sha256 `26a3b12ac169f492c309a1707f8a8e91f88b9fa1f7e574715b9a156b04ceb27a`); versión n8n nueva `16c158d9` |
 
 ## Disparos del workflow
 

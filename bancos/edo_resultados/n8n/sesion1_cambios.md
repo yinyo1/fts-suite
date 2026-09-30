@@ -30,6 +30,18 @@ Se aplican **después del merge** del PR de la sesión 1, en un solo `update_wor
    RETURNING ..., (SELECT sum(s) FROM solt) AS candado_soltado;
    ```
 
+8. **(Paso F, #364: el candado no se queda puesto en la prueba.)** Nodo nuevo `PG - Soltar candado` (Postgres, `fts_admin`,
+   `executeOnce`, `alwaysOutputData`, `onError: continueRegularOutput`) en el camino `IF - Guardar?` (no) → `PG - Soltar candado` → `IF - Hubo CSV?`:
+   ```sql
+   SET LOCAL ROLE bancos_er;
+   SELECT bancos.er_soltar_candado($1) AS candado_soltado;
+   ```
+   con el mismo `queryReplacement` que `PG - Candado`. Se quita `IF - Guardar?` (no) → `IF - Hubo CSV?`.
+9. Ajustes menores al aplicar: `IF - Candado?` y `Code - Calcular` aceptan `candado` como objeto o como texto JSON;
+   `Code - Resumen` agrega `candado: { tomado, soltado_al_guardar, soltado_sin_guardar }`.
+
+Aplicado el 2026-09-30 en un solo `update_workflow` (versión n8n `16c158d9`, publicada; `CALC_SHA` = `32db92e`).
+
 Verificación: read-back de `active`, `versionId == activeVersionId`, `fieldsList` y `CALC_SHA`; una corrida de prueba
 (`prueba: true`) y una de publicación con `motivo: "cambio de lector, sin efecto material"`.
 

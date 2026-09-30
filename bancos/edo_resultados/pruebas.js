@@ -52,7 +52,9 @@ const ok=(n,cond,det)=>console.log((cond?'✅':'❌')+' '+n+(det?' · '+det:''))
   const k=base(); k.odoo.empleados=k.odoo.empleados.slice(0,1);
   k.odoo.asistencias=[atp(1,'2026-01-05',30,false,false,false),atp(1,'2026-01-06',10,false,false,true),atp(1,'2026-02-05',10,false,false,true)];
   const q=c.calcular(k,{sin_archivos:true})._interno.m.repartoNomina['2026-01'];
-  ok('B11 c) sin proyecto, sin SO y sin bolsa la hora no se clasifica (no se inventa proyecto)', q.costo!==75000, (q.costo/100)+' / '+(q.comun/100)+' · '+q.cuenta.medido+' medidos'); }
+  // enero: 30 h sin proyecto, sin SO y sin bolsa + 10 h de bolsa → las 30 h no cuentan a proyecto ni a común; enero queda bajo el umbral de horas medidas
+  // y se estima con el historial de la persona (febrero, 100 % común). Nómina de enero 1,000.00 → costo 0.00 y común 1,000.00 exactos.
+  ok('B11 c) sin proyecto, sin SO y sin bolsa la hora no se clasifica (no se inventa proyecto)', q.costo===0&&q.comun===100000&&q.sin===0&&q.cuenta.medido===0&&q.cuenta.historial===1, (q.costo/100)+' / '+(q.comun/100)+' · '+q.cuenta.medido+' medidos · '+q.cuenta.historial+' por historial'); }
 // Vista D a–c (núcleo del escenario; d se prueba en el navegador)
 { const b={'2026-01':100000,acum:100000}, mv=[{id:'a',mes:'2026-01',bruto:11600},{id:'b',mes:'2026-01',bruto:23200},{id:'e',mes:'2026-01',bruto:34800}];
   let r=c.escenarioCore(b,mv,['a','b','e'],12); ok('Vista D a) 116+232+348 al 12 %', Math.round(r.acum.subtotal)===60000&&Math.round(r.acum.costo)===7200&&Math.round(r.acum.neto)===52800&&Math.round(r.acum.hipotetica)===152800);
