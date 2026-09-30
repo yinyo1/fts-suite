@@ -3363,7 +3363,23 @@
         ? '<span class="tiny">🔒 Enviado a Odoo. Este es el documento con el que se vendió: se consulta, no se edita.</span>'
         : '<label class="tiny">Estado <select class="cel" data-estado>' + ops + '</select></label>') +
       '<span class="grow"></span>' +
-      '<span class="tiny">' + ligadaTxt(m) + '</span></div>';
+      '<span class="tiny">' + ligadaTxt(m) + '</span>' +
+      /* ⚠️ La puerta del cuadro de DATOS —donde se CAPTURAN el contacto, el
+       * IVA, la orden de compra y el anticipo, que alimentan seis de los
+       * diecisiete candados—. Al mandar «Confirmar orden» al flujo nuevo, ese
+       * cuadro se quedó sin forma de abrirse: los mensajes del checklist
+       * terminan en «Arriba, en DATOS» y mandaban a una pantalla inalcanzable.
+       * Lo cazaron 28 pruebas viejas cayéndose a la vez.
+       *
+       * Va AQUÍ y no en la barra de abajo a propósito: la barra ya llevaba seis
+       * botones y a 380 px el séptimo le costaba un renglón entero (169 → 223),
+       * que es el invariante que cuida la prueba de la V1.37. Y además éste es
+       * su sitio: es la línea donde se habla de la orden. */
+      ((G.MachoteOrden && !cong)
+        ? '<button class="btn fantasma peq" id="btnDatosOrden" ' +
+          'title="Capturar el contacto, el IVA, la orden de compra y el anticipo">Datos</button>'
+        : '') +
+      '</div>';
   }
 
   /* ── Hoja DESGLOSE COTIZACIÓN ────────────────────────────────────────── */
@@ -3714,18 +3730,6 @@
        * el nuevo describe lo que la persona viene a hacer. */
       (G.ConfirmarFlujo && !ajeno(m)   /* confirmar es del DUEÑO, no de quien tiene prestado */
         ? '<button class="btn fantasma" id="btnOrden" title="Elegir la orden, revisar los candados y llegar al paso final">Confirmar orden</button>'
-        : '') +
-      /* ⚠️ Y el cuadro de DATOS se queda, con puerta propia.
-       * Al mandar «Confirmar orden» al flujo nuevo, el cuadro viejo —donde se
-       * CAPTURAN el contacto, la decisión de IVA, la orden de compra y el
-       * anticipo— se quedó sin forma de abrirse. No es un detalle: los mensajes
-       * del checklist terminan en «Arriba, en DATOS», o sea que mandan a una
-       * pantalla a la que ya no se podía llegar, y los seis candados nunca
-       * habrían pasado. Lo cazaron 28 pruebas viejas; el diff se veía bien.
-       * Va en secundario: confirmar es lo que se viene a hacer, capturar es lo
-       * que hay que haber hecho antes. */
-      (G.MachoteOrden && !ajeno(m)
-        ? '<button class="btn fantasma" id="btnDatosOrden" title="Capturar el contacto, el IVA, la orden de compra y el anticipo">Datos de la orden</button>'
         : '') +
       /* PRESTAR es del dueño y sólo del dueño (decisión 1 de la propuesta:
        * quien sabe que no puede meterle mano ahora es él). Y sólo tiene

@@ -2737,3 +2737,7 @@ table.or-tab td.num { text-align: right; }
   .pu-cab .chip-mini { order: 2; }
   .pu-cab .btn { order: 3; margin-left: auto; }
 }
+
+
+/* Botón chico para ir dentro de una línea de texto, no en una barra. */
+.btn.peq { min-height: 28px; padding: 0 10px; font-size: 12px; }
