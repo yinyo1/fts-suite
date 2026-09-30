@@ -2677,29 +2677,47 @@ table.or-tab td.num { text-align: right; }
  * lo que quedaba cortado a la derecha era la columna MACHOTE — la única que no
  * existe en Odoo y la razón de ser de la pantalla. Un scroll horizontal que
  * esconde justo lo nuevo no es densidad: es un defecto con buena letra. */
-@media (max-width: 1039px) {
-  /* Las DOS columnas recortadas hay que soltarlas, no sólo una: el
-   * `max-width:1px` que en la tabla hace el recorte, en una ficha parte el
-   * texto LETRA POR LETRA, y eso no lo caza ninguna medida automática —1px no
-   * es 0px y nada se derrama—. Se vio mirando la captura de 380. */
-  .or-cli, .or-desc, .or-po, .or-cot { width: auto; max-width: none; white-space: normal; }
-  table.or-tab thead { display: none; }
-  table.or-tab, table.or-tab tbody, table.or-tab tr, table.or-tab td { display: block; width: auto; }
-  table.or-tab tbody { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 9px; }
-  table.or-tab tr { border: 1px solid var(--linea); border-radius: 9px; padding: 6px 4px; }
-  table.or-tab td { border-bottom: 0; display: flex; gap: 10px; align-items: baseline;
-                    height: auto; padding: 4px 8px; flex-wrap: wrap; }
-  table.or-tab td::before { content: attr(data-th); flex: 0 0 92px;
-    font-size: var(--o19-fs-label, 11.2px); text-transform: uppercase;
-    letter-spacing: .04em; color: #44546a; font-weight: 700; }
-  table.or-tab td.num { justify-content: flex-start; text-align: left; }
-  .or-caja { border: 0; overflow: visible; }
-  .or-mach { flex-wrap: wrap; gap: 6px; }
-  .or-md { max-width: 100%; white-space: normal; }
-}
+/* ═══ LA LISTA ES LISTA A TODOS LOS ANCHOS ═════════════════════════════════
+ *
+ * Aquí vivía un `@media (max-width:1039px)` que convertía la tabla en TARJETAS.
+ * Se quitó: cualquier navegador por debajo de 1040 px —o sea casi cualquier
+ * laptop con la ventana a medias— veía tarjetas donde tenía que ver la lista de
+ * Odoo, y es justo lo que se reportó.
+ *
+ * Lo que la hace caber en el teléfono NO es cambiarla de forma: es que se
+ * DESPLACE DE LADO dentro de su propia caja. La página no se mueve —eso es lo
+ * que se siente roto—, se mueve la tabla, que es lo que el usuario espera de
+ * una tabla ancha. Si algo no cabe, se dice y se desplaza; no se convierte en
+ * otra cosa.
+ *
+ * El `min-width` es lo que obliga al desplazamiento en vez de al aplastamiento:
+ * sin él las siete columnas se comprimen hasta que el Total se parte, y un
+ * importe partido se lee como otro importe. */
+.or-caja { overflow-x: auto; overflow-y: visible; -webkit-overflow-scrolling: touch; }
+
+/* ⚠️ El ancho mínimo y los suelos de las dos columnas de texto van JUNTOS, y
+ * los números salen de medir, no de elegirlos bonito.
+ *
+ * Con `min-width:880px` a secas, a 760 px la tabla repartía así:
+ *     Número 70 · Cliente 97 · Descripción 129 · Machote 256 · Cotizador 87 ·
+ *     Total 127 · Estado 114
+ * La columna del MACHOTE se llevaba 256 —lleva folio, descripción y botón, y
+ * nada de eso envuelve— mientras Cliente quedaba en «Indust…». Los porcentajes
+ * de `.or-cli`/`.or-desc` no la defienden: con `max-width:1px` el algoritmo
+ * automático las trata como columnas mínimas y le da la holgura a la glotona.
+ *
+ * Lo que sí las defiende es un SUELO. 70+150+190+256+87+127+114 = 994, así que
+ * el mínimo de la tabla sube a 1000 px — a un pelo de los 990 que Odoo usa como
+ * ancho mínimo de hoja (ODOO19-UI.md §4). Debajo de eso se desplaza de lado,
+ * que es lo que debe hacer: si no cabe, se dice y se desliza; no se cambia de
+ * forma. */
+table.or-tab { min-width: 1000px; }
+.or-cli { min-width: 150px; }
+.or-desc { min-width: 190px; }
+
 @media (max-width: 760px) {
-  table.or-tab tbody { grid-template-columns: 1fr; }
   .or-hoja { height: 66vh; }
+}
 }
 
 /* ═══ V1.48 · El paso 1 del flujo de confirmación ═══════════════════════════
@@ -2751,3 +2769,61 @@ table.or-tab td.num { text-align: right; }
  * Es el mismo tropiezo que el botón de copiar de la V1.47. */
 .btn.peq { min-height: 40px; padding: 0 10px; font-size: 12px;
             width: auto; flex: none; align-self: center; }
+
+
+/* ═══ V1.49 · La lista de órdenes con la forma de Odoo ══════════════════════
+ *
+ * ⚠️ PREFIJO `orl-` (orden · lista) Y NO `or-`, a propósito. `or-cab` y
+ * `or-pie` YA EXISTEN en este módulo: son la cabecera y el pie del CASCARÓN de
+ * la orden, con su `justify-content:flex-end` y —lo que lo delató— un
+ * `flex-direction: column-reverse` a ≤520 px. Al reusar los nombres, el pie de
+ * la lista salió con sus tres trozos AL REVÉS en el teléfono: primero el final
+ * de la frase, luego el número, y al último el principio. El CSS nuevo era
+ * correcto; lo que estaba mal era el nombre. Mismo tropiezo que `.kpi` en la
+ * V1.34 (CLAUDE.md §20 #12) y que `cf-` contra `cfx-` en la V1.45.
+ *
+ * `or-filtro` SÍ se reusa, y eso es deliberado: es el mismo elemento de antes
+ * —la banda que anuncia los filtros—, que ahora se ve como la barra de
+ * búsqueda de Odoo. Cambia la forma, no lo que es. */
+
+/* ── La cabecera: acción, título, cuenta ──────────────────────────────────── */
+.orl-cab { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 10px; }
+.orl-cab .orl-tt { margin: 0; font-size: 19px; font-weight: 600; }
+.orl-cab .orl-cuenta { margin-left: auto; font-size: 12.5px;
+                     color: var(--o19-gray-600, #6c757d); white-space: nowrap;
+                     font-variant-numeric: tabular-nums; }
+/* ⚠️ `width:auto` NO sobra: `shared/fts-styles.css` pone `.btn{width:100%}`
+ * para el kiosko y cada contexto de este módulo tiene que deshacerlo. Sin esto
+ * el «Nuevo» sale de ancho completo y empuja el título a otro renglón. Ya
+ * mordió dos veces en esta misma sesión. */
+.btn.orl-nuevo { width: auto; flex: 0 0 auto; min-width: 0;
+                background: var(--o19-brand, #714B67); border-color: var(--o19-brand, #714B67);
+                color: #fff; font-weight: 600; padding: 0 16px; min-height: 40px; }
+.btn.orl-nuevo:hover { background: #5f3f57; border-color: #5f3f57; }
+
+/* ── La barra de búsqueda, con las pastillas dentro ───────────────────────── */
+.or-filtro { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+             border: 1px solid var(--o19-gray-300, #dee2e6); border-radius: 8px;
+             background: #fff; padding: 7px 10px; margin: 0 0 10px; }
+.or-filtro .orl-lupa { color: var(--o19-gray-600, #6c757d); font-size: 17px; line-height: 1; }
+.or-filtro .orl-pills { display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+                       flex: 1 1 auto; min-width: 0; }
+.or-filtro .orl-esconde { font-size: 12px; color: var(--o19-gray-600, #6c757d);
+                         white-space: nowrap; }
+.or-filtro .orl-esconde b { color: var(--tinta, #1c1c1c); }
+
+/* ── El pie: cuántos filtros están puestos ────────────────────────────────── */
+.orl-pie { font-size: 12px; color: var(--o19-gray-600, #6c757d);
+          padding: 8px 2px 0; line-height: 1.45; }
+.orl-pie b { color: var(--tinta, #1c1c1c); }
+
+/* ── El Número, en el morado de los enlaces de Odoo (el Machote ya lo traía) ─ */
+table.or-tab .or-num { color: var(--o19-brand, #714B67); }
+
+/* ── El Total NO se recorta, nunca ─────────────────────────────────────────
+ * Ni `max-width`, ni `ellipsis`, ni ancho porcentual. Un rótulo cortado se ve
+ * cortado; un importe cortado se lee como OTRO importe, y nadie lo nota. */
+table.or-tab td.or-tot, table.or-tab th.num {
+  white-space: nowrap; text-align: right; max-width: none; width: 1%;
+  overflow: visible; text-overflow: clip;
+}

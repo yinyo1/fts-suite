@@ -161,14 +161,15 @@
     var desde1 = _st.total ? _st.desde + 1 : 0;
 
     var facetas = '';
-    if (_st.soloMias) facetas += faceta('mias', 'Mías');
-    if (_st.sinCancelar) facetas += faceta('cancel', 'Sin canceladas');
-    if (!_st.verPrueba) facetas += faceta('prueba', 'Sin las de prueba');
+    var nFiltros = 1;   /* «Empresas FTS» es fijo y también acota: cuenta. */
+    if (_st.soloMias) { facetas += faceta('mias', 'Mías'); nFiltros++; }
+    if (_st.sinCancelar) { facetas += faceta('cancel', 'Sin canceladas'); nFiltros++; }
+    if (!_st.verPrueba) { facetas += faceta('prueba', 'Sin las de prueba'); nFiltros++; }
     facetas += '<span class="or-fac fijo" title="La vista está acotada a FTS México y FTS USA">Empresas FTS</span>';
 
     var cuerpo = _st.filas.length
       ? _st.filas.map(fila).join('')
-      : '<tr><td colspan="8" class="or-vacio" style="padding:18px">' +
+      : '<tr><td colspan="7" class="or-vacio" style="padding:18px">' +
         'No hay ninguna orden con estos filtros. <b>Quita alguno</b> antes de concluir ' +
         'que no existe: una lista vacía se ve igual cuando el filtro sirve y cuando sobra.' +
         '</td></tr>';
@@ -179,18 +180,49 @@
         'inventada para poder recorrer la pantalla. <b>Ninguna de estas órdenes existe.</b>' +
         '</div>' : '') +
 
-      '<div class="or-filtro">' +
-        '<div class="or-fq"><b>Estás viendo ' + desde1 + '–' + hasta + ' de ' +
-          _st.total.toLocaleString('es-MX') + '.</b> Filtro activo: ' + facetas +
-          (_st.ocultas ? ' — se están escondiendo <b>' + _st.ocultas +
-            '</b> por esos filtros.' : '') +
-        '</div>' +
+      /* ── LA CABECERA, como la de Odoo: acción, título y cuenta ───────────
+       * El botón primero y en el morado de Enterprise, el título después, y la
+       * cuenta a la derecha. La cuenta va arriba y no sólo abajo porque es lo
+       * que contesta «¿las estoy viendo todas?», que es la pregunta con la que
+       * se abre una lista de 1,546. */
+      '<div class="orl-cab">' +
+        '<button class="btn orl-nuevo" data-nuevo>Nuevo</button>' +
+        '<h2 class="orl-tt">Órdenes de venta</h2>' +
+        '<span class="orl-cuenta"><b>' + desde1 + '–' + hasta + '</b> / ' +
+          _st.total.toLocaleString('es-MX') + '</span>' +
       '</div>' +
 
+      /* ── LA BARRA DE BÚSQUEDA, con los filtros como pastillas quitables ──
+       * Odoo pone «My Quotations» como facetita gris que se confunde con
+       * adorno, y por eso nadie la ve. Aquí las pastillas se quitan con su ×, y
+       * al lado va, en palabras, CUÁNTAS filas esconden: un filtro que no se
+       * anuncia se lee como registros que faltan. */
+      '<div class="or-filtro">' +
+        '<span class="orl-lupa" aria-hidden="true">⌕</span>' +
+        '<span class="orl-pills">' + facetas + '</span>' +
+        (_st.ocultas ? '<span class="orl-esconde">esconden <b>' + _st.ocultas +
+          '</b></span>' : '') +
+      '</div>' +
+
+      /* SIETE columnas. Fuera quedaron Website, Salesperson, Activities,
+       * Company, Pricelist, Invoice Count, Creation Date — y la PO del
+       * cliente, que se ve en el detalle: ninguna sirve para decidir si una
+       * orden se puede confirmar, y todas roban ancho al Total y a la
+       * Descripción, que sí. */
       '<div class="or-caja"><table class="or-tab"><thead><tr>' +
-        '<th>Número</th><th>Estado</th><th>Cliente</th><th>Descripción</th>' +
-        '<th>PO del cliente</th><th>Cotizador</th><th class="num">Total</th><th>Machote</th>' +
+        '<th>Número</th><th>Cliente</th><th>Descripción</th><th>Machote</th>' +
+        '<th>Cotizador</th><th class="num">Total</th><th>Estado</th>' +
       '</tr></thead><tbody>' + cuerpo + '</tbody></table></div>' +
+
+      /* Al pie, cuántos filtros están puestos. Es la misma verdad que las
+       * pastillas de arriba, dicha en número al terminar de leer la lista:
+       * quien llega abajo y ve pocos renglones tiene ahí la explicación. */
+      '<div class="orl-pie">' + nFiltros + ' filtro' + (nFiltros === 1 ? '' : 's') +
+        ' puesto' + (nFiltros === 1 ? '' : 's') +
+        (_st.ocultas ? ' · esconden <b>' + _st.ocultas + '</b> ' +
+          (_st.ocultas === 1 ? 'orden' : 'órdenes') : '') +
+        '. Quita alguno antes de concluir que algo no existe.' +
+      '</div>' +
 
       '<div class="or-pag">' +
         '<button class="btn" data-pag="-1"' + (_st.desde <= 0 ? ' disabled' : '') + '>‹ Anteriores</button>' +
@@ -216,18 +248,19 @@
       /* Sin insignia extra para `sent`: la etiqueta YA dice «Enviada». Dos
        * chips seguidos con la misma palabra es ruido, y el ruido se aprende
        * a ignorar justo donde luego hace falta mirar. */
-      '<td data-th="Estado"><span class="or-est ' + e.cls + '">' + esc(e.txt) + '</span></td>' +
       '<td data-th="Cliente" class="or-cli" title="' + esc(f.cliente) + '">' + esc(f.cliente) + '</td>' +
       /* La MISMA función que el detalle. Dos lecturas del mismo dato acaban
        * diciendo cosas distintas, y la lista es la que más se mira. */
       '<td data-th="Descripción" class="or-desc" title="' + esc(descripcion(f).texto) + '">' +
         (descripcion(f).texto ? esc(descripcion(f).texto)
           : '<span class="or-vacio">— sin descripción —</span>') + '</td>' +
-      '<td data-th="PO" class="or-po" title="' + esc(f.po) + '">' +
-        (f.po ? esc(f.po) : '<span class="or-vacio">—</span>') + '</td>' +
-      '<td data-th="Cotizador" class="or-cot">' + cotizador(f) + '</td>' +
-      '<td data-th="Total" class="num mono or-tot">' + money(f.total, f.moneda) + '</td>' +
       '<td data-th="Machote">' + machoteCelda(f) + '</td>' +
+      '<td data-th="Cotizador" class="or-cot">' + cotizador(f) + '</td>' +
+      /* El Total va al final de lo numerable y NUNCA se recorta: un rótulo
+       * cortado se ve cortado, pero un importe cortado se lee como OTRO
+       * importe. Por eso esta columna no lleva `text-overflow`. */
+      '<td data-th="Total" class="num mono or-tot">' + money(f.total, f.moneda) + '</td>' +
+      '<td data-th="Estado"><span class="or-est ' + e.cls + '">' + esc(e.txt) + '</span></td>' +
     '</tr>';
   }
 
@@ -505,6 +538,33 @@
   }
 
   function cablearLista(host) {
+    /* ── «Nuevo» dice la verdad de hoy ────────────────────────────────────
+     * La suite NO crea órdenes ahora mismo: las dos escrituras irreversibles
+     * están apagadas (V1.48, #294). Un botón que no hace nada y no lo explica
+     * es peor que no tenerlo, y uno que fingiera crear sería mentira. Así que
+     * dice dónde se crean hoy y qué falta para que se creen aquí. */
+    host.querySelectorAll('[data-nuevo]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var caja = host.querySelector('.orl-nota');
+        if (caja) { caja.remove(); return; }          // segundo clic: se cierra
+        var A = G.MachoteAlmacen;
+        var apagada = !A || !A.emisionEncendida || !A.emisionEncendida();
+        var d = document.createElement('div');
+        d.className = 'aviso orl-nota';
+        d.innerHTML = apagada
+          ? '<strong>Hoy las órdenes se crean en Odoo, a mano.</strong> Crearlas desde la ' +
+            'suite está <b>apagado a propósito</b>: el webhook tardaba ~29 minutos y el ' +
+            'navegador cortaba a los 10 s, así que contestaba error y creaba la orden de ' +
+            'todos modos. Se enciende con los tres cambios de ' +
+            '<code>docs/comercial/POR-QUE-NO-SE-PODIA-CONFIRMAR.md</code>. ' +
+            'Cuando la orden ya exista en Odoo, aparece en esta lista y se le liga su machote.'
+          : '<strong>Se crea desde la cotización.</strong> Abre el machote y usa ' +
+            '<b>Confirmar orden</b>: de ahí salen el cliente, los renglones y los ' +
+            'compromisos, que aquí no se tienen.';
+        var cab = host.querySelector('.orl-cab');
+        if (cab && cab.parentNode) cab.parentNode.insertBefore(d, cab.nextSibling);
+      });
+    });
     host.querySelectorAll('[data-pag]').forEach(function (b) {
       b.addEventListener('click', function () {
         var d = Number(b.getAttribute('data-pag'));
