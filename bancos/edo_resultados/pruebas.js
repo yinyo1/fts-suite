@@ -39,6 +39,20 @@ const ok=(n,cond,det)=>console.log((cond?'✅':'❌')+' '+n+(det?' · '+det:''))
 { const i=base(); i.odoo.asistencias=[at(1,'2026-01-05',33.3,true),at(2,'2026-01-05',21.7,false,true),at(1,'2026-02-05',7,true),at(2,'2026-02-05',13,false,true)]; const r=c.calcular(i,{sin_archivos:true});
   ok('g) puente ampliado cuadra al centavo', r.resumen.cuadra_al_centavo===true, 'diferencias '+JSON.stringify(r._interno.pz.cuadre));
   const RN=r._interno.m.repartoNomina; ok('h) nómina repartida = nómina total del banco', ['2026-01','2026-02'].every(p=>RN[p].costo+RN[p].comun+RN[p].sin===RN[p].N), ['2026-01','2026-02'].map(p=>(RN[p].costo/100)+'+'+(RN[p].comun/100)+'+'+(RN[p].sin/100)+'='+(RN[p].N/100)).join(' · ')); }
+// B11 (#356, motor v1.3.1): las horas a proyecto se leen de x_studio_project_id; el campo de SO queda sólo como respaldo de lo viejo
+{ const atp=(e,fecha,h,proy,so,bolsa)=>({employee_id:[e,'x'],check_in:fecha+' 14:00:00',worked_hours:h,x_studio_project_id:proy?[2382,'PROY']:false,x_studio_sales_order_2:so?[1,'SO']:false,x_studio_many2one_field_GUbBF:bolsa?[200,'B']:false});
+  const i=base(); i.odoo.empleados=i.odoo.empleados.slice(0,1);
+  i.odoo.asistencias=[atp(1,'2026-01-05',30,true,false,false),atp(1,'2026-01-06',10,false,false,true),atp(1,'2026-02-05',10,true,false,false)];
+  const m=c.calcular(i,{sin_archivos:true})._interno.m.repartoNomina['2026-01'];
+  ok('B11 a) SO vacío y proyecto lleno → la hora cuenta a proyecto; ambos vacíos y bolsa llena → común', m.costo===75000&&m.comun===25000, (m.costo/100)+' / '+(m.comun/100));
+  const j=base(); j.odoo.empleados=j.odoo.empleados.slice(0,1);
+  j.odoo.asistencias=[atp(1,'2026-01-05',30,false,true,false),atp(1,'2026-01-06',10,false,false,true),atp(1,'2026-02-05',10,false,true,false)];
+  const n=c.calcular(j,{sin_archivos:true})._interno.m.repartoNomina['2026-01'];
+  ok('B11 b) registros viejos con sólo el campo de SO siguen contando a proyecto (tolerante)', n.costo===75000&&n.comun===25000, (n.costo/100)+' / '+(n.comun/100));
+  const k=base(); k.odoo.empleados=k.odoo.empleados.slice(0,1);
+  k.odoo.asistencias=[atp(1,'2026-01-05',30,false,false,false),atp(1,'2026-01-06',10,false,false,true),atp(1,'2026-02-05',10,false,false,true)];
+  const q=c.calcular(k,{sin_archivos:true})._interno.m.repartoNomina['2026-01'];
+  ok('B11 c) sin proyecto, sin SO y sin bolsa la hora no se clasifica (no se inventa proyecto)', q.costo!==75000, (q.costo/100)+' / '+(q.comun/100)+' · '+q.cuenta.medido+' medidos'); }
 // Vista D a–c (núcleo del escenario; d se prueba en el navegador)
 { const b={'2026-01':100000,acum:100000}, mv=[{id:'a',mes:'2026-01',bruto:11600},{id:'b',mes:'2026-01',bruto:23200},{id:'e',mes:'2026-01',bruto:34800}];
   let r=c.escenarioCore(b,mv,['a','b','e'],12); ok('Vista D a) 116+232+348 al 12 %', Math.round(r.acum.subtotal)===60000&&Math.round(r.acum.costo)===7200&&Math.round(r.acum.neto)===52800&&Math.round(r.acum.hipotetica)===152800);
