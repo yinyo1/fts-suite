@@ -2506,6 +2506,27 @@ await sembrarMachotes(o);
         return true;
       });
       if (!sembro) throw new Error('el almacén no tenía nada que sembrar');
+
+      /* ⚠️ LA SIEMBRA VA EN EL GUION DE ARRANQUE, NO SE CONFÍA EN QUE SOBREVIVA
+       * (30-sep-2026). Hasta aquí esta prueba escribía el almacén y recargaba
+       * esperando que lo escrito siguiera ahí. Y casi siempre sigue — pero en
+       * una corrida completa de 274 apareció con el almacén reducido a las
+       * cuatro fixturas y un `guardado_at` recién puesto: algo llamó a
+       * `localStorage.clear()` en esa navegación y el sembrador volvió a poner
+       * la fixtura encima. La tarjeta de arriba pasó a ser la primera fixtura y
+       * el mensaje decía «Johnson Controls Enterprises», que es exactamente lo
+       * que la evidencia que dejó la sesión del 23-sep predijo que veríamos.
+       *
+       * Ya había fallado así una vez, sobre otro commit, así que no es de lo
+       * nuevo: es que la prueba dependía del ORDEN en que se registran los
+       * guiones de arranque. En vez de pelear con ese orden, lo capturado se
+       * vuelve a poner en el arranque de la navegación siguiente — determinista
+       * por construcción, que es lo mismo que se hizo en el guion de capturas. */
+      const almacen = await o.evaluate(() => localStorage.getItem('fts_machote_v1'));
+      await o.addInitScript((crudo) => {
+        try { localStorage.setItem('fts_machote_v1', crudo); } catch (e) {}
+      }, almacen);
+
       await o.goto(BASE); await o.waitForTimeout(1100);  // el catálogo llega y repinta
       // El recién creado va al principio de la lista (`unshift`).
       const t = await o.evaluate(() => document.querySelector('.fila .tiny').textContent);
@@ -10104,15 +10125,26 @@ await sembrarMachotes(q);
     await sembrarGeo(q);
     await q.addInitScript((cfg) => {
       try {
-        /* El clear va SOLO en la primera carga. Este guion se vuelve a correr en
-         * cada navegacion, incluida la RECARGA de mas abajo, asi que sin la
-         * guarda borraba el machote que se acababa de sembrar — y el modal no
-         * abria porque no habia cotizacion. El sintoma era «no encontre el
-         * boton», que manda a buscar el error en el selector y no aqui. */
-        if (!sessionStorage.getItem('__limpio_v145')) {
-          localStorage.clear();
-          sessionStorage.setItem('__limpio_v145', '1');
-        }
+        /* ⚠️ AQUÍ NO SE LIMPIA NADA, Y ESA ES LA CORRECCIÓN (30-sep-2026).
+         *
+         * Había un `localStorage.clear()` guardado por una marca en
+         * `sessionStorage`, para que corriera sólo en la primera carga y no en
+         * la RECARGA de más abajo — porque sin guarda borraba el machote recién
+         * sembrado y el modal no abría. La guarda arreglaba el síntoma y metía
+         * otro: **en `file://` esa marca no siempre sobrevive a la navegación**,
+         * y cuando no sobrevive el clear vuelve a correr y vuelve a borrar.
+         *
+         * Se vio en TRES corridas completas seguidas, cada una con una prueba
+         * distinta caída y todas de este ayudante: «no encontré el botón de
+         * pasar a orden» dos veces y, con el diagnóstico ya puesto,
+         * `{"hash":"#/","botones":["…respaldo de lo mío (0)"]}` — cero
+         * cotizaciones, o sea el almacén vacío y la ruta rebotando a la lista.
+         *
+         * La limpieza no hacía falta para empezar: `b.newPage()` abre su PROPIO
+         * contexto, así que el almacén ya nace vacío. Limpiar de nuevo no
+         * aportaba nada en la primera carga y destruía en la segunda. Quitarlo
+         * elimina la carrera en vez de sincronizarla, que es la única forma de
+         * que no vuelva por una tercera puerta. */
         localStorage.setItem('fts_suite_session', JSON.stringify({
           token: 'p.p.p', actor: 'zz.prueba', nombre: 'ZZ Prueba', empleado_id: null,
           scopes: ['comercial:read', 'comercial:write'],
@@ -10142,9 +10174,10 @@ await sembrarMachotes(q);
     }, { conf: conf, grande: !!grande });
 
     await q.goto(BASE); await q.waitForTimeout(700);
-    /* El machote se siembra AQUÍ, con el motor de la página, y después se
-     * recarga: así el documento es exactamente el que produce la aplicación. */
-    await q.evaluate(() => {
+    /* El machote se ARMA aquí, con el motor de la página, para que el documento
+     * sea exactamente el que produce la aplicación. Sembrarlo es otra cosa y va
+     * más abajo. */
+    const semilla = await q.evaluate(() => {
       const cfg = window.__CONF_PRUEBA || {};
       const C = window.MachoteCalc;
       const m = C.machoteNuevo({ nombre: 'Cotización de prueba V1.45',
@@ -10168,22 +10201,74 @@ await sembrarMachotes(q);
                         vigencia: { dias: 30, hasta: null }, at: null, por: null };
       m.oportunidad = { lead_id: 901, nombre: 'Oportunidad inventada' };
       if (cfg.conf) m.confirmacion = cfg.conf;
-      localStorage.setItem('fts_machote_v1', JSON.stringify({ v: 1,
-        guardado_at: new Date().toISOString(), machotes: [m], handoff: {} }));
-      localStorage.setItem('fts_machote_sync_v1', JSON.stringify({ v: 1, filas: [
-        { id_local: 'M-9145', machote_id: 'uuid-inventado', version: 3, folio: 77,
-          folio_txt: 'COT-0077', subido_at: new Date().toISOString(),
-          huella: 'x', odoo_lead_id: 901 }] }));
+      /* Se DEVUELVEN, no se escriben aquí: la siembra va al guion de arranque
+       * de la navegación siguiente (ver abajo). */
+      return {
+        almacen: JSON.stringify({ v: 1, guardado_at: new Date().toISOString(),
+                                  machotes: [m], handoff: {} }),
+        libreta: JSON.stringify({ v: 1, filas: [
+          { id_local: 'M-9145', machote_id: 'uuid-inventado', version: 3, folio: 77,
+            folio_txt: 'COT-0077', subido_at: new Date().toISOString(),
+            huella: 'x', odoo_lead_id: 901 }] })
+      };
     });
+
+    /* ⚠️ LA SIEMBRA VA AL GUION DE ARRANQUE, Y ESTA ES LA TERCERA VEZ QUE ESTE
+     * REPOSITORIO APRENDE LO MISMO (30-sep-2026).
+     *
+     * El machote se arma con el motor de la PÁGINA —por eso el `evaluate` de
+     * arriba, y eso se queda—, pero escribirlo en `localStorage` y confiar en
+     * que sobreviva a la recarga es una carrera perdida: en `file://` Chromium
+     * comparte el almacén entre contextos, así que el autoguardado de la página
+     * ANTERIOR, cerrándose, puede pisar lo que ésta acaba de sembrar.
+     *
+     * Síntoma: `{"hash":"#/","botones":["…respaldo de lo mío (0)"]}` — cero
+     * cotizaciones y la ruta rebotando a la lista. Tres corridas completas
+     * seguidas cayeron así, cada una con una prueba distinta de este mismo
+     * ayudante, y **cada una pasaba corrida sola**. Lo que las une no es el
+     * reloj: es de quién es el almacén.
+     *
+     * Puesto en el guion de arranque, se re-siembra en CADA navegación de esta
+     * página y ya no depende de quién escribió antes. */
+    await q.addInitScript((sem) => {
+      try {
+        localStorage.setItem('fts_machote_v1', sem.almacen);
+        localStorage.setItem('fts_machote_sync_v1', sem.libreta);
+      } catch (e) {}
+    }, semilla);
+
     await q.reload(); await q.waitForTimeout(700);
     await q.evaluate(() => { location.hash = '#/m/M-9145'; });
-    await q.waitForTimeout(700);
-    const abierto = await q.evaluate(() => {
-      const bs = Array.prototype.slice.call(document.querySelectorAll('button, a'));
-      const b2 = bs.find(x => /orden de venta|pasar a orden/i.test(x.textContent || ''));
-      if (!b2) return false; b2.click(); return true;
-    });
-    if (!abierto) { await q.close(); throw new Error('no encontre el boton de pasar a orden'); }
+    /* ⚠️ SE ESPERA AL BOTÓN, NO AL RELOJ (30-sep-2026).
+     * Aquí había un `waitForTimeout(700)` fijo, y esta prueba fue LA ÚNICA que
+     * falló en una corrida completa de 274 — «no encontré el botón de pasar a
+     * orden»— mientras pasaba sola en aislamiento. O sea que no medía la
+     * pantalla: medía si la máquina había ido lo bastante rápido ese día. Tras
+     * veinticinco minutos de Chromium, 700 ms dejan de alcanzar.
+     *
+     * Una prueba que a veces no encuentra un botón que sí existe es peor que
+     * una que falla siempre: enseña a desconfiar del resultado, y la próxima vez
+     * que falle de verdad nadie le va a creer. La carrera no se espera: se
+     * elimina (misma lección que la siembra del guion de capturas). */
+    let abierto = false;
+    for (let i = 0; i < 30 && !abierto; i++) {
+      abierto = await q.evaluate(() => {
+        const bs = Array.prototype.slice.call(document.querySelectorAll('button, a'));
+        const b2 = bs.find(x => /orden de venta|pasar a orden/i.test(x.textContent || ''));
+        if (!b2) return false; b2.click(); return true;
+      });
+      if (!abierto) await q.waitForTimeout(200);
+    }
+    if (!abierto) {
+      const diag = await q.evaluate(() => ({
+        hash: location.hash,
+        hayOrden: !!window.MachoteOrden,
+        botones: Array.prototype.slice.call(document.querySelectorAll('button'))
+          .map(b => (b.textContent || '').trim()).slice(0, 12)
+      }));
+      await q.close();
+      throw new Error('no encontre el boton de pasar a orden tras 6s: ' + JSON.stringify(diag));
+    }
     await q.waitForTimeout(1100);
     return q;
   };
