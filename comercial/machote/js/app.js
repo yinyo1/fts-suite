@@ -3375,7 +3375,13 @@
        * botones y a 380 px el séptimo le costaba un renglón entero (169 → 223),
        * que es el invariante que cuida la prueba de la V1.37. Y además éste es
        * su sitio: es la línea donde se habla de la orden. */
-      ((G.MachoteOrden && !cong)
+      /* ⚠️ Y el candado de AJENO viaja con el botón. Al moverlo de la barra se
+       * me quedó atrás: la barra lo traía —«pasar a orden es del DUEÑO, no de
+       * quien tiene prestado»— y aquí quedó un botón vivo para capturar los
+       * datos de la orden sobre la cotización de otro. Lo cazó la prueba del
+       * machote ajeno, no el diff. Un guardia que se mueve de sitio hay que
+       * contarlo entre lo que se mueve. */
+      ((G.MachoteOrden && !cong && !ajeno(m))
         ? '<button class="btn fantasma peq" id="btnDatosOrden" ' +
           'title="Capturar el contacto, el IVA, la orden de compra y el anticipo">Datos</button>'
         : '') +

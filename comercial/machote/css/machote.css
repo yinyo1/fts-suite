@@ -2740,4 +2740,7 @@ table.or-tab td.num { text-align: right; }
 
 
 /* Botón chico para ir dentro de una línea de texto, no en una barra. */
-.btn.peq { min-height: 28px; padding: 0 10px; font-size: 12px; }
+/* Chico de aspecto, NO de area de toque: el minimo son 40px de alto y la suite
+ * lo exige. Un boton de 28px se pica mal con el pulgar, y este vive metido en
+ * una linea de texto, que es justo donde mas facil se falla. */
+.btn.peq { min-height: 40px; padding: 0 10px; font-size: 12px; }
