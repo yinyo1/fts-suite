@@ -9,11 +9,14 @@ if (!a.length) {
   asunto = 'fts-bancos auditor: hoy no hubo auditoría';
   html = '<p>Hoy (' + esc(r.hoy) + ') no quedó registrada ninguna auditoría. Revisa que las revisiones programadas de Claude Code sigan corriendo.</p>';
 } else {
-  const malas = a.filter(x => x.veredicto !== 'VERDE');
+  // Objetivo 2: AMARILLO es la condición crónica (cotejo con Odoo incompleto) y no es noticia; sólo ROJO cuenta (#365)
+  const malas = a.filter(x => (x.objetivo || 1) === 1 ? x.veredicto !== 'VERDE' : x.veredicto === 'ROJO');
+  const o2 = a.filter(x => x.objetivo === 2).pop();
   const ult = a.filter(x => (x.objetivo || 1) === 1 && (x.tipo === 'barrido_diario' || x.tipo === 'barrido_mensual')).pop() || a[a.length - 1];
   if (!malas.length) {
     asunto = 'fts-bancos auditor: VERDE';
     html = '<p>Base = PDFs: ' + esc(ult.n_estados) + ' estados, ' + esc(ult.n_movimientos) + ' movimientos, triple verificado.</p>';
+    if (o2) html += '<p>Objetivo 2 (anomalías y cotejo Odoo): ' + esc(o2.veredicto) + ', sin nada nuevo' + (o2.onedrive_ruta ? ' · <a href="' + esc(o2.onedrive_ruta) + '">informe</a>' : '') + '.</p>';
   } else {
     const peor = malas.some(x => x.veredicto === 'ROJO') ? 'ROJO' : 'AMARILLO';
     asunto = 'fts-bancos auditor: ' + peor + ' hoy (' + malas.length + ' de ' + a.length + ')';
