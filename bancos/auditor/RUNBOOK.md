@@ -35,6 +35,24 @@ Prohibido el conector de Microsoft 365: Graph sólo vía los workflows de n8n.
    Si fue VERDE y no hubo pendientes, basta con el registro (el resumen de las 17:30 le llega a Esteban).
 9. Si hubo "Para decidir": no ejecutar nada; dejarlo en el informe y en el issue como pregunta, y esperar respuesta.
 
+## Corte de alcance de la pata 3 (parámetro, no código)
+Vive en `bancos/auditor/config.json`:
+```json
+{"pata3": {"alcance_desde": "2020-01", "alcance_desde_por_cuenta": {}}}
+```
+- **`alcance_desde`** (`AAAA-MM`): los estados de periodos **anteriores** quedan exentos de la pata 3 (V1, V2, V3 y la
+  exigencia de vecinos). **Siguen** en pata 1 (inventario y sha256) y pata 2 (relectura independiente); si fallan ahí,
+  el veredicto es ROJO igual. En el informe su pata 3 sale `NO_APLICA`, con el hallazgo privado `P3_FUERA_DE_ALCANCE`
+  (no cuenta para el veredicto ni sale en el resumen público, que sólo dice cuántos estados quedaron exentos).
+- El primer estado **después** del corte no exige vecino si el mes anterior cae antes del corte.
+- **`alcance_desde_por_cuenta`**: llave = máscara de la cuenta (`"…3326"`), valor = `AAAA-MM`, o `null` para que esa
+  cuenta no tenga corte. Gana sobre el global.
+- En una sola corrida: `python -m fts_auditor F <tipo> --p3-desde 2024-01` (o `--p3-desde ""` = sin corte).
+- **Valor actual `2020-01`** por la decisión de Esteban en #346 (comentario 5902187517, 2026-09-30): los 6 estados de
+  2019 de la cuenta …3326 son una condición histórica sin los meses intermedios; no se borran ni se degradan.
+- **Para moverlo** (p. ej. si se recuperan los meses que faltan de 2019): cambiar el valor en `config.json` con un commit
+  en esta rama y citarlo en #346. Con `""` o `null` el auditor vuelve a exigir el encadenamiento completo.
+
 ## Si no hay nada que hacer (revisión de las 11:00 sin pendientes)
 Correr sólo la salud: pasos 2 y 4 y después `python -m fts_auditor F evento --alcance ,` (alcance vacío = sólo la sección E,
 sin bajar PDFs). Si todo está VERDE, no registrar ni comentar nada (cerrar en silencio).

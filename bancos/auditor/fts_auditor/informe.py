@@ -12,7 +12,8 @@ def publico(r: dict, tipo: str, execution_id: str | None = None) -> str:
     c = r["conteos"]
     cod = c["hallazgos_por_codigo"]
     lineas = [f"- **{r['auditado_at'][:16].replace('T', ' ')} UTC** · {tipo} · veredicto **{r['veredicto']}** · Objetivo 1 **{c['objetivo1']}**",
-              f"  - estados verificados: {c['estados']} · movimientos: {c['movimientos']} · con las tres patas en VERDE: {c['estados_tres_patas_verde']}",
+              f"  - estados verificados: {c['estados']} · movimientos: {c['movimientos']} · con las tres patas en VERDE: {c['estados_tres_patas_verde']}"
+              + (f" · exentos de pata 3 por alcance (en VERDE en patas 1 y 2): {c['estados_exentos_pata3']}" if c.get('estados_exentos_pata3') else ""),
               f"  - estados en ROJO por pata: 1 → {c['rojo_por_pata']['1']}, 2 → {c['rojo_por_pata']['2']}, 3 → {c['rojo_por_pata']['3']}; hallazgos de pata 1 sin estado: {c['rojo_pata1_sin_estado']}"]
     if cod:
         lineas.append("  - hallazgos por tipo: " + ", ".join(f"`{k}` {v}" for k, v in cod.items()))
@@ -30,7 +31,7 @@ def html_privado(r: dict, tipo: str, para_decidir: list[str] | None = None) -> s
         filas.append(f"<tr><td>{f['estado_id']}</td><td>{f['cuenta_id']}</td><td>{f['periodo']}</td><td>{f['movimientos']}</td>{celdas}</tr>")
     hall = []
     for h in r["hallazgos"]:
-        if h["resultado"] in ("VERDE",):
+        if h["resultado"] in ("VERDE",) or h["codigo"] == "P3_FUERA_DE_ALCANCE":
             continue
         hall.append(f'<tr><td style="color:{COLOR.get(h["resultado"], "#000")};font-weight:600">{h["resultado"]}</td><td>{h["pata"]}</td>'
                     f'<td>{e(h["codigo"])}</td><td>{h["estado_id"] or ""}</td><td>{h["archivo_id"] or ""}</td>'
@@ -42,7 +43,7 @@ def html_privado(r: dict, tipo: str, para_decidir: list[str] | None = None) -> s
 <body style="font-family:system-ui,Segoe UI,Arial,sans-serif;margin:24px;color:#111">
 <h1>Auditoría fts-bancos · {e(tipo)}</h1>
 <p><b>Veredicto: <span style="color:{COLOR[r['veredicto']]}">{r['veredicto']}</span></b> · Objetivo 1 (base = PDFs): <b>{c['objetivo1']}</b><br>
-{c['estados']} estados · {c['movimientos']} movimientos · {c['estados_tres_patas_verde']} con las tres patas en VERDE<br>
+{c['estados']} estados · {c['movimientos']} movimientos · {c['estados_tres_patas_verde']} con las tres patas en VERDE{(' · ' + str(c['estados_exentos_pata3']) + ' exentos de pata 3 (antes del corte ' + e(str((r.get('alcance_p3') or {}).get('desde'))) + ')') if c.get('estados_exentos_pata3') else ''}<br>
 Base leída {e(str(r.get('leido_at')))} · auditada {e(r['auditado_at'])} · {e(r['version'])}</p>
 <p style="color:#555">Privado: sólo para Esteban. Pata 1 = inventario OneDrive ↔ base · Pata 2 = relectura independiente del PDF (PDFium) · Pata 3 = V1/V2/V3 recalculadas y comparadas con el servicio.</p>
 {decidir}

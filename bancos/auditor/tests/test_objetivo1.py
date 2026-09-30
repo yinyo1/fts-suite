@@ -134,3 +134,49 @@ def test_caso6_saldo_final_que_no_encadena_con_el_mes_siguiente(base_limpia):
     h = rojos(r, 3, "P3_V3_NO_ENCADENA")
     assert h and h[0]["evidencia"]["mes_anterior"] == "2026-02"
     assert not rojos(r, 2)   # el PDF y la base coinciden: el problema es del banco/continuidad, no de la lectura
+
+
+# ── corte de alcance de la pata 3 (decisión de #346): lo anterior al corte sigue en patas 1 y 2 ──
+def auditar_corte(base, od, pdfs, desde, por_cuenta=None):
+    return Auditoria(base, od, pdfs, n8n=N8N_OK, ahora=AHORA, p3_desde=desde, p3_desde_por_cuenta=por_cuenta).correr()
+
+
+def test_corte_exenta_de_pata3_lo_anterior(base_limpia):
+    sembrar(estados_general([1, 2, 3, 4], romper_inicial_en=2))
+    base, od, pdfs = foto()
+    assert rojos(auditar_corte(base, od, pdfs, None), 3, "P3_V3_NO_ENCADENA")          # sin corte: ROJO
+    r = auditar_corte(base, od, pdfs, "2026-03")
+    assert not rojos(r, 3) and r["veredicto"] == "VERDE" and r["conteos"]["objetivo1"] == "VERDE"
+    fila = {f["periodo"]: f for f in r["por_estado"]}
+    assert [fila[p]["pata3"] for p in ("2026-01", "2026-02", "2026-03", "2026-04")] == ["NO_APLICA", "NO_APLICA", "VERDE", "VERDE"]
+    assert all(f["pata1"] == f["pata2"] == "VERDE" for f in r["por_estado"])
+    assert r["conteos"]["estados_exentos_pata3"] == 2 and r["conteos"]["estados_tres_patas_verde"] == 2 and r["conteos"]["estados_ok"] == 4
+    assert "P3_FUERA_DE_ALCANCE" not in r["conteos"]["hallazgos_por_codigo"]
+
+
+def test_corte_no_exenta_de_patas_1_y_2(base_limpia):
+    sembrar(estados_general([1, 2, 3]))
+    _psql("UPDATE bancos.movimientos SET cargo = cargo + 0.01 WHERE id = (SELECT min(id) FROM bancos.movimientos WHERE cargo > 0)")
+    r = auditar_corte(*foto(), "2026-03")
+    h = rojos(r, 2, "P2_MOVIMIENTO_DISTINTO")
+    assert h and r["veredicto"] == "ROJO" and r["conteos"]["objetivo1"] == "ROJO"
+
+
+def test_corte_primer_estado_sin_vecino_antes_del_corte(base_limpia):
+    sembrar(estados_general([1, 3, 4]))
+    base, od, pdfs = foto()
+    r = auditar_corte(base, od, pdfs, "2026-03")
+    assert not rojos(r, 3), rojos(r, 3)
+
+
+def test_corte_por_cuenta_gana_al_global(base_limpia):
+    sembrar(estados_general([1, 2, 3, 4], romper_inicial_en=2))
+    base, od, pdfs = foto()
+    mask = base["cuentas"][0]["numero_mask"]
+    assert rojos(auditar_corte(base, od, pdfs, "2026-03", {mask: None}), 3, "P3_V3_NO_ENCADENA")   # la cuenta sin corte
+    assert not rojos(auditar_corte(base, od, pdfs, None, {mask: "2026-03"}), 3)
+
+
+def test_config_del_repo_trae_el_corte_de_2019():
+    from fts_auditor.__main__ import config
+    assert config()["pata3"]["alcance_desde"] == "2020-01"

@@ -34,10 +34,16 @@ def _mes_sig(p: str) -> str:
 
 class Auditoria:
     def __init__(self, base: dict, onedrive: dict, pdfs: dict[str, bytes], n8n: dict | None = None,
-                 ahora: datetime | None = None, alcance_archivos: set[int] | None = None):
+                 ahora: datetime | None = None, alcance_archivos: set[int] | None = None,
+                 p3_desde: str | None = None, p3_desde_por_cuenta: dict[str, str | None] | None = None):
         self.b, self.od, self.pdfs, self.n8n = base, onedrive, pdfs, (n8n or {})
         self.ahora = ahora or datetime.now(timezone.utc)
         self.alcance = alcance_archivos
+        # corte de alcance de la pata 3 (decisión de #346): los estados de periodos ANTERIORES al corte quedan
+        # exentos de V1/V2/V3 y de la exigencia de vecinos, pero siguen en patas 1 y 2. Se configura en
+        # bancos/auditor/config.json (o --p3-desde); por cuenta, con la máscara '…1234' como llave.
+        self.p3_desde = p3_desde or None
+        self.p3_por_cuenta = dict(p3_desde_por_cuenta or {})
         self.hall: list[dict] = []
         self.arch = {a["id"]: a for a in (base.get("archivos") or [])}
         self.por_sha = {a["sha256"]: a for a in self.arch.values()}
@@ -60,6 +66,16 @@ class Auditoria:
 
     def en_alcance(self, archivo_id) -> bool:
         return self.alcance is None or archivo_id in self.alcance
+
+    def corte_p3(self, cuenta_id) -> str | None:
+        mask = self.cuentas.get(cuenta_id, {}).get("numero_mask")
+        if mask in self.p3_por_cuenta:
+            return self.p3_por_cuenta[mask] or None
+        return self.p3_desde
+
+    def exento_p3(self, e) -> bool:
+        corte = self.corte_p3(e["cuenta_id"])
+        return bool(corte) and e["periodo"] < corte
 
     # ── pata 1 ──
     def pata1(self):
@@ -198,6 +214,10 @@ class Auditoria:
                 continue
             a = self.arch[e["archivo_id"]]
             ev = {"pdf": a.get("nombre_canonico") or a.get("nombre_original")}
+            if self.exento_p3(e):
+                self.h(3, "NO_APLICA", "P3_FUERA_DE_ALCANCE", _e=e["id"], _a=a["id"], **ev,
+                       periodo=e["periodo"], corte=self.corte_p3(e["cuenta_id"]))
+                continue
             db = self.movs.get(e["id"], [])
             cargos = [D(m["cargo"]) for m in db if D(m["cargo"]) > 0]
             abonos = [D(m["abono"]) for m in db if D(m["abono"]) > 0]
@@ -243,8 +263,8 @@ class Auditoria:
                 if mi_v3 == "descuadre":
                     self.h(3, "ROJO", "P3_V3_NO_ENCADENA", _e=e["id"], _a=a["id"], **ev, mes_anterior=ant,
                            final_anterior=str(D(prev["saldo_final"])), inicial=str(si))
-            elif not antes:
-                mi_v3 = "primero"
+            elif not antes or (self.corte_p3(e["cuenta_id"]) and ant < self.corte_p3(e["cuenta_id"])):
+                mi_v3 = "primero"    # sin anterior, o el anterior cae antes del corte: no se le exige vecino
             elif (e["cuenta_id"], ant) in huecos:
                 mi_v3 = "hueco"
             else:
@@ -354,10 +374,11 @@ class Auditoria:
                     "movimientos": len(self.movs.get(e["id"], []))}
             for p in (1, 2, 3):
                 r = any(x["resultado"] == "ROJO" and x["pata"] == p and (x["estado_id"] == e["id"] or x["archivo_id"] == e["archivo_id"]) for x in self.hall)
-                fila[f"pata{p}"] = "ROJO" if r else "VERDE"
+                fila[f"pata{p}"] = "ROJO" if r else ("NO_APLICA" if p == 3 and self.exento_p3(e) else "VERDE")
             por_estado.append(fila)
         globales_p1 = [x for x in rojos if x["pata"] == 1 and x["estado_id"] is None and x["archivo_id"] not in {e["archivo_id"] for e in self.E}]
-        obj1 = "VERDE" if objetivo1 and all(f["pata1"] == f["pata2"] == f["pata3"] == "VERDE" for f in por_estado) and not globales_p1 else "ROJO"
+        ok = lambda f: f["pata1"] == f["pata2"] == "VERDE" and f["pata3"] in ("VERDE", "NO_APLICA")
+        obj1 = "VERDE" if objetivo1 and all(ok(f) for f in por_estado) and not globales_p1 else "ROJO"
         veredicto = "ROJO" if rojos else ("AMARILLO" if amar else "VERDE")
         cod = Counter(x["codigo"] for x in self.hall if x["resultado"] in ("ROJO", "AMARILLO"))
         conteos = {
@@ -365,9 +386,12 @@ class Auditoria:
             "estados": len(por_estado),
             "movimientos": sum(f["movimientos"] for f in por_estado),
             "estados_tres_patas_verde": sum(1 for f in por_estado if f["pata1"] == f["pata2"] == f["pata3"] == "VERDE"),
+            "estados_exentos_pata3": sum(1 for f in por_estado if f["pata3"] == "NO_APLICA"),
+            "estados_ok": sum(1 for f in por_estado if ok(f)),
             "rojo_por_pata": {str(p): sum(1 for f in por_estado if f[f"pata{p}"] == "ROJO") for p in (1, 2, 3)},
             "rojo_pata1_sin_estado": len(globales_p1),
             "hallazgos_por_codigo": dict(sorted(cod.items())),
         }
-        return {"version": VERSION, "veredicto": veredicto, "conteos": conteos, "por_estado": por_estado, "hallazgos": self.hall,
+        return {"version": VERSION, "veredicto": veredicto, "conteos": conteos,
+                "alcance_p3": {"desde": self.p3_desde, "por_cuenta": self.p3_por_cuenta}, "por_estado": por_estado, "hallazgos": self.hall,
                 "leido_at": self.b.get("leido_at"), "auditado_at": self.ahora.isoformat()}
