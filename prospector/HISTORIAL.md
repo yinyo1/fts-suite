@@ -1738,3 +1738,49 @@ la planilla sólo en sesión · sin datos personales en el repo ni en el issue.
 sesión, así que la constancia de `datos/odoo-declarado.json` es la lectura del
 29-sep. El exportador la declara con su fecha y la **vence a los siete días**, que
 es exactamente el caso que ese mecanismo existe para cubrir.
+
+---
+
+# #361 (cierre) — La cobertura funcional es 57%, y la clase (b) era 2, no 12
+
+Continuación de #361. **1,127 pruebas**, versión **0.18.0**.
+
+## La medición que faltaba, y sale mejor que la nominal
+
+**Cobertura funcional: 16 de 28 celdas cuenta × familia = 57%** (64% contando
+contactos reales sin puesto declarado), contra el **45% nominal**. La diferencia es
+exactamente lo que #361 anticipó: el método encuentra **un** interlocutor válido, no
+**la** persona de la planilla, y medir «la misma persona» subestima lo que entrega.
+
+Dos casos donde el contacto de la herramienta es de **mejor nivel** que el de la
+planilla: un *Head of Global Workplace Projects* para todas las Américas contra el
+de una sola planta, y un *VP Global de Ingeniería y Mantenimiento* contra gerentes.
+Y una familia entera que el humano no cubrió en una cuenta: compras en Qualtia.
+
+## Y la corrección que dolía más
+
+Los cuatro casos de clase (b) que faltaban **no se recuperaron ninguno**. Con eso la
+tabla de los 32 cierra así: **(a) 8 · (b) 2 · (c) 22**. La clase (b) estimada eran
+12 y las medidas son **2**.
+
+> El techo de la herramienta sola baja de **78% a 60%**. Los 22 de clase (c) no se
+> compran con vocabulario ni con presupuesto.
+
+Y dentro de (c) hay dos casos que no son el mismo: **6** donde el buscador no tiene
+a la empresa —Cuprum, Qualtia— y **16** donde la tiene y no tiene *a esa persona*.
+El segundo es el numeroso, y es el que la ficha ahora sabe declarar.
+
+## Un hallazgo de vocabulario que no apliqué
+
+El filtro manda «**Supervisor de planta**» a `otros`, así que un supervisor de la
+planta de Monterrey que está corriendo una prueba de producto con FTS no cuenta como
+interlocutor de valor. `supervisor` no está en el vocabulario y `superintendente` sí.
+No lo agregué: cambiar el vocabulario mueve la clasificación de corridas anteriores y
+eso es decisión de Esteban.
+
+## Restricciones del turno
+
+Cero escrituras a Odoo —sólo lectura— · cero Lusha · purga no ejecutada ·
+`fts-mcp-odoo` intacto · la planilla sólo en sesión · sin datos personales en el repo
+ni en el issue. La ficha de Ragasa se generó con `nombre=None` en los dos contactos:
+en una corrida real el agente tendría los nombres del buzón, y aquí no entran.

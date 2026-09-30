@@ -82,9 +82,36 @@ def test_un_lead_reciente_en_etapa_inicial_no_se_sube_pero_es_OTRA_cosa():
 
 
 def test_una_cuenta_sin_nada_en_odoo_es_nueva():
-    for empresa in ("Hershey", "Ragasa", "Nemak", "Sigma"):
+    """Ragasa y Nemak SALIERON de esta lista en #361, y la razon vale mas que el
+    cambio: la lectura del 29-sep las declaro «sin lead ni oportunidad» porque
+    busco leads SOLO por `partner_id` de la planta, y FTS le vende a esas dos a
+    traves de un intermediario -- la contraparte del lead es el intermediario--.
+    Ragasa tiene una COTIZACION ENVIADA y Nemak un PROYECTO GANADO.
+    """
+    for empresa in ("Hershey", "Sigma", "Coficab"):
         marca, _ = ex.estado_en_odoo(empresa, _declarado(), HOY)
         assert marca == ex.NUEVA, (empresa, marca)
+
+
+def test_un_lead_bajo_el_partner_de_un_INTERMEDIARIO_tambien_frena():
+    """El punto ciego que #361 cerro. Si el lead cuelga de otro partner, la
+    cuenta igual esta trabajada: subir otro lead la duplica de todas formas."""
+    for empresa in ("Ragasa", "Nemak"):
+        marca, razon = ex.estado_en_odoo(empresa, _declarado(), HOY)
+        assert marca == ex.CON_OPORTUNIDAD, (empresa, marca)
+        assert "NO cuelga del partner de la planta" in razon, (empresa, razon)
+        assert "Buscalo por su id" in razon, razon
+
+
+def test_la_constancia_declara_el_punto_ciego_que_tenia():
+    """Sin esa nota, el proximo que lea el archivo va a suponer que la lectura
+    anterior estaba bien y que Odoo cambio en un dia."""
+    d = _declarado()
+    assert d.get("QUE_CAMBIO_CONTRA_EL_29_SEP"), "no declara que cambio"
+    nota = d["QUE_CAMBIO_CONTRA_EL_29_SEP"]
+    assert "partner_id" in nota and "intermediario" in nota
+    assert d.get("como_se_leyo"), (
+        "sin decir COMO se leyo, nadie puede saber que quedo fuera")
 
 
 def test_un_lead_viejo_en_etapa_inicial_ya_no_frena():

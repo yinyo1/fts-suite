@@ -58,6 +58,7 @@ import html
 import re
 
 from .confianza import CONFIRMADO, DESMENTIDO, EN_CONFLICTO, SOLIDO, CANDIDATO, N1_CONFIRMADO, N2_PARCIAL, N3_PUESTO
+from .confianza import puesto_nunca_decisor
 from .estado import Corrida, RESPONDIO, PENDIENTE
 from .catalogo_proyectos import plano as _plano
 from .sello import sello
@@ -555,15 +556,51 @@ def sin_presencia_en_buscador_publico(c: Corrida) -> tuple[bool, str]:
     return c.limite_de_fuente()
 
 
-def busqueda_armada_para_sales_navigator(c: Corrida) -> str:
+def familias_sin_interlocutor(c: Corrida) -> list[tuple[str, str]]:
+    """Las familias de INTERLOCUTOR donde esta corrida NO tiene a nadie de valor.
+
+    Anadido en #361. El aviso de limite de fuente de #353 era todo-o-nada: la
+    empresa esta en el buscador o no esta. La correccion de #355 mostro que el
+    caso normal es intermedio -- Ragasa: el buscador SI tiene perfiles de la
+    empresa, y los que no tiene son los de PLANTA-- y para ese caso la ficha no
+    tenia nada que decir.
+
+    Ahora lo dice por familia, que es como la vendedora lo va a usar: no «no hay
+    nadie» sino «de las cuatro familias, en estas dos no hay nadie, y para esas
+    dos la busqueda de Sales Navigator es esta».
+    """
+    con_alguien = set()
+    for x in c.contactos:
+        if not getattr(x, "sigue_en_la_casa", True):
+            continue
+        puesto = x.puesto or (x.datos.get("puesto").valor
+                              if x.datos.get("puesto") else "")
+        if puesto_nunca_decisor(puesto):
+            continue
+        clave, _titulo = _tipo_de_interlocutor(puesto)
+        if clave != "otros":
+            con_alguien.add(clave)
+    return [(clave, titulo) for clave, titulo, _p in INTERLOCUTOR
+            if clave not in con_alguien]
+
+
+def busqueda_armada_para_sales_navigator(c: Corrida,
+                                         solo_familias=None) -> str:
     """La busqueda de Sales Navigator, ya armada, para copiar y pegar.
 
     Las familias salen de INTERLOCUTOR, la misma tabla con la que la herramienta
     agrupa: si manana se le agrega vocabulario, esto se mueve con ella y no
     queda una version vieja escrita a mano en un texto.
+
+    `solo_familias` acota la lista a las claves que se le pasen. Sirve para el
+    caso de Ragasa: pedirle a la vendedora que busque en Sales Navigator las
+    cuatro familias cuando dos ya tienen a alguien es mandarla a repetir trabajo,
+    y el trabajo en Sales Navigator es el caro.
     """
     filas = []
     for _clave, titulo, palabras in INTERLOCUTOR:
+        if solo_familias is not None and _clave not in solo_familias:
+            continue
         muestra = ", ".join(palabras[:5])
         filas.append(f"<li><b>{html.escape(titulo)}:</b> "
                      f"{html.escape(muestra)}</li>")
@@ -577,7 +614,7 @@ def busqueda_armada_para_sales_navigator(c: Corrida) -> str:
         '— en el filtro <i>Geography</i>. <b>Escribir la ciudad en el texto no '
         'filtra:</b> una consulta con la ciudad escrita devolvio a quien tiene '
         'ese mismo puesto en Sydney.</li>'
-        '<li><b>Puestos — una busqueda por familia,</b> no las cuatro juntas: '
+        '<li><b>Puestos — una busqueda por familia,</b> nunca varias juntas: '
         'juntas se tapan entre si.</li>'
         '</ol>'
         f'<ul style="margin:0 0 0 18px;padding:0">{"".join(filas)}</ul>')
@@ -666,6 +703,44 @@ def bloque_de_lo_interno(c: Corrida) -> str:
             'empieza en frio.</p>'
             f'<ul style="margin:0 0 0 18px;padding:0">{"".join(lis)}</ul>'
             '</div>')
+
+
+def aviso_de_familias_sin_interlocutor(c: Corrida) -> str:
+    """«En estas familias no hay nadie», con la busqueda de SN para esas.
+
+    Es el caso de Ragasa, y es el caso NORMAL -- mas comun que el de la empresa
+    que no esta indexada--. El buscador tiene a la empresa, la corrida saco gente
+    de ella, y sin embargo una o dos familias quedan vacias. Sin este aviso la
+    ficha se ve completa: tiene contactos, tiene senal, y la vendedora no sabe
+    que le falta justo el que firma la orden.
+
+    NO se emite cuando la cuenta ya cayo en el aviso de «no aparece en el
+    buscador publico»: ese ya dice mas y decir los dos seria repetir.
+    """
+    if not c.contactos:
+        return ""                    # sin ningun contacto, otro aviso lo cubre
+    es_clase_c, _r = sin_presencia_en_buscador_publico(c)
+    if es_clase_c:
+        return ""
+    faltan = familias_sin_interlocutor(c)
+    if not faltan:
+        return ""
+    if len(faltan) == len(INTERLOCUTOR):
+        return ""                    # ninguna familia: lo dice el otro aviso
+    nombres = [t for _c, t in faltan]
+    lista = nombres[0] if len(nombres) == 1 else (
+        ", ".join(nombres[:-1]) + " y " + nombres[-1])
+    cuantas = "una familia" if len(faltan) == 1 else f"{len(faltan)} familias"
+    return (
+        '<div class="hueco">'
+        f'<b>Falta con quien hablar en {cuantas}: {html.escape(lista)}.</b> '
+        'El buscador si tiene a esta empresa -- de ella salieron los contactos '
+        'de arriba-- y lo que no entrego son esos puestos. No es que la planta '
+        'no los tenga: es que sus perfiles no estan donde la herramienta busca. '
+        '<b>Para esas familias, y solo para esas, la via es Sales Navigator.</b>'
+        + busqueda_armada_para_sales_navigator(
+            c, solo_familias={cl for cl, _t in faltan})
+        + '</div>')
 
 
 def linea_de_tiempo(c: Corrida) -> str:
@@ -1212,6 +1287,7 @@ def modo_limpio(c: Corrida) -> str:
     tl = linea_de_tiempo(c)
     bl_sin_fecha = aviso_de_senal_sin_fecha(c)
     bl_sin_buscador = aviso_de_cuenta_sin_buscador_publico(c)
+    bl_familias = aviso_de_familias_sin_interlocutor(c)
     bl_interno = bloque_de_lo_interno(c)
     bl_porque = (f'<p style="margin:0 0 12px">{html.escape(c.por_que_ahora)}</p>'
                  if c.por_que_ahora else _hueco(
@@ -1462,6 +1538,7 @@ def modo_limpio(c: Corrida) -> str:
 <div class="card">
 <h2>A quien buscar</h2>
 {bl_sin_buscador}
+{bl_familias}
 {f'<div class="sub-h">Decisores de la planta — {n["decisores"]}</div>{b_dec}' if b_dec else '<div class="hueco"><b>Sin decisores con nombre todavia.</b> Lo que sigue en «Lo que falta» es exactamente como conseguirlos.</div>'}
 {f'<div class="sub-h">Por confirmar, valen la pena — {n["confirmar"]}</div><p class="nota-g">No estan descartados: les falta una comprobacion, y cual va en su renglon. Un contacto pendiente con su razon visible vale mas que un hueco.</p>{b_con}' if b_con else ''}
 {f'<div class="sub-h">De contexto, no son compradores — {n["contexto"]}</div>{b_ctx}' if b_ctx else ''}

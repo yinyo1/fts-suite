@@ -3,6 +3,49 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.18.0 — 2026-09-30 (segundo turno del dia)
+
+La cobertura funcional medida, la tabla de los 32 cerrada, Odoo releido con tres
+oportunidades que la lectura anterior no vio, y la ficha declarando el limite POR
+FAMILIA. **1,127 pruebas** (eran 1,113).
+
+### La ficha declara el limite por FAMILIA, no todo-o-nada
+
+`ficha.familias_sin_interlocutor` + `aviso_de_familias_sin_interlocutor`. El aviso
+de #353 solo sabia decir «esta empresa no aparece en el buscador publico», y la
+correccion de #355 mostro que el caso NORMAL es intermedio: en Ragasa el buscador
+si devuelve perfiles de la empresa y lo que no devuelve son los de planta. Para ese
+caso la ficha no tenia nada que decir, asi que se veia completa -- con contactos,
+con senal-- sin avisar de que faltaba justo el que firma la orden.
+
+Ahora lo dice por familia y la busqueda de Sales Navigator sale **acotada a las
+familias vacias**: mandar a la vendedora a buscar las cuatro cuando dos ya tienen a
+alguien es mandarla a repetir el trabajo caro. Los dos avisos no se pisan: cuando la
+empresa no esta indexada, este se calla y habla el otro, que dice mas.
+
+### Odoo releido: tres oportunidades que no se vieron, y el punto ciego que las escondia
+
+La constancia del 29-sep busco leads **solo por `partner_id`** de la planta. FTS le
+vende a varias de estas cuentas **a traves de un intermediario**, asi que la
+contraparte del lead es el intermediario y el lead no cuelga del partner de la
+planta. Buscando tambien por nombre del lead aparecieron:
+
+* **Ragasa** — cotizacion ENVIADA de sep-2025, con fecha limite may-2026. La lectura
+  anterior la declaro «sin lead ni oportunidad».
+* **Nemak** — un PROYECTO GANADO de ago-2025 y una oportunidad calificada de
+  abr-2026. Tampoco tiene partner propio.
+* **Amazon** — un lead nuevo del 29-sep, creado despues de la lectura anterior. Y
+  «Amazon US» es un partner distinto con `customer_rank 1`: los dos partners de
+  Amazon no son un duplicado, son dos papeles.
+
+Es el MISMO punto ciego que `ubicacion-de-proyectos.json` documenta para Coficab
+(#310): la contraparte comercial apunta al distribuidor, no a la planta. El mensaje
+del exportador ahora lo dice -- *«ese lead NO cuelga del partner de la planta»*--
+porque quien vaya a enlazar la tarjeta no lo va a encontrar donde lo busque.
+
+**El mecanismo de vencimiento hizo su trabajo** en el camino: con la constancia del
+29-sep vencida al 20-oct, todas las filas salian `SIN_CONSULTAR_A_ODOO`.
+
 ## 0.17.0 — 2026-09-30
 
 Las cuatro reglas aplicadas, el detector temprano cortando, el exportador
