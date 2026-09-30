@@ -15,7 +15,7 @@
  * ═══════════════════════════════════════════════════════════════════════════ */
 'use strict';
 
-const VERSION = 'er-2026-v1.3';
+const VERSION = 'er-2026-v1.3.1';
 const ANIO = '2026';
 const NOMBRE_MES = { '01': 'ene', '02': 'feb', '03': 'mar', '04': 'abr', '05': 'may', '06': 'jun', '07': 'jul', '08': 'ago', '09': 'sep', '10': 'oct', '11': 'nov', '12': 'dic' };
 const CONMET_SO = 'SO11771';                 // contrato Conmet (decisión de Esteban: renglón propio)
@@ -375,7 +375,8 @@ function motor(ins, F) {
       const e = m2o(a.employee_id).id; if (!e) continue;
       const mes = fechaLocalMty(a.check_in).slice(0, 7), h = Number(a.worked_hours) || 0; if (h <= 0) continue;
       const k = e + '|' + mes, o = H[k] || (H[k] = { t: 0, p: 0, c: 0 }); conHoras.add(e);
-      o.t += h; if (a.x_studio_sales_order_2) o.p += h; else if (a.x_studio_many2one_field_GUbBF) o.c += h;
+      const enProy = a.x_studio_project_id || a.x_studio_sales_order_2;   // B11 (#356): el proyecto manda; el campo de SO sólo como respaldo de lo viejo
+      o.t += h; if (enProy) o.p += h; else if (a.x_studio_many2one_field_GUbBF) o.c += h;
       if (!emp[e]) emp[e] = { id: e, nombre: m2o(a.employee_id).name, activo: true, creado: '' };
     }
     for (const l of (O.carga_mo || [])) {
