@@ -31,13 +31,16 @@ def huella_db(con) -> tuple[str, int]:
 
 
 def huella_reconstruida(con, catalogo, reglas) -> dict:
+    # sólo las cuentas del catálogo recibido: /ensayo lo filtra a las cuentas falsas y la base de
+    # producción ya trae estados reales, que no se reconstruyen ahí (#352)
+    por_id = {c.id: c for c in catalogo.cuentas}
     with con.cursor() as cur:
         cur.execute("""SELECT a.id, a.sha256, a.cuenta_id, b.contenido, e.huella
                        FROM bancos.archivos a JOIN bancos.blobs b ON b.sha256=a.sha256
                        JOIN bancos.estados_vigentes e ON e.archivo_id=a.id AND e.parser_version=%s
-                       WHERE a.estado='validado' ORDER BY a.id""", (bbva.PARSER_VERSION,))
+                       WHERE a.estado='validado' AND a.cuenta_id = ANY(%s) ORDER BY a.id""",
+                    (bbva.PARSER_VERSION, list(por_id)))
         filas = cur.fetchall()
-    por_id = {c.id: c for c in catalogo.cuentas}
     items, difs = [], []
     for f in filas:
         cta = por_id[f["cuenta_id"]]
