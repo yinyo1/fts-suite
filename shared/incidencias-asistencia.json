@@ -381,11 +381,21 @@
           "hora_propuesta_cst": null,
           "comentario": "Sí se ha revisado y aprobado.",
           "accion": "aprobado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 63,
+          "usuario": "Magaly Estefanía Pérez García",
+          "timestamp": "2026-10-01T16:50:19.968Z",
+          "hora_propuesta_cst": "08:10",
+          "comentario": "Conforme al reporte del señor juan ingreso a las 8.10 am",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_rh",
-      "hora_final_aplicada_utc": null,
-      "aplicado_en_odoo": false,
+      "status": "aprobada_con_ajuste",
+      "hora_final_aplicada_utc": "2026-09-25 14:10:00",
+      "aplicado_en_odoo": true,
       "department_id": 6,
       "department_name": "Comercial",
       "sin_departamento": false,
@@ -398,7 +408,7 @@
       "rh_directo_ceo": false,
       "directo_ceo": false,
       "sin_supervisor": false,
-      "tag_disputa_activo": true
+      "tag_disputa_activo": false
     },
     {
       "id_interno": "INC-AUTO-CIERRE-6-2026-09-25T13-26-48-377Z",
