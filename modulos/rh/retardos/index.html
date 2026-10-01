@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Retardos · RH · FTS Suite</title>
+<link rel="stylesheet" href="css/retardos.css?v=V1.03">
+</head>
+<body>
+
+<div class="rh-topbar">
+  <a href="../index.html">← Volver a RH</a>
+  <span class="t">Retardos</span>
+  <!-- Se bumpea JUNTO con version.json: es lo que se ve si el fetch de version.json falla. -->
+  <span class="badge" id="ver-badge">V1.03</span>
+  <span class="badge hid" id="modo">EJEMPLO</span>
+  <span class="sp"></span>
+  <span class="quien" id="quien"></span>
+  <button class="hid" id="salir">Salir</button>
+</div>
+
+<!-- Puerta: sin sesión del Suite con permiso retardos:read no se pinta nada. El permiso se
+     vuelve a revisar en el servidor en cada petición; esconder la pantalla no autoriza nada. -->
+<div id="puerta" class="login">
+  <h1>Retardos</h1>
+  <div class="sub">Entra con tu usuario del Suite. Necesitas el permiso <b>retardos:read</b> para consultar y <b>retardos:write</b> para registrar.</div>
+  <label for="u">Usuario</label>
+  <input id="u" autocomplete="username" autocapitalize="none" spellcheck="false">
+  <label for="p">Contraseña</label>
+  <input id="p" type="password" autocomplete="current-password">
+  <button class="btn pri" id="entrar">Entrar</button>
+  <div id="login-err" class="err hid"></div>
+  <button class="enlace" id="demo">Practicar con datos de ejemplo</button>
+</div>
+
+<div class="wrap hid" id="app">
+  <div class="aviso demo hid" id="aviso-demo"><div><b>Datos de ejemplo</b>Nada de lo que hagas aquí llega al servidor. Los nombres son inventados.</div></div>
+  <div id="salud"></div>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" data-vista="lista" aria-selected="true">Casos</button>
+    <button class="tab" role="tab" data-vista="hojas" aria-selected="false">Hojas por confirmar</button>
+    <button class="tab" role="tab" data-vista="reincidencia" aria-selected="false">Reincidencia</button>
+    <button class="tab" role="tab" data-vista="jornada" aria-selected="false">Jornada semanal</button>
+    <button class="tab" role="tab" data-vista="medidas" aria-selected="false">Propuestas de medida</button>
+    <button class="tab" role="tab" data-vista="calidad" aria-selected="false">Calidad de datos</button>
+    <button class="tab" role="tab" data-vista="ajustes" aria-selected="false">Configuración</button>
+  </div>
+
+  <div id="v-lista">
+    <div class="resumen" id="resumen"></div>
+    <div class="cab"><h1 id="filtro-t">Casos abiertos</h1><button class="enlace hid" id="ver-todos">ver todos</button><span class="sp"></span><button class="btn" id="cerrados">Incluir cerrados</button></div>
+    <div class="caja" id="lista"></div>
+  </div>
+  <div class="hid" id="detalle"></div>
+  <div class="hid" id="ajustes"></div>
+  <div class="hid" id="calidad"></div>
+  <div class="hid" id="hojas"></div>
+  <div class="hid" id="reincidencia"></div>
+  <div class="hid" id="jornada"></div>
+  <div class="hid" id="medidas"></div>
+  <div class="pie" id="pie"></div>
+</div>
+
+<script src="../../../shared/auth-jwt.js?v=V1.03"></script>
+<script src="../../../retardos/lib/sesion.js?v=V1.03"></script>
+<!-- La misma hoja que manda el correo: RH la imprime desde "Firmas por recolectar". -->
+<script src="../../../retardos/lib/pdf.js?v=V1.03"></script>
+<script src="js/api.js?v=V1.03"></script>
+<script src="js/app.js?v=V1.03"></script>
+</body>
+</html>
