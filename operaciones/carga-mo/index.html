@@ -9,12 +9,12 @@
      Vx.yy. Se bumpea junto con version.json y con el ?v= de cada script, y el gate
      exige que los tres digan lo mismo: un badge que anuncia una version mientras
      el navegador corre el codigo viejo miente en la peor direccion. -->
-<script>(function(){ window.CMO_VER = 'V1.08'; })();</script>
+<script>(function(){ window.CMO_VER = 'V1.09'; })();</script>
 <script src="../../finanzas/js/auth-fin.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/cruce-rh.js?v=V1.08"></script>
-<script src="js/resolver.js?v=V1.08"></script>
-<script src="js/txt-dispersion.js?v=V1.08"></script>
+<script src="js/cruce-rh.js?v=V1.09"></script>
+<script src="js/resolver.js?v=V1.09"></script>
+<script src="js/txt-dispersion.js?v=V1.09"></script>
 <style>
   :root{ --azul:#1a4480; --ok:#1a7a3a; --warn:#BA7517; --err:#b3261e; --info:#3b5bdb; --bg:#f4f6f9; }
   *{ box-sizing:border-box; }
@@ -1078,6 +1078,14 @@ function render(){
   }
 
   fallas = fallas.concat(P.fallas.integridad, P.fallas.clasificacion, P.fallas.aviso);
+  /* La MISMA lista que pinta el cuerpo, guardada para que el resumen del bloque
+     salga de ella y no de otra fuente. El resumen leía `P.fallas` —que es un
+     OBJETO `{integridad, clasificacion, aviso}`, no un arreglo— así que
+     `P.fallas.length` daba `undefined` y el bloque decía SIEMPRE «sin avisos»,
+     aunque hubiera errores que frenan. Y nunca se abría solo.
+     Además `fallas` trae dos hallazgos que `P.fallas` no tiene: los de la semana
+     mal elegida, que se arman aquí mismo. Leer la otra fuente los perdía. */
+  ULTIMAS_FALLAS = fallas;
   var nInt = fallas.filter(function(f){ return f.nivel==='INTEGRIDAD'; }).length;
   var nCla = P.fallas.clasificacion.length, nAvi = P.fallas.aviso.length;
 
@@ -1179,8 +1187,20 @@ function render(){
   if(rhInt > 0 && !timbradaDeclarada()) puedeEnviar = false;
 
   $('send').disabled = !puedeEnviar;
+  /* ── El rótulo tiene que nombrar al candado que DE VERDAD está cerrado ──
+     Decía «No coincide con lo que pidió RH» en cuanto `rhInt > 0`, aunque el cruce
+     ya estuviera liberado por la declaración de timbrado y quien frenara fuera el
+     ARCHIVO. Resultado: se declara la semana como ya pagada, el botón no se abre,
+     y el rótulo sigue señalando a RH — se lee como «la casilla no sirve».
+     Son dos candados distintos y sólo uno lo suelta la casilla:
+       · el ARCHIVO (nInt) — que no cuadra consigo mismo. La casilla NO lo abre, y
+         no debe: timbrar no vuelve correcto un archivo mal leído, y cargarlo
+         escribiría números equivocados a Odoo.
+       · el CRUCE (rhInt) — diferencias contra lo que pidió RH. Ése sí, porque
+         sobre una semana ya pagada no hay nada que corregir antes de cargar. */
   $('send').textContent = puedeEnviar ? 'Validar nómina'
-    : (rhInt > 0 ? 'No coincide con lo que pidió RH' : 'Corrige los errores');
+    : (nInt > 0 ? 'El ARCHIVO tiene ' + nInt + ' error' + (nInt === 1 ? '' : 'es')
+    : 'No coincide con lo que pidió RH');
 
   /* El paso 3 se repinta con cada archivo nuevo: si se cambia el Excel, el cruce
      contra los .txt que ya estaban cargados cambia de significado. */
@@ -1310,6 +1330,8 @@ var VALIDADA = false;
    Viajan sólo CÓDIGO y CONTEO: ni nombres ni montos, que no hacen falta para
    contar y sí para exponer a alguien. */
 var ULTIMOS_HALLAZGOS = [];
+/* Lo mismo para los avisos del archivo: una sola lista, la que se pinta. */
+var ULTIMAS_FALLAS = [];
 
 function pasoEstado(){
   var P = [];
@@ -1435,7 +1457,7 @@ function plegarTodo(){
   /* ── de FINANZAS ────────────────────────────────────────────────────── */
   var P = PARSED;
   if(P){
-    var f = P.fallas || [], fi = 0, fc = 0, fa = 0;
+    var f = ULTIMAS_FALLAS, fi = 0, fc = 0, fa = 0;
     for(var k=0;k<f.length;k++){
       if(f[k].nivel === 'INTEGRIDAD') fi++;
       else if(f[k].nivel === 'CLASIFICACION') fc++; else fa++;

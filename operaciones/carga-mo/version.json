@@ -1,10 +1,16 @@
 {
-  "version": "V1.08",
-  "fecha": "2026-09-26",
+  "version": "V1.09",
+  "fecha": "2026-10-02",
   "modulo": "operaciones/carga-mo",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "ambito": "El CONTADOR es SOLO de este modulo y arranca en V1.00 aunque el modulo lleve meses en produccion: antes se versionaba con una cadena de build (la ultima fue 20260904-cmo-cruce-rh) y esa numeracion no se puede continuar. rh/nomina-incidencias, finanzas y comercial/machote usan el MISMO esquema con contadores PROPIOS — que aqui diga V1.00 y alla V1.16 es lo correcto, no un desfase.",
   "historial": [
+    {
+      "version": "V1.09",
+      "fecha": "2026-10-02",
+      "titulo": "La pantalla no podia decir que la estaba trabando: dos defectos encadenados (#313)",
+      "nota": "SINTOMA: no se podia cargar S40. Boton cerrado, y la casilla de 'ya pagada y timbrada' parecia no servir. CAUSA 1 — EL ROTULO CULPABA A QUIEN NO FUE. Hay DOS candados y solo uno lo suelta la casilla: el ARCHIVO (nInt, que no cuadra consigo mismo) y el CRUCE (rhInt, diferencias contra lo que pidio RH). El rotulo decia 'No coincide con lo que pidio RH' en cuanto rhInt>0, aunque el cruce ya estuviera liberado por la declaracion y quien frenara fuera el archivo. Se declara la semana, el boton no abre, el rotulo sigue senalando a RH: se lee como 'la casilla no sirve'. Ahora nombra al candado que de verdad esta cerrado, y dice cuantos errores del archivo son. CAUSA 2 — EL BLOQUE DE AVISOS DECIA SIEMPRE 'SIN AVISOS'. Lo meti yo en V1.08: el resumen leia `P.fallas`, que es un OBJETO {integridad,clasificacion,aviso} y NO un arreglo, asi que `.length` daba undefined, el bloque decia 'el archivo cuadra consigo mismo' con etiqueta verde aunque hubiera errores que frenan, y nunca se abria solo. Encima `P.fallas` no incluye los dos hallazgos de la semana mal elegida, que se arman en render(). Ahora el resumen sale de la MISMA lista que pinta el cuerpo (ULTIMAS_FALLAS), que es la unica fuente. LAS DOS JUNTAS dejaban la pantalla sin forma de decir que la trababa: el boton senalaba a RH y el bloque del archivo decia que todo estaba bien. El gate no las cazo porque su nomina de prueba no tiene fallas del resolver; ahora hay 28 asserts que fuerzan una falla DEL ARCHIVO y exigen que el rotulo la nombre, que el resumen la cuente, que la etiqueta sea roja y que el bloque se abra solo."
+    },
     {
       "version": "V1.08",
       "fecha": "2026-09-26",
