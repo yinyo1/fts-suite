@@ -1,9 +1,14 @@
 {
-  "version": "V1.12",
+  "version": "V1.13",
   "fecha": "2026-10-02",
   "modulo": "finanzas",
   "esquema": "V<mayor>.<menor de dos dígitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.13",
+      "pr": null,
+      "nota": "Paneles de Finanzas en MODO CLARO SIEMPRE (#332, continua #370). El armazon compartido shared/panel/panel.css pasa a la paleta clara de Finanzas (la que Data Bancos estreno como capa local en V1.12) con color-scheme:light, dos ambares (--ambar para bordes, --ambar-tx para texto: el ambar de Finanzas sobre blanco da 2.4) y sus colores sin token corregidos (fila con cursor, subtotales tr.grupo, borde del aviso de red). Data Bancos quita su capa local y queda identico a V1.12. Rentabilidad: chips del semaforo y de estados en claro con contraste AA, y estrena badge de version (RENT_BUILD) junto al titulo; el badge .p-badge sube al armazon. El gate de Rentabilidad agrega una etapa en Chromium: fondo claro con el sistema en oscuro, badge = version.json, contraste AA en cada pieza y cero scroll horizontal a 4 anchos. tests/gate-instrumentos-pago.js deja de ser bomba de tiempo: fechas relativas a hoy. Sin cambios de motor, contrato ni comportamiento."
+    },
     {
       "version": "V1.12",
       "pr": null,

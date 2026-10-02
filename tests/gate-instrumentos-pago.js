@@ -63,56 +63,66 @@ function hasNot(name, haystack, needle) {
 // casos reales medidos en Odoo durante la auditoría del issue #150, para que el
 // gate falle si alguien vuelve a romper justo lo que ya se rompió una vez.
 const HOY = new Date(Date.now() - 6 * 3600 * 1000).toISOString().slice(0, 10);
+// FECHAS RELATIVAS A HOY (V1.13, #332). Las fixtures estaban fijas en agosto de 2026 y la vista
+// arranca por defecto «desde el día 1 del mes pasado»: el 1-oct quedaron fuera de la ventana y el gate
+// pasó de 55/55 a 24/54 en cualquier commit, sin que nada del módulo hubiera cambiado. Ahora cada fecha
+// se escribe como la de agosto-septiembre de 2026 en que se midió el caso, y F() la traslada conservando
+// la distancia en días a un ANCLA: el 2026-09-01 original cae en el día 1 del mes en curso (CST). Así
+// agosto queda dentro del «mes pasado» (siempre ≥ 28 días), el orden entre filas no cambia y ninguna
+// fecha queda en el futuro.
+const ANCLA_ORIG = Date.UTC(2026, 8, 1);
+const ANCLA_HOY = Date.UTC(Number(HOY.slice(0, 4)), Number(HOY.slice(5, 7)) - 1, 1);
+function F(orig) { return new Date(ANCLA_HOY + (Date.parse(orig + 'T00:00:00Z') - ANCLA_ORIG)).toISOString().slice(0, 10); }
 
 const ROWS_REAL = [
   // 1 · conciliada limpia: apunte a cero
-  { id: 9001, company_id: 1, _jid: 61, d: '2026-08-05', j: 'Jeeves', ref: '[Tarjeta gastos ****4548] Europcar',
+  { id: 9001, company_id: 1, _jid: 61, d: F('2026-08-05'), j: 'Jeeves', ref: '[Tarjeta gastos ****4548] Europcar',
     amt: -3511.33, mon: 'MXN', ok: true, res: 0, res_apunte: 0, wd: HOY,
     po: 'PO7001', bill: 'BILL3190', sb: 'PAGADA', ana: 'SO1-X', ff: 'UUID-1', tarj: 'Tarjeta gastos',
     comp: 'Esteban', rs: 'Servicios FTS', art: 'Renta', tk: '', tipo: 'Egreso' },
 
   // 2 · parcial: el cargo fue mayor que el bill, el apunte conserva saldo PARCIAL
-  { id: 9002, company_id: 1, _jid: 61, d: '2026-08-06', j: 'Jeeves', ref: '[Primary ****6831] Ferr',
+  { id: 9002, company_id: 1, _jid: 61, d: F('2026-08-06'), j: 'Jeeves', ref: '[Primary ****6831] Ferr',
     amt: -1890.80, mon: 'MXN', ok: true, res: 0, res_apunte: 334.08, wd: HOY,
     po: 'PO7002', bill: 'BILL3100', sb: 'PAGADA', ana: '', ff: '', tarj: 'Primary',
     comp: 'Felipe', rs: 'Servicios FTS', art: '', tk: '', tipo: 'Egreso' },
 
   // 3 · DESCONCILIADA: bill cancelado → el apunte recuperó el importe COMPLETO.
   //     Caso real: línea 32555 ($54 MercadoPago) ↔ BILL3270 cancelado el 2026-08-20.
-  { id: 9003, company_id: 1, _jid: 61, d: '2026-08-05', j: 'Jeeves', ref: '[Tarjeta gastos ****4548] MercadoPago',
+  { id: 9003, company_id: 1, _jid: 61, d: F('2026-08-05'), j: 'Jeeves', ref: '[Tarjeta gastos ****4548] MercadoPago',
     amt: -54.00, mon: 'MXN', ok: true, res: 0, res_apunte: 54.00, wd: HOY,
     po: '', bill: '', sb: '', ana: '', ff: '', tarj: 'Tarjeta gastos',
     comp: 'Esteban', rs: 'Servicios FTS', art: '', tk: '', tipo: 'Egreso' },
 
   // 4 · devolución (positiva, etiquetada) — nunca entra al motor de sugerencias
-  { id: 9004, company_id: 1, _jid: 61, d: '2026-08-09', j: 'Jeeves', ref: '[DEVOLUCIÓN ****Inns] Luis angel',
+  { id: 9004, company_id: 1, _jid: 61, d: F('2026-08-09'), j: 'Jeeves', ref: '[DEVOLUCIÓN ****Inns] Luis angel',
     amt: 860.98, mon: 'MXN', ok: false, res: 860.98, tarj: '', comp: '', rs: 'Servicios FTS',
     art: '', ana: '', po: '', bill: '', sb: '', ff: '', tk: '', tipo: 'Ingreso' },
 
   // 5 · fondeo (positivo, etiquetado) — tampoco entra al motor
-  { id: 9005, company_id: 1, _jid: 61, d: '2026-08-31', j: 'Jeeves', ref: '[FONDEO] Credit Line',
+  { id: 9005, company_id: 1, _jid: 61, d: F('2026-08-31'), j: 'Jeeves', ref: '[FONDEO] Credit Line',
     amt: 168574.45, mon: 'MXN', ok: false, res: 168574.45, tarj: '', comp: '', rs: 'Servicios FTS',
     art: '', ana: '', po: '', bill: '', sb: '', ff: '', tk: '', tipo: 'Ingreso' },
 
   // 6 · pendiente normal con candidato (el motor la evaluó y encontró bill)
-  { id: 9006, company_id: 1, _jid: 61, d: '2026-08-27', j: 'Jeeves', ref: '[Primary ****6831] PRO Ferrenl',
+  { id: 9006, company_id: 1, _jid: 61, d: F('2026-08-27'), j: 'Jeeves', ref: '[Primary ****6831] PRO Ferrenl',
     amt: -340.96, mon: 'MXN', ok: false, res: 340.96, tarj: 'Primary', comp: 'Felipe',
     rs: 'Servicios FTS', art: '', ana: '', po: '', bill: '', sb: '', ff: '', tk: '', tipo: 'Egreso' },
 
   // 7 · pendiente evaluada SIN candidato
-  { id: 9007, company_id: 1, _jid: 61, d: '2026-08-28', j: 'Jeeves', ref: '[Tarjeta gastos ****4548] Waalaxy',
+  { id: 9007, company_id: 1, _jid: 61, d: F('2026-08-28'), j: 'Jeeves', ref: '[Tarjeta gastos ****4548] Waalaxy',
     amt: -177.00, mon: 'MXN', ok: false, res: 177.00, tarj: 'Tarjeta gastos', comp: 'Esteban',
     rs: 'Servicios FTS', art: '', ana: '', po: '', bill: '', sb: '', ff: '', tk: '', tipo: 'Egreso' },
 
   // 9 · TOLERANCIA: server viejo que NO manda res_apunte. Debe seguir siendo 'conciliada';
   //     inventar "desconciliada" por ausencia de dato sería acusar sin evidencia.
-  { id: 9009, company_id: 1, _jid: 61, d: '2026-08-07', j: 'Jeeves', ref: '[Primary ****6831] BPK',
+  { id: 9009, company_id: 1, _jid: 61, d: F('2026-08-07'), j: 'Jeeves', ref: '[Primary ****6831] BPK',
     amt: -2605.60, mon: 'MXN', ok: true, res: 0, wd: HOY,
     po: 'PO7009', bill: 'BILL3009', sb: 'PAGADA', ana: '', ff: '', tarj: 'Primary',
     comp: 'Felipe', rs: 'Servicios FTS', art: '', tk: '', tipo: 'Egreso' },
 
   // 8 · Chase: journal FUERA del alcance del motor (en_motor:false) → 'noevaluada'
-  { id: 9008, company_id: 6, _jid: 123, d: '2026-09-01', j: 'Chase Ink', ref: 'DLO*UBER',
+  { id: 9008, company_id: 6, _jid: 123, d: F('2026-09-01'), j: 'Chase Ink', ref: 'DLO*UBER',
     amt: -31.88, mon: 'USD', ok: false, res: 31.88, tarj: '', comp: '', rs: 'FTS LLC',
     art: '', ana: '', po: '', bill: '', sb: '', ff: '', tk: '', tipo: 'Egreso' }
 ];
@@ -272,7 +282,7 @@ async function escenarioDemo() {
   const from = view().querySelector('#ip-fFrom');
   check('existe el filtro de fecha desde', !!from);
   if (from) {
-    from.value = '2026-01-01';
+    from.value = '2026-01-01';  // el mock demo es FIJO (julio 2026): esta fecha también
     from.dispatchEvent(new win.Event('change', { bubbles: true }));
   }
   await waitFor(function () { return view().querySelector('#ip-tblwrap table tbody tr'); }, 'tabla con filas tras abrir el rango');

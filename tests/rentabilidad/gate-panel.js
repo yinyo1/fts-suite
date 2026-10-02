@@ -3,6 +3,14 @@
  * GATE DEL PANEL · finanzas/rentabilidad/ · issue #332 pendiente 4
  *
  *   NODE_PATH=<ruta-a-node_modules> node tests/rentabilidad/gate-panel.js [salida.json]
+ *   (PW_CHROMIUM=<chromium> opcional; SHOTS_DIR=<dir> para las capturas)
+ *
+ * DOS ETAPAS. (1) jsdom: contrato y render, sin navegador. (2) Chromium (V1.13,
+ * #332): la APARIENCIA — jsdom no calcula estilos, así que no puede decir si un
+ * texto se lee. La etapa 2 abre el panel real con el sistema en MODO OSCURO
+ * emulado y exige fondo claro, `color-scheme` claro, badge = version.json,
+ * contraste AA (≥4.5) en cada pieza de texto, cero scroll horizontal a
+ * 380/760/900/1280 y cero errores de consola. Requiere playwright.
  *
  * Carga el panel REAL en jsdom con el armazón REAL, le sirve una salida del
  * motor por un `fetch` falso, y verifica que pinte. Sin red y sin Odoo.
@@ -187,8 +195,132 @@ const res = asserts();
 console.log('─── Gate del panel · finanzas/rentabilidad/ ───');
 console.log('   render listo tras ' + (turnos === null ? 'NUNCA (agotó 50 turnos)' : turnos + ' turno(s)'));
 res.forEach(r => console.log('   ' + (r.cond ? '✓' : '✗') + ' ' + r.nom + (r.det ? ('   →  ' + r.det) : '')));
+const nav = await etapaNavegador();
+console.log('\n   ── etapa 2 · Chromium (apariencia) ──');
+nav.forEach(r => console.log('   ' + (r.cond ? '✓' : '✗') + ' ' + r.nom + (r.det ? ('   →  ' + r.det) : '')));
+res.push(...nav);
 const malos = res.filter(r => !r.cond).length;
 console.log('\n   ' + (res.length - malos) + '/' + res.length + ' verificaciones');
 if (malos) { console.log('   ✗ ROJO'); process.exit(1); }
 console.log('   ✓ verde');
 })();
+
+/* ═══ ETAPA 2 · Chromium: modo claro y contraste (V1.13, #332) ══════════════
+   Mismo criterio que tests/gate-data-bancos.js: el peor caso es el sistema en
+   oscuro, y "se lee" es contraste WCAG medido contra el fondo efectivo. */
+async function etapaNavegador() {
+  const out = [], t = (nom, cond, det) => out.push({ nom, cond: !!cond, det: det === undefined ? '' : (typeof det === 'string' ? det : JSON.stringify(det)) });
+  let chromium;
+  try { ({ chromium } = require('playwright')); }
+  catch (e) { t('playwright disponible para la etapa de apariencia', false, 'falta playwright en NODE_PATH'); return out; }
+  const http = require('http');
+  const OUT = process.env.SHOTS_DIR || require('os').tmpdir() + '/shots-rentabilidad';
+  fs.mkdirSync(OUT, { recursive: true });
+  const VER = JSON.parse(fs.readFileSync(path.join(RAIZ, 'finanzas', 'version.json'), 'utf8')).version;
+  const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.css': 'text/css', '.json': 'application/json' };
+  const srv = http.createServer((req, res) => {
+    const p = path.join(RAIZ, decodeURIComponent(req.url.split('?')[0]));
+    if (!p.startsWith(RAIZ) || !fs.existsSync(p) || fs.statSync(p).isDirectory()) { res.writeHead(404); return res.end('no'); }
+    res.writeHead(200, { 'Content-Type': TIPOS[path.extname(p)] || 'application/octet-stream' }); fs.createReadStream(p).pipe(res);
+  });
+  await new Promise(r => srv.listen(0, r));
+  const BASE = 'http://127.0.0.1:' + srv.address().port;
+  const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
+  const ctx = await browser.newContext({ colorScheme: 'dark' });
+  let modo = null;   // null | 'sesion' | 'red' | 'servidor'
+  await ctx.addInitScript(() => {
+    if (!localStorage.getItem('fts_suite_session')) localStorage.setItem('fts_suite_session', JSON.stringify({ token: 'x.y.z', actor: 'gate', nombre: 'Gate de prueba', scopes: ['rentabilidad:read'], exp: Math.floor(Date.now() / 1000) + 3600 }));
+  });
+  await ctx.route('https://primary-production-5c3c.up.railway.app/webhook/**', route => {
+    if (modo === 'red') return route.abort('failed');
+    if (modo === 'sesion') return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'TOKEN_EXPIRED', clase: 'sesion' }) });
+    if (modo === 'servidor') return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'FALLO_PRUEBA', mensaje: 'falla sembrada por el gate' }) });
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(sobre) });
+  });
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', e => errs.push('pageerror: ' + e.message));
+  page.on('console', m => { if (m.type() === 'error' && !(modo && /status of (401|500)|ERR_FAILED|Failed to fetch/.test(m.text()))) errs.push('console: ' + m.text()); });
+  const URLP = BASE + '/finanzas/rentabilidad/index.html';
+  const listo = () => page.waitForFunction(() => document.querySelectorAll('#tabla tbody tr').length > 0, null, { timeout: 15000 });
+  const contraste = sel => page.evaluate(sel => {
+    const rgb = c => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const p = m[1].split(',').map(Number); return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 }; };
+    const L = c => { const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b); };
+    const fondo = el => { for (let e = el; e; e = e.parentElement) { const c = rgb(getComputedStyle(e).backgroundColor); if (c && c.a > 0.9) return c; } return { r: 255, g: 255, b: 255 }; };
+    const els = [...document.querySelectorAll(sel)].filter(e => e.offsetParent !== null && (e.textContent.trim() || /^(INPUT|SELECT)$/.test(e.tagName))).slice(0, 40);
+    if (!els.length) return { min: 0, n: 0 };
+    let min = 99;
+    for (const e of els) { const a = L(rgb(getComputedStyle(e).color)), b = L(fondo(e)); const r = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05); if (r < min) min = r; }
+    return { min: Math.round(min * 100) / 100, n: els.length };
+  }, sel);
+  const AA = async (nombre, sel) => { const c = await contraste(sel); t('contraste AA (≥4.5) · ' + nombre, c.n > 0 && c.min >= 4.5, c); };
+  try {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(URLP); await listo();
+    const tema = await page.evaluate(() => {
+      const lum = c => { const p = c.match(/\d+(\.\d+)?/g).map(Number); return (0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]) / 255; };
+      return { oscuro: matchMedia('(prefers-color-scheme: dark)').matches, body: lum(getComputedStyle(document.body).backgroundColor),
+        cabecera: lum(getComputedStyle(document.querySelector('header')).backgroundColor), tabla: lum(getComputedStyle(document.querySelector('.tablabox')).backgroundColor),
+        esquema: getComputedStyle(document.documentElement).colorScheme };
+    });
+    t('sistema en modo oscuro (emulado) y aun así: fondo, cabecera y tabla claros', tema.oscuro && tema.body > 0.9 && tema.cabecera > 0.9 && tema.tabla > 0.9, tema);
+    t('color-scheme: light', /light/.test(tema.esquema) && !/dark/.test(tema.esquema), tema.esquema);
+    t('badge = finanzas/version.json (' + VER + ')', ((await page.textContent('#rentBadge').catch(() => '')) || '').trim() === VER, await page.textContent('#rentBadge').catch(() => '(sin badge)'));
+    for (const [n, sel] of [['título', 'header h1'], ['badge', '#rentBadge'], ['subtítulo', 'header .sub'], ['quién entró', '.quien'], ['hora del jalón', 'header .jalon'],
+      ['Actualizar', '#p-refresh'], ['volver a Finanzas', 'a.volver-suite'], ['KPI · número', '.kpi .n'], ['KPI · etiqueta', '.kpi .l'], ['KPI · nota', '.kpi .n2'],
+      ['salvedades', 'details.salv > summary'], ['filtros', 'label.f'], ['selects', '.barra select'], ['buscador', '#fBusca'], ['conteo', '#conteo'],
+      ['encabezados', '#tabla th'], ['celdas', '#tabla td'], ['proyecto (liga)', '#tabla .proj'], ['chips de estado', '#tabla .chip'], ['raya «no hay dato»', '#tabla .raya'],
+      ['falta', '#tabla .falta'], ['porcentajes', '#tabla .pct-bad, #tabla .pct-warn, #tabla .pct-info'], ['pie', 'footer']]) await AA(n, sel);
+    await page.$eval('details.salv', d => d.open = true); await AA('salvedades abiertas', '.salv-item'); await AA('código de salvedad', '.salv-item code');
+    await page.$eval('details.salv', d => d.open = false);
+    // muestras de cada chip y de los subtotales, dentro de la tabla real: la golden del contrato 1 no
+    // trae semáforo ni plan equivocado, y lo que se mide es el CSS, no el dato.
+    await page.evaluate(() => {
+      const tb = document.querySelector('#tabla tbody');
+      tb.insertAdjacentHTML('afterbegin', '<tr id="muestras"><td>' + ['c-completo', 'c-parcial', 'c-sin', 's-verde', 's-ambar', 's-rojo', 's-sin', 'c-planmal']
+        .map(c => '<span class="chip ' + c + ' muestra">' + c + '</span> ').join('') + '<span class="c-techo muestra">techo</span></td></tr>' +
+        '<tr class="grupo" id="muestraGrupo"><td>SUBTOTAL de muestra</td><td class="num">1,234</td></tr>');
+    });
+    for (const c of ['c-completo', 'c-parcial', 'c-sin', 's-verde', 's-ambar', 's-rojo', 's-sin', 'c-planmal', 'c-techo']) await AA('chip ' + c, '#muestras .' + c);
+    await AA('renglón de subtotal (tr.grupo)', '#muestraGrupo td');
+    await page.screenshot({ path: path.join(OUT, 'rent-chips-1280.png'), clip: { x: 0, y: 0, width: 1280, height: 900 } });
+    await page.evaluate(() => { document.getElementById('muestras').remove(); document.getElementById('muestraGrupo').remove(); });
+    // agrupación real del armazón: subtotales de verdad
+    const g = await page.$$eval('#fGrupo option', o => o.map(x => x.value).filter(Boolean));
+    if (g.length) {
+      await page.selectOption('#fGrupo', g[0]); await page.waitForTimeout(200);
+      t('agrupar pinta renglones de subtotal', (await page.$$('#tabla tr.grupo')).length > 0, (await page.$$('#tabla tr.grupo')).length);
+      await AA('subtotales reales', '#tabla tr.grupo td');
+      await page.screenshot({ path: path.join(OUT, 'rent-agrupado-1280.png') });
+      await page.selectOption('#fGrupo', '');
+    } else t('hay opciones de agrupación', false, g);
+    await page.hover('#tabla tbody tr'); await AA('fila con el cursor encima', '#tabla tbody tr:hover td');
+    // estado vacío
+    await page.fill('#fBusca', 'zzzz-no-existe'); await page.dispatchEvent('#fBusca', 'input'); await page.waitForTimeout(300);
+    t('estado vacío visible', /Sin proyectos con ese filtro/.test(await page.textContent('#tabla tbody')), (await page.textContent('#tabla tbody')).slice(0, 80));
+    await AA('estado vacío', '#tabla tbody td');
+    await page.screenshot({ path: path.join(OUT, 'rent-vacio-1280.png') });
+    await page.fill('#fBusca', ''); await page.dispatchEvent('#fBusca', 'input'); await page.waitForTimeout(300);
+    // cuatro anchos
+    for (const w of [380, 760, 900, 1280]) {
+      await page.setViewportSize({ width: w, height: 900 }); await page.waitForTimeout(150);
+      t('sin scroll horizontal de página a ' + w + ' px', !(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)));
+      await page.screenshot({ path: path.join(OUT, 'rent-' + w + '.png') });
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.$eval('footer', e => e.scrollIntoView()); await page.screenshot({ path: path.join(OUT, 'rent-pie-1280.png') });
+    // avisos: sesión, red, servidor
+    for (const m of ['red', 'servidor', 'sesion']) {
+      modo = m; await page.goto(URLP); await page.waitForTimeout(m === 'red' ? 4500 : 800);
+      const cl = await page.$eval('#aviso', a => (a.querySelector('.aviso') || {}).className || '');
+      t('aviso de ' + m + ' visible', new RegExp('aviso.*' + m).test(cl), cl);
+      await AA('aviso de ' + m + ' · texto', '#aviso .aviso p'); await AA('aviso de ' + m + ' · título', '#aviso .aviso h3');
+      await page.screenshot({ path: path.join(OUT, 'rent-aviso-' + m + '.png') });
+    }
+    modo = null;
+  } catch (e) { t('la etapa de navegador terminó sin excepción', false, String(e.message).slice(0, 200)); }
+  t('cero errores de página y consola (navegador)', errs.length === 0, errs.slice(0, 3));
+  await browser.close(); srv.close();
+  console.log('   capturas en ' + OUT);
+  return out;
+}

@@ -13,12 +13,24 @@
  *
  * Depende de `panel-shell.js` sólo por el marcado que ese archivo genera
  * (`header.p-hd`, `footer.p-pie`). Las clases de contenido se pueden usar solas.
+ *
+ * MODO CLARO, SIEMPRE (V1.13, #332). La paleta es la clara del resto de Finanzas
+ * (finanzas.css: papel, tinta, filete, verde, rojo, ámbar; instrumentos-pago.css:
+ * azul de acción), la misma que Data Bancos estrenó como capa local en V1.12.
+ * `color-scheme:light` va en `:root` para que los controles nativos no se
+ * oscurezcan aunque el teléfono o la computadora estén en modo oscuro; cada
+ * página pone además su `<meta name="color-scheme" content="light">`.
+ * Contraste: todo texto pasa AA (≥4.5) sobre `--panel` y `--panel2`. Por eso hay
+ * DOS ámbares: `--ambar` (#D99000) para bordes y puntos, y `--ambar-tx` para
+ * texto — el ámbar de Finanzas sobre blanco da 2.4, ilegible como número.
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 :root{
-  --bg:#0f1216; --panel:#161b22; --panel2:#1c232c; --linea:#2a333f;
-  --tinta:#e6edf3; --tinta2:#9aa7b4; --tinta3:#6b7785;
-  --verde:#2ea043; --ambar:#d29922; --rojo:#da3633; --azul:#1f6feb; --liga:#79c0ff;
+  color-scheme:light;
+  --bg:#FBFBF9; --panel:#ffffff; --panel2:#F4F4F0; --linea:#D9D9D6;
+  --tinta:#0A0A0A; --tinta2:#3A3A3A; --tinta3:#5F6670;
+  --verde:#1F7A4A; --ambar:#D99000; --ambar-tx:#8A5A00; --ambar-bg:#FFF6E5;
+  --rojo:#B91C2C; --azul:#0e5fd8; --liga:#0b56c4;
   --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
 }
@@ -28,7 +40,9 @@ body{margin:0;background:var(--bg);color:var(--tinta);font:14px/1.5 var(--sans)}
 
 /* ── cabecera: título, quién está dentro, hora del último jalón, refresh ──── */
 header{border-bottom:1px solid var(--linea);background:var(--panel);position:sticky;top:0;z-index:20}
-.hd{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:12px 0}
+/* `padding:12px 16px` y no `12px 0`: `.hd` va sobre `.wrap`, y un cero lateral le quitaba su margen —el
+   título quedaba pegado al borde de la pantalla (medido en V1.13; Data Bancos lo corregía en local). */
+.hd{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:12px 16px}
 .hd h1{font-size:17px;margin:0;font-weight:600;letter-spacing:-.2px}
 .hd .sub{color:var(--tinta3);font-size:12px}
 .spacer{flex:1 1 auto}
@@ -47,13 +61,17 @@ button[disabled]{opacity:.55;cursor:default}
    Actualizar, y con ancho fijo no empuja el resto de la cabecera. */
 .jalon{font:12px/1.4 var(--mono);color:var(--tinta3)}
 
+/* Badge de versión junto al título: con él se verifica que un deploy quedó (CLAUDE.md §8). */
+.p-badge{background:var(--azul);color:#fff;font-size:11px;font-weight:700;border-radius:20px;padding:2px 10px;
+  letter-spacing:.4px;margin-left:8px;vertical-align:middle}
+
 /* ── tarjetas de KPI ─────────────────────────────────────────────────────── */
 .kpis{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin:14px 0}
 .kpi{background:var(--panel);border:1px solid var(--linea);border-radius:8px;padding:12px 14px}
 .kpi .n{font:600 24px/1.15 var(--mono);letter-spacing:-.5px}
 .kpi .l{color:var(--tinta2);font-size:12px;margin-top:4px}
 .kpi .n2{color:var(--tinta3);font-size:11px;margin-top:6px;font-family:var(--mono)}
-.kpi.ok .n{color:var(--verde)} .kpi.warn .n{color:var(--ambar)}
+.kpi.ok .n{color:var(--verde)} .kpi.warn .n{color:var(--ambar-tx)}
 .kpi.bad .n{color:var(--rojo)} .kpi.neu .n{color:var(--tinta)}
 .kpi.clic{cursor:pointer} .kpi.clic:hover{border-color:var(--tinta3)}
 
@@ -62,7 +80,7 @@ details.salv{background:var(--panel);border:1px solid var(--linea);border-radius
 details.salv>summary{cursor:pointer;padding:11px 14px;font-weight:600;font-size:13px}
 details.salv .cuerpo{padding:0 14px 12px}
 .salv-item{border-top:1px solid var(--linea);padding:10px 0;font-size:13px;color:var(--tinta2)}
-.salv-item code{color:var(--ambar);font:600 12px var(--mono)}
+.salv-item code{color:var(--ambar-tx);font:600 12px var(--mono)}
 
 /* ── barra de filtros ───────────────────────────────────────────────────── */
 .barra{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0}
@@ -77,9 +95,9 @@ th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--linea);whit
 th{background:var(--panel2);color:var(--tinta2);font-weight:600;font-size:12px;
    position:sticky;top:0;cursor:pointer;user-select:none}
 th.num,td.num{text-align:right;font-family:var(--mono)}
-tbody tr:hover{background:#1a2129}
-tr.grupo{background:#1a2530;font-weight:600}
-tr.grupo td{color:#cfe3ff}
+tbody tr:hover{background:var(--panel2)}
+tr.grupo{background:#EEF2F7;font-weight:600}
+tr.grupo td{color:var(--tinta)}
 /* Celda-enlace a un detalle. Se recorta con puntos suspensivos en vez de
    ensanchar la tabla: el nombre completo va en el `title`. */
 .proj{display:inline-block;max-width:360px;overflow:hidden;text-overflow:ellipsis;
@@ -96,7 +114,7 @@ tr.grupo td{color:#cfe3ff}
 .al{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
 .al-rojo{background:var(--rojo)} .al-amarillo{background:var(--ambar)}
 .pct-bad{color:var(--rojo);font-weight:600}
-.pct-warn{color:var(--ambar);font-weight:600}
+.pct-warn{color:var(--ambar-tx);font-weight:600}
 .pct-info{color:var(--liga)}
 
 /* ── vistas (portada / detalle) y notas ─────────────────────────────────── */
@@ -109,7 +127,7 @@ h2{font-size:16px;margin:6px 0 2px} .h2sub{color:var(--tinta3);font-size:12px;ma
 /* ── avisos: tres clases, tres acciones distintas ───────────────────────── */
 .aviso{border:1px solid var(--linea);border-radius:8px;padding:18px;margin:24px 0;background:var(--panel)}
 .aviso.sesion{border-left:3px solid var(--ambar)}
-.aviso.red{border-left:3px solid #388bfd}
+.aviso.red{border-left:3px solid var(--azul)}
 .aviso.servidor{border-left:3px solid var(--rojo)}
 .aviso h3{margin:0 0 6px;font-size:15px}
 .aviso p{margin:0 0 10px;color:var(--tinta2);font-size:13px}
