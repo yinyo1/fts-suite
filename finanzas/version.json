@@ -1,9 +1,14 @@
 {
-  "version": "V1.11",
-  "fecha": "2026-09-30",
+  "version": "V1.12",
+  "fecha": "2026-10-02",
   "modulo": "finanzas",
   "esquema": "V<mayor>.<menor de dos dígitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.12",
+      "pr": null,
+      "nota": "Data Bancos (#370) pasa a MODO CLARO SIEMPRE, con la paleta clara del resto de Finanzas. El armazon shared/panel/panel.css es oscuro y lo comparte Rentabilidad, asi que NO se toco: Data Bancos redefine los tokens del armazon solo en su pagina (capa propia en su <style>), cubre los tres colores que panel.css escribe sin token, fija color-scheme:light (antes forzaba dark en el selector de fecha) y agrega la meta color-scheme. Sin cambios de motor, datos ni comportamiento. El gate de Data Bancos ahora exige fondo claro tambien con el sistema en modo oscuro y contraste AA en cada pieza de texto."
+    },
     {
       "version": "V1.11",
       "pr": null,
