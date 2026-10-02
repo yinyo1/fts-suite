@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
 <title>Rentabilidad por proyecto · FTS Suite</title>
 <!--
   PANEL DE RENTABILIDAD POR PROYECTO · issue #240 · plataforma #237
@@ -40,23 +41,25 @@
     throw new Error('sin sesion');
   }
 </script>
-<link rel="stylesheet" href="../../shared/panel/panel.css">
+<link rel="stylesheet" href="../../shared/panel/panel.css?v=V1.13">
 <style>
   /* Lo UNICO propio de este panel: los tres estados del dato. Es vocabulario de
      rentabilidad —«tiene presupuesto completo / parcial / no tiene»— y por eso no
      subio al armazon. La pieza generica (`.chip`) si esta alla. */
-  .c-completo{background:#0d2a14;color:#56d364;border:1px solid #1c5a2b}
-  .c-parcial{background:#2b2200;color:#e3b341;border:1px solid #6b5200}
-  .c-sin{background:#26292e;color:#9aa7b4;border:1px solid #3d4450}
+  /* En CLARO desde V1.13 (#332): fondos tenues de la paleta de Finanzas y texto oscuro de su
+     mismo tono, todos con contraste AA (≥4.5) — el gate lo mide en cada chip. */
+  .c-completo{background:#E6F2EC;color:#1A6B40;border:1px solid #A9D1BA}
+  .c-parcial{background:#FFF6E5;color:#8A5A00;border:1px solid #EBCB8B}
+  .c-sin{background:#F1F2F4;color:#4B5563;border:1px solid #C9CDD3}
   /* Los cuatro estados del SEMAFORO (v1.01). Tambien son vocabulario de este
      panel: `sin` NO es un gris neutro de «no aplica», es un rojo administrativo
      —no hay con que medir— y por eso lleva borde punteado en vez de ausencia de
      color. Un gris liso invitaria a leerlo como «todo bien». */
-  .s-verde{background:#0d2a14;color:#56d364;border:1px solid #1c5a2b}
-  .s-ambar{background:#2b2200;color:#e3b341;border:1px solid #6b5200}
-  .s-rojo{background:#2d0f0f;color:#f85149;border:1px solid #6e2323}
-  .s-sin{background:#26292e;color:#9aa7b4;border:1px dashed #6b7785}
-  .c-planmal{background:#2b2200;color:#e3b341;border:1px solid #6b5200}
+  .s-verde{background:#E6F2EC;color:#1A6B40;border:1px solid #A9D1BA}
+  .s-ambar{background:#FFF6E5;color:#8A5A00;border:1px solid #EBCB8B}
+  .s-rojo{background:#FBE9EA;color:#A3192A;border:1px solid #EBB4BA}
+  .s-sin{background:#F1F2F4;color:#4B5563;border:1px dashed #6B7280}
+  .c-planmal{background:#FFF6E5;color:#8A5A00;border:1px solid #EBCB8B}
   .c-techo{color:var(--tinta3);font-size:11px}
   /* La leyenda de umbrales: los numeros que rigen los colores, a la vista. Un
      semaforo cuyo criterio no se puede leer es un semaforo en el que hay que
@@ -179,6 +182,14 @@ var P = Panel.montar({
 });
 
 var esc = Panel.esc, nfm = Panel.nfm, dinero = Panel.dinero, pct = Panel.pct;
+
+/* Badge de versión (V1.13): el número de finanzas/version.json junto al título, para verificar a
+   simple vista que un deploy quedó. El gate lo coteja contra ese archivo. */
+var RENT_BUILD = 'V1.13';
+(function () {
+  var h1 = document.querySelector('header h1');
+  if (h1) h1.insertAdjacentHTML('beforeend', '<span class="p-badge" id="rentBadge" title="versión desplegada">' + esc(RENT_BUILD) + '</span>');
+})();
 
 /* La hora del dato en CST, con la conversión EXPLÍCITA. El motor manda un ISO en
    UTC; pintarlo tal cual lo deja seis horas adelantado, que es el hallazgo #1 de

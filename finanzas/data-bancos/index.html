@@ -26,25 +26,11 @@
     throw new Error('sin sesion');
   }
 </script>
-<link rel="stylesheet" href="../../shared/panel/panel.css">
+<link rel="stylesheet" href="../../shared/panel/panel.css?v=V1.13">
 <style>
-  /* ── MODO CLARO, SIEMPRE (V1.12, #370) ─────────────────────────────────────────────────────────
-     El armazón (shared/panel/panel.css) es oscuro y lo comparte Rentabilidad: NO se toca. Aquí se
-     redefinen sus tokens SOLO para esta página, con la paleta clara del resto de Finanzas
-     (finanzas.css: papel, tinta, filete, verde y rojo; instrumentos-pago.css: azul de acción).
-     Va en `:root` y después de panel.css, así que gana por orden sin subir especificidad.
-     `color-scheme:light` + la meta: los controles nativos (fecha, select, scrollbars) no se
-     vuelven oscuros aunque el celular o la computadora estén en modo oscuro. */
-  :root{
-    color-scheme:light;
-    --bg:#FBFBF9; --panel:#ffffff; --panel2:#F4F4F0; --linea:#D9D9D6;
-    --tinta:#0A0A0A; --tinta2:#3A3A3A; --tinta3:#5F6670;
-    --verde:#1F7A4A; --ambar:#D99000; --rojo:#B91C2C; --azul:#0e5fd8; --liga:#0b56c4;
-    --ambar-bg:#FFF6E5;
-  }
-  /* Colores que panel.css escribe sin token (no los mueve redefinir las variables). */
-  tbody tr:hover{background:transparent}
-  .aviso.red{border-left-color:var(--azul)}
+  /* MODO CLARO: desde V1.13 lo pone el armazón (shared/panel/panel.css) para todos los paneles. Aquí
+     sólo queda lo propio de esta página: la meta color-scheme (es por página), el selector de fecha,
+     la sombra del menú, el fondo ámbar de la nota de cobertura y la alineación del pie. */
 
   /* Estructura del prototipo con la paleta de la suite. Nombres de clase PROPIOS (db-*): `.chip`
      y `table` ya significan otra cosa en panel.css (§20 #12). */
@@ -55,7 +41,6 @@
   /* El armazón escribe el pie como texto directo en <footer> (reemplaza su .wrap), así que quedaba pegado al
      borde izquierdo. Se alinea con el cuerpo: mismo ancho máximo (1080) y mismo margen (12px). */
   footer{padding:22px max(12px, calc((100% - 1080px) / 2 + 12px))}
-  .db-badge{background:var(--azul);color:#fff;font-size:11px;font-weight:700;border-radius:20px;padding:2px 10px;letter-spacing:.4px;margin-left:8px;vertical-align:middle}
   .db-sub{color:var(--tinta2);font-size:12px;margin:2px 0 12px}
   .db-note{background:var(--ambar-bg);color:var(--tinta2);border:1px solid var(--linea);border-left:3px solid var(--ambar);border-radius:8px;padding:8px 10px;font-size:12px;margin-bottom:12px}
   .db-note b{color:var(--tinta)}
@@ -186,7 +171,7 @@
   if (window.__ftsSinAcceso) return;
 
   // Versión visible. DEBE coincidir con finanzas/version.json — el gate lo verifica.
-  var DB_BUILD = 'V1.12';
+  var DB_BUILD = 'V1.13';
   var RUTA = '/webhook/fin/bancos-data';
   var RUTA_EXP = '/webhook/fin/bancos-data-exportar';
   var XLSX_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
@@ -207,7 +192,7 @@
   var esc = P.esc;
   var $ = function (id) { return document.getElementById(id); };
   var h1 = document.querySelector('header .hd h1');
-  if (h1) h1.insertAdjacentHTML('beforeend', '<span class="db-badge" id="dbBadge" title="versión desplegada">' + esc(DB_BUILD) + '</span>');
+  if (h1) h1.insertAdjacentHTML('beforeend', '<span class="p-badge" id="dbBadge" title="versión desplegada">' + esc(DB_BUILD) + '</span>');
 
   /* ============ COLUMNAS (las del prototipo, en su orden) ============ */
   var COLS = [
