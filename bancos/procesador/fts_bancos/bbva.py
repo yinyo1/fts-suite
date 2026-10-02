@@ -88,6 +88,8 @@ class EstadoParseado:
     texto_encabezado: str
     movimientos: list[Movimiento] = field(default_factory=list)
     avisos: list[str] = field(default_factory=list)
+    # Estado de APERTURA (#352): la fecha del renglón C98 'APERTURA DE CUENTA', que BBVA imprime sin importe.
+    apertura: date | None = None
 
     @property
     def periodo(self) -> str:
@@ -118,6 +120,8 @@ RE_TOT_ABONOS = re.compile(r"TOTAL\s+IMPORTE\s+ABONOS\s+" + M + r"\s+TOTAL\s+MOV
 RE_FECHA_CORTA = re.compile(r"^(\d{2})/([A-Z]{3})$")
 RE_CODIGO = re.compile(r"^[A-Z0-9]{3}$")
 RE_FIN_DETALLE = re.compile(r"Total\s+de\s+Movimientos", re.I)
+# El movimiento de apertura de una cuenta nueva: BBVA lo imprime como renglón con fecha y SIN importe.
+RE_APERTURA = re.compile(r"APERTURA\s+DE\s+CUENTA", re.I)
 RE_USD = re.compile(r"D[OÓ]LAR(ES)?|USD|DLLS", re.I)
 
 COLUMNAS = {
@@ -313,6 +317,15 @@ def _movimientos(pdf, est: EstadoParseado) -> None:
                     else:
                         actual.saldo_liquidacion_impreso = v
                 ultimo_top = linea[0].top
+                if _es_apertura(actual, montos, est):
+                    # No es un movimiento de dinero: queda como dato del estado y no entra al detalle (no cuenta
+                    # en V1 ni en V2). Sólo aquí se acepta un renglón sin importe; cualquier otro sigue rechazándose.
+                    est.apertura = actual.fecha_operacion
+                    est.avisos.append(f"estado de apertura: la cuenta abrió el {actual.fecha_operacion.isoformat()} "
+                                      f"(renglón C98 'APERTURA DE CUENTA', sin importe; saldo inicial 0.00)")
+                    actual = None
+                    renglon -= 1
+                    continue
                 if (actual.cargo > 0) == (actual.abono > 0):
                     raise ErrorParser("IMPORTE_AMBIGUO",
                                       f"renglón {renglon} ({linea[0].texto}) sin importe o con cargo y abono a la vez", n)
@@ -344,6 +357,17 @@ def _movimientos(pdf, est: EstadoParseado) -> None:
         ref = re.search(r"\bRef\.?\s*:?\s*([A-Z0-9/-]{4,})", m.descripcion, re.I)
         bnet = re.search(r"\bBNET\s*(\d{6,})", m.descripcion, re.I)
         m.referencia = (ref.group(1) if ref else None) or (("BNET " + bnet.group(1)) if bnet else None)
+
+
+def _es_apertura(mov: Movimiento, montos: list, est: EstadoParseado) -> bool:
+    """El renglón C98 'APERTURA DE CUENTA' de una cuenta nueva (#352). Se acepta SÓLO si es exactamente eso:
+    primer renglón del detalle, código C98, descripción de apertura, ningún importe impreso (ni saldos), fecha =
+    inicio del periodo y saldo inicial 0.00. Si falta cualquiera, el renglón sigue el camino normal y, sin
+    importe, se rechaza como IMPORTE_AMBIGUO: no se afloja nada para los demás estados."""
+    return (mov.renglon == 1 and not montos and (mov.codigo or "").upper() == "C98"
+            and bool(RE_APERTURA.search(mov.descripcion or ""))
+            and mov.fecha_operacion == est.periodo_inicio
+            and est.saldo_inicial == 0 and not est.movimientos)
 
 
 def calcular_hashes(est: EstadoParseado, numero_cuenta: str) -> str:

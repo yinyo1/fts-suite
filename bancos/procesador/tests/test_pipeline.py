@@ -263,3 +263,37 @@ def test_leeme_no_lista_la_copia_canonica_como_duplicado(base_limpia):
         md = reportes.leeme_md(con, "hoy")
     dups = md.split("## Duplicados detectados")[1].split("## Rechazados")[0]
     assert "otra copia.pdf" in dups and f"`{canonico}` es copia" not in dups
+
+
+def test_cuenta_con_apertura_no_debe_meses_de_antes_y_su_primer_mes_es_primero(base_limpia):
+    """#352: la cuenta abrió a media cadena. Sin el dato, enero y febrero son huecos; con él, se
+    cierran con nota (no se borran), marzo es «primero» y lo que falta después sigue faltando."""
+    import subprocess
+    from conftest import PG
+    E = escenario()
+    nom = CUENTAS[1]
+    correr({f"NOM {m:02d}.pdf": pdf_estado(E[f"nomina_2026-{m:02d}"]) for m in (3, 4, 5)})
+    with conexion() as con, con.cursor() as cur:
+        cur.execute("SELECT id FROM bancos.cuentas WHERE alias=%s", (nom["alias"],))
+        cta = cur.fetchone()["id"]
+        cur.execute("SELECT periodo FROM bancos.huecos WHERE cuenta_id=%s AND motivo='faltante' AND resuelto_en IS NULL ORDER BY periodo", (cta,))
+        antes = [r["periodo"] for r in cur.fetchall()]
+    assert antes[:2] == ["2026-01", "2026-02"]
+    # el dato lo pone el administrador (bancos_app no puede escribir la apertura)
+    subprocess.run(["psql", f"{PG} dbname={base_limpia}", "-v", "ON_ERROR_STOP=1", "-q", "-c",
+                    f"UPDATE bancos.cuentas SET apertura='2026-03-10', apertura_evidencia='estado sintético de apertura' WHERE id={cta}"],
+                   check=True, capture_output=True, text=True)
+    _, _, cierre = correr({})
+    with conexion() as con, con.cursor() as cur:
+        cur.execute("SELECT periodo, resuelto_en, resuelto_por_estado_id, detalle FROM bancos.huecos WHERE cuenta_id=%s AND motivo='faltante' ORDER BY periodo", (cta,))
+        h = {r["periodo"]: r for r in cur.fetchall()}
+        cur.execute("""SELECT DISTINCT ON (e.periodo) e.periodo, v.resultado FROM bancos.estados_vigentes e
+                       JOIN bancos.validaciones_v3 v ON v.estado_id=e.id WHERE e.cuenta_id=%s ORDER BY e.periodo, v.id DESC""", (cta,))
+        v3 = {r["periodo"]: r["resultado"] for r in cur.fetchall()}
+    for p in ("2026-01", "2026-02"):
+        assert h[p]["resuelto_en"] is not None and h[p]["resuelto_por_estado_id"] is None
+        assert "antes de la apertura" in h[p]["detalle"]["resuelto"]
+    assert h["2026-06"]["resuelto_en"] is None              # lo de después de la apertura sigue faltando
+    assert v3 == {"2026-03": "primero", "2026-04": "ok", "2026-05": "ok"}
+    falt = next(v for v in cierre["v3"]["cuentas"].values() if v["alias"] == nom["alias"])["faltantes"]
+    assert falt[0] == "2026-06"

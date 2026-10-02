@@ -97,3 +97,51 @@ def test_descripcion_que_sigue_en_la_pagina_siguiente_no_se_pierde():
     m = next(x for x in est.movimientos if x.codigo == "N03")
     assert "CUENTA: 999 BNET" in m.descripcion and m.referencia == "PRUEBA01"
     assert validar.v1(est)[0] and validar.v2(est)[0]
+
+
+def _apertura(**kw) -> Estado:
+    from fixtures import CUENTAS
+    c = CUENTAS[1]
+    movs = kw.pop("movs", None) or [
+        Mov(19, "C98", ["APERTURA DE CUENTA"]),
+        Mov(19, "T20", ["SPEI RECIBIDO PRUEBA", "REF APERTURA01"], abono=Decimal("81000.00")),
+        Mov(26, "N06", ["PAGO NOMINA PRUEBA"], cargo=Decimal("80637.38")),
+    ]
+    return Estado(numero=c["numero"], clabe=c["clabe"], anio=2024, mes=4, saldo_inicial=Decimal("0"),
+                  dia_inicio=19, movs=movs, **kw)
+
+
+def test_estado_de_apertura_c98_sin_importe_se_acepta_y_v1_cuadra_al_centavo():
+    est = bbva.parsear(pdf_estado(_apertura()))
+    assert est.apertura is not None and est.apertura.isoformat() == "2024-04-19"
+    assert est.periodo_inicio.isoformat() == "2024-04-19"
+    assert est.saldo_inicial == 0 and est.saldo_final == Decimal("362.62")
+    assert [x.codigo for x in est.movimientos] == ["T20", "N06"]   # el C98 no es movimiento
+    assert any("estado de apertura" in a for a in est.avisos)
+    assert validar.v1(est)[0] and validar.v2(est)[0]
+
+
+def test_renglon_sin_importe_que_no_es_apertura_sigue_rechazandose():
+    # mismo estado, pero el renglón sin importe no es C98: no se afloja nada
+    e = _apertura(movs=[Mov(19, "T17", ["APERTURA DE CUENTA"]),
+                        Mov(19, "T20", ["SPEI RECIBIDO PRUEBA"], abono=Decimal("81000.00"))])
+    with pytest.raises(bbva.ErrorParser) as ex:
+        bbva.parsear(pdf_estado(e))
+    assert ex.value.codigo == "IMPORTE_AMBIGUO"
+
+
+def test_c98_sin_importe_con_saldo_inicial_distinto_de_cero_sigue_rechazandose():
+    e = _apertura()
+    e.saldo_inicial = Decimal("100.00")
+    with pytest.raises(bbva.ErrorParser) as ex:
+        bbva.parsear(pdf_estado(e))
+    assert ex.value.codigo == "IMPORTE_AMBIGUO"
+
+
+def test_c98_sin_importe_a_media_lista_sigue_rechazandose():
+    e = _apertura(movs=[Mov(19, "T20", ["SPEI RECIBIDO PRUEBA"], abono=Decimal("81000.00")),
+                        Mov(20, "C98", ["APERTURA DE CUENTA"]),
+                        Mov(26, "N06", ["PAGO NOMINA PRUEBA"], cargo=Decimal("80637.38"))])
+    with pytest.raises(bbva.ErrorParser) as ex:
+        bbva.parsear(pdf_estado(e))
+    assert ex.value.codigo == "IMPORTE_AMBIGUO"
