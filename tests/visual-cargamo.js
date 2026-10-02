@@ -580,6 +580,44 @@ function archivoRH() {
     check('y se queda abierto tras un repintado', abrible.sigue === true, String(abrible.sigue));
     check('con su contenido intacto adentro', abrible.texto === true, '');
 
+    // ═══ QUÉ CANDADO ESTÁ CERRADO ═════════════════════════════════════════
+    // Son DOS y sólo uno lo suelta la casilla de "ya pagada y timbrada": el
+    // ARCHIVO (que no cuadra consigo mismo) y el CRUCE (diferencias contra RH).
+    // Confundirlos deja a alguien declarando la semana una y otra vez mientras el
+    // rótulo le sigue señalando a RH. Pasó con S40.
+    const candado = await page.evaluate(() => {
+      // Se fuerza una falla DEL ARCHIVO eligiendo un viernes que no es el del Excel.
+      const vie = document.getElementById('f-vie').value;
+      document.getElementById('f-vie').value = '2026-07-03';
+      render();
+      const conArchivo = { rotulo: document.getElementById('send').textContent,
+                           cerrado: document.getElementById('send').disabled,
+                           resumen: (document.querySelector('#c-msgs .plg-r') || {}).textContent || '',
+                           chip: (document.querySelector('#c-msgs .chip') || {}).className || '',
+                           abierto: (document.querySelector('#c-msgs details.plg') || {}).open };
+      document.getElementById('f-vie').value = vie;
+      render();
+      return conArchivo;
+    });
+    check('con un error DEL ARCHIVO, el botón nombra al archivo, no a RH',
+      /ARCHIVO/.test(candado.rotulo) && !/RH/.test(candado.rotulo), candado.rotulo);
+    check('y el botón queda cerrado', candado.cerrado === true, String(candado.cerrado));
+    // 🔴 El resumen leía `P.fallas`, que es un OBJETO {integridad,clasificacion,aviso}
+    // y no un arreglo: `.length` daba undefined y el bloque decía SIEMPRE "sin
+    // avisos" aunque hubiera errores que frenan. La pantalla no podía decir qué la
+    // estaba trabando.
+    check('el bloque de avisos NO dice "sin avisos" habiendo errores',
+      !/cuadra consigo mismo/.test(candado.resumen), candado.resumen);
+    check('los cuenta en su resumen', /\d+ que frenan/.test(candado.resumen), candado.resumen);
+    check('con etiqueta roja', /chip-mal/.test(candado.chip), candado.chip);
+    check('y se abre solo, porque frena', candado.abierto === true, String(candado.abierto));
+
+    // Y al revés: cuando el archivo está bien y quien frena es el cruce, el rótulo
+    // tiene que seguir señalando a RH — que es el caso en el que la casilla SÍ sirve.
+    const soloCruce = await page.evaluate(() => document.getElementById('send').textContent);
+    check('con el archivo bien, el rótulo vuelve a señalar al cruce',
+      /RH/.test(soloCruce), soloCruce);
+
     // ── el stepper DESPUÉS de una carga exitosa ───────────────────────────
     // En S39 quedó el paso 2 en ROJO diciendo "no se puede enviar" al lado del paso
     // 4 en verde diciendo "cargada en Odoo". Leía `wbtn.disabled`, que tras una
