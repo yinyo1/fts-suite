@@ -112,6 +112,8 @@
         </select>
       </label>
       <label class="f">Agrupar por <select id="fGrupo"><option value="">(sin agrupar)</option></select></label>
+      <span class="g-btns" id="gBotones" hidden><button type="button" id="gAbrir">Expandir todo</button>
+        <button type="button" id="gCerrar">Colapsar todo</button></span>
       <label class="f"><input type="checkbox" id="fAlerta"> sólo con alerta</label>
       <input type="search" id="fBusca" placeholder="buscar proyecto o cliente…" style="min-width:200px">
       <div class="spacer"></div>
@@ -170,7 +172,7 @@
 var P = Panel.montar({
   ruta: '/webhook/fin/rentabilidad',
   titulo: 'Rentabilidad por proyecto',
-  sub: 'FTS Suite · panel · contrato 1 · v1.02',
+  sub: 'FTS Suite · panel · contrato 1 · v1.03',
   volver: { href: '../index.html', txt: '← Finanzas' },
   login: '../../shared/login.html',
   /* Este panel NO guarda nada en el navegador. La lista vacía es la declaración,
@@ -183,9 +185,9 @@ var P = Panel.montar({
 
 var esc = Panel.esc, nfm = Panel.nfm, dinero = Panel.dinero, pct = Panel.pct;
 
-/* Badge de versión (V1.13): el número de finanzas/version.json junto al título, para verificar a
+/* Badge de versión (V1.14): el número de finanzas/version.json junto al título, para verificar a
    simple vista que un deploy quedó. El gate lo coteja contra ese archivo. */
-var RENT_BUILD = 'V1.13';
+var RENT_BUILD = 'V1.14';
 (function () {
   var h1 = document.querySelector('header h1');
   if (h1) h1.insertAdjacentHTML('beforeend', '<span class="p-badge" id="rentBadge" title="versión desplegada">' + esc(RENT_BUILD) + '</span>');
@@ -205,7 +207,12 @@ function cst(iso){
   return d.getUTCFullYear()+'-'+dd(d.getUTCMonth()+1)+'-'+dd(d.getUTCDate())+
          ' '+dd(d.getUTCHours())+':'+dd(d.getUTCMinutes());
 }
-var S = { sobre:null, orden:{col:'margen_pct',dir:1}, det:null, dgrupo:'rubro', dgrupo2:'' };
+/* `grupos.expandido` arranca VACÍO y una clave ausente significa cerrado, así
+   que la lista abre con todos los grupos colapsados y lo sigue haciendo con
+   cualquier agrupación nueva, sin que nada tenga que reiniciarlo. `vistas` lo
+   escribe el armazón en cada pintada con las claves que acabó mostrando. */
+var S = { sobre:null, orden:{col:'margen_pct',dir:1}, det:null, dgrupo:'rubro', dgrupo2:'',
+          grupos:{ expandido:{}, orden:null, unidad:'proyectos', vistas:[] } };
 
 /* ═══ carga: REFRESH MANUAL, nunca automatico ═══════════════════════════ */
 async function cargar(){
@@ -280,6 +287,10 @@ function pintarPortada(){
   if(gsel.options.length<=1){
     d.columnas.filter(function(c){return c.agrupable;}).forEach(function(c){
       var o=document.createElement('option');o.value=c.id;o.textContent=c.label;gsel.appendChild(o);});
+    /* VISTA INICIAL: agrupada por etapa y colapsada. Sólo si el servidor manda
+       el catálogo — si no llegó, la lista abre sin agrupar como antes, en vez de
+       agrupar por un orden alfabético que se vería igual de bien y mentiría. */
+    if(d.etapas && d.etapas.length && gsel.querySelector('option[value="etapa"]')) gsel.value='etapa';
   }
   Array.prototype.forEach.call(document.querySelectorAll('#kpis .kpi.clic'),function(el){
     el.onclick=function(){ document.getElementById('fEstado').value=el.getAttribute('data-filtro');
@@ -377,13 +388,35 @@ function celda(c,r){
   return null;
 }
 
+/* El ORDEN de los grupos cuando se agrupa por etapa lo manda Odoo: el catálogo
+   `datos.etapas` ya viene ordenado por `sequence` (desempate por id) y trae las
+   que no tienen a nadie, que es lo único que no se puede derivar de las filas.
+   Para cualquier otra agrupación no se declara nada y el armazón hace lo de
+   siempre, alfabético.
+   La etapa que el motor deja FUERA de su universo (hoy Templates) se pinta con
+   su nota: su «0 proyectos» significa «esto no lo miramos», no «no hay nadie
+   aquí», y los dos ceros se ven idénticos si nadie los distingue (§20 #18). */
+function ordenDeGrupos(campo){
+  if(campo!=='etapa') return null;
+  var es=(S.sobre.datos.etapas)||[];
+  if(!es.length) return null;
+  return es.map(function(e){
+    return { clave:e.nombre, etiqueta:e.nombre, siempre:true,
+             nota:e.excluida_por_filtro ? 'fuera del universo del panel' : null };
+  });
+}
+
 function pintarTabla(){
+  var campo = document.getElementById('fGrupo').value;
+  S.grupos.orden = ordenDeGrupos(campo);
+  document.getElementById('gBotones').hidden = !campo;
   var n = Panel.tabla({
     tabla: '#tabla',
     columnas: S.sobre.datos.columnas,
     filas: visibles(),
     orden: S.orden,
-    grupo: document.getElementById('fGrupo').value,
+    grupo: campo,
+    grupos: S.grupos,
     celda: celda,
     /* Quién entra a los subtotales. El armazón no sabe cómo se llama «no tener
        línea base» en este panel, así que lo pregunta. */
@@ -483,6 +516,14 @@ function pintarDetalle(){
 P.alRefrescar(cargar);
 ['fEstado','fGrupo','fAlerta','fSemaforo'].forEach(function(id){
   document.getElementById(id).onchange=pintarTabla;});
+/* Los dos botones trabajan sobre `vistas`, que es lo que el armazón acabó de
+   pintar — no sobre una lista que este panel derive por su cuenta, que se
+   desincronizaría el día que cambie el criterio de qué grupos existen. */
+document.getElementById('gAbrir').onclick=function(){
+  (S.grupos.vistas||[]).forEach(function(k){ S.grupos.expandido[k]=true; });
+  pintarTabla(); };
+document.getElementById('gCerrar').onclick=function(){
+  S.grupos.expandido={}; pintarTabla(); };
 document.getElementById('fBusca').oninput=pintarTabla;
 document.getElementById('volver').onclick=function(){ P.vista('vPortada'); };
 document.getElementById('dGrupo').onchange=pintarDetalle;
