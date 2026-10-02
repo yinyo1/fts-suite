@@ -87,6 +87,10 @@ details.salv .cuerpo{padding:0 14px 12px}
 select,input[type=search]{font:inherit;background:var(--panel2);color:var(--tinta);
   border:1px solid var(--linea);border-radius:6px;padding:7px 9px}
 label.f{font-size:12px;color:var(--tinta2);display:flex;gap:6px;align-items:center}
+/* Pareja de botones que acompaña a un filtro (expandir / colapsar todo). */
+.g-btns{display:flex;gap:6px;align-items:center}
+.g-btns[hidden]{display:none}
+.g-btns button{font-size:12px;padding:6px 9px}
 
 /* ── tabla reagrupable ──────────────────────────────────────────────────── */
 .tablabox{overflow-x:auto;border:1px solid var(--linea);border-radius:8px;background:var(--panel)}
@@ -98,6 +102,27 @@ th.num,td.num{text-align:right;font-family:var(--mono)}
 tbody tr:hover{background:var(--panel2)}
 tr.grupo{background:#EEF2F7;font-weight:600}
 tr.grupo td{color:var(--tinta)}
+/* Cabecera de grupo colapsable. Es un BOTÓN de verdad (no un tr con onclick)
+   para que se alcance con el tabulador y lo anuncie un lector de pantalla con
+   su aria-expanded; se ve como texto porque en una tabla un botón con marco
+   pelea con el renglón. */
+.grupo .g-tog{font:inherit;color:inherit;background:none;border:0;padding:0;
+  cursor:pointer;text-align:left;display:inline-flex;align-items:baseline;gap:6px}
+/* La etiqueta del grupo va en UNA línea y RECLAMA el ancho que necesita: con el
+   grupo cerrado las primeras columnas están vacías y se encogen, así que sin
+   esto la cabecera se recortaba («28 sin dato, fuera del subto…») o partía el
+   nombre de la etapa a la mitad. La tabla ya vive en un contenedor con scroll
+   propio, así que ensanchar aquí no mueve la página. */
+.grupo .g-eti{white-space:nowrap}
+.grupo .falta{white-space:nowrap;max-width:none}
+.grupo .g-tog:hover .g-flecha{color:var(--liga)}
+.grupo .g-tog:focus-visible{outline:2px solid var(--liga);outline-offset:2px;border-radius:4px}
+.grupo .g-flecha{color:var(--tinta3);font-size:11px;width:10px;flex:0 0 10px}
+.grupo .g-cuenta{color:var(--tinta2);font-weight:400}
+/* Separador entre las cifras de monedas distintas del MISMO subtotal. Tiene que
+   verse, porque son dos números que NO se pueden sumar. */
+.grupo .g-sep{color:var(--tinta3);font-weight:400}
+tbody tr.grupo:hover{background:#E4EBF3}
 /* Celda-enlace a un detalle. Se recorta con puntos suspensivos en vez de
    ensanchar la tabla: el nombre completo va en el `title`. */
 .proj{display:inline-block;max-width:360px;overflow:hidden;text-overflow:ellipsis;

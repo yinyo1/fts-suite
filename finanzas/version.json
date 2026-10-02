@@ -1,9 +1,14 @@
 {
-  "version": "V1.13",
+  "version": "V1.14",
   "fecha": "2026-10-02",
   "modulo": "finanzas",
   "esquema": "V<mayor>.<menor de dos dígitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.14",
+      "pr": null,
+      "nota": "Rentabilidad (#332): la lista abre AGRUPADA POR ETAPA, con todos los grupos COLAPSADOS y en el orden de Odoo. Motor fin/rentabilidad-motor a contrato 1.03, todo ADITIVO: nodo nuevo `Odoo - getAll etapas` sobre project.project.stage; por fila `etapa_id` y `etapa_secuencia`; y `datos.etapas` con las 10 etapas ordenadas por `sequence` (desempate por id), incluidas las VACIAS (Hold, 0 proyectos) que no se pueden derivar de las filas, cada una con su conteo y con `excluida_por_filtro` para la que el propio motor deja fuera de su universo (Templates, stage 6): su cero significa 'esto no lo miramos', no 'aqui no hay nadie'. Nueva salvedad ETAPAS_FUERA_DEL_UNIVERSO, que ademas cruza la lista universo.stages_excluidos de la config contra lo que de verdad llego y avisa si quedo stale. El armazon shared/panel/panel-tabla.js estrena `op.grupos` (orden declarado, grupos que se pintan aunque tengan 0, estado de colapso del panel, unidad): sin esa opcion el render es identico al de antes, y Data Bancos ni usa este archivo. Y los SUBTOTALES DE GRUPO YA NO CRUZAN MONEDAS: 5 de las 8 etapas con proyectos mezclan MXN y USD, asi que el subtotal unico con signo de pesos estaba sumando pesos con dolares; ahora sale una cifra por moneda, y raya cuando ninguna fila del grupo tiene numero. La etiqueta del grupo ocupa las columnas que no suman (colspan) para no partir el nombre. Botones Expandir todo / Colapsar todo. Gate del panel: 115 verificaciones (22 nuevas de v1.03) y capturas miradas a 380/760/900/1280 colapsado y expandido. Cifras, contrato existente y logica del motor sin cambios."
+    },
     {
       "version": "V1.13",
       "pr": null,

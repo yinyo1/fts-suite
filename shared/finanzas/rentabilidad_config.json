@@ -37,6 +37,11 @@
     "analiticas_conocidas": [3033, 3037, 3035, 3062]
   },
 
+  "universo": {
+    "_nota": "Que etapas quedan FUERA del universo del panel. ESPEJA el filtro del nodo `Odoo - getAll proyectos` del motor (hoy stage_id != 6 = Templates), y existe porque el catalogo de etapas se lee COMPLETO: sin esta lista, Templates saldria en pantalla con '0 proyectos' teniendo 12 en Odoo, y ese cero se leeria como 'no hay' cuando significa 'no se mira' (CLAUDE.md 20 #18). Si alguien cambia el filtro del nodo y olvida esta lista, el motor lo cruza y lo dice en la salvedad ETAPAS_FUERA_DEL_UNIVERSO. El motor NO filtra por esta lista: solo la usa para ETIQUETAR. El universo lo sigue mandando el nodo.",
+    "stages_excluidos": [6]
+  },
+
   "empresas": {
     "_nota": "Para la bandera de subsidio: gasto pagado por una empresa distinta a la del proyecto.",
     "1": { "nombre": "FTS MX", "moneda": "MXN" },

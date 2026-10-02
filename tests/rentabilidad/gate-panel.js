@@ -94,7 +94,154 @@ function asserts() {
     (D.querySelector('header .sub') || {}).textContent || '(sin .sub)');
   t('el panel pidió el dato al endpoint una vez', nPedidos >= 1, 'pedidos=' + nPedidos);
 
-  const filas = D.querySelectorAll('#tabla tbody tr');
+  /* `:not(.grupo)` porque desde v1.03 la tabla trae también renglones de grupo:
+     contar `tr` a secas mezclaba 10 cabeceras con 225 proyectos. */
+  /* ── v1.03 · GRUPOS COLAPSADOS Y EN EL ORDEN DE ODOO ──────────────────────
+     Esto se mide ANTES de tocar nada, porque lo que se está verificando es la
+     PRIMERA pantalla: si el gate expandiera primero y preguntara después, no
+     podría distinguir «abre colapsada» de «abre abierta». */
+  const cat = (sobre.datos && sobre.datos.etapas) || null;
+  const esV103 = ((sobre._meta && sobre._meta.contrato_version) || '1.00') >= '1.03';
+  if (esV103 && cat) {
+    t('v1.03 · el contrato trae el catálogo de etapas', cat.length > 0, cat.length + ' etapas');
+    t('v1.03 · el catálogo viene ordenado por `sequence` (desempate por id)',
+      cat.every((e, i) => i === 0 || e.secuencia === null ||
+        cat[i - 1].secuencia === null ||
+        e.secuencia > cat[i - 1].secuencia ||
+        (e.secuencia === cat[i - 1].secuencia && e.id > cat[i - 1].id)),
+      cat.map(e => e.secuencia).join(','));
+    /* Los nombres son la CLAVE del agrupado (la columna `etapa` trae el nombre),
+       así que dos etapas homónimas se fundirían en un grupo. Hoy no pasa; si
+       algún día pasa, es mejor que truene aquí. */
+    t('v1.03 · los nombres de etapa son únicos (son la clave del agrupado)',
+      new Set(cat.map(e => e.nombre)).size === cat.length);
+
+    t('v1.03 · la vista inicial abre AGRUPADA POR ETAPA',
+      D.getElementById('fGrupo').value === 'etapa', D.getElementById('fGrupo').value || '(sin agrupar)');
+    const gr0 = D.querySelectorAll('#tabla tbody tr.grupo');
+    t('v1.03 · la vista inicial abre COLAPSADA: cero filas de proyecto',
+      D.querySelectorAll('#tabla tbody tr:not(.grupo)').length === 0 && gr0.length > 0,
+      gr0.length + ' grupos, ' + D.querySelectorAll('#tabla tbody tr:not(.grupo)').length + ' filas de proyecto');
+    t('v1.03 · están TODAS las etapas del catálogo, también las vacías',
+      gr0.length === cat.length, gr0.length + ' de ' + cat.length);
+    const pint = Array.prototype.map.call(gr0, el => el.getAttribute('data-grupo'));
+    t('v1.03 · los grupos salen en el orden de Odoo, no alfabético ni por monto',
+      pint.join('|') === cat.map(e => e.nombre).join('|'), pint.join(' · '));
+    t('v1.03 · no es el orden alfabético (si coincidiera, la prueba no probaría nada)',
+      pint.join('|') !== pint.slice().sort((a, b) => a.localeCompare(b, 'es')).join('|'));
+    /* Cada cabecera dice su cuenta, y la etapa vacía dice «0 proyectos» en vez
+       de desaparecer — es la mitad del punto de traer el catálogo completo. */
+    const txt = {};
+    Array.prototype.forEach.call(gr0, el => { txt[el.getAttribute('data-grupo')] = el.textContent; });
+    const malCuenta = cat.filter(e => (txt[e.nombre] || '').indexOf('· ' + e.proyectos + ' proyectos') < 0);
+    t('v1.03 · cada cabecera dice su cuenta en proyectos', malCuenta.length === 0,
+      malCuenta.map(e => e.nombre + ' esperaba ' + e.proyectos).join(', '));
+    const vacias = cat.filter(e => e.proyectos === 0);
+    t('v1.03 · una etapa vacía se ve, con «0 proyectos»',
+      vacias.length > 0 && vacias.every(e => /· 0 proyectos/.test(txt[e.nombre] || '')),
+      vacias.map(e => e.nombre).join(', ') || '(ninguna vacía en este sobre)');
+    /* Un cero que significa «no lo miramos» tiene que decirlo: si no, se lee
+       igual que «aquí no hay nadie» (§20 #18). */
+    const fuera = cat.filter(e => e.excluida_por_filtro);
+    t('v1.03 · la etapa fuera del universo lleva su nota, no sólo un 0',
+      fuera.every(e => /fuera del universo del panel/.test(txt[e.nombre] || '')),
+      fuera.map(e => e.nombre).join(', ') || '(ninguna excluida)');
+
+    /* Alternar: abrir UNO abre sólo ése. */
+    const kAbre = cat.filter(e => e.proyectos > 0)[0].nombre;
+    const bot = Array.prototype.filter.call(D.querySelectorAll('#tabla .g-tog'),
+      el => el.getAttribute('data-grupo') === kAbre)[0];
+    t('v1.03 · la cabecera es un botón alcanzable con el tabulador',
+      !!bot && bot.tagName === 'BUTTON' && bot.getAttribute('aria-expanded') === 'false');
+    if (bot) {
+      bot.onclick();
+      const n1 = D.querySelectorAll('#tabla tbody tr:not(.grupo)').length;
+      const esperado = sobre.datos.filas.filter(f => f.etapa === kAbre).length;
+      t('v1.03 · abrir un grupo muestra EXACTAMENTE sus proyectos y nada más',
+        n1 === esperado, n1 + ' filas, esperadas ' + esperado + ' de «' + kAbre + '»');
+      const bot2 = Array.prototype.filter.call(D.querySelectorAll('#tabla .g-tog'),
+        el => el.getAttribute('data-grupo') === kAbre)[0];
+      t('v1.03 · el grupo abierto lo dice (aria-expanded)',
+        !!bot2 && bot2.getAttribute('aria-expanded') === 'true');
+      bot2.onclick();
+      t('v1.03 · volver a apretar lo cierra',
+        D.querySelectorAll('#tabla tbody tr:not(.grupo)').length === 0);
+    }
+
+    /* Subtotales: POR MONEDA y cuadrando con la suma de los proyectos del grupo.
+       Es lo que delata el bug viejo — una sola cifra con signo de pesos sobre un
+       grupo que mezcla MXN y USD. */
+    const mixtas = cat.filter(e => {
+      const fs = sobre.datos.filas.filter(f => f.etapa === e.nombre);
+      return new Set(fs.map(f => f.moneda)).size > 1;
+    });
+    t('v1.03 · hay grupos con dos monedas (si no, la prueba de abajo no prueba nada)',
+      mixtas.length > 0, mixtas.length + ' etapas mezclan monedas');
+    const malSub = [];
+    cat.forEach(e => {
+      const el = Array.prototype.filter.call(D.querySelectorAll('#tabla tbody tr.grupo'),
+        x => x.getAttribute('data-grupo') === e.nombre)[0];
+      if (!el) return;
+      /* Por `data-col`, no por posición: el colspan de la etiqueta corrió los
+         índices, y una prueba que cuenta celdas se rompe sola. */
+      const td = el.querySelector('[data-col="costo_real"]');
+      if (!td) { malSub.push(e.nombre + ': no hay celda data-col="costo_real"'); return; }
+      const fs = sobre.datos.filas.filter(f => f.etapa === e.nombre && f.estado_dato !== 'sin_presupuesto');
+      const por = {};
+      fs.forEach(f => { if (typeof f.costo_real === 'number') por[f.moneda] = (por[f.moneda] || 0) + f.costo_real; });
+      const monedas = Object.keys(por).sort();
+      if (!monedas.length) {
+        if (!/—/.test(td.textContent)) malSub.push(e.nombre + ': esperaba raya, dice "' + td.textContent + '"');
+        return;
+      }
+      /* Una cifra por moneda, con el signo de SU moneda: US$ sólo para USD. */
+      if (monedas.length !== (td.textContent.match(/\$/g) || []).length)
+        malSub.push(e.nombre + ': ' + monedas.length + ' monedas y ' + (td.textContent.match(/\$/g) || []).length + ' cifras');
+      monedas.forEach(m => {
+        const esperada = W.Panel.dinero(por[m], m);
+        if (td.textContent.indexOf(esperada.replace(/<[^>]+>/g, '')) < 0)
+          malSub.push(e.nombre + '/' + m + ': esperaba ' + esperada + ', dice "' + td.textContent + '"');
+      });
+      if (monedas.indexOf('USD') < 0 && /US\$/.test(td.textContent))
+        malSub.push(e.nombre + ': dice US$ sin tener dólares');
+    });
+    t('v1.03 · el subtotal de cada grupo es la suma de SUS proyectos, partida por moneda',
+      malSub.length === 0, malSub.slice(0, 4).join(' | '));
+
+    /* «Expandir todo» / «Colapsar todo». */
+    D.getElementById('gAbrir').onclick();
+    t('v1.03 · «Expandir todo» muestra todos los proyectos',
+      D.querySelectorAll('#tabla tbody tr:not(.grupo)').length === sobre.datos.filas.length,
+      D.querySelectorAll('#tabla tbody tr:not(.grupo)').length + ' de ' + sobre.datos.filas.length);
+    D.getElementById('gCerrar').onclick();
+    t('v1.03 · «Colapsar todo» los vuelve a esconder',
+      D.querySelectorAll('#tabla tbody tr:not(.grupo)').length === 0);
+
+    /* Quitar la agrupación devuelve la lista plana de siempre, y esconde los dos
+       botones: un botón que no hace nada es peor que no tenerlo. */
+    D.getElementById('fGrupo').value = '';
+    D.getElementById('fGrupo').onchange();
+    t('v1.03 · sin agrupar vuelve la lista plana, sin cabeceras',
+      D.querySelectorAll('#tabla tbody tr.grupo').length === 0 &&
+      D.querySelectorAll('#tabla tbody tr:not(.grupo)').length === sobre.datos.filas.length);
+    t('v1.03 · sin agrupar se esconden «expandir/colapsar todo»',
+      D.getElementById('gBotones').hidden === true);
+
+    /* Y los TOTALES GENERALES no se movieron: el agrupado es de presentación. */
+    t('v1.03 · el conteo general sigue siendo el de siempre',
+      /^225 de 225|^\d+ de \d+/.test((D.getElementById('conteo') || {}).textContent || '') &&
+      (D.getElementById('conteo') || {}).textContent.indexOf(
+        sobre.datos.filas.length + ' de ' + sobre.datos.filas.length) === 0,
+      (D.getElementById('conteo') || {}).textContent);
+
+    /* Se deja AGRUPADA Y EXPANDIDA para que las verificaciones de abajo (una
+       fila por proyecto, chips, filtro) midan lo mismo que siempre. */
+    D.getElementById('fGrupo').value = 'etapa';
+    D.getElementById('fGrupo').onchange();
+    D.getElementById('gAbrir').onclick();
+  }
+
+  const filas = D.querySelectorAll('#tabla tbody tr:not(.grupo)');
   t('la tabla pintó una fila por proyecto', filas.length === sobre.datos.filas.length,
     filas.length + ' de ' + sobre.datos.filas.length);
   const kpis = D.querySelectorAll('#kpis .kpi');
@@ -126,22 +273,22 @@ function asserts() {
       !/T\d{2}:\d{2}.*Z/.test((D.getElementById('leyenda') || {}).textContent || ''));
     /* Una celda de semáforo por fila: si la columna llega y el panel no la
        entiende, el armazón pintaría el valor crudo y nadie lo notaría. */
-    const chips = D.querySelectorAll('#tabla tbody tr .chip[class*="s-"]');
+    const chips = D.querySelectorAll('#tabla tbody tr:not(.grupo) .chip[class*="s-"]');
     t('v1.01 · cada fila pinta su chip de semáforo',
-      chips.length === D.querySelectorAll('#tabla tbody tr').length,
-      chips.length + ' chips en ' + D.querySelectorAll('#tabla tbody tr').length + ' filas');
+      chips.length === D.querySelectorAll('#tabla tbody tr:not(.grupo)').length,
+      chips.length + ' chips en ' + D.querySelectorAll('#tabla tbody tr:not(.grupo)').length + ' filas');
     /* Y que el filtro FILTRE: un select que no hace nada se ve igual que uno
        que sí, hasta que alguien lo usa (regla §20 #11). */
-    const antes = D.querySelectorAll('#tabla tbody tr').length;
+    const antes = D.querySelectorAll('#tabla tbody tr:not(.grupo)').length;
     D.getElementById('fSemaforo').value = 'rojo';
     D.getElementById('fSemaforo').onchange();
-    const despues = D.querySelectorAll('#tabla tbody tr').length;
+    const despues = D.querySelectorAll('#tabla tbody tr:not(.grupo)').length;
     D.getElementById('fSemaforo').value = '';
     D.getElementById('fSemaforo').onchange();
     t('v1.01 · el filtro de semáforo de verdad filtra',
       despues === sobre.datos.resumen.semaforo_rojo && despues < antes,
       despues + ' filas en rojo, esperadas ' + sobre.datos.resumen.semaforo_rojo + ' (de ' + antes + ')');
-    t('v1.01 · el filtro se restauró', D.querySelectorAll('#tabla tbody tr').length === antes);
+    t('v1.01 · el filtro se restauró', D.querySelectorAll('#tabla tbody tr:not(.grupo)').length === antes);
   }
 
   /* ── v1.02 · la etiqueta de empresa ────────────────────────────────────────
@@ -266,6 +413,62 @@ async function etapaNavegador() {
     t('sistema en modo oscuro (emulado) y aun así: fondo, cabecera y tabla claros', tema.oscuro && tema.body > 0.9 && tema.cabecera > 0.9 && tema.tabla > 0.9, tema);
     t('color-scheme: light', /light/.test(tema.esquema) && !/dark/.test(tema.esquema), tema.esquema);
     t('badge = finanzas/version.json (' + VER + ')', ((await page.textContent('#rentBadge').catch(() => '')) || '').trim() === VER, await page.textContent('#rentBadge').catch(() => '(sin badge)'));
+    /* ── v1.03 · la PRIMERA pantalla, mirada en un navegador de verdad ───────
+       jsdom ya comprobó la estructura; esto comprueba que se VEA, y toma las
+       capturas de los dos estados a los cuatro anchos (§20 #20). Va antes de
+       todo lo demás porque en cuanto se expande o se inyectan muestras, la
+       primera pantalla ya no se puede medir. */
+    const catN = (sobre.datos && sobre.datos.etapas) ? sobre.datos.etapas.length : 0;
+    if (catN) {
+      const est0 = await page.evaluate(() => ({
+        agrupa: document.getElementById('fGrupo').value,
+        grupos: document.querySelectorAll('#tabla tbody tr.grupo').length,
+        filas: document.querySelectorAll('#tabla tbody tr:not(.grupo)').length,
+        botones: !document.getElementById('gBotones').hidden,
+        primero: (document.querySelector('#tabla tbody tr.grupo .g-tog') || {}).textContent || ''
+      }));
+      t('v1.03 · en el navegador también abre agrupada por etapa y colapsada',
+        est0.agrupa === 'etapa' && est0.grupos === catN && est0.filas === 0, est0);
+      t('v1.03 · los botones de expandir/colapsar se ven cuando hay agrupación', est0.botones);
+      /* La flecha es la única pista visual de que el renglón se abre: si no se
+         pinta, nadie descubre que hay algo debajo. */
+      t('v1.03 · la cabecera de grupo trae su flecha', /▸/.test(est0.primero), est0.primero.slice(0, 50));
+      await AA('cabecera de grupo colapsada', '#tabla tbody tr.grupo .g-tog');
+      await AA('cuenta de la cabecera de grupo', '#tabla tbody tr.grupo .g-cuenta');
+      for (const w of [380, 760, 900, 1280]) {
+        await page.setViewportSize({ width: w, height: 900 }); await page.waitForTimeout(150);
+        t('v1.03 · colapsada: sin scroll horizontal de página a ' + w + ' px',
+          !(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)));
+        /* `fullPage`, no el viewport ni el elemento. El viewport a 380 px arranca
+           en las tarjetas y la lista queda fuera de cuadro; y capturar `#tabla`
+           como elemento sale casi en blanco, porque la tabla es más ancha que su
+           contenedor con scroll y Playwright no puede pintar lo que no cabe —era
+           el INSTRUMENTO recortando, no la pantalla (§20 #19). `fullPage` da lo
+           que vería una persona que baja la página. */
+        await page.$eval('.barra', e => e.scrollIntoView());
+        await page.screenshot({ path: path.join(OUT, 'rent-etapas-colapsado-' + w + '.png') });
+      }
+      await page.setViewportSize({ width: 1280, height: 900 }); await page.waitForTimeout(100);
+      await page.click('#gAbrir'); await page.waitForTimeout(250);
+      const est1 = await page.evaluate(() => ({
+        grupos: document.querySelectorAll('#tabla tbody tr.grupo').length,
+        filas: document.querySelectorAll('#tabla tbody tr:not(.grupo)').length,
+        abierta: /▾/.test((document.querySelector('#tabla tbody tr.grupo .g-tog') || {}).textContent || '')
+      }));
+      t('v1.03 · «Expandir todo» en el navegador muestra todos los proyectos',
+        est1.filas === sobre.datos.filas.length && est1.grupos === catN && est1.abierta, est1);
+      /* El subtotal de un grupo con dos monedas tiene que caber: es DOS cifras
+         en una celda, y es justo lo que a 380 px se sale. */
+      await AA('subtotal por moneda', '#tabla tbody tr.grupo td.num');
+      for (const w of [380, 760, 900, 1280]) {
+        await page.setViewportSize({ width: w, height: 900 }); await page.waitForTimeout(150);
+        t('v1.03 · expandida: sin scroll horizontal de página a ' + w + ' px',
+          !(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)));
+        await page.$eval('.barra', e => e.scrollIntoView());
+        await page.screenshot({ path: path.join(OUT, 'rent-etapas-expandido-' + w + '.png') });
+      }
+      await page.setViewportSize({ width: 1280, height: 900 }); await page.waitForTimeout(100);
+    }
     for (const [n, sel] of [['título', 'header h1'], ['badge', '#rentBadge'], ['subtítulo', 'header .sub'], ['quién entró', '.quien'], ['hora del jalón', 'header .jalon'],
       ['Actualizar', '#p-refresh'], ['volver a Finanzas', 'a.volver-suite'], ['KPI · número', '.kpi .n'], ['KPI · etiqueta', '.kpi .l'], ['KPI · nota', '.kpi .n2'],
       ['salvedades', 'details.salv > summary'], ['filtros', 'label.f'], ['selects', '.barra select'], ['buscador', '#fBusca'], ['conteo', '#conteo'],
