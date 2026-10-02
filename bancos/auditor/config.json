@@ -1,0 +1,17 @@
+{
+  "_doc": "Parámetros del auditor (issue #346). Ver bancos/auditor/RUNBOOK.md, sección 'Corte de alcance de la pata 3'.",
+  "pata3": {
+    "alcance_desde": "2020-01",
+    "alcance_desde_por_cuenta": {"…3326": "2024-01"},
+    "_motivo_por_cuenta": "Decisión de Esteban en #352 (2026-10-02, opción a): la cadena de General …3326 arranca en 2024-01, igual que el servicio (BANCOS_PERIODO_INICIO) y la solicitud; 2019 queda como historia suelta (patas 1 y 2 siguen).",
+    "_motivo": "Decisión de Esteban en #346 (comentario 5902187517, 2026-09-30): los estados de 2019 quedan fuera del encadenamiento; siguen en patas 1 y 2."
+  },
+  "obj2": {
+    "activo": true,
+    "desde": "2024-01",
+    "umbral_mxn": 50000,
+    "umbral_usd": 3000,
+    "jeeves": false,
+    "_motivo": "Objetivo 2 (issue #365): cotejo con Odoo desde 2024-01 (Odoo tiene líneas de banco desde 2024); Jeeves apagado hasta sus primeros archivos reales."
+  }
+}

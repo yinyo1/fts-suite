@@ -1,0 +1,2 @@
+# Auditor (corre en la sesión de Claude Code, NO en el servicio). PDFium, no pdfminer/pdfplumber.
+pypdfium2>=4.30
