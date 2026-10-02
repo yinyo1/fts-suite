@@ -380,7 +380,7 @@
     {
       "id_interno": "INC-AUTO-CIERRE-59-2026-09-28T13-27-42-890Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_direccion",
+      "status": "aprobada_por_direccion",
       "fecha_creacion": "2026-09-28T13:27:44.519Z",
       "empleado_id": 59,
       "empleado_nombre": "Gerardo Isai Lozano Davila",
@@ -390,7 +390,7 @@
       "check_out_aplicado_utc": "2026-09-26 09:10:59",
       "horas_originales": "61.88",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -408,6 +408,16 @@
           "hora_propuesta_cst": null,
           "comentario": "No registro entrada el Viernes y registro entrada al momento de salir...\nConforme el reporte del Sr Juan su hora de entrada fue 7:26AM y su salida fue a las 5:30PM",
           "accion": "escalado"
+        },
+        {
+          "paso": 2,
+          "rol": "direccion",
+          "user_id": 32,
+          "usuario": "Jesus Esteban De La Cruz Calderon",
+          "timestamp": "2026-10-02T16:51:49.540Z",
+          "hora_propuesta_cst": "07:26",
+          "comentario": "Confirmo entrada",
+          "accion": "aprobado"
         }
       ]
     },
