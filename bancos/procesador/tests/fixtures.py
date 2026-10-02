@@ -55,6 +55,7 @@ class Estado:
     sin_texto_extra: list[str] = field(default_factory=list)
     portada_sin_texto: bool = False   # pág. 1 que es sólo imagen, antes del estado (visto en estados reales)
     sin_detalle: bool = False         # mes sin movimientos: el banco no imprime la sección de detalle
+    dia_inicio: int = 1               # estado de apertura: el periodo arranca el día que se abrió la cuenta
 
 
 def saldo_final(e: Estado) -> Decimal:
@@ -107,7 +108,7 @@ def pdf_estado(e: Estado, encriptar: str | None = None) -> bytes:
     c.drawString(36, H - 52, "MAESTRA PYME BBVA")
     c.drawString(36, H - 70, e.entidad)
     c.drawString(36, H - 80, "AV SINTETICA 123 COL PRUEBA MONTERREY NL")
-    c.drawString(330, H - 70, f"Periodo DEL 01/{e.mes:02d}/{e.anio} AL {ult:02d}/{e.mes:02d}/{e.anio}")
+    c.drawString(330, H - 70, f"Periodo DEL {e.dia_inicio:02d}/{e.mes:02d}/{e.anio} AL {ult:02d}/{e.mes:02d}/{e.anio}")
     c.drawString(330, H - 80, f"Fecha de Corte {ult:02d}/{e.mes:02d}/{e.anio}")
     c.drawString(330, H - 90, f"No. de Cuenta {e.numero}")
     c.drawString(330, H - 100, "No. de Cliente B0000000")

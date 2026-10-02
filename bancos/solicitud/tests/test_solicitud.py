@@ -306,3 +306,27 @@ def test_la_app_no_edita_configuracion(base):
             with conexion() as con, con.cursor() as cur:
                 cur.execute(sql)
         assert "permission denied" in str(e.value)
+
+
+def test_apertura_de_cuenta_recorta_la_solicitud_solo_de_esa_cuenta(base):
+    """#352 · bancos_0013: Nómina (journal 96) trae su apertura como dato con evidencia; la solicitud
+    no pide meses de antes. General y USD no cambian, y las filas de Jeeves y Payana tampoco."""
+    mig = next(m for m in (AQUI.parents[2] / "db" / "migrations" / "bancos").glob("bancos_0013_*.sql"))
+    fuentes = "SELECT clave||'='||periodo_inicio||'/'||activa FROM bancos.fuentes_solicitud ORDER BY clave"
+    antes = admin(fuentes, base)
+    subprocess.run(["psql", f"{__import__('conftest').PG} dbname={base}", "-v", "ON_ERROR_STOP=1", "-q", "-1", "-f", str(mig)],
+                   check=True, capture_output=True, text=True)
+    aperturas = admin("SELECT journal_odoo||'='||coalesce(apertura::text,'-') FROM bancos.cuentas WHERE tipo='cuenta' ORDER BY journal_odoo", base).split()
+    assert aperturas == ["8=-", "75=-", "96=2024-04-19"]
+    assert admin(fuentes, base) == antes          # 2024-04 es anterior al inicio de prueba (2026-01): nada que recortar
+    # una apertura posterior al inicio sí recorta, y sólo a su cuenta
+    admin("UPDATE bancos.cuentas SET apertura='2026-03-10', apertura_evidencia='prueba' WHERE journal_odoo=96", base)
+    subprocess.run(["psql", f"{__import__('conftest').PG} dbname={base}", "-v", "ON_ERROR_STOP=1", "-q", "-1", "-f", str(mig)],
+                   check=True, capture_output=True, text=True)
+    despues = admin(fuentes, base)
+    assert despues == antes.replace("nomina=2026-01", "nomina=2026-03")
+    f = q("SELECT fuente, min(periodo) AS desde FROM bancos.f_faltantes(%s) WHERE tipo='bbva' GROUP BY fuente ORDER BY fuente", date(2026, 9, 15))
+    assert {r["fuente"]: r["desde"] for r in f} == {"general": "2026-01", "nomina": "2026-03", "usd": "2026-01"}
+    # una apertura sin evidencia no se admite
+    with pytest.raises(subprocess.CalledProcessError):
+        admin("UPDATE bancos.cuentas SET apertura='2026-03-10', apertura_evidencia=NULL WHERE journal_odoo=96", base)

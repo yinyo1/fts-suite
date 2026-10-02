@@ -873,7 +873,10 @@ def periodo_limite(hoy: date | None = None) -> str:
 
 def v3_y_huecos(con, corrida_id, catalogo: Catalogo, hoy: date | None = None) -> dict:
     """V3 (continuidad) para cada estado validado y huecos por cuenta.
-    Un hueco es un mes faltante entre el primero esperado y el último mes cerrado."""
+    Un hueco es un mes faltante entre el primero esperado y el último mes cerrado.
+    El primero esperado es el mayor entre BANCOS_PERIODO_INICIO y el mes de apertura de la
+    cuenta (bancos.cuentas.apertura, un dato con su evidencia): una cuenta no debe meses de
+    antes de existir."""
     inicio = os.environ.get("BANCOS_PERIODO_INICIO", "2024-01")
     limite = periodo_limite(hoy)
     resumen = {"cuentas": {}, "huecos_abiertos": 0, "v3_ok": 0, "v3_fallas": 0, "v3_no_aplica": 0}
@@ -885,14 +888,19 @@ def v3_y_huecos(con, corrida_id, catalogo: Catalogo, hoy: date | None = None) ->
                            FROM bancos.estados_vigentes e JOIN bancos.archivos a ON a.id=e.archivo_id
                            WHERE e.cuenta_id=%s AND a.estado='validado' ORDER BY e.periodo, e.id""", (c.id,))
             ests = {r["periodo"]: r for r in cur.fetchall()}
-            esperados = rango_periodos(inicio, limite)
+            # to_jsonb: tolera una base sin la columna (migración bancos_0013 aún no aplicada)
+            cur.execute("SELECT to_jsonb(c)->>'apertura' AS apertura FROM bancos.cuentas c WHERE c.id=%s", (c.id,))
+            r_ap = cur.fetchone()
+            apertura = (r_ap or {}).get("apertura")
+            inicio_c = max(inicio, apertura[:7]) if apertura else inicio
+            esperados = rango_periodos(inicio_c, limite)
             faltan = [p for p in esperados if p not in ests]
             # V3 por estado
             descuadres = set()
             for p, e in sorted(ests.items()):
                 ant = ests.get(periodo_anterior(p))
                 if ant is None:
-                    res = "primero" if p <= inicio else "sin_anterior"
+                    res = "primero" if p <= inicio_c else "sin_anterior"
                     dif = None
                     # busca el último estado anterior para medir el hueco
                     previos = [q for q in ests if q < p]
@@ -933,6 +941,12 @@ def v3_y_huecos(con, corrida_id, catalogo: Catalogo, hoy: date | None = None) ->
             cur.execute("""SELECT id, periodo, motivo FROM bancos.huecos WHERE cuenta_id=%s AND resuelto_en IS NULL""", (c.id,))
             for h in cur.fetchall():
                 cubierto = h["motivo"] == "faltante" and h["periodo"] in ests
+                # un mes de antes de la apertura nunca se debió: se cierra con la nota, no se borra
+                if h["motivo"] == "faltante" and h["periodo"] < inicio_c and h["periodo"] not in ests:
+                    cur.execute("""UPDATE bancos.huecos SET resuelto_en=now(),
+                                   detalle = coalesce(detalle, '{}'::jsonb) || %s::jsonb WHERE id=%s""",
+                                (_j({"resuelto": f"antes de la apertura de la cuenta ({apertura})"}), h["id"]))
+                    continue
                 # un descuadre que ya no existe (p. ej. el mes anterior era de otra cuenta y se reidentificó)
                 ya_cuadra = h["motivo"] == "continuidad" and h["periodo"] not in descuadres
                 if cubierto or ya_cuadra:
