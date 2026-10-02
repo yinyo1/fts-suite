@@ -46,6 +46,7 @@ const PERIODOS = [...new Set(FILAS.map(f => f.periodo))].sort();
 const TIT = { fecha:'Fecha', monto:'Monto', mon:'Moneda', desc:'Descripción', banco:'Banco', cuenta:'Cuenta', ref:'Referencia', tipo:'Tipo', periodo:'Mes del estado', fuente:'Fuente (PDF)' };
 const pedidos = [];
 let modo403 = false;
+let modoFallo = null; // 'red' (sin respuesta) o 'servidor' (500): sólo para ver los avisos en claro
 function filtrar(b) {
   return FILAS.filter(f => (!b.desde || f.fecha >= b.desde) && (!b.hasta || f.fecha <= b.hasta)
     && (!Array.isArray(b.cuentas) || b.cuentas.includes(f.cid)) && (!b.tipo || f.tipo === b.tipo)
@@ -96,6 +97,8 @@ const srv = http.createServer((req, res) => {
     localStorage.setItem('fts_fin_session', JSON.stringify({ token:'x.y.z', user:'finanzas', expires_at: new Date(Date.now() + 3600e3).toISOString() }));
   }, exp);
   await ctx.route('https://primary-production-5c3c.up.railway.app/webhook/**', async route => {
+    if (modoFallo === 'red') return route.abort('failed');
+    if (modoFallo === 'servidor') return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ ok:false, error:'FALLO_PRUEBA', mensaje:'falla sembrada por el gate' }) });
     const r = servidorFalso(new URL(route.request().url()).pathname, JSON.parse(route.request().postData() || '{}'));
     await route.fulfill({ status: r.status, contentType: 'application/json', body: JSON.stringify(r.body) });
   });
@@ -104,11 +107,45 @@ const srv = http.createServer((req, res) => {
   const page = await ctx.newPage();
   page.on('pageerror', e => errores.push('pageerror: ' + e.message));
   // El 403 que provoca la prueba 11 lo registra Chromium como error de recurso: ése es esperado y sólo ése.
-  page.on('console', m => { if (m.type() === 'error' && !(modo403 && /status of 403/.test(m.text()))) errores.push('console: ' + m.text()); });
+  page.on('console', m => { if (m.type() === 'error' && !(modo403 && /status of 403/.test(m.text())) && !(modoFallo && /status of 500|ERR_FAILED|Failed to fetch/.test(m.text()))) errores.push('console: ' + m.text()); });
+  // El peor caso para el modo claro: el sistema en modo OSCURO. La página tiene que salir clara igual.
+  await page.emulateMedia({ colorScheme: 'dark' });
+  // Contraste WCAG del texto contra su fondo efectivo (sube por los ancestros hasta un fondo opaco).
+  const contraste = sel => page.evaluate(sel => {
+    const rgb = c => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const p = m[1].split(',').map(Number); return { r:p[0], g:p[1], b:p[2], a: p.length > 3 ? p[3] : 1 }; };
+    const L = c => { const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b); };
+    const fondo = el => { for (let e = el; e; e = e.parentElement) { const c = rgb(getComputedStyle(e).backgroundColor); if (c && c.a > 0.9) return c; } return { r:255, g:255, b:255 }; };
+    const els = [...document.querySelectorAll(sel)].filter(e => e.offsetParent !== null && (e.textContent.trim() || /^(INPUT|SELECT)$/.test(e.tagName))).slice(0, 25);
+    if (!els.length) return { min: 0, n: 0 };
+    let min = 99;
+    for (const e of els) { const a = L(rgb(getComputedStyle(e).color)), b = L(fondo(e)); const r = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05); if (r < min) min = r; }
+    return { min: Math.round(min * 100) / 100, n: els.length };
+  }, sel);
+  const AA = async (nombre, sel) => { const c = await contraste(sel); check('contraste AA (≥4.5) · ' + nombre, c.n > 0 && c.min >= 4.5, c); };
   const URLP = BASE + '/finanzas/data-bancos/index.html';
   const listo = () => page.waitForFunction(() => /movimientos/.test(document.getElementById('count').textContent));
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(URLP); await listo();
+
+  // 0 · MODO CLARO aunque el sistema esté en oscuro (V1.12)
+  const tema = await page.evaluate(() => {
+    const lum = c => { const p = c.match(/\d+(\.\d+)?/g).map(Number); return (0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]) / 255; };
+    return { prefiereOscuro: matchMedia('(prefers-color-scheme: dark)').matches, body: lum(getComputedStyle(document.body).backgroundColor),
+      cabecera: lum(getComputedStyle(document.querySelector('header')).backgroundColor), tabla: lum(getComputedStyle(document.querySelector('.db-tblbox')).backgroundColor),
+      esquema: getComputedStyle(document.documentElement).colorScheme, fecha: getComputedStyle(document.getElementById('fDesde')).colorScheme };
+  });
+  check('el sistema está en modo oscuro (emulado) y aun así: fondo, cabecera y tabla claros', tema.prefiereOscuro && tema.body > 0.9 && tema.cabecera > 0.9 && tema.tabla > 0.9, tema);
+  check('color-scheme: light en la página y en el selector de fecha', /light/.test(tema.esquema) && !/dark/.test(tema.esquema) && tema.fecha === 'light', tema);
+  for (const [n, s] of [['título', 'header h1'], ['quién entró', '.quien'], ['hora del jalón', '.jalon'], ['badge', '#dbBadge'], ['Actualizar', '#p-refresh'],
+    ['subtítulo', '.db-sub'], ['nota de cobertura', '#cobertura'], ['etiquetas de filtros', '.db-f label'], ['campo de fecha', '#fDesde'], ['buscador', '#fTxt'],
+    ['tipo', '#fTipo'], ['botón Cuentas', '#btnCtas'], ['atajos', '.db-atajo'], ['conteo', '#count'], ['CSV', '#btnCsv'], ['Excel', '#btnXlsx'], ['⋮', '#btnDots'],
+    ['encabezados ordenables', 'table.db-tbl th'], ['cargos (rojo)', 'table.db-tbl td.neg'], ['abonos (verde)', 'table.db-tbl td.pos'], ['descripción', 'table.db-tbl td.desc'],
+    ['celdas', 'table.db-tbl td'], ['pie por moneda', '.db-sum'], ['títulos del pie', '.db-sum b'], ['mapa de columnas', 'details.db-mapa summary'], ['pie de página', 'footer']]) await AA(n, s);
+  await page.click('#btnCtas'); await AA('droplist de Cuentas', '#ctasMenu label'); await page.click('h1');
+  await page.click('#btnDots'); await AA('menú ⋮', '#menuCols label'); await AA('título del menú ⋮', '#menu h4'); await page.click('h1');
+  await page.hover('table.db-tbl tbody tr'); await AA('fila con el cursor encima', 'table.db-tbl tbody tr:hover td');
+  const hov = await page.$eval('table.db-tbl tbody tr', tr => getComputedStyle(tr).backgroundColor);
+  check('la fila con el cursor no se oscurece (#1a2129 del armazón)', !/26, 33, 41/.test(hov), hov);
 
   // 1 · badge y cabecera
   check('badge = finanzas/version.json (' + VER + ')', (await page.textContent('#dbBadge')).trim() === VER, await page.textContent('#dbBadge'));
@@ -152,6 +189,11 @@ const srv = http.createServer((req, res) => {
   check('"Cargar más": 620 filas', (await page.$$('#tbl tbody tr')).length === 620 && pedidos[pedidos.length-1].b.offset === 500);
   const sums = await page.$$eval('.db-sum', s => s.map(x => x.getAttribute('data-mon')));
   check('pie: una caja por moneda, sin mezclar (MXN y USD)', JSON.stringify(sums) === JSON.stringify(['MXN','USD']), sums);
+  for (const w of [380, 1280]) {
+    await page.setViewportSize({ width: w, height: 900 }); await page.$eval('.db-sums', e => e.scrollIntoView({ block: 'center' })); await page.waitForTimeout(100);
+    await page.screenshot({ path: path.join(OUT, `data-bancos-pie-${w}.png`) });
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
   // 7 · menú ⋮ y persistencia por usuario
   await page.click('#btnDots'); await page.check('#menuCols input[data-col="ref"]'); await page.check('#menuCols input[data-col="fuente"]');
   check('⋮ agrega Referencia y Fuente', (await ths()).includes('Referencia') && (await ths()).includes('Fuente (PDF)'));
@@ -182,6 +224,8 @@ const srv = http.createServer((req, res) => {
   await page.click('#btnDots'); await page.check('#menuCols input[data-col="mon"]'); await page.uncheck('#menuCols input[data-col="ref"]'); await page.uncheck('#menuCols input[data-col="fuente"]'); await page.click('h1');
   // 9 · filtro sin filas: recuerda la cobertura
   await page.fill('#fTxt', 'zzzz-no-existe'); await page.waitForTimeout(600);
+  await AA('estado vacío', '.db-empty'); await AA('estado vacío · cobertura', '.db-cta');
+  await page.screenshot({ path: path.join(OUT, 'data-bancos-vacio-1280.png') });
   check('sin filas: dice la cobertura de la base', /Sin movimientos con este filtro/.test(await page.textContent('#tbl tbody')) && /General …0011: 2024-01/.test(await page.textContent('#tbl tbody')));
   check('aviso de cobertura: validados + Chase en Odoo', /validados contra su estado de cuenta/.test(await page.textContent('#cobertura')) && /Chase no vive en esta base/.test(await page.textContent('#cobertura')));
   await page.fill('#fTxt', ''); await page.waitForTimeout(600);
@@ -198,7 +242,19 @@ const srv = http.createServer((req, res) => {
   // 11 · token sin el scope → aviso de sesión que nombra el permiso
   modo403 = true; await page.click('#p-refresh'); await page.waitForTimeout(300);
   check('403: aviso nombra bancos_data:read', /bancos_data:read/.test(await page.textContent('#aviso')), await page.textContent('#aviso'));
+  await AA('aviso de sesión · texto', '#aviso .aviso p'); await AA('aviso de sesión · título', '#aviso .aviso h3');
+  await page.screenshot({ path: path.join(OUT, 'data-bancos-aviso-sesion.png') });
   modo403 = false;
+  // El 403 borra la llave de sesión (§20 #12b); se recarga para que el init la vuelva a sembrar.
+  await page.reload(); await listo();
+  for (const f of ['red', 'servidor']) {
+    modoFallo = f; await page.click('#p-refresh'); await page.waitForTimeout(f === 'red' ? 4000 : 400);
+    const cl = await page.$eval('#aviso', a => (a.querySelector('.aviso') || {}).className || '');
+    check('aviso de ' + f + ' visible', new RegExp('aviso.*' + f).test(cl), cl);
+    await AA('aviso de ' + f + ' · texto', '#aviso .aviso p'); await AA('aviso de ' + f + ' · título', '#aviso .aviso h3');
+    await page.screenshot({ path: path.join(OUT, 'data-bancos-aviso-' + f + '.png') });
+  }
+  modoFallo = null; await page.click('#p-refresh'); await listo();
   // 12 · el submenú en Finanzas
   await page.setViewportSize({ width: 1280, height: 900 });
   const p2 = await ctx.newPage(); p2.on('pageerror', e => errores.push('pageerror(finanzas): ' + e.message));

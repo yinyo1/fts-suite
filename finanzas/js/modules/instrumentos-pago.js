@@ -27,7 +27,7 @@
   // comercial/machote y DEBE coincidir con finanzas/version.json — el gate lo verifica, porque
   // una pantalla que dice una versión y un archivo que dice otra deja de ser evidencia de nada.
   // Sustituye a la numeración 0.x.y (última: 0.5.36), conservada en version.json.
-  var IP_BUILD = 'V1.11';
+  var IP_BUILD = 'V1.12';
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
