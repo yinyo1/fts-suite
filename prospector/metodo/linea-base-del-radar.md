@@ -60,7 +60,7 @@ es la de D7 (ver `motor1-radar-de-leads.md`).
   Pasarian si la senal estuviera fresca: 4 de 12
   Huecos (sin senal documentada, NO se inventa): Coficab/Cd. Juarez, Coficab/Silao
 
-  CONTROL · senal fresca documentada: 33 -> 58 -> 68  (pasa)
+  CONTROL · senal fresca documentada: 26 -> 51 -> 61  (pasa)
 ```
 
 Pasan solas: **Coficab/Pesqueria, Coficab/Durango, Hershey/Escobedo**.
