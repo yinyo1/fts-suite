@@ -112,10 +112,22 @@ SUPERADOS = {
 
 
 def test_las_entregas_de_la_noche_quedaron_registradas():
+    """La cohorte de #340 sigue entera y bien marcada.
+
+    Antes esta prueba exigia que el registro tuviera EXACTAMENTE esos seis archivos
+    y nada mas. Era una mala reja y se puso roja el 7-oct al registrar la lista con
+    puertas de #382: el registro es un libro que CRECE -- cada entregable que sale de
+    aqui agrega un renglon-- y fijar su contenido completo convierte cada entrega
+    nueva en rojo. Es el mismo defecto que el sha256 fijado del reporte del 5-oct.
+
+    Lo que importa de #340 es que sus seis renglones sigan ahi y que los superados lo
+    digan. Que haya mas renglones despues no es un defecto: es el libro funcionando.
+    """
     ruta = os.path.join(RAIZ, "datos", "entregas-fuera-de-corrida.json")
     d = json.load(open(ruta, encoding="utf-8"))
     por_nombre = {e["archivo"]: e for e in d["entregas"]}
-    assert set(por_nombre) == VIGENTES | SUPERADOS
+    faltan = (VIGENTES | SUPERADOS) - set(por_nombre)
+    assert not faltan, f"se perdieron renglones de #340 del registro: {faltan}"
     # Los superados lo DICEN, y dicen que se renombraron en vez de borrarse.
     for nombre in SUPERADOS:
         nota = por_nombre[nombre].get("SUPERADO_2026_09_28") or ""

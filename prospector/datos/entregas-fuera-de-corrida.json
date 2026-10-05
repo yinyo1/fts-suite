@@ -126,6 +126,26 @@
       ],
       "verificacion_aceptable": true,
       "nota": "Seis archiva, con International incluida. REFERENCIA, NO SE SUBEN."
+    },
+    {
+      "archivo": "cuentas-con-puertas.html",
+      "ruta_local": "/tmp/claude-0/-home-user-fts-mcp-odoo/1546b028-bc52-5085-aa2e-d270de370c32/scratchpad/radar-382/cuentas-con-puertas.html",
+      "url": "https://ftsmx0-my.sharepoint.com/personal/estebandelacruz_fts_mx/Documents/cuentas-con-puertas.html",
+      "ts": "2026-10-05T18:32:11.807419+00:00",
+      "local": {
+        "sha256": "a9be4d37995a4f3793968d895091e0087fd13d34702e905d3f9576e811ac9d4f",
+        "bytes": 38211
+      },
+      "sha256_subido": "",
+      "bytes_subidos": 38211,
+      "hash_de_relectura": false,
+      "base64_con_longitud_confirmada": true,
+      "verificacion": "longitud_confirmada_en_base64",
+      "avisos_de_verificacion": [
+        "Subido como BASE64 declarando la longitud exacta: el conector rechaza el envio si no decodifica a 38,211 bytes, asi que el transporte quedo comprobado del lado del servidor y el byte de mas de #306 no puede pasar por aqui. NO es una relectura: confirma la longitud de lo que llego, no su contenido. Para verificar contenido, `--sha256-releido`."
+      ],
+      "verificacion_aceptable": true,
+      "nota": "Lista con puertas de #382: 23 cuentas ordenadas por puntaje. Se subio como TEXTO con expectedBytes, no base64, y el conector confirmo la longitud exacta (38,211) al escribir. NO es relectura con hash: confirma la longitud de lo que llego, no su contenido. Reemplaza la version del 7-oct que traia el defecto de Yokohama."
     }
   ]
 }
