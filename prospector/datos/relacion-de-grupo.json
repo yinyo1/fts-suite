@@ -1,13 +1,21 @@
 {
-  "que_es": "RELACION CON UN GRUPO, que NO es lo mismo que historia en una planta ni que un proyecto entregado. Un alta de proveedor en el portal de compras de un corporativo es una puerta abierta: significa que FTS puede facturar sin volver a pasar por alta, y que alguien de compras del grupo ya aprobo su expediente. No significa que se le haya vendido a la planta que se esta prospectando.",
+  "que_es": "RELACION CON UN GRUPO, que NO es lo mismo que historia en una planta ni que un proyecto entregado. Un alta de proveedor en el portal de compras de un corporativo es una puerta abierta: significa que FTS puede facturar sin volver a pasar por alta, y que alguien de compras del grupo ya aprobo su expediente. No significa que se le haya vendido a la planta que se esta prospectando. HAY DOS TIPOS DE RELACION DECLARADOS, y no significan lo mismo: `alta_de_proveedor` es una puerta administrativa abierta, y `canal_hacia_clientes` es que FTS le factura A ESTA empresa el trabajo que termina EN LA PLANTA DE OTRO. El segundo es mas fuerte como relacion y mas peligroso de sobre-leer: hay ordenes ganadas, pero el dueno de la planta donde se hizo el trabajo puede no saber que FTS existe.",
   "por_que_es_otro_archivo": "`ubicacion-de-proyectos.json` contesta «en que PLANTA se hizo cada proyecto». Esto contesta otra cosa: «que relacion hay con el GRUPO». Mezclarlas repetiria el error que ese archivo existe para evitar -- que una corrida concluya «ya trabajamos en su planta» porque encontro algo de esa cuenta--. Un alta de proveedor es todavia mas facil de sobre-leer: da confianza de cliente sin ser una venta.",
   "que_NO_lleva": "Ni una persona, ni un importe, ni un numero de proveedor.",
-  "corte": "2026-09-30",
+  "corte": "2026-10-07",
   "grupos": [
     {
       "grupo": "Xignux",
-      "empresas": ["Xignux", "Qualtia", "Qualtia Alimentos", "Viakon", "Voltrak",
-                   "Prolec", "Prolec GE", "Magnekon"],
+      "empresas": [
+        "Xignux",
+        "Qualtia",
+        "Qualtia Alimentos",
+        "Viakon",
+        "Voltrak",
+        "Prolec",
+        "Prolec GE",
+        "Magnekon"
+      ],
       "relacion": "alta_de_proveedor",
       "desde": "2025-01",
       "evidencia": "Portal de compras del grupo: el perfil de proveedor de FTS se actualizo en ene-2025 y el grupo lo reviso en feb-2025. Y hay trafico despues del alta: notificaciones de pago de una empresa del grupo en jun-2025 y jun-2026, lo que prueba que el alta no quedo en tramite.",
@@ -15,6 +23,152 @@
       "linea_para_la_carta": "FTS ya esta dado de alta como PROVEEDOR DEL GRUPO Xignux, y hay pagos del grupo despues del alta. Eso ahorra el tramite de alta y da un interlocutor en compras corporativas.",
       "lo_que_NO_se_puede_decir": "«Ya somos proveedores de ustedes». La relacion es con el GRUPO y con OTRA de sus empresas, no con esta planta. Dicho asi se cae en cuanto el de la planta busque su numero de orden y no encuentre ninguno -- que es el mismo error que Coficab/Pesqueria (#310), con otra cara--.",
       "por_que_igual_vale": "Un alta vigente cambia la conversacion de compras: no hay que abrir expediente, no hay que pasar validacion de proveedor nuevo, y el de compras de la planta puede verificarlo en su propio sistema en un minuto. Es una puerta, y se nombra como puerta."
+    },
+    {
+      "grupo": "Ecolab",
+      "empresas": [
+        "Ecolab",
+        "Ecolab de Mexico",
+        "Nalco",
+        "Nalco Water",
+        "Nalco de Mexico",
+        "Nalco Champion"
+      ],
+      "relacion": "canal_hacia_clientes",
+      "desde": "2023-05",
+      "una_sola_empresa": "Ecolab y Nalco son LA MISMA EMPRESA: Nalco Water es la division de agua de Ecolab. Declarado por Esteban en #382, y el radar lo necesita porque las dos aparecen con nombres distintos en Odoo (partner 94 «Nalco de Mexico» y partner 1849 «Ecolab») y en la prensa.",
+      "evidencia": "Odoo, leido el 7-oct-2026: el partner «Nalco de Mexico» (id 94) tiene customer_rank 161 y 38 leads, la mayoria en «Proyecto Ganado», desde may-2023 y con uno abierto el 1-oct-2026. El partner «Ecolab» (id 1849) existe aparte con customer_rank 1. Es, por conteo de leads, la relacion mas productiva del CRM.",
+      "clientes_finales_a_los_que_llega": [
+        "Mondelez (MDLZ, incluida la planta de Salinas)",
+        "Topo Chico",
+        "Arca Continental",
+        "Coca-Cola",
+        "Nemak",
+        "Ragasa",
+        "Lala",
+        "Vertiv",
+        "Marriott"
+      ],
+      "como_se_sabe_quienes_son": "los NOMBRES DE LOS LEADS los dicen: «Nalco / Mondelez - Modificaciones de osmosis», «Excedente topochico», «Mejoras para cloradores en pozos de Arca», «Instalaciones Nalco Nemak tuberia», «Instalacion suavizadores ragasa», «PTAR Upgrade Mondelez Salinas». El trabajo se factura a Nalco y se ejecuta en la planta del cliente final.",
+      "procedencia": "contexto de negocio declarado por Esteban en #382, verificado contra Odoo en lectura el 7-oct-2026. Sin nombres de personas: lo que se leyo son nombres de leads y conteos de partner.",
+      "linea_para_la_carta": "FTS trabaja de forma continua COMO PROVEEDOR DE ECOLAB / NALCO WATER, con proyectos ganados desde 2023 y uno abierto en oct-2026. Si la cuenta nueva es otra division de Ecolab, el interlocutor de agua puede presentar a FTS internamente, que es la via mas corta que existe.",
+      "lo_que_NO_se_puede_decir": "«Ya trabajamos con ustedes» dicho al DUENIO DE LA PLANTA. El trabajo se le factura a Nalco, y el de la planta puede no saber que FTS existe: lo contrato su proveedor de quimica. Decirlo asi se cae en cuanto busque una orden a nombre de FTS y no encuentre ninguna -- el mismo error de Coficab/Pesqueria en #310--.",
+      "por_que_igual_vale": "Son dos puertas distintas y las dos sirven. Hacia OTRA DIVISION DE ECOLAB: hay un interlocutor interno que puede presentar a FTS, y eso es expansion lateral. Hacia el DUENIO DE LA PLANTA donde FTS ya trabajo via Nalco: FTS conoce su instalacion por dentro -- osmosis, PTAR, suavizadores, tuberia-- y eso es verificable pidiendole a Nalco la referencia, no afirmandolo solo.",
+      "ojo_con_el_punto_ciego": "esta entrada explica el punto ciego del intermediario que #361 encontro y no supo nombrar: los leads de Nemak y Ragasa NO cuelgan del partner de la planta, cuelgan del de Nalco. Cualquier cruce que busque solo por `partner_id` de la cuenta los va a seguir perdiendo."
+    },
+    {
+      "grupo": "ChemTreat (Veolia)",
+      "empresas": [
+        "ChemTreat",
+        "ChemTreat Mexico",
+        "CHEMTREAT MEXICO"
+      ],
+      "relacion": "canal_hacia_clientes",
+      "desde": "2025-10",
+      "evidencia": "Odoo, leido el 7-oct-2026: el partner CHEMTREAT MEXICO tiene 3 leads -- ingenieria conceptual para Caterpillar (ganado, 3-oct-2025), sistema de dosificacion de quimicos (cotizacion enviada, 25-feb-2026) y sistema de control para scrubbers de Nemak (cotizacion enviada, 10-abr-2026)--.",
+      "clientes_finales_a_los_que_llega": [
+        "Nemak",
+        "Caterpillar"
+      ],
+      "procedencia": "hallado al cruzar las cuentas nuevas de la corrida del 7-oct. NO lo declaro nadie: aparecio porque esta vez se busco por nombre de LEAD y no por partner de la cuenta.",
+      "linea_para_la_carta": "FTS trabaja como proveedor de ChemTreat, con un proyecto de ingenieria ganado y dos cotizaciones vivas en 2026.",
+      "lo_que_NO_se_puede_decir": "lo mismo que con Nalco: el duenio de la planta puede no saber que FTS existe. Son tres leads, no una relacion con la planta.",
+      "por_que_igual_vale": "es el SEGUNDO canal de tratamiento de agua que lleva a FTS a plantas ajenas, y confirma que el patron no es Nalco: es la forma en que FTS entra a la industria. Vale mapear los demas -- Veolia, Suez, Ecolab ya esta--."
+    }
+  ],
+  "clientes_via_canal_que_es": "PLANTAS DONDE FTS YA TRABAJO PERO LE FACTURO A OTRO. No son parte del grupo del canal -- Arca no es una division de Ecolab-- y meterlas en `grupos[].empresas` diria eso, que es falso. Es una tercera relacion y se declara aparte porque su carta de presentacion es distinta: no es «somos proveedores de tu corporativo», es «conocemos tu instalacion por dentro porque la intervenimos, y tu proveedor de quimica puede confirmarlo».\nESTO ES LO QUE EL PUNTO CIEGO DE #361 ERA. Los leads de estas plantas no cuelgan de su partner: cuelgan del partner del canal. Un cruce por `partner_id` de la cuenta los pierde todos, y por eso la constancia de Odoo del 29-sep se declaro incompleta.",
+  "clientes_via_canal": [
+    {
+      "empresa": "Mondelez",
+      "alias": [
+        "Mondelez",
+        "MDLZ",
+        "Mondelez Salinas"
+      ],
+      "canal": "Ecolab / Nalco",
+      "que_se_hizo": "modificaciones de osmosis, PTAR, mantenimiento a motor",
+      "lo_mas_reciente": "2026-10-01 (lead abierto)",
+      "ojo": "tambien hay relacion DIRECTA con Mondelez por el buzon: FTS es proveedor registrado y hay contrato REPSE. Esta cuenta tiene las dos vias."
+    },
+    {
+      "empresa": "Topo Chico",
+      "alias": [
+        "Topo Chico",
+        "topochico"
+      ],
+      "canal": "Ecolab / Nalco",
+      "que_se_hizo": "excedentes y adicionales de obra",
+      "lo_mas_reciente": "2026-04-21 (ganado)"
+    },
+    {
+      "empresa": "Arca Continental",
+      "alias": [
+        "Arca Continental",
+        "Arca"
+      ],
+      "canal": "Ecolab / Nalco",
+      "que_se_hizo": "mejoras para cloradores en pozos",
+      "lo_mas_reciente": "2025-12-29 (cancelado)",
+      "ojo": "existe partner propio en Odoo (id 784) con customer_rank 0: tiene expediente y no tiene una sola orden a su nombre. Es exactamente la forma que toma una cuenta que se atiende por canal."
+    },
+    {
+      "empresa": "Coca-Cola",
+      "alias": [
+        "Coca-Cola",
+        "coca cola"
+      ],
+      "canal": "Ecolab / Nalco",
+      "que_se_hizo": "tubing de lavado de botellas",
+      "lo_mas_reciente": "2025-09-15 (cotizacion enviada)"
+    },
+    {
+      "empresa": "Nemak",
+      "alias": [
+        "Nemak"
+      ],
+      "canal": "Ecolab / Nalco y ChemTreat (dos canales)",
+      "que_se_hizo": "instalaciones y tuberia via Nalco; sistema de control para scrubbers cotizado via ChemTreat",
+      "lo_mas_reciente": "2026-04-10 (cotizacion enviada via ChemTreat)",
+      "ojo": "Nemak esta en el piloto del motor 3 como cuenta de DESCUBRIMIENTO. No lo es: hay trabajo hecho en su planta, facturado a Nalco. La ficha de Nemak tiene que decirlo."
+    },
+    {
+      "empresa": "Ragasa",
+      "alias": [
+        "Ragasa",
+        "Nutrioli"
+      ],
+      "canal": "Ecolab / Nalco",
+      "que_se_hizo": "instalacion de suavizadores",
+      "lo_mas_reciente": "2025-09-11 (cancelado)",
+      "ojo": "mismo caso que Nemak: esta en el piloto como descubrimiento y no lo es."
+    },
+    {
+      "empresa": "Lala",
+      "alias": [
+        "Lala",
+        "Grupo Lala"
+      ],
+      "canal": "Ecolab / Nalco",
+      "que_se_hizo": "PTAR, mantenimiento y reubicacion",
+      "lo_mas_reciente": "2024-04-23 (en revision)"
+    },
+    {
+      "empresa": "Vertiv",
+      "alias": [
+        "Vertiv"
+      ],
+      "canal": "Ecolab / Nalco",
+      "que_se_hizo": "tuberia de cuarto de osmosis, bases para tanques",
+      "lo_mas_reciente": "2026-03-12 (por cotizar)"
+    },
+    {
+      "empresa": "Caterpillar",
+      "alias": [
+        "Caterpillar"
+      ],
+      "canal": "ChemTreat (Veolia)",
+      "que_se_hizo": "ingenieria conceptual",
+      "lo_mas_reciente": "2025-10-03 (ganado)"
     }
   ]
 }

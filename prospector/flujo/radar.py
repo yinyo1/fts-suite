@@ -207,6 +207,77 @@ TERMINOS_DE_TIPO = {
     "groundbreaking": TIPO_INTEGRAL_OBRA_NUEVA,
     "breaks ground": TIPO_INTEGRAL_OBRA_NUEVA,
     "new production line": TIPO_INTEGRAL_OBRA_NUEVA,
+
+    # --- EL ARRANQUE DE OBRA, EN CASTELLANO -------------------------------
+    #
+    # Medido en #381 y aplicado aqui porque la DECISION 1 de #382 no funciona sin
+    # esto: si una senal de «arranca la construccion» no se reconoce como obra
+    # nueva, no emite ninguna puerta.
+    #
+    # EL DEFECTO QUE CIERRA. La tabla conocia `groundbreaking` y `breaks ground`
+    # en INGLES y ni una de las frases que la prensa industrial mexicana usa de
+    # verdad. Si conocia `inaugura planta`, que es el momento en que la ventana de
+    # especificacion YA CERRO. O sea: el vocabulario estaba sesgado al FINAL de la
+    # obra y ciego a su principio, en el idioma en que se publica.
+    #
+    # COSTO MEDIDO, en la corrida del 5-oct: Waelzholz -- arranca construccion, 65
+    # MDD, la banda que Esteban declaro como «exactamente lo que FTS si toma»--
+    # sacaba 48.7 y GUARDABA; Inventec -- primera piedra, 450 MDD, 45 lineas--
+    # sacaba 36.0 y ARCHIVABA. Las dos con 10 de 10 en tamanio de obra.
+    # Con estas frases: 93.1 y 80.4, las dos `pasa`. Se midio sobre las 14 senales
+    # de la corrida y se mueven SOLO esas dos: cero falsos positivos nuevos.
+    #
+    # NO ENTRA `inicio de construccion` ni `inicia operaciones en`: son frases de
+    # FUTURO -- «inicio de construccion en el tercer trimestre»-- y meterlas haria
+    # que un anuncio se leyera como una obra que ya arranco. La prueba de Yokohama
+    # fija ese limite.
+    "arranca la construccion": TIPO_INTEGRAL_OBRA_NUEVA,
+    "arranca construccion": TIPO_INTEGRAL_OBRA_NUEVA,
+    "inicia construccion": TIPO_INTEGRAL_OBRA_NUEVA,
+    "inicia la construccion": TIPO_INTEGRAL_OBRA_NUEVA,
+    "primera piedra": TIPO_INTEGRAL_OBRA_NUEVA,
+    "arranque de obra": TIPO_INTEGRAL_OBRA_NUEVA,
+    "empezo a construir": TIPO_INTEGRAL_OBRA_NUEVA,
+    "comenzo a construir": TIPO_INTEGRAL_OBRA_NUEVA,
+    "construira una planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "primera planta": TIPO_INTEGRAL_OBRA_NUEVA,
+
+    # «UNA PLANTA DE <algo>», hallado el 7-oct al leer la salida entrada por
+    # entrada. Megasteel dice «invertira 200 millones de dolares en una planta de
+    # estructuras metalicas en el parque industrial de Grupo Simsa» y el radar la
+    # archivaba con 32.7: ninguna de las formas del vocabulario -- «nueva planta»,
+    # «primera planta», «segunda planta»-- aparece en esa frase, asi que una planta
+    # nueva de 200 MDD entraba como equipo dentro de una planta que ya opera, sin
+    # puerta de EPC.
+    #
+    # Medido sobre las 23 senales de la corrida: cambia UNA, Megasteel, de 32.7
+    # archiva a 77.1 pasa. Cero falsos positivos. No se mete «una planta» a secas
+    # porque cae en frases como «dentro de una planta»; con «de» detras exige que
+    # la planta sea DE algo, que es como se nombra una planta nueva.
+    "una planta de": TIPO_INTEGRAL_OBRA_NUEVA,
+
+    # --- LAS FORMAS DE «INAUGURA» QUE EL EMPAREJADO NO VEIA ----------------
+    #
+    # `tipos_que_nombra` empareja por ADYACENCIA LITERAL, asi que `inaugura planta`
+    # caza «inaugura planta nueva» y NO caza «inaugura su planta de Monterrey»: el
+    # «su» de en medio la rompe. En la corrida del 5-oct esto no se noto porque las
+    # dos inauguraciones decian «su SEGUNDA planta» y «nueva planta», y entraron por
+    # esos terminos -- o sea, funcionaron por casualidad--.
+    #
+    # Lo destapo la DECISION 1: la fase `inaugurada` es la que ABRE la puerta del
+    # usuario, asi que una inauguracion que no se reconoce como obra nueva no emite
+    # ninguna puerta y la cuenta se cae del tablero entera.
+    #
+    # LIMITACION QUE QUEDA, declarada: cada forma necesita su renglon porque el
+    # emparejado no tokeniza. Las de abajo son las que aparecen de verdad en la
+    # prensa; la que falte se agrega cuando una corrida la encuentre, no antes.
+    "inaugura su planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "inauguro su planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "inauguracion de su planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "inaugura su complejo": TIPO_INTEGRAL_OBRA_NUEVA,
+    "inaugura su nave": TIPO_INTEGRAL_OBRA_NUEVA,
+    "arranca operaciones su planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "inicia operaciones su planta": TIPO_INTEGRAL_OBRA_NUEVA,
 }
 
 # --------------------------------------------------------------- los tres topes
@@ -259,6 +330,19 @@ FUERZA_DE_FUENTE = {
     # fecha. "La mayor inversion de nuestra historia" sin cifra es exactamente
     # el tipo de afirmacion que una pagina propia infla.
     "sitio_de_la_empresa": 10,
+    # EL CONSTRUCTOR O EL EPC HABLANDO DE LA OBRA QUE ESTA HACIENDO. Entra por la
+    # DECISION 2 de #382, y vale 20 por una razon concreta: es de PRIMERA MANO
+    # sobre la obra -- el que la construye no se equivoca sobre si existe-- y llega
+    # ANTES de que la planta exista como empresa, que es justo cuando la ventana de
+    # especificacion esta abierta. Vale MENOS que una convocatoria (23) porque una
+    # convocatoria compromete a comprar y tiene fecha de cierre; el boletin de un
+    # desarrollador es material de marketing que anuncia metros cuadrados.
+    #
+    # Y hay una razon de NEGOCIO para que esta fuente exista, no solo de dato: el
+    # EPC es el comprador de la puerta (a). Una nave que Vesta anuncia trae un
+    # constructor que ya esta comprando especialidad, y ese mismo constructor trae
+    # mas obra en la region -- el caso BIC que Esteban nombro--.
+    "constructor_o_epc": 20,
     "ip_corporativa": 6,
     "feed_generico": 3,
 }
@@ -305,6 +389,7 @@ TIPO_POR_OMISION_DE_FUENTE = {
     "camara": "presencia_en_evento",
     "congreso": "presencia_en_evento",
     "prensa_industrial": "obra_nueva",
+    "constructor_o_epc": "obra_nueva",
     "ip_corporativa": "navegacion",
     "feed_generico": "reconocimiento_de_mercado",
 }
@@ -325,6 +410,87 @@ def tipo_de_senal_de(fuente: str, tipo_declarado: str = "") -> tuple[str, str]:
     if f in TIPO_POR_OMISION_DE_FUENTE:
         return (TIPO_POR_OMISION_DE_FUENTE[f], f"derivado de la fuente '{f}'")
     return ("", "sin tipo: la fuente no permite derivarlo y nadie lo declaro")
+
+
+# ===================================================== D1 de #382 · LA FASE DE LA OBRA
+#
+# QUE ES Y POR QUE NO ES EL TIPO. `TERMINOS_DE_TIPO` contesta QUE se va a
+# construir; esto contesta EN QUE MOMENTO ESTA. Son dos preguntas distintas y el
+# radar las tenia fundidas: `inaugura planta` y `arranca la construccion` apuntan
+# al mismo tipo y valian lo mismo, pero una tiene la ventana de especificacion
+# abierta y la otra la tiene cerrada desde hace meses.
+#
+# Y la fase es lo que decide QUIEN COMPRA, que es la decision 1 de #382:
+#
+#   anuncio          el EPC quizas no esta elegido. Es el mejor momento para entrar
+#                    a su lista de especialidad, y el peor para hablar con el
+#                    usuario, que todavia no tiene planta.
+#   obra_arrancada   hay un EPC y esta comprando AHORA. Puerta (a) abierta.
+#   inaugurada       el EPC se fue. Empieza a correr el reloj del usuario.
+#
+# PRECEDENCIA, y no es el orden en que aparecen las frases. `obra_arrancada` le
+# gana a las otras dos porque es la afirmacion mas fuerte: una primera piedra es
+# un evento fechado que ocurrio. Medido contra las 14 senales de la corrida del
+# 5-oct, es el unico orden que clasifica bien los tres casos mixtos:
+#
+#   * Ecocab dice «inicia construccion ... arranque de operaciones en enero de
+#     2027». Con «la ultima gana» saldria `inaugurada`, que es falso: la planta no
+#     existe. Con esta precedencia sale `obra_arrancada`.
+#   * NIFCO Apodaca dice «invertira 85 MDD ... y coloca la primera piedra». Con «la
+#     primera gana» saldria `anuncio`, que subestima: la obra ya arranco.
+#   * NIFCO Chihuahua dice solo «inaugura»: sale `inaugurada`.
+FASE_ANUNCIO = "anuncio"
+FASE_OBRA_ARRANCADA = "obra_arrancada"
+FASE_INAUGURADA = "inaugurada"
+
+# El orden es la precedencia: el primero que aparezca en el texto, gana.
+FASES_DE_OBRA = (
+    (FASE_OBRA_ARRANCADA, (
+        "arranca la construccion", "arranca construccion", "inicia construccion",
+        "inicia la construccion", "primera piedra", "arranque de obra",
+        "empezo a construir", "comenzo a construir", "en construccion",
+        "groundbreaking", "breaks ground", "under construction",
+        "arranco la construccion", "construccion en marcha")),
+    (FASE_INAUGURADA, (
+        # SOLO FORMAS DE PASADO O PRESENTE. `arranque de operaciones` e
+        # `inicio operaciones` se sacaron el 7-oct al ver la salida: Yokohama dice
+        # «arranque de operaciones en el segundo trimestre de 2028» y salia
+        # INAUGURADA -- con su puerta de usuario abierta y «4.6 meses de
+        # inaugurada»-- cuando la planta no existe. Es el mismo error de futuro que
+        # ya se habia cerrado un tramo mas arriba con `inicio de construccion`, y se
+        # colo igual: la leccion es que un sustantivo o un infinitivo no afirman que
+        # algo paso.
+        #
+        # `inicio operaciones` tampoco vuelve: sin acentos, «inicio operaciones»
+        # (pasado) e «inicio de operaciones» (futuro) son la misma cadena, y una
+        # frase que no se puede distinguir no sirve de marca.
+        "inaugura", "inauguracion", "inauguro", "arranco operaciones",
+        "entro en operacion", "ya opera", "opens", "inaugurates",
+        "started operations")),
+    (FASE_ANUNCIO, (
+        "invertira", "anuncia", "anuncio de inversion", "destinara", "planea",
+        "proyecta", "invertiran", "will invest", "announces", "to invest")),
+)
+
+
+def fase_de_obra(texto: str) -> tuple[str, str, list[str]]:
+    """(fase, el termino que la decidio, las otras fases que el texto tambien nombra).
+
+    La tercera cosa que devuelve importa: un texto que nombra dos fases es un texto
+    ambiguo, y la ambiguedad se declara en vez de resolverse en silencio.
+    """
+    p = f" {plano(texto)} "
+    halladas = []
+    for fase, terminos in FASES_DE_OBRA:
+        for t in terminos:
+            if f" {plano(t)}" in p:
+                halladas.append((fase, t))
+                break
+    if not halladas:
+        return ("", "", [])
+    fase, termino = halladas[0]
+    otras = [f for f, _ in halladas[1:]]
+    return (fase, termino, otras)
 
 
 # --------------------------------------------------------------- los umbrales

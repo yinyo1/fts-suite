@@ -3,6 +3,80 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.20.0 — 2026-10-07
+
+Una planta nueva deja de ser una señal y se vuelve **dos**, con dos compradores
+distintos y dos momentos. Refinamiento del radar tras la primera corrida de
+descubrimiento (#381). **1,200 pruebas** (eran 1,166).
+
+### Dos puertas por planta nueva (`flujo/puertas.py`, nuevo)
+
+Decisión de Esteban en #382, con el caso BIC detrás: durante la obra compra el
+**EPC** que trae la planta llave en mano —FTS no le compite, le vende especialidad, y
+ese EPC trae más obra en la región—; de 12 a 18 meses **después de la inauguración**
+compra el **usuario**: lo que el EPC no alcanzó, la segunda línea, la ampliación de
+carga. El radar puntuaba `obra_nueva_integral` alto y lo trataba como una sola puerta,
+mandando a buscar al usuario de una planta que no existe.
+
+`puertas_de()` emite, según la fase: puerta A del EPC (abierta 25 en obra arrancada,
+20 en anuncio, cerrada al inaugurar) y puerta B del usuario (futura antes de la
+inauguración, y con la ventana de 18 meses después). Más tres puertas que no son de
+obra nueva: `usuario_directo` (equipo dentro de planta que ya opera), `expansion_lateral`
+(misma cuenta, otra división) y `planta_ya_intervenida` (FTS entró por un canal).
+
+**La ventana del usuario va al revés de la frescura normal**: vale más a los 12-18
+meses que a los 2. Está etiquetada CRITERIO declarado, no medición —el lazo 3 la
+corrige cuando haya cierres que la contradigan—.
+
+### La fase de obra, y los dos defectos que la fecha destapó
+
+`fase_de_obra()` lee del texto si la obra está en `anuncio`, `obra_arrancada` o
+`inaugurada`, y gana la afirmación más fuerte. Los dos defectos salieron de **leer la
+salida antes de publicarla**, no de la suite:
+
+- **Yokohama Rubber** salía `inaugurada` —con su puerta de usuario abierta y «4.6
+  meses de inaugurada»— porque «arranque de operaciones en el **segundo trimestre de
+  2028**» estaba en el vocabulario de inauguración. Una frase de futuro ponía la obra
+  en el pasado. Fuera `arranque de operaciones` e `inicio operaciones`.
+- **Doosan Bobcat** salía con «A·EPC ABIERTA · 25 — hay un EPC comprando AHORA» sobre
+  una primera piedra de **hace 846 días**. El mismo defecto por el otro lado: una
+  fecha vieja dejaba la obra en el presente. `MESES_MAXIMOS_DE_OBRA = 24` deja las dos
+  puertas en `desconocida` con el trabajo que falta, sin inventar una inauguración que
+  ninguna fuente dice.
+
+### El constructor como fuente, y el vocabulario que archivaba una planta de 200 MDD
+
+`constructor_o_epc` entra a `FUERZA_DE_FUENTE` con **20**: es de primera mano sobre la
+obra y llega antes de que la planta exista como empresa, pero por debajo de una
+convocatoria (23), que compromete una compra. `datos/consultas_senal.json` suma la
+familia `F5_constructores_y_epc`.
+
+Y una entrada medida al leer la salida: **Megasteel** —«invertirá 200 millones de
+dólares en **una planta de** estructuras metálicas»— puntuaba 32.7 y se **archivaba**,
+porque ninguna forma del vocabulario («nueva planta», «primera planta», «segunda
+planta») aparece en esa frase. Con `una planta de`: 77.1, pasa, y con su puerta de EPC.
+Medido sobre las 23 señales de la corrida: cambia una, cero falsos positivos.
+
+### Identidad de grupo: Ecolab es Nalco
+
+Decisión de Esteban: una señal de Ecolab como planta o inversión probablemente es de
+otra división donde FTS no tiene historia. Misma cuenta, otra puerta. Se separaron dos
+relaciones que una sola tabla habría confundido, porque sus cartas de presentación son
+distintas: `grupos[].empresas` (mismo grupo corporativo) y `clientes_via_canal`
+(plantas donde FTS intervino pero le facturó a otro). Odoo confirma que Nalco de México
+es la relación más productiva del CRM, y explica el punto ciego del intermediario de
+#361: los leads de Nemak y Ragasa cuelgan del partner **del canal**, no de la planta.
+
+### Los números de la corrida no se escriben a mano
+
+`herramientas/sellar_constancia_puertas.py` recalcula puntajes, puertas, fases, días y
+**todo** el resumen desde los módulos, y una prueba exige que el archivo en disco **sea**
+ese recálculo. Nació de que este turno cometió el defecto de siempre dos veces en un
+día: el libro de consultas del 5-oct decía 20 cuando se gastaron 38, y el resumen
+siguió diciendo «inaugurada 7» después de que Yokohama dejara de serlo. El reporte
+también dejó de traer números en prosa: decía «Once puertas de EPC abiertas… ese uno es
+FINSA» y «una nota de hace 362 días contra una de hace 10» —y la más fresca era de 7—.
+
 ## 0.19.0 — 2026-09-30 (tercer turno del dia)
 
 El motor 3 listo para recibir a dos personas que no van a abrir la herramienta:

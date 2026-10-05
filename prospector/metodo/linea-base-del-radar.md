@@ -49,7 +49,7 @@ es la de D7 (ver `motor1-radar-de-leads.md`).
   Coficab/Silao                      —           —           —     HUECO
   Metalsa                           30        42.7        42.7    guarda            si
   International                     20          20          30   archiva     53     NO
-  Xignux / Qualtia Alimentos/Monterrey (San Nicolas de los Garza)          10          10          10   archiva            si
+  Xignux / Qualtia Alimentos/Monterrey (San Nicolas de los Garza)          10        54.4        54.4    guarda            si
   ------------------------------------------------------------------------------------
   PASAN                              1           3           3     de 12
 

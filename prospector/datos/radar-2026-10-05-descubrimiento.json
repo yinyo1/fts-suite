@@ -1,1093 +1,1264 @@
 {
- "version": 1,
- "corrida": "radar-descubrimiento-2026-10-05",
- "nota": "Primera corrida del radar en modo DESCUBRIMIENTO, a mano desde la sesion. Se guarda en el repo porque una corrida vive en la sesion y se muere con el contenedor: sin esto, las 38 consultas y las 14 senales no se pueden volver a mirar y las propuestas de D6 del issue no tendrian con que sostenerse. NO cambia ningun criterio del evaluador.",
- "hoy": "2026-10-05",
- "version_de_la_herramienta": "0.19.0",
- "geografia": {
-  "primer_anillo": [
-   "Nuevo Leon",
-   "Coahuila",
-   "Tamaulipas"
+  "version": 1,
+  "corrida": "radar-descubrimiento-2026-10-05",
+  "nota": "Primera corrida del radar en modo DESCUBRIMIENTO, a mano desde la sesion. Se guarda en el repo porque una corrida vive en la sesion y se muere con el contenedor: sin esto, las 38 consultas y las 14 senales no se pueden volver a mirar y las propuestas de D6 del issue no tendrian con que sostenerse. NO cambia ningun criterio del evaluador.",
+  "hoy": "2026-10-05",
+  "version_de_la_herramienta": "0.19.0",
+  "geografia": {
+    "primer_anillo": [
+      "Nuevo Leon",
+      "Coahuila",
+      "Tamaulipas"
+    ],
+    "segundo_anillo": [
+      "Durango",
+      "Chihuahua"
+    ]
+  },
+  "ventana": {
+    "dias": 90,
+    "frescura_minima": 18,
+    "banda_marcada": "91 a 180 dias, solo si la senal es muy fuerte"
+  },
+  "presupuesto_de_consultas": 80,
+  "consultas_gastadas": 38,
+  "consultas": [
+    {
+      "n": 1,
+      "familia": "F4_obra_nueva/convocatoria",
+      "consulta": "convocatoria proveedores obra electrica nueva planta industrial Nuevo Leon 2026",
+      "fuente_buscada": "licitacion/convocatoria",
+      "resultado": "solo licitaciones de gobierno estatal (material electrico), ninguna convocatoria de proveeduria industrial privada",
+      "util": false
+    },
+    {
+      "n": 2,
+      "familia": "F1_geo_sector",
+      "consulta": "\"nueva planta\" inversion Nuevo Leon anuncio septiembre 2026",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "LEGO 400 MDD Cienega de Flores 24-sep-2026",
+      "util": true
+    },
+    {
+      "n": 3,
+      "familia": "F1_geo_sector",
+      "consulta": "\"nueva planta\" inversion Coahuila Ramos Arizpe Saltillo 2026",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "QSMX 180 MDP, DeAcero Ramos II 600 MDD, Waelzholz 65 MDD, VYNMSA 4000 MDP",
+      "util": true
+    },
+    {
+      "n": 4,
+      "familia": "F1_geo_sector",
+      "consulta": "nueva planta inversion Tamaulipas Reynosa Matamoros Altamira 2026",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "221 MDD en 10 proyectos; Cubico (energia, Altamira), Jaguar Industries (Matamoros), CFE ciclo combinado Altamira 15000 MDP",
+      "util": true
+    },
+    {
+      "n": 5,
+      "familia": "F2_empresa_evento",
+      "consulta": "Waelzholz planta Coahuila Parque Industrial Amistad inversion 65 millones",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "CONFIRMA: arranca construccion primera planta en Mexico, 65 MDD / 1200 MDP, 100 empleos, Ramos Arizpe",
+      "util": true
+    },
+    {
+      "n": 6,
+      "familia": "F2_empresa_evento",
+      "consulta": "QSMX nueva planta Ramos Arizpe 180 mdp inauguracion",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "CONFIRMA: inaugura centro de operaciones 1-sep-2026, 180 MDP, 350 empleos",
+      "util": true
+    },
+    {
+      "n": 7,
+      "familia": "F2_empresa_evento",
+      "consulta": "Jaguar Industries Matamoros planta electrico electronico inversion 2026",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "SIN CONFIRMAR: el buscador devuelve Jaguar Land Rover global, no la empresa de Matamoros",
+      "util": false
+    },
+    {
+      "n": 8,
+      "familia": "F1_geo_sector",
+      "consulta": "clusterindustrial.com.mx nueva planta Nuevo Leon Coahuila agosto septiembre 2026 inversion",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "Intretech 60 MDD, TDI Manufacturing 50 MDD, NIFCO Chihuahua 8.8 MDD, FINSA 220 MDD Garcia",
+      "util": true
+    },
+    {
+      "n": 9,
+      "familia": "F2_empresa_evento",
+      "consulta": "Intretech inaugura planta Nuevo Leon 60 MDD 2 mil empleos fecha",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "FUERA DE VENTANA: inauguro 23-sep-2025 (377 dias)",
+      "util": true
+    },
+    {
+      "n": 10,
+      "familia": "F2_empresa_evento",
+      "consulta": "TDI Manufacturing Mexico inaugura nueva planta Nuevo Leon 50 millones dolares",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "17-abr-2026 (171 dias, segundo anillo de ventana), Cienega de Flores, gestion termica",
+      "util": true
+    },
+    {
+      "n": 11,
+      "familia": "F2_empresa_evento",
+      "consulta": "NIFCO segunda planta Chihuahua 8.8 mdd expansion 2026",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "CONFIRMA: 25-sep-2026, segunda planta Chihuahua, 8.8 MDD, inyeccion de plastico, sistemas auxiliares",
+      "util": true
+    },
+    {
+      "n": 12,
+      "familia": "D3_vocabulario",
+      "consulta": "\"segunda planta\" OR \"amplia su planta\" nueva nave industrial Nuevo Leon Apodaca Pesqueria septiembre octubre 2026",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "NIFCO Apodaca 85 MDD, Thor Urbana 2400 MDP, Ternium Pesqueria 3200 MDD (viejo), 600 MDD data centers oct-2026",
+      "util": true
+    },
+    {
+      "n": 13,
+      "familia": "F2_empresa_evento",
+      "consulta": "NIFCO 85 MDD nueva planta Apodaca Nuevo Leon anuncio fecha",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "anuncio 9-abr-2026 (179 dias) + primera piedra posterior sin fecha confirmada",
+      "util": true
+    },
+    {
+      "n": 14,
+      "familia": "F2_empresa_evento",
+      "consulta": "Danfoss inaugura nueva planta Nuevo Leon 2026 inversion",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "FUERA DE VENTANA probable: anuncio 6-nov-2025, operacion plena principios de 2026",
+      "util": true
+    },
+    {
+      "n": 15,
+      "familia": "D1_vocabulario",
+      "consulta": "subestacion electrica \"media tension\" ampliacion de carga nueva planta industrial Nuevo Leon Coahuila 2026",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "CFE: 4 subestaciones nuevas NL + 10 ampliaciones, 8900 MDP (19-ago-2026); subestacion Parque Industrial Angostura Saltillo en operacion 30-ago-2026",
+      "util": true
+    },
+    {
+      "n": 16,
+      "familia": "F1_geo_sector",
+      "consulta": "nueva planta inversion Durango Gomez Palacio Lerdo Torreon 2026 industrial",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "Ecocab MX inicia construccion 23-jul-2026 (540 MDP, cable de cobre); MLS 261.7 MDD; Megasteel 200 MDD",
+      "util": true
+    },
+    {
+      "n": 17,
+      "familia": "F2_empresa_evento",
+      "consulta": "Hyundai WIA 35 millones dolares Nuevo Leon motores hibridos planta fecha anuncio",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "10-abr-2026 (178 dias), ampliacion 31350 m2",
+      "util": true
+    },
+    {
+      "n": 18,
+      "familia": "F2_empresa_evento",
+      "consulta": "DH Autoware 167 millones dolares Nuevo Leon planta 440 empleos",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "13-abr-2026 (175 dias), Apodaca + nueva nave en Santa Catarina",
+      "util": true
+    },
+    {
+      "n": 19,
+      "familia": "F2_empresa_evento",
+      "consulta": "Megasteel Gomez Palacio Durango 200 millones dolares planta acero construccion",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "SIN FECHA en la nota: 200 MDD, estructuras metalicas, parque de Grupo Simsa",
+      "util": true
+    },
+    {
+      "n": 20,
+      "familia": "D3_vocabulario",
+      "consulta": "\"primera piedra\" NIFCO planta Apodaca Nuevo Leon arranca construccion",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "primera piedra confirmada en Parque Mirador Industrial, SIN FECHA legible en el resultado",
+      "util": true
+    },
+    {
+      "n": 21,
+      "familia": "F1_geo_sector",
+      "consulta": "CAINTRA boletin nueva inversion planta Nuevo Leon septiembre octubre 2026",
+      "fuente_buscada": "camara",
+      "resultado": "agregados de CAINTRA sin nombre de empresa por proyecto; de ahi salen Hyundai MOBIS, MillerKnoll y FINSA solo como monto",
+      "util": true
+    },
+    {
+      "n": 22,
+      "familia": "D3_vocabulario",
+      "consulta": "groundbreaking new plant \"Nuevo Leon\" OR Coahuila OR Tamaulipas Mexico breaks ground September 2026",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "Volvo (obra 2024, inaugurada may-2026), Festo (2023), Siemens: todo fuera de ventana",
+      "util": true
+    },
+    {
+      "n": 23,
+      "familia": "F1_geo_sector",
+      "consulta": "nueva planta inversion Chihuahua Juarez Cuauhtemoc 2026 anuncio empresa",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "Inventec 450 MDD y Pegatron 330 MDD, las dos de Cd. Juarez",
+      "util": true
+    },
+    {
+      "n": 24,
+      "familia": "vacante_tecnica",
+      "consulta": "vacante \"gerente de proyectos\" OR \"jefe de mantenimiento\" nueva planta Monterrey Saltillo 2026 proyecto construccion",
+      "fuente_buscada": "vacante_tecnica",
+      "resultado": "SOLO paginas de listado de OCC y Computrabajo: ninguna publicacion de una empresa. La fuente no es alcanzable por buscador",
+      "util": false
+    },
+    {
+      "n": 25,
+      "familia": "F2_empresa_evento",
+      "consulta": "Inventec primera piedra expansion Ciudad Juarez 450 millones fecha ceremonia",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "CONFIRMA primera piedra 31-jul-2026 (una fuente la pone el 5-ago)",
+      "util": true
+    },
+    {
+      "n": 26,
+      "familia": "F2_empresa_evento",
+      "consulta": "Pegatron nueva nave industrial Juarez 330 mdd electromovilidad data centers agosto 2026",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "CONFIRMA 20-ago-2026, nueva nave, electromovilidad y data centers",
+      "util": true
+    },
+    {
+      "n": 27,
+      "familia": "F2_empresa_evento",
+      "consulta": "Hyundai MOBIS 700 millones pesos Nuevo Leon planta ampliacion 2026",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "FECHA AMBIGUA: expansion de bateria 28.6 MDD «9 de octubre» sin anio legible; se descarto por eso",
+      "util": true
+    },
+    {
+      "n": 28,
+      "familia": "F2_empresa_evento",
+      "consulta": "Festo breaks ground new plant Nuevo Leon Monterrey investment date",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "FUERA DE VENTANA: primera piedra 25-may-2023",
+      "util": true
+    },
+    {
+      "n": 29,
+      "familia": "F2_empresa_evento",
+      "consulta": "Cubico Sustainable Investments Altamira Tamaulipas inversion energia planta 2026",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "generacion utility (parque solar 100 MW, obra dic-2026): no es planta que compre lo que vende FTS",
+      "util": true
+    },
+    {
+      "n": 30,
+      "familia": "F4_obra_nueva",
+      "consulta": "\"nueva planta\" OR \"nueva nave\" inversion Tamaulipas 2026 arranca construccion primera piedra industrial",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "Medline Nuevo Laredo (obra ene-2025, fuera), Green Bauen 6500 MDD (arriba del corte corporativo), Canacintra Matamoros sin nombres",
+      "util": true
+    },
+    {
+      "n": 31,
+      "familia": "F4_obra_nueva/convocatoria",
+      "consulta": "convocatoria registro de proveedores obra civil electromecanica parque industrial Nuevo Leon Coahuila 2026 cierre",
+      "fuente_buscada": "convocatoria",
+      "resultado": "SOLO paginas indice de portales de gobierno; el padron de NL cerro su registro el 26-jun-2026. Cero convocatorias de proveeduria industrial privada",
+      "util": false
+    },
+    {
+      "n": 32,
+      "familia": "F1_geo_sector",
+      "consulta": "mexicoindustry.com nuevas plantas expansiones industriales septiembre octubre 2026 20470 mdp",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "recuento nacional de 17 anuncios; los cinco mayores son de fuera de la geografia (CloudHQ, LG, APM, Daikin)",
+      "util": true
+    },
+    {
+      "n": 33,
+      "familia": "F2_empresa_evento",
+      "consulta": "Medline Industries Nuevo Laredo inicia construccion planta 250 mdd fecha Finsa Oriente",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "FUERA DE VENTANA: anuncio ene-2025, obra arrancada el 30-ene",
+      "util": true
+    },
+    {
+      "n": 34,
+      "familia": "F1_geo_sector",
+      "consulta": "\"nueva planta\" OR ampliacion inversion Saltillo Monclova Piedras Negras Coahuila septiembre octubre 2026",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "Yokohama 115 MDD segunda planta, DeAcero 1000 MDD Saltillo, Wittur (2023), GEMMSA",
+      "util": true
+    },
+    {
+      "n": 35,
+      "familia": "F2_empresa_evento",
+      "consulta": "Megasteel estructuras metalicas Gomez Palacio anuncio fecha 2026 Simsa parque industrial",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "SIN FECHA: la nota no fecha el anuncio. Primera etapa de 50 MDD y renta de dos naves",
+      "util": true
+    },
+    {
+      "n": 36,
+      "familia": "F2_empresa_evento",
+      "consulta": "Yokohama segunda planta llantas Saltillo 115 mdd fecha anuncio construccion tercer trimestre 2026",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "CONFIRMA 21-may-2026; construccion arranca 3T-2026 y operacion 2T-2028",
+      "util": true
+    },
+    {
+      "n": 37,
+      "familia": "F2_empresa_evento",
+      "consulta": "Wittur inicia ampliacion planta Monclova Coahuila inversion 2026",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "FUERA DE VENTANA: primera piedra oct-2023",
+      "util": true
+    },
+    {
+      "n": 38,
+      "familia": "F2_empresa_evento",
+      "consulta": "Ecocab MX Gomez Palacio inicia construccion planta cable cobre 540 millones julio 2026",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "CONFIRMA 23-jul-2026 en el Parque SIMSA; nave de 14,000 m2, operacion ene-2027",
+      "util": true
+    }
   ],
-  "segundo_anillo": [
-   "Durango",
-   "Chihuahua"
-  ]
- },
- "ventana": {
-  "dias": 90,
-  "frescura_minima": 18,
-  "banda_marcada": "91 a 180 dias, solo si la senal es muy fuerte"
- },
- "presupuesto_de_consultas": 80,
- "consultas_gastadas": 20,
- "consultas": [
-  {
-   "n": 1,
-   "familia": "F4_obra_nueva/convocatoria",
-   "consulta": "convocatoria proveedores obra electrica nueva planta industrial Nuevo Leon 2026",
-   "fuente_buscada": "licitacion/convocatoria",
-   "resultado": "solo licitaciones de gobierno estatal (material electrico), ninguna convocatoria de proveeduria industrial privada",
-   "util": false
-  },
-  {
-   "n": 2,
-   "familia": "F1_geo_sector",
-   "consulta": "\"nueva planta\" inversion Nuevo Leon anuncio septiembre 2026",
-   "fuente_buscada": "prensa_industrial",
-   "resultado": "LEGO 400 MDD Cienega de Flores 24-sep-2026",
-   "util": true
-  },
-  {
-   "n": 3,
-   "familia": "F1_geo_sector",
-   "consulta": "\"nueva planta\" inversion Coahuila Ramos Arizpe Saltillo 2026",
-   "fuente_buscada": "prensa_industrial",
-   "resultado": "QSMX 180 MDP, DeAcero Ramos II 600 MDD, Waelzholz 65 MDD, VYNMSA 4000 MDP",
-   "util": true
-  },
-  {
-   "n": 4,
-   "familia": "F1_geo_sector",
-   "consulta": "nueva planta inversion Tamaulipas Reynosa Matamoros Altamira 2026",
-   "fuente_buscada": "prensa_industrial",
-   "resultado": "221 MDD en 10 proyectos; Cubico (energia, Altamira), Jaguar Industries (Matamoros), CFE ciclo combinado Altamira 15000 MDP",
-   "util": true
-  },
-  {
-   "n": 5,
-   "familia": "F2_empresa_evento",
-   "consulta": "Waelzholz planta Coahuila Parque Industrial Amistad inversion 65 millones",
-   "fuente_buscada": "prensa_industrial",
-   "resultado": "CONFIRMA: arranca construccion primera planta en Mexico, 65 MDD / 1200 MDP, 100 empleos, Ramos Arizpe",
-   "util": true
-  },
-  {
-   "n": 6,
-   "familia": "F2_empresa_evento",
-   "consulta": "QSMX nueva planta Ramos Arizpe 180 mdp inauguracion",
-   "fuente_buscada": "prensa_industrial",
-   "resultado": "CONFIRMA: inaugura centro de operaciones 1-sep-2026, 180 MDP, 350 empleos",
-   "util": true
-  },
-  {
-   "n": 7,
-   "familia": "F2_empresa_evento",
-   "consulta": "Jaguar Industries Matamoros planta electrico electronico inversion 2026",
-   "fuente_buscada": "prensa_industrial",
-   "resultado": "SIN CONFIRMAR: el buscador devuelve Jaguar Land Rover global, no la empresa de Matamoros",
-   "util": false
-  },
-  {
-   "n": 8,
-   "familia": "F1_geo_sector",
-   "consulta": "clusterindustrial.com.mx nueva planta Nuevo Leon Coahuila agosto septiembre 2026 inversion",
-   "fuente_buscada": "prensa_industrial",
-   "resultado": "Intretech 60 MDD, TDI Manufacturing 50 MDD, NIFCO Chihuahua 8.8 MDD, FINSA 220 MDD Garcia",
-   "util": true
-  },
-  {
-   "n": 9,
-   "familia": "F2_empresa_evento",
-   "consulta": "Intretech inaugura planta Nuevo Leon 60 MDD 2 mil empleos fecha",
-   "fuente_buscada": "prensa_industrial",
-   "resultado": "FUERA DE VENTANA: inauguro 23-sep-2025 (377 dias)",
-   "util": true
-  },
-  {
-   "n": 10,
-   "familia": "F2_empresa_evento",
-   "consulta": "TDI Manufacturing Mexico inaugura nueva planta Nuevo Leon 50 millones dolares",
-   "fuente_buscada": "prensa_industrial",
-   "resultado": "17-abr-2026 (171 dias, segundo anillo de ventana), Cienega de Flores, gestion termica",
-   "util": true
-  },
-  {
-   "n": 11,
-   "familia": "F2_empresa_evento",
-   "consulta": "NIFCO segunda planta Chihuahua 8.8 mdd expansion 2026",
-   "fuente_buscada": "prensa_industrial",
-   "resultado": "CONFIRMA: 25-sep-2026, segunda planta Chihuahua, 8.8 MDD, inyeccion de plastico, sistemas auxiliares",
-   "util": true
-  },
-  {
-   "n": 12,
-   "familia": "D3_vocabulario",
-   "consulta": "\"segunda planta\" OR \"amplia su planta\" nueva nave industrial Nuevo Leon Apodaca Pesqueria septiembre octubre 2026",
-   "fuente_buscada": "prensa_industrial",
-   "resultado": "NIFCO Apodaca 85 MDD, Thor Urbana 2400 MDP, Ternium Pesqueria 3200 MDD (viejo), 600 MDD data centers oct-2026",
-   "util": true
-  },
-  {
-   "n": 13,
-   "familia": "F2_empresa_evento",
-   "consulta": "NIFCO 85 MDD nueva planta Apodaca Nuevo Leon anuncio fecha",
-   "fuente_buscada": "prensa_industrial",
-   "resultado": "anuncio 9-abr-2026 (179 dias) + primera piedra posterior sin fecha confirmada",
-   "util": true
-  },
-  {
-   "n": 14,
-   "familia": "F2_empresa_evento",
-   "consulta": "Danfoss inaugura nueva planta Nuevo Leon 2026 inversion",
-   "fuente_buscada": "prensa_industrial",
-   "resultado": "FUERA DE VENTANA probable: anuncio 6-nov-2025, operacion plena principios de 2026",
-   "util": true
-  },
-  {
-   "n": 15,
-   "familia": "D1_vocabulario",
-   "consulta": "subestacion electrica \"media tension\" ampliacion de carga nueva planta industrial Nuevo Leon Coahuila 2026",
-   "fuente_buscada": "prensa_industrial",
-   "resultado": "CFE: 4 subestaciones nuevas NL + 10 ampliaciones, 8900 MDP (19-ago-2026); subestacion Parque Industrial Angostura Saltillo en operacion 30-ago-2026",
-   "util": true
-  },
-  {
-   "n": 16,
-   "familia": "F1_geo_sector",
-   "consulta": "nueva planta inversion Durango Gomez Palacio Lerdo Torreon 2026 industrial",
-   "fuente_buscada": "prensa_industrial",
-   "resultado": "Ecocab MX inicia construccion 23-jul-2026 (540 MDP, cable de cobre); MLS 261.7 MDD; Megasteel 200 MDD",
-   "util": true
-  },
-  {
-   "n": 17,
-   "familia": "F2_empresa_evento",
-   "consulta": "Hyundai WIA 35 millones dolares Nuevo Leon motores hibridos planta fecha anuncio",
-   "fuente_buscada": "prensa_industrial",
-   "resultado": "10-abr-2026 (178 dias), ampliacion 31350 m2",
-   "util": true
-  },
-  {
-   "n": 18,
-   "familia": "F2_empresa_evento",
-   "consulta": "DH Autoware 167 millones dolares Nuevo Leon planta 440 empleos",
-   "fuente_buscada": "prensa_industrial",
-   "resultado": "13-abr-2026 (175 dias), Apodaca + nueva nave en Santa Catarina",
-   "util": true
-  },
-  {
-   "n": 19,
-   "familia": "F2_empresa_evento",
-   "consulta": "Megasteel Gomez Palacio Durango 200 millones dolares planta acero construccion",
-   "fuente_buscada": "prensa_industrial",
-   "resultado": "SIN FECHA en la nota: 200 MDD, estructuras metalicas, parque de Grupo Simsa",
-   "util": true
-  },
-  {
-   "n": 20,
-   "familia": "D3_vocabulario",
-   "consulta": "\"primera piedra\" NIFCO planta Apodaca Nuevo Leon arranca construccion",
-   "fuente_buscada": "prensa_industrial",
-   "resultado": "primera piedra confirmada en Parque Mirador Industrial, SIN FECHA legible en el resultado",
-   "util": true
-  }
- ],
- "senales": [
-  {
-   "empresa": "NIFCO",
-   "planta": "Chihuahua, Chih.",
-   "estado": "Chihuahua",
-   "anillo": 2,
-   "texto": "inaugura su segunda planta en Chihuahua con inversion de 8.8 millones de dolares; incorpora inyeccion de plastico, ensambles manuales y automatizados, manejo de material, almacenes, oficinas y sistemas auxiliares de apoyo a la produccion",
-   "giro": "autopartes inyeccion de plastico componentes automotriz",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-09-25",
-   "empata_padron": false,
-   "liga": "https://clusterindustrial.com.mx/nifco-invierte-8-8-mdd-en-segunda-planta-en-chihuahua/",
-   "procedencia_fecha": "fecha de publicacion de las notas de La Gaceta, El Bordo y Chihuahua Digital, las tres del 25-sep-2026"
-  },
-  {
-   "empresa": "LEGO",
-   "planta": "Cienega de Flores, N.L.",
-   "estado": "Nuevo Leon",
-   "anillo": 1,
-   "texto": "anuncia inversion de 400 millones de dolares para nueva planta en Nuevo Leon; 62,000 metros cuadrados de infraestructura industrial y tecnologia entre 2026 y 2029",
-   "giro": "juguetes moldeo de plastico inyeccion",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-09-24",
-   "empata_padron": true,
-   "liga": "https://www.jornada.com.mx/noticia/2026/09/24/economia/grupo-lego-anuncia-inversion-por-400-mdd-para-nueva-planta-en-nuevo-leon",
-   "procedencia_fecha": "anuncio en la conferencia presidencial del 24-sep-2026, fechado por La Jornada y El Financiero"
-  },
-  {
-   "empresa": "QSMX",
-   "planta": "Ramos Arizpe, Coah.",
-   "estado": "Coahuila",
-   "anillo": 1,
-   "texto": "inaugura nueva planta y centro de operaciones en el Parque Industrial Ramos Arizpe con inversion superior a 180 millones de pesos; amplia instalaciones para fabricacion de componentes y estructuras metalicas, logistica e inspeccion especializada",
-   "giro": "metalmecanica estructuras metalicas componentes automotriz",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-09-01",
-   "empata_padron": false,
-   "liga": "https://clusterindustrial.com.mx/qsmx-invierte-mas-de-180-mdp-en-su-nueva-planta-de-ramos-arizpe/",
-   "procedencia_fecha": "nota de El Heraldo de Saltillo del 01-sep-2026 sobre el mismo evento de inauguracion"
-  },
-  {
-   "empresa": "Pegatron",
-   "planta": "Ciudad Juarez, Chih.",
-   "estado": "Chihuahua",
-   "anillo": 2,
-   "texto": "invertira 330 millones de dolares en nueva planta y nueva nave industrial en Ciudad Juarez para componentes electronicos de electromovilidad y tecnologia para centros de datos; proyecto 2026-2029 con mil empleos",
-   "giro": "electronica componentes electronicos manufactura avanzada",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-08-20",
-   "empata_padron": false,
-   "liga": "https://diario.mx/juarez/2026/aug/20/celebra-gobernadora-inversion-de-pegatron-para-nueva-nave-industrial-en-juarez-1134292.html",
-   "procedencia_fecha": "fecha en la URL y el encabezado de El Diario de Juarez: 20-ago-2026"
-  },
-  {
-   "empresa": "Waelzholz",
-   "planta": "Ramos Arizpe, Coah.",
-   "estado": "Coahuila",
-   "anillo": 1,
-   "texto": "arranca la construccion de su primera planta en Mexico con inversion de 65 millones de dolares, mas de mil doscientos millones de pesos, en el Parque Industrial Amistad; manufactura avanzada de acero laminado en frio para automotriz, electromovilidad y generacion de energia",
-   "giro": "acero laminacion metalmecanica tratamiento termico",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-08-11",
-   "empata_padron": false,
-   "liga": "https://eldiariodecoahuila.com.mx/2026/08/11/concreta-coahuila-inversion-de-65-millones-de-dolares-para-ramos-arizpe/",
-   "procedencia_fecha": "fecha en la URL de El Diario de Coahuila: 11-ago-2026"
-  },
-  {
-   "empresa": "Inventec",
-   "planta": "Ciudad Juarez, Chih.",
-   "estado": "Chihuahua",
-   "anillo": 2,
-   "texto": "colocan la primera piedra de su expansion con inversion de 450 millones de dolares; construccion de 43,000 metros cuadrados adicionales en su campus, compra de 30 hectareas e instalacion de 45 nuevas lineas de produccion para servidores de alto desempeno",
-   "giro": "electronica servidores manufactura avanzada",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-07-31",
-   "empata_padron": false,
-   "liga": "https://diario.mx/juarez/2026/jul/31/colocan-primera-piedra-en-proyecto-de-expansion-de-inventec-1130871.html",
-   "procedencia_fecha": "fecha en la URL de El Diario de Juarez: 31-jul-2026. Otras notas la ponen el 1-ago; se usa la mas temprana documentada",
-   "ambiguedad": [
-    "dos fuentes fechan la primera piedra el 31-jul y una el 5-ago"
-   ]
-  },
-  {
-   "empresa": "Ecocab MX",
-   "planta": "Gomez Palacio, Dgo.",
-   "estado": "Durango",
-   "anillo": 2,
-   "texto": "inicia construccion de su tercera planta con inversion de 540 millones de pesos en el Parque Industrial SIMSA; nave industrial de 14,000 metros cuadrados en terreno de 25,000 para produccion de cable de cobre libre de oxigeno y arneses automotrices, arranque de operaciones en enero de 2027",
-   "giro": "arneses cableado cable de cobre autopartes",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-07-23",
-   "empata_padron": false,
-   "liga": "https://proyectostorreon.com/2026/07/23/inversion-coreana-ecocab-inicia-construccion-de-planta-en-gomez-palacio/",
-   "procedencia_fecha": "la nota de Proyectos Torreon esta fechada 23-jul-2026 y la ceremonia se anuncio para ese dia a las 10:00 en el Parque SIMSA"
-  },
-  {
-   "empresa": "CFE Nuevo Leon",
-   "planta": "varias, N.L.",
-   "estado": "Nuevo Leon",
-   "anillo": 1,
-   "texto": "invertira 8 mil 900 millones de pesos en Nuevo Leon para construir cuatro subestaciones electricas nuevas y ampliar la capacidad de diez instalaciones mas, con incremento de 140 MVA, mas modernizacion de red",
-   "giro": "transmision y distribucion de energia electrica",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-08-19",
-   "empata_padron": false,
-   "liga": "https://mvsnoticias.com/nuevo-leon/2026/8/19/nuevo-leon-tendra-cuatro-nuevas-subestaciones-electricas-cfe-confirma-inversion-742480.html",
-   "procedencia_fecha": "fecha en la URL de MVS Noticias: 19-ago-2026"
-  },
-  {
-   "empresa": "Yokohama Rubber",
-   "planta": "Saltillo, Coah.",
-   "estado": "Coahuila",
-   "anillo": 1,
-   "texto": "invertira 115 millones de dolares en su segunda planta de llantas OTR en Saltillo para maquinaria minera, agricola y de construccion, con capacidad de 10,650 toneladas anuales; inicio de construccion en el tercer trimestre de 2026 y arranque de operaciones en el segundo trimestre de 2028",
-   "giro": "llantas hule vulcanizado caucho",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-05-21",
-   "empata_padron": false,
-   "liga": "https://clusterindustrial.com.mx/yokohama-invertira-115-mdd-en-nueva-planta-de-llantas-otr-en-saltillo-coahuila/",
-   "procedencia_fecha": "notas de El Heraldo de Saltillo y El Diario de Coahuila fechadas 21-may-2026",
-   "ambiguedad": [
-    "fuera de la ventana de 90 dias: 137 dias. SE INCLUYE MARCADA porque la obra arranca en el 3T-2026, o sea AHORA"
-   ]
-  },
-  {
-   "empresa": "NIFCO",
-   "planta": "Apodaca, N.L.",
-   "estado": "Nuevo Leon",
-   "anillo": 1,
-   "texto": "invertira 85 millones de dolares en nueva planta en Apodaca, segunda del grupo en Nuevo Leon, y coloca la primera piedra en el Parque Mirador Industrial",
-   "giro": "autopartes inyeccion de plastico componentes automotriz",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-04-09",
-   "empata_padron": false,
-   "liga": "https://clusterindustrial.com.mx/nifco-invertira-85-mdd-en-nueva-planta-en-apodaca-y-eleva-apuesta-por-nuevo-leon/",
-   "procedencia_fecha": "anuncio del 9-abr-2026 durante la gira del gobernador por Asia",
-   "ambiguedad": [
-    "fuera de la ventana de 90 dias: 179 dias",
-    "la nota de la PRIMERA PIEDRA no trae fecha legible; si la obra arranco despues, la senal util es mas fresca que esta fecha"
-   ]
-  },
-  {
-   "empresa": "DH Autoware",
-   "planta": "Apodaca y Santa Catarina, N.L.",
-   "estado": "Nuevo Leon",
-   "anillo": 1,
-   "texto": "invertira 167 millones de dolares en Nuevo Leon para tarjetas madre automotrices; ampliacion de su planta en Apodaca de 28 mil metros cuadrados y construccion de una nueva nave en Santa Catarina",
-   "giro": "electronica automotriz tarjetas electronicas",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-04-13",
-   "empata_padron": false,
-   "liga": "https://clusterindustrial.com.mx/nuevo-leon-suma-inversion-de-167-millones-de-dolares-de-dh-autoware-y-proyecta-440-empleos/",
-   "procedencia_fecha": "anuncio del 13-abr-2026 en evento de promocion economica",
-   "ambiguedad": [
-    "fuera de la ventana de 90 dias: 175 dias"
-   ]
-  },
-  {
-   "empresa": "Hyundai WIA",
-   "planta": "Nuevo Leon",
-   "estado": "Nuevo Leon",
-   "anillo": 1,
-   "texto": "invertira 35 millones de dolares en Nuevo Leon para manufactura de motores hibridos, con ampliacion de 31,350 metros cuadrados de nuevo espacio",
-   "giro": "autopartes motores metalmecanica maquinado",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-04-10",
-   "empata_padron": false,
-   "liga": "https://clusterindustrial.com.mx/hyundai-wia-invertira-35-millones-de-dolares-en-nuevo-leon-para-producir-motores-hibridos/",
-   "procedencia_fecha": "anuncio del 10-abr-2026, fechado por ABC Noticias",
-   "ambiguedad": [
-    "fuera de la ventana de 90 dias: 178 dias",
-    "la nota no dice en que municipio"
-   ]
-  },
-  {
-   "empresa": "TDI Manufacturing",
-   "planta": "Cienega de Flores, N.L.",
-   "estado": "Nuevo Leon",
-   "anillo": 1,
-   "texto": "inaugura nueva planta, la tercera en el estado, con inversion de 50 millones de dolares para sistemas de gestion termica de la industria automotriz",
-   "giro": "intercambiadores de calor gestion termica autopartes",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-04-17",
-   "empata_padron": false,
-   "liga": "https://clusterindustrial.com.mx/tdi-manufacturing-mexico-invierte-50-millones-de-dolares-e-inaugura-nueva-planta-en-nuevo-leon/",
-   "procedencia_fecha": "inauguracion del 17-abr-2026 segun MarkLines y Cluster Industrial",
-   "ambiguedad": [
-    "fuera de la ventana de 90 dias: 171 dias",
-    "ya esta inaugurada: la ventana de especificacion de obra ya cerro"
-   ]
-  },
-  {
-   "empresa": "Megasteel",
-   "planta": "Gomez Palacio, Dgo.",
-   "estado": "Durango",
-   "anillo": 2,
-   "texto": "invertira 200 millones de dolares en una planta de estructuras metalicas en el parque industrial de Grupo Simsa, con primera etapa de 50 millones de dolares y renta de dos naves industriales",
-   "giro": "estructuras metalicas acero metalmecanica",
-   "fuente": "prensa_industrial",
-   "fecha": null,
-   "empata_padron": false,
-   "liga": "https://www.elsiglodetorreon.com.mx/noticia/2026/la-laguna-de-durango-atraera-mas-de-490-millones-de-dolares-en-nuevas-inversiones.html",
-   "procedencia_fecha": "NO HAY FECHA: la nota de El Siglo de Torreon la enlista dentro de un recuento regional sin fechar el anuncio de Megasteel",
-   "ambiguedad": [
-    "sin fecha documentada: va al techo minimo de frescura por un dato que falta, no por una senal debil"
-   ]
-  }
- ],
- "resumen": {
-  "senales": 14,
-  "pasan": 9,
-  "guardan": 3,
-  "archivan": 2,
-  "en_ventana_de_90_dias": 8,
-  "sin_fecha": 1,
-  "descubrimiento_puro": 13,
-  "expansion": 1
- },
- "cruce": {
-  "como_se_hizo": "res.partner y crm.lead por NOMBRE -- no solo por partner_id, por el punto ciego del intermediario de #361--; buzon por remitente de dominio con control positivo; catalogo de 154 proyectos; piloto del motor 3; planilla de la corrida humana",
-  "expansion": [
-   "LEGO / Cienega de Flores: partner en Odoo (duplicado 2384/2385) y cuenta del piloto"
+  "senales": [
+    {
+      "empresa": "NIFCO",
+      "planta": "Chihuahua, Chih.",
+      "estado": "Chihuahua",
+      "anillo": 2,
+      "texto": "inaugura su segunda planta en Chihuahua con inversion de 8.8 millones de dolares; incorpora inyeccion de plastico, ensambles manuales y automatizados, manejo de material, almacenes, oficinas y sistemas auxiliares de apoyo a la produccion",
+      "giro": "autopartes inyeccion de plastico componentes automotriz",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-09-25",
+      "empata_padron": false,
+      "liga": "https://clusterindustrial.com.mx/nifco-invierte-8-8-mdd-en-segunda-planta-en-chihuahua/",
+      "procedencia_fecha": "fecha de publicacion de las notas de La Gaceta, El Bordo y Chihuahua Digital, las tres del 25-sep-2026"
+    },
+    {
+      "empresa": "LEGO",
+      "planta": "Cienega de Flores, N.L.",
+      "estado": "Nuevo Leon",
+      "anillo": 1,
+      "texto": "anuncia inversion de 400 millones de dolares para nueva planta en Nuevo Leon; 62,000 metros cuadrados de infraestructura industrial y tecnologia entre 2026 y 2029",
+      "giro": "juguetes moldeo de plastico inyeccion",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-09-24",
+      "empata_padron": true,
+      "liga": "https://www.jornada.com.mx/noticia/2026/09/24/economia/grupo-lego-anuncia-inversion-por-400-mdd-para-nueva-planta-en-nuevo-leon",
+      "procedencia_fecha": "anuncio en la conferencia presidencial del 24-sep-2026, fechado por La Jornada y El Financiero"
+    },
+    {
+      "empresa": "QSMX",
+      "planta": "Ramos Arizpe, Coah.",
+      "estado": "Coahuila",
+      "anillo": 1,
+      "texto": "inaugura nueva planta y centro de operaciones en el Parque Industrial Ramos Arizpe con inversion superior a 180 millones de pesos; amplia instalaciones para fabricacion de componentes y estructuras metalicas, logistica e inspeccion especializada",
+      "giro": "metalmecanica estructuras metalicas componentes automotriz",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-09-01",
+      "empata_padron": false,
+      "liga": "https://clusterindustrial.com.mx/qsmx-invierte-mas-de-180-mdp-en-su-nueva-planta-de-ramos-arizpe/",
+      "procedencia_fecha": "nota de El Heraldo de Saltillo del 01-sep-2026 sobre el mismo evento de inauguracion"
+    },
+    {
+      "empresa": "Pegatron",
+      "planta": "Ciudad Juarez, Chih.",
+      "estado": "Chihuahua",
+      "anillo": 2,
+      "texto": "invertira 330 millones de dolares en nueva planta y nueva nave industrial en Ciudad Juarez para componentes electronicos de electromovilidad y tecnologia para centros de datos; proyecto 2026-2029 con mil empleos",
+      "giro": "electronica componentes electronicos manufactura avanzada",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-08-20",
+      "empata_padron": false,
+      "liga": "https://diario.mx/juarez/2026/aug/20/celebra-gobernadora-inversion-de-pegatron-para-nueva-nave-industrial-en-juarez-1134292.html",
+      "procedencia_fecha": "fecha en la URL y el encabezado de El Diario de Juarez: 20-ago-2026"
+    },
+    {
+      "empresa": "Waelzholz",
+      "planta": "Ramos Arizpe, Coah.",
+      "estado": "Coahuila",
+      "anillo": 1,
+      "texto": "arranca la construccion de su primera planta en Mexico con inversion de 65 millones de dolares, mas de mil doscientos millones de pesos, en el Parque Industrial Amistad; manufactura avanzada de acero laminado en frio para automotriz, electromovilidad y generacion de energia",
+      "giro": "acero laminacion metalmecanica tratamiento termico",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-08-11",
+      "empata_padron": false,
+      "liga": "https://eldiariodecoahuila.com.mx/2026/08/11/concreta-coahuila-inversion-de-65-millones-de-dolares-para-ramos-arizpe/",
+      "procedencia_fecha": "fecha en la URL de El Diario de Coahuila: 11-ago-2026"
+    },
+    {
+      "empresa": "Inventec",
+      "planta": "Ciudad Juarez, Chih.",
+      "estado": "Chihuahua",
+      "anillo": 2,
+      "texto": "colocan la primera piedra de su expansion con inversion de 450 millones de dolares; construccion de 43,000 metros cuadrados adicionales en su campus, compra de 30 hectareas e instalacion de 45 nuevas lineas de produccion para servidores de alto desempeno",
+      "giro": "electronica servidores manufactura avanzada",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-07-31",
+      "empata_padron": false,
+      "liga": "https://diario.mx/juarez/2026/jul/31/colocan-primera-piedra-en-proyecto-de-expansion-de-inventec-1130871.html",
+      "procedencia_fecha": "fecha en la URL de El Diario de Juarez: 31-jul-2026. Otras notas la ponen el 1-ago; se usa la mas temprana documentada",
+      "ambiguedad": [
+        "dos fuentes fechan la primera piedra el 31-jul y una el 5-ago"
+      ]
+    },
+    {
+      "empresa": "Ecocab MX",
+      "planta": "Gomez Palacio, Dgo.",
+      "estado": "Durango",
+      "anillo": 2,
+      "texto": "inicia construccion de su tercera planta con inversion de 540 millones de pesos en el Parque Industrial SIMSA; nave industrial de 14,000 metros cuadrados en terreno de 25,000 para produccion de cable de cobre libre de oxigeno y arneses automotrices, arranque de operaciones en enero de 2027",
+      "giro": "arneses cableado cable de cobre autopartes",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-07-23",
+      "empata_padron": false,
+      "liga": "https://proyectostorreon.com/2026/07/23/inversion-coreana-ecocab-inicia-construccion-de-planta-en-gomez-palacio/",
+      "procedencia_fecha": "la nota de Proyectos Torreon esta fechada 23-jul-2026 y la ceremonia se anuncio para ese dia a las 10:00 en el Parque SIMSA"
+    },
+    {
+      "empresa": "CFE Nuevo Leon",
+      "planta": "varias, N.L.",
+      "estado": "Nuevo Leon",
+      "anillo": 1,
+      "texto": "invertira 8 mil 900 millones de pesos en Nuevo Leon para construir cuatro subestaciones electricas nuevas y ampliar la capacidad de diez instalaciones mas, con incremento de 140 MVA, mas modernizacion de red",
+      "giro": "transmision y distribucion de energia electrica",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-08-19",
+      "empata_padron": false,
+      "liga": "https://mvsnoticias.com/nuevo-leon/2026/8/19/nuevo-leon-tendra-cuatro-nuevas-subestaciones-electricas-cfe-confirma-inversion-742480.html",
+      "procedencia_fecha": "fecha en la URL de MVS Noticias: 19-ago-2026"
+    },
+    {
+      "empresa": "Yokohama Rubber",
+      "planta": "Saltillo, Coah.",
+      "estado": "Coahuila",
+      "anillo": 1,
+      "texto": "invertira 115 millones de dolares en su segunda planta de llantas OTR en Saltillo para maquinaria minera, agricola y de construccion, con capacidad de 10,650 toneladas anuales; inicio de construccion en el tercer trimestre de 2026 y arranque de operaciones en el segundo trimestre de 2028",
+      "giro": "llantas hule vulcanizado caucho",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-05-21",
+      "empata_padron": false,
+      "liga": "https://clusterindustrial.com.mx/yokohama-invertira-115-mdd-en-nueva-planta-de-llantas-otr-en-saltillo-coahuila/",
+      "procedencia_fecha": "notas de El Heraldo de Saltillo y El Diario de Coahuila fechadas 21-may-2026",
+      "ambiguedad": [
+        "fuera de la ventana de 90 dias: 137 dias. SE INCLUYE MARCADA porque la obra arranca en el 3T-2026, o sea AHORA"
+      ]
+    },
+    {
+      "empresa": "NIFCO",
+      "planta": "Apodaca, N.L.",
+      "estado": "Nuevo Leon",
+      "anillo": 1,
+      "texto": "invertira 85 millones de dolares en nueva planta en Apodaca, segunda del grupo en Nuevo Leon, y coloca la primera piedra en el Parque Mirador Industrial",
+      "giro": "autopartes inyeccion de plastico componentes automotriz",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-04-09",
+      "empata_padron": false,
+      "liga": "https://clusterindustrial.com.mx/nifco-invertira-85-mdd-en-nueva-planta-en-apodaca-y-eleva-apuesta-por-nuevo-leon/",
+      "procedencia_fecha": "anuncio del 9-abr-2026 durante la gira del gobernador por Asia",
+      "ambiguedad": [
+        "fuera de la ventana de 90 dias: 179 dias",
+        "la nota de la PRIMERA PIEDRA no trae fecha legible; si la obra arranco despues, la senal util es mas fresca que esta fecha"
+      ]
+    },
+    {
+      "empresa": "DH Autoware",
+      "planta": "Apodaca y Santa Catarina, N.L.",
+      "estado": "Nuevo Leon",
+      "anillo": 1,
+      "texto": "invertira 167 millones de dolares en Nuevo Leon para tarjetas madre automotrices; ampliacion de su planta en Apodaca de 28 mil metros cuadrados y construccion de una nueva nave en Santa Catarina",
+      "giro": "electronica automotriz tarjetas electronicas",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-04-13",
+      "empata_padron": false,
+      "liga": "https://clusterindustrial.com.mx/nuevo-leon-suma-inversion-de-167-millones-de-dolares-de-dh-autoware-y-proyecta-440-empleos/",
+      "procedencia_fecha": "anuncio del 13-abr-2026 en evento de promocion economica",
+      "ambiguedad": [
+        "fuera de la ventana de 90 dias: 175 dias"
+      ]
+    },
+    {
+      "empresa": "Hyundai WIA",
+      "planta": "Nuevo Leon",
+      "estado": "Nuevo Leon",
+      "anillo": 1,
+      "texto": "invertira 35 millones de dolares en Nuevo Leon para manufactura de motores hibridos, con ampliacion de 31,350 metros cuadrados de nuevo espacio",
+      "giro": "autopartes motores metalmecanica maquinado",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-04-10",
+      "empata_padron": false,
+      "liga": "https://clusterindustrial.com.mx/hyundai-wia-invertira-35-millones-de-dolares-en-nuevo-leon-para-producir-motores-hibridos/",
+      "procedencia_fecha": "anuncio del 10-abr-2026, fechado por ABC Noticias",
+      "ambiguedad": [
+        "fuera de la ventana de 90 dias: 178 dias",
+        "la nota no dice en que municipio"
+      ]
+    },
+    {
+      "empresa": "TDI Manufacturing",
+      "planta": "Cienega de Flores, N.L.",
+      "estado": "Nuevo Leon",
+      "anillo": 1,
+      "texto": "inaugura nueva planta, la tercera en el estado, con inversion de 50 millones de dolares para sistemas de gestion termica de la industria automotriz",
+      "giro": "intercambiadores de calor gestion termica autopartes",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-04-17",
+      "empata_padron": false,
+      "liga": "https://clusterindustrial.com.mx/tdi-manufacturing-mexico-invierte-50-millones-de-dolares-e-inaugura-nueva-planta-en-nuevo-leon/",
+      "procedencia_fecha": "inauguracion del 17-abr-2026 segun MarkLines y Cluster Industrial",
+      "ambiguedad": [
+        "fuera de la ventana de 90 dias: 171 dias",
+        "ya esta inaugurada: la ventana de especificacion de obra ya cerro"
+      ]
+    },
+    {
+      "empresa": "Megasteel",
+      "planta": "Gomez Palacio, Dgo.",
+      "estado": "Durango",
+      "anillo": 2,
+      "texto": "invertira 200 millones de dolares en una planta de estructuras metalicas en el parque industrial de Grupo Simsa, con primera etapa de 50 millones de dolares y renta de dos naves industriales",
+      "giro": "estructuras metalicas acero metalmecanica",
+      "fuente": "prensa_industrial",
+      "fecha": null,
+      "empata_padron": false,
+      "liga": "https://www.elsiglodetorreon.com.mx/noticia/2026/la-laguna-de-durango-atraera-mas-de-490-millones-de-dolares-en-nuevas-inversiones.html",
+      "procedencia_fecha": "NO HAY FECHA: la nota de El Siglo de Torreon la enlista dentro de un recuento regional sin fechar el anuncio de Megasteel",
+      "ambiguedad": [
+        "sin fecha documentada: va al techo minimo de frescura por un dato que falta, no por una senal debil"
+      ]
+    }
   ],
-  "hallazgo_del_buzon": "la senal de Waelzholz YA estaba en el buzon de FTS el 19-ago-2026, ocho dias despues de la nota, dentro de un boletin de Substack sin leer. No es un hilo de cliente: sigue siendo descubrimiento puro, pero es una fuente que el radar no usa",
-  "footprint_de_geografia": "tres proyectos GANADOS en Ramos Arizpe cuelgan del partner de un intermediario (Nalco de Mexico, oct-2024). No son ninguna de estas cuentas, pero FTS ya trabajo en ese municipio"
- },
- "evaluadas": [
-  {
-   "empresa": "LEGO",
-   "planta": "Cienega de Flores, N.L.",
-   "estado": "Nuevo Leon",
-   "anillo": 1,
-   "giro": "juguetes moldeo de plastico inyeccion",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-09-24",
-   "empata_padron": true,
-   "liga": "https://www.jornada.com.mx/noticia/2026/09/24/economia/grupo-lego-anuncia-inversion-por-400-mdd-para-nueva-planta-en-nuevo-leon",
-   "procedencia_fecha": "anuncio en la conferencia presidencial del 24-sep-2026, fechado por La Jornada y El Financiero",
-   "eval": {
-    "puntaje": 105.4,
-    "veredicto": "pasa",
-    "desglose": {
-     "match_catalogo": 64.4,
-     "proceso": 10.0,
-     "tipo_de_obra": 44.4,
-     "capacidad": 10,
-     "frescura": 25.0,
-     "fuerza_de_fuente": 8.0,
-     "padron": 8
-    },
-    "por_que": "proceso 'inyeccion' reconocido (por 'inyeccion'), sin proyectos en el catalogo todavia · 'nueva planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 400 MDD (~400 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 11 dias · fuente 'prensa_industrial' · padron: empata (+8)",
-    "tipos_que_nombra": [
-     "obra_nueva_integral"
-    ],
-    "familia": "obra_nueva_integral",
-    "familias_de_la_obra": [
-     "automatizacion",
-     "electrico",
-     "estructura",
-     "manejo",
-     "servicio",
-     "termico_fluidos"
-    ],
-    "ambiguedad": [],
-    "umbrales": {
-     "pasa": 60,
-     "guarda": 40
-    }
-   },
-   "tipo_de_senal": "obra_nueva",
-   "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
-   "dias": 11,
-   "texto": "anuncia inversion de 400 millones de dolares para nueva planta en Nuevo Leon; 62,000 metros cuadrados de infraestructura industrial y tecnologia entre 2026 y 2029"
+  "resumen": {
+    "senales": 14,
+    "pasan": 9,
+    "guardan": 3,
+    "archivan": 2,
+    "en_ventana_de_90_dias": 8,
+    "sin_fecha": 1,
+    "descubrimiento_puro": 13,
+    "expansion": 1
   },
-  {
-   "empresa": "NIFCO",
-   "planta": "Chihuahua, Chih.",
-   "estado": "Chihuahua",
-   "anillo": 2,
-   "giro": "autopartes inyeccion de plastico componentes automotriz",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-09-25",
-   "empata_padron": false,
-   "liga": "https://clusterindustrial.com.mx/nifco-invierte-8-8-mdd-en-segunda-planta-en-chihuahua/",
-   "procedencia_fecha": "fecha de publicacion de las notas de La Gaceta, El Bordo y Chihuahua Digital, las tres del 25-sep-2026",
-   "eval": {
-    "puntaje": 97.4,
-    "veredicto": "pasa",
-    "desglose": {
-     "match_catalogo": 64.4,
-     "proceso": 10.0,
-     "tipo_de_obra": 44.4,
-     "capacidad": 10,
-     "frescura": 25.0,
-     "fuerza_de_fuente": 8.0,
-     "padron": 0
-    },
-    "por_que": "proceso 'inyeccion' reconocido (por 'inyeccion'), sin proyectos en el catalogo todavia · 'segunda planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 8.8 MDD (~9 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 10 dias · fuente 'prensa_industrial' · padron: no empata (0)",
-    "tipos_que_nombra": [
-     "obra_nueva_integral"
+  "cruce": {
+    "como_se_hizo": "res.partner y crm.lead por NOMBRE -- no solo por partner_id, por el punto ciego del intermediario de #361--; buzon por remitente de dominio con control positivo; catalogo de 154 proyectos; piloto del motor 3; planilla de la corrida humana",
+    "expansion": [
+      "LEGO / Cienega de Flores: partner en Odoo (duplicado 2384/2385) y cuenta del piloto"
     ],
-    "familia": "obra_nueva_integral",
-    "familias_de_la_obra": [
-     "automatizacion",
-     "electrico",
-     "estructura",
-     "manejo",
-     "servicio",
-     "termico_fluidos"
-    ],
-    "ambiguedad": [
-     "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
-    ],
-    "umbrales": {
-     "pasa": 60,
-     "guarda": 40
-    }
-   },
-   "tipo_de_senal": "obra_nueva",
-   "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
-   "dias": 10,
-   "texto": "inaugura su segunda planta en Chihuahua con inversion de 8.8 millones de dolares; incorpora inyeccion de plastico, ensambles manuales y automatizados, manejo de material, almacenes, oficinas y sistemas auxiliares de apoyo a la produccion"
+    "hallazgo_del_buzon": "la senal de Waelzholz YA estaba en el buzon de FTS el 19-ago-2026, ocho dias despues de la nota, dentro de un boletin de Substack sin leer. No es un hilo de cliente: sigue siendo descubrimiento puro, pero es una fuente que el radar no usa",
+    "footprint_de_geografia": "tres proyectos GANADOS en Ramos Arizpe cuelgan del partner de un intermediario (Nalco de Mexico, oct-2024). No son ninguna de estas cuentas, pero FTS ya trabajo en ese municipio"
   },
-  {
-   "empresa": "QSMX",
-   "planta": "Ramos Arizpe, Coah.",
-   "estado": "Coahuila",
-   "anillo": 1,
-   "giro": "metalmecanica estructuras metalicas componentes automotriz",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-09-01",
-   "empata_padron": false,
-   "liga": "https://clusterindustrial.com.mx/qsmx-invierte-mas-de-180-mdp-en-su-nueva-planta-de-ramos-arizpe/",
-   "procedencia_fecha": "nota de El Heraldo de Saltillo del 01-sep-2026 sobre el mismo evento de inauguracion",
-   "eval": {
-    "puntaje": 93.1,
-    "veredicto": "pasa",
-    "desglose": {
-     "match_catalogo": 67.1,
-     "proceso": 12.7,
-     "tipo_de_obra": 44.4,
-     "capacidad": 10,
-     "frescura": 18.0,
-     "fuerza_de_fuente": 8.0,
-     "padron": 0
+  "evaluadas": [
+    {
+      "empresa": "LEGO",
+      "planta": "Cienega de Flores, N.L.",
+      "estado": "Nuevo Leon",
+      "anillo": 1,
+      "giro": "juguetes moldeo de plastico inyeccion",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-09-24",
+      "empata_padron": true,
+      "liga": "https://www.jornada.com.mx/noticia/2026/09/24/economia/grupo-lego-anuncia-inversion-por-400-mdd-para-nueva-planta-en-nuevo-leon",
+      "procedencia_fecha": "anuncio en la conferencia presidencial del 24-sep-2026, fechado por La Jornada y El Financiero",
+      "eval": {
+        "puntaje": 105.4,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 64.4,
+          "proceso": 10.0,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 25.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 8
+        },
+        "por_que": "proceso 'inyeccion' reconocido (por 'inyeccion'), sin proyectos en el catalogo todavia · 'nueva planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 400 MDD (~400 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 11 dias · fuente 'prensa_industrial' · padron: empata (+8)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "tipo_de_senal": "obra_nueva",
+      "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
+      "dias": 11,
+      "texto": "anuncia inversion de 400 millones de dolares para nueva planta en Nuevo Leon; 62,000 metros cuadrados de infraestructura industrial y tecnologia entre 2026 y 2029"
     },
-    "por_que": "proceso 'metalmecanica' con 15 proyecto(s) en el catalogo (tablero_electrico, electroducto_busway, transformador) · 'nueva planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 180 MDP (~10 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 34 dias · fuente 'prensa_industrial' · padron: no empata (0)",
-    "tipos_que_nombra": [
-     "obra_nueva_integral"
-    ],
-    "familia": "obra_nueva_integral",
-    "familias_de_la_obra": [
-     "automatizacion",
-     "electrico",
-     "estructura",
-     "manejo",
-     "servicio",
-     "termico_fluidos"
-    ],
-    "ambiguedad": [
-     "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
-    ],
-    "umbrales": {
-     "pasa": 60,
-     "guarda": 40
-    }
-   },
-   "tipo_de_senal": "obra_nueva",
-   "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
-   "dias": 34,
-   "texto": "inaugura nueva planta y centro de operaciones en el Parque Industrial Ramos Arizpe con inversion superior a 180 millones de pesos; amplia instalaciones para fabricacion de componentes y estructuras metalicas, logistica e inspeccion especializada"
-  },
-  {
-   "empresa": "Ecocab MX",
-   "planta": "Gomez Palacio, Dgo.",
-   "estado": "Durango",
-   "anillo": 2,
-   "giro": "arneses cableado cable de cobre autopartes",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-07-23",
-   "empata_padron": false,
-   "liga": "https://proyectostorreon.com/2026/07/23/inversion-coreana-ecocab-inicia-construccion-de-planta-en-gomez-palacio/",
-   "procedencia_fecha": "la nota de Proyectos Torreon esta fechada 23-jul-2026 y la ceremonia se anuncio para ese dia a las 10:00 en el Parque SIMSA",
-   "eval": {
-    "puntaje": 90.9,
-    "veredicto": "pasa",
-    "desglose": {
-     "match_catalogo": 64.9,
-     "proceso": 10.5,
-     "tipo_de_obra": 44.4,
-     "capacidad": 10,
-     "frescura": 18.0,
-     "fuerza_de_fuente": 8.0,
-     "padron": 0
+    {
+      "empresa": "NIFCO",
+      "planta": "Chihuahua, Chih.",
+      "estado": "Chihuahua",
+      "anillo": 2,
+      "giro": "autopartes inyeccion de plastico componentes automotriz",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-09-25",
+      "empata_padron": false,
+      "liga": "https://clusterindustrial.com.mx/nifco-invierte-8-8-mdd-en-segunda-planta-en-chihuahua/",
+      "procedencia_fecha": "fecha de publicacion de las notas de La Gaceta, El Bordo y Chihuahua Digital, las tres del 25-sep-2026",
+      "eval": {
+        "puntaje": 97.4,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 64.4,
+          "proceso": 10.0,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 25.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "proceso 'inyeccion' reconocido (por 'inyeccion'), sin proyectos en el catalogo todavia · 'segunda planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 8.8 MDD (~9 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 10 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "tipo_de_senal": "obra_nueva",
+      "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
+      "dias": 10,
+      "texto": "inaugura su segunda planta en Chihuahua con inversion de 8.8 millones de dolares; incorpora inyeccion de plastico, ensambles manuales y automatizados, manejo de material, almacenes, oficinas y sistemas auxiliares de apoyo a la produccion"
     },
-    "por_que": "proceso 'arneses_cableado' con 3 proyecto(s) en el catalogo (estructura_metalica, tuberia_y_montaje) · 'tercera planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 540 MDP (~29 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 74 dias · fuente 'prensa_industrial' · padron: no empata (0)",
-    "tipos_que_nombra": [
-     "obra_nueva_integral",
-     "trabajos_civiles"
-    ],
-    "familia": "obra_nueva_integral",
-    "familias_de_la_obra": [
-     "automatizacion",
-     "electrico",
-     "estructura",
-     "manejo",
-     "servicio",
-     "termico_fluidos"
-    ],
-    "ambiguedad": [
-     "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
-    ],
-    "umbrales": {
-     "pasa": 60,
-     "guarda": 40
-    }
-   },
-   "tipo_de_senal": "obra_nueva",
-   "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
-   "dias": 74,
-   "texto": "inicia construccion de su tercera planta con inversion de 540 millones de pesos en el Parque Industrial SIMSA; nave industrial de 14,000 metros cuadrados en terreno de 25,000 para produccion de cable de cobre libre de oxigeno y arneses automotrices, arranque de operaciones en enero de 2027"
-  },
-  {
-   "empresa": "NIFCO",
-   "planta": "Apodaca, N.L.",
-   "estado": "Nuevo Leon",
-   "anillo": 1,
-   "giro": "autopartes inyeccion de plastico componentes automotriz",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-04-09",
-   "empata_padron": false,
-   "liga": "https://clusterindustrial.com.mx/nifco-invertira-85-mdd-en-nueva-planta-en-apodaca-y-eleva-apuesta-por-nuevo-leon/",
-   "procedencia_fecha": "anuncio del 9-abr-2026 durante la gira del gobernador por Asia",
-   "ambiguedad": [
-    "fuera de la ventana de 90 dias: 179 dias",
-    "la nota de la PRIMERA PIEDRA no trae fecha legible; si la obra arranco despues, la senal util es mas fresca que esta fecha"
-   ],
-   "eval": {
-    "puntaje": 82.4,
-    "veredicto": "pasa",
-    "desglose": {
-     "match_catalogo": 64.4,
-     "proceso": 10.0,
-     "tipo_de_obra": 44.4,
-     "capacidad": 10,
-     "frescura": 10.0,
-     "fuerza_de_fuente": 8.0,
-     "padron": 0
+    {
+      "empresa": "QSMX",
+      "planta": "Ramos Arizpe, Coah.",
+      "estado": "Coahuila",
+      "anillo": 1,
+      "giro": "metalmecanica estructuras metalicas componentes automotriz",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-09-01",
+      "empata_padron": false,
+      "liga": "https://clusterindustrial.com.mx/qsmx-invierte-mas-de-180-mdp-en-su-nueva-planta-de-ramos-arizpe/",
+      "procedencia_fecha": "nota de El Heraldo de Saltillo del 01-sep-2026 sobre el mismo evento de inauguracion",
+      "eval": {
+        "puntaje": 93.1,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 67.1,
+          "proceso": 12.7,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 18.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "proceso 'metalmecanica' con 15 proyecto(s) en el catalogo (tablero_electrico, electroducto_busway, transformador) · 'nueva planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 180 MDP (~10 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 34 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "tipo_de_senal": "obra_nueva",
+      "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
+      "dias": 34,
+      "texto": "inaugura nueva planta y centro de operaciones en el Parque Industrial Ramos Arizpe con inversion superior a 180 millones de pesos; amplia instalaciones para fabricacion de componentes y estructuras metalicas, logistica e inspeccion especializada"
     },
-    "por_que": "proceso 'inyeccion' reconocido (por 'inyeccion'), sin proyectos en el catalogo todavia · 'nueva planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 85 MDD (~85 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 179 dias · fuente 'prensa_industrial' · padron: no empata (0)",
-    "tipos_que_nombra": [
-     "obra_nueva_integral"
-    ],
-    "familia": "obra_nueva_integral",
-    "familias_de_la_obra": [
-     "automatizacion",
-     "electrico",
-     "estructura",
-     "manejo",
-     "servicio",
-     "termico_fluidos"
-    ],
-    "ambiguedad": [
-     "fuera de la ventana de 90 dias: 179 dias",
-     "la nota de la PRIMERA PIEDRA no trae fecha legible; si la obra arranco despues, la senal util es mas fresca que esta fecha",
-     "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
-    ],
-    "umbrales": {
-     "pasa": 60,
-     "guarda": 40
-    }
-   },
-   "tipo_de_senal": "obra_nueva",
-   "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
-   "dias": 179,
-   "texto": "invertira 85 millones de dolares en nueva planta en Apodaca, segunda del grupo en Nuevo Leon, y coloca la primera piedra en el Parque Mirador Industrial"
-  },
-  {
-   "empresa": "Pegatron",
-   "planta": "Ciudad Juarez, Chih.",
-   "estado": "Chihuahua",
-   "anillo": 2,
-   "giro": "electronica componentes electronicos manufactura avanzada",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-08-20",
-   "empata_padron": false,
-   "liga": "https://diario.mx/juarez/2026/aug/20/celebra-gobernadora-inversion-de-pegatron-para-nueva-nave-industrial-en-juarez-1134292.html",
-   "procedencia_fecha": "fecha en la URL y el encabezado de El Diario de Juarez: 20-ago-2026",
-   "eval": {
-    "puntaje": 80.4,
-    "veredicto": "pasa",
-    "desglose": {
-     "match_catalogo": 54.4,
-     "proceso": 0.0,
-     "tipo_de_obra": 44.4,
-     "capacidad": 10,
-     "frescura": 18.0,
-     "fuerza_de_fuente": 8.0,
-     "padron": 0
+    {
+      "empresa": "Ecocab MX",
+      "planta": "Gomez Palacio, Dgo.",
+      "estado": "Durango",
+      "anillo": 2,
+      "giro": "arneses cableado cable de cobre autopartes",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-07-23",
+      "empata_padron": false,
+      "liga": "https://proyectostorreon.com/2026/07/23/inversion-coreana-ecocab-inicia-construccion-de-planta-en-gomez-palacio/",
+      "procedencia_fecha": "la nota de Proyectos Torreon esta fechada 23-jul-2026 y la ceremonia se anuncio para ese dia a las 10:00 en el Parque SIMSA",
+      "eval": {
+        "puntaje": 90.9,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 64.9,
+          "proceso": 10.5,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 18.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "proceso 'arneses_cableado' con 3 proyecto(s) en el catalogo (estructura_metalica, tuberia_y_montaje) · 'tercera planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 540 MDP (~29 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 74 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral",
+          "trabajos_civiles"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "tipo_de_senal": "obra_nueva",
+      "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
+      "dias": 74,
+      "texto": "inicia construccion de su tercera planta con inversion de 540 millones de pesos en el Parque Industrial SIMSA; nave industrial de 14,000 metros cuadrados en terreno de 25,000 para produccion de cable de cobre libre de oxigeno y arneses automotrices, arranque de operaciones en enero de 2027"
     },
-    "por_que": "ningun proceso reconocido · 'nueva planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 330 MDD (~330 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 46 dias · fuente 'prensa_industrial' · padron: no empata (0)",
-    "tipos_que_nombra": [
-     "obra_nueva_integral",
-     "trabajos_civiles"
-    ],
-    "familia": "obra_nueva_integral",
-    "familias_de_la_obra": [
-     "automatizacion",
-     "electrico",
-     "estructura",
-     "manejo",
-     "servicio",
-     "termico_fluidos"
-    ],
-    "ambiguedad": [
-     "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
-    ],
-    "umbrales": {
-     "pasa": 60,
-     "guarda": 40
-    }
-   },
-   "tipo_de_senal": "obra_nueva",
-   "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
-   "dias": 46,
-   "texto": "invertira 330 millones de dolares en nueva planta y nueva nave industrial en Ciudad Juarez para componentes electronicos de electromovilidad y tecnologia para centros de datos; proyecto 2026-2029 con mil empleos"
-  },
-  {
-   "empresa": "Yokohama Rubber",
-   "planta": "Saltillo, Coah.",
-   "estado": "Coahuila",
-   "anillo": 1,
-   "giro": "llantas hule vulcanizado caucho",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-05-21",
-   "empata_padron": false,
-   "liga": "https://clusterindustrial.com.mx/yokohama-invertira-115-mdd-en-nueva-planta-de-llantas-otr-en-saltillo-coahuila/",
-   "procedencia_fecha": "notas de El Heraldo de Saltillo y El Diario de Coahuila fechadas 21-may-2026",
-   "ambiguedad": [
-    "fuera de la ventana de 90 dias: 137 dias. SE INCLUYE MARCADA porque la obra arranca en el 3T-2026, o sea AHORA"
-   ],
-   "eval": {
-    "puntaje": 72.4,
-    "veredicto": "pasa",
-    "desglose": {
-     "match_catalogo": 54.4,
-     "proceso": 0.0,
-     "tipo_de_obra": 44.4,
-     "capacidad": 10,
-     "frescura": 10.0,
-     "fuerza_de_fuente": 8.0,
-     "padron": 0
+    {
+      "empresa": "NIFCO",
+      "planta": "Apodaca, N.L.",
+      "estado": "Nuevo Leon",
+      "anillo": 1,
+      "giro": "autopartes inyeccion de plastico componentes automotriz",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-04-09",
+      "empata_padron": false,
+      "liga": "https://clusterindustrial.com.mx/nifco-invertira-85-mdd-en-nueva-planta-en-apodaca-y-eleva-apuesta-por-nuevo-leon/",
+      "procedencia_fecha": "anuncio del 9-abr-2026 durante la gira del gobernador por Asia",
+      "ambiguedad": [
+        "fuera de la ventana de 90 dias: 179 dias",
+        "la nota de la PRIMERA PIEDRA no trae fecha legible; si la obra arranco despues, la senal util es mas fresca que esta fecha"
+      ],
+      "eval": {
+        "puntaje": 82.4,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 64.4,
+          "proceso": 10.0,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 10.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "proceso 'inyeccion' reconocido (por 'inyeccion'), sin proyectos en el catalogo todavia · 'nueva planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 85 MDD (~85 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 179 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "fuera de la ventana de 90 dias: 179 dias",
+          "la nota de la PRIMERA PIEDRA no trae fecha legible; si la obra arranco despues, la senal util es mas fresca que esta fecha",
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "tipo_de_senal": "obra_nueva",
+      "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
+      "dias": 179,
+      "texto": "invertira 85 millones de dolares en nueva planta en Apodaca, segunda del grupo en Nuevo Leon, y coloca la primera piedra en el Parque Mirador Industrial"
     },
-    "por_que": "ningun proceso reconocido · 'segunda planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 115 MDD (~115 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 137 dias · fuente 'prensa_industrial' · padron: no empata (0)",
-    "tipos_que_nombra": [
-     "obra_nueva_integral"
-    ],
-    "familia": "obra_nueva_integral",
-    "familias_de_la_obra": [
-     "automatizacion",
-     "electrico",
-     "estructura",
-     "manejo",
-     "servicio",
-     "termico_fluidos"
-    ],
-    "ambiguedad": [
-     "fuera de la ventana de 90 dias: 137 dias. SE INCLUYE MARCADA porque la obra arranca en el 3T-2026, o sea AHORA",
-     "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
-    ],
-    "umbrales": {
-     "pasa": 60,
-     "guarda": 40
-    }
-   },
-   "tipo_de_senal": "obra_nueva",
-   "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
-   "dias": 137,
-   "texto": "invertira 115 millones de dolares en su segunda planta de llantas OTR en Saltillo para maquinaria minera, agricola y de construccion, con capacidad de 10,650 toneladas anuales; inicio de construccion en el tercer trimestre de 2026 y arranque de operaciones en el segundo trimestre de 2028"
-  },
-  {
-   "empresa": "DH Autoware",
-   "planta": "Apodaca y Santa Catarina, N.L.",
-   "estado": "Nuevo Leon",
-   "anillo": 1,
-   "giro": "electronica automotriz tarjetas electronicas",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-04-13",
-   "empata_padron": false,
-   "liga": "https://clusterindustrial.com.mx/nuevo-leon-suma-inversion-de-167-millones-de-dolares-de-dh-autoware-y-proyecta-440-empleos/",
-   "procedencia_fecha": "anuncio del 13-abr-2026 en evento de promocion economica",
-   "ambiguedad": [
-    "fuera de la ventana de 90 dias: 175 dias"
-   ],
-   "eval": {
-    "puntaje": 72.4,
-    "veredicto": "pasa",
-    "desglose": {
-     "match_catalogo": 54.4,
-     "proceso": 0.0,
-     "tipo_de_obra": 44.4,
-     "capacidad": 10,
-     "frescura": 10.0,
-     "fuerza_de_fuente": 8.0,
-     "padron": 0
+    {
+      "empresa": "Pegatron",
+      "planta": "Ciudad Juarez, Chih.",
+      "estado": "Chihuahua",
+      "anillo": 2,
+      "giro": "electronica componentes electronicos manufactura avanzada",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-08-20",
+      "empata_padron": false,
+      "liga": "https://diario.mx/juarez/2026/aug/20/celebra-gobernadora-inversion-de-pegatron-para-nueva-nave-industrial-en-juarez-1134292.html",
+      "procedencia_fecha": "fecha en la URL y el encabezado de El Diario de Juarez: 20-ago-2026",
+      "eval": {
+        "puntaje": 80.4,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 54.4,
+          "proceso": 0.0,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 18.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "ningun proceso reconocido · 'nueva planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 330 MDD (~330 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 46 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral",
+          "trabajos_civiles"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "tipo_de_senal": "obra_nueva",
+      "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
+      "dias": 46,
+      "texto": "invertira 330 millones de dolares en nueva planta y nueva nave industrial en Ciudad Juarez para componentes electronicos de electromovilidad y tecnologia para centros de datos; proyecto 2026-2029 con mil empleos"
     },
-    "por_que": "ningun proceso reconocido · 'nueva nave' -> obra_nueva_integral (?, peso 44.4 de 15) · 167 MDD (~167 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 175 dias · fuente 'prensa_industrial' · padron: no empata (0)",
-    "tipos_que_nombra": [
-     "obra_nueva_integral"
-    ],
-    "familia": "obra_nueva_integral",
-    "familias_de_la_obra": [
-     "automatizacion",
-     "electrico",
-     "estructura",
-     "manejo",
-     "servicio",
-     "termico_fluidos"
-    ],
-    "ambiguedad": [
-     "fuera de la ventana de 90 dias: 175 dias",
-     "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
-    ],
-    "umbrales": {
-     "pasa": 60,
-     "guarda": 40
-    }
-   },
-   "tipo_de_senal": "obra_nueva",
-   "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
-   "dias": 175,
-   "texto": "invertira 167 millones de dolares en Nuevo Leon para tarjetas madre automotrices; ampliacion de su planta en Apodaca de 28 mil metros cuadrados y construccion de una nueva nave en Santa Catarina"
-  },
-  {
-   "empresa": "TDI Manufacturing",
-   "planta": "Cienega de Flores, N.L.",
-   "estado": "Nuevo Leon",
-   "anillo": 1,
-   "giro": "intercambiadores de calor gestion termica autopartes",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-04-17",
-   "empata_padron": false,
-   "liga": "https://clusterindustrial.com.mx/tdi-manufacturing-mexico-invierte-50-millones-de-dolares-e-inaugura-nueva-planta-en-nuevo-leon/",
-   "procedencia_fecha": "inauguracion del 17-abr-2026 segun MarkLines y Cluster Industrial",
-   "ambiguedad": [
-    "fuera de la ventana de 90 dias: 171 dias",
-    "ya esta inaugurada: la ventana de especificacion de obra ya cerro"
-   ],
-   "eval": {
-    "puntaje": 72.4,
-    "veredicto": "pasa",
-    "desglose": {
-     "match_catalogo": 54.4,
-     "proceso": 0.0,
-     "tipo_de_obra": 44.4,
-     "capacidad": 10,
-     "frescura": 10.0,
-     "fuerza_de_fuente": 8.0,
-     "padron": 0
+    {
+      "empresa": "Yokohama Rubber",
+      "planta": "Saltillo, Coah.",
+      "estado": "Coahuila",
+      "anillo": 1,
+      "giro": "llantas hule vulcanizado caucho",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-05-21",
+      "empata_padron": false,
+      "liga": "https://clusterindustrial.com.mx/yokohama-invertira-115-mdd-en-nueva-planta-de-llantas-otr-en-saltillo-coahuila/",
+      "procedencia_fecha": "notas de El Heraldo de Saltillo y El Diario de Coahuila fechadas 21-may-2026",
+      "ambiguedad": [
+        "fuera de la ventana de 90 dias: 137 dias. SE INCLUYE MARCADA porque la obra arranca en el 3T-2026, o sea AHORA"
+      ],
+      "eval": {
+        "puntaje": 72.4,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 54.4,
+          "proceso": 0.0,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 10.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "ningun proceso reconocido · 'segunda planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 115 MDD (~115 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 137 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "fuera de la ventana de 90 dias: 137 dias. SE INCLUYE MARCADA porque la obra arranca en el 3T-2026, o sea AHORA",
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "tipo_de_senal": "obra_nueva",
+      "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
+      "dias": 137,
+      "texto": "invertira 115 millones de dolares en su segunda planta de llantas OTR en Saltillo para maquinaria minera, agricola y de construccion, con capacidad de 10,650 toneladas anuales; inicio de construccion en el tercer trimestre de 2026 y arranque de operaciones en el segundo trimestre de 2028"
     },
-    "por_que": "ningun proceso reconocido · 'nueva planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 50 MDD (~50 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 171 dias · fuente 'prensa_industrial' · padron: no empata (0)",
-    "tipos_que_nombra": [
-     "obra_nueva_integral"
-    ],
-    "familia": "obra_nueva_integral",
-    "familias_de_la_obra": [
-     "automatizacion",
-     "electrico",
-     "estructura",
-     "manejo",
-     "servicio",
-     "termico_fluidos"
-    ],
-    "ambiguedad": [
-     "fuera de la ventana de 90 dias: 171 dias",
-     "ya esta inaugurada: la ventana de especificacion de obra ya cerro",
-     "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
-    ],
-    "umbrales": {
-     "pasa": 60,
-     "guarda": 40
-    }
-   },
-   "tipo_de_senal": "obra_nueva",
-   "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
-   "dias": 171,
-   "texto": "inaugura nueva planta, la tercera en el estado, con inversion de 50 millones de dolares para sistemas de gestion termica de la industria automotriz"
-  },
-  {
-   "empresa": "CFE Nuevo Leon",
-   "planta": "varias, N.L.",
-   "estado": "Nuevo Leon",
-   "anillo": 1,
-   "giro": "transmision y distribucion de energia electrica",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-08-19",
-   "empata_padron": false,
-   "liga": "https://mvsnoticias.com/nuevo-leon/2026/8/19/nuevo-leon-tendra-cuatro-nuevas-subestaciones-electricas-cfe-confirma-inversion-742480.html",
-   "procedencia_fecha": "fecha en la URL de MVS Noticias: 19-ago-2026",
-   "eval": {
-    "puntaje": 51.0,
-    "veredicto": "guarda",
-    "desglose": {
-     "match_catalogo": 25.0,
-     "proceso": 0.0,
-     "tipo_de_obra": 15.0,
-     "capacidad": 10,
-     "frescura": 18.0,
-     "fuerza_de_fuente": 8.0,
-     "padron": 0
+    {
+      "empresa": "DH Autoware",
+      "planta": "Apodaca y Santa Catarina, N.L.",
+      "estado": "Nuevo Leon",
+      "anillo": 1,
+      "giro": "electronica automotriz tarjetas electronicas",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-04-13",
+      "empata_padron": false,
+      "liga": "https://clusterindustrial.com.mx/nuevo-leon-suma-inversion-de-167-millones-de-dolares-de-dh-autoware-y-proyecta-440-empleos/",
+      "procedencia_fecha": "anuncio del 13-abr-2026 en evento de promocion economica",
+      "ambiguedad": [
+        "fuera de la ventana de 90 dias: 175 dias"
+      ],
+      "eval": {
+        "puntaje": 72.4,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 54.4,
+          "proceso": 0.0,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 10.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "ningun proceso reconocido · 'nueva nave' -> obra_nueva_integral (?, peso 44.4 de 15) · 167 MDD (~167 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 175 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "fuera de la ventana de 90 dias: 175 dias",
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "tipo_de_senal": "obra_nueva",
+      "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
+      "dias": 175,
+      "texto": "invertira 167 millones de dolares en Nuevo Leon para tarjetas madre automotrices; ampliacion de su planta en Apodaca de 28 mil metros cuadrados y construccion de una nueva nave en Santa Catarina"
     },
-    "por_que": "ningun proceso reconocido · 'subestacion' -> subestacion (electrico, peso 15 de 15) · 900 MDP (~49 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 47 dias · fuente 'prensa_industrial' · padron: no empata (0)",
-    "tipos_que_nombra": [
-     "subestacion"
-    ],
-    "familia": "electrico",
-    "familias_de_la_obra": [],
-    "ambiguedad": [
-     "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
-    ],
-    "umbrales": {
-     "pasa": 60,
-     "guarda": 40
-    }
-   },
-   "tipo_de_senal": "obra_nueva",
-   "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
-   "dias": 47,
-   "texto": "invertira 8 mil 900 millones de pesos en Nuevo Leon para construir cuatro subestaciones electricas nuevas y ampliar la capacidad de diez instalaciones mas, con incremento de 140 MVA, mas modernizacion de red"
-  },
-  {
-   "empresa": "Waelzholz",
-   "planta": "Ramos Arizpe, Coah.",
-   "estado": "Coahuila",
-   "anillo": 1,
-   "giro": "acero laminacion metalmecanica tratamiento termico",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-08-11",
-   "empata_padron": false,
-   "liga": "https://eldiariodecoahuila.com.mx/2026/08/11/concreta-coahuila-inversion-de-65-millones-de-dolares-para-ramos-arizpe/",
-   "procedencia_fecha": "fecha en la URL de El Diario de Coahuila: 11-ago-2026",
-   "eval": {
-    "puntaje": 48.7,
-    "veredicto": "guarda",
-    "desglose": {
-     "match_catalogo": 22.7,
-     "proceso": 12.7,
-     "tipo_de_obra": 0.0,
-     "capacidad": 10,
-     "frescura": 18.0,
-     "fuerza_de_fuente": 8.0,
-     "padron": 0
+    {
+      "empresa": "TDI Manufacturing",
+      "planta": "Cienega de Flores, N.L.",
+      "estado": "Nuevo Leon",
+      "anillo": 1,
+      "giro": "intercambiadores de calor gestion termica autopartes",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-04-17",
+      "empata_padron": false,
+      "liga": "https://clusterindustrial.com.mx/tdi-manufacturing-mexico-invierte-50-millones-de-dolares-e-inaugura-nueva-planta-en-nuevo-leon/",
+      "procedencia_fecha": "inauguracion del 17-abr-2026 segun MarkLines y Cluster Industrial",
+      "ambiguedad": [
+        "fuera de la ventana de 90 dias: 171 dias",
+        "ya esta inaugurada: la ventana de especificacion de obra ya cerro"
+      ],
+      "eval": {
+        "puntaje": 72.4,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 54.4,
+          "proceso": 0.0,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 10.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "ningun proceso reconocido · 'nueva planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 50 MDD (~50 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 171 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "fuera de la ventana de 90 dias: 171 dias",
+          "ya esta inaugurada: la ventana de especificacion de obra ya cerro",
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "tipo_de_senal": "obra_nueva",
+      "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
+      "dias": 171,
+      "texto": "inaugura nueva planta, la tercera en el estado, con inversion de 50 millones de dolares para sistemas de gestion termica de la industria automotriz"
     },
-    "por_que": "proceso 'metalmecanica' con 15 proyecto(s) en el catalogo (tablero_electrico, electroducto_busway, transformador) · no nombra ningun tipo de proyecto de FTS · 65 MDD (~65 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 55 dias · fuente 'prensa_industrial' · padron: no empata (0)",
-    "tipos_que_nombra": [],
-    "familia": null,
-    "familias_de_la_obra": [],
-    "ambiguedad": [
-     "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
-    ],
-    "umbrales": {
-     "pasa": 60,
-     "guarda": 40
-    }
-   },
-   "tipo_de_senal": "obra_nueva",
-   "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
-   "dias": 55,
-   "texto": "arranca la construccion de su primera planta en Mexico con inversion de 65 millones de dolares, mas de mil doscientos millones de pesos, en el Parque Industrial Amistad; manufactura avanzada de acero laminado en frio para automotriz, electromovilidad y generacion de energia"
-  },
-  {
-   "empresa": "Hyundai WIA",
-   "planta": "Nuevo Leon",
-   "estado": "Nuevo Leon",
-   "anillo": 1,
-   "giro": "autopartes motores metalmecanica maquinado",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-04-10",
-   "empata_padron": false,
-   "liga": "https://clusterindustrial.com.mx/hyundai-wia-invertira-35-millones-de-dolares-en-nuevo-leon-para-producir-motores-hibridos/",
-   "procedencia_fecha": "anuncio del 10-abr-2026, fechado por ABC Noticias",
-   "ambiguedad": [
-    "fuera de la ventana de 90 dias: 178 dias",
-    "la nota no dice en que municipio"
-   ],
-   "eval": {
-    "puntaje": 40.7,
-    "veredicto": "guarda",
-    "desglose": {
-     "match_catalogo": 22.7,
-     "proceso": 12.7,
-     "tipo_de_obra": 0.0,
-     "capacidad": 10,
-     "frescura": 10.0,
-     "fuerza_de_fuente": 8.0,
-     "padron": 0
+    {
+      "empresa": "CFE Nuevo Leon",
+      "planta": "varias, N.L.",
+      "estado": "Nuevo Leon",
+      "anillo": 1,
+      "giro": "transmision y distribucion de energia electrica",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-08-19",
+      "empata_padron": false,
+      "liga": "https://mvsnoticias.com/nuevo-leon/2026/8/19/nuevo-leon-tendra-cuatro-nuevas-subestaciones-electricas-cfe-confirma-inversion-742480.html",
+      "procedencia_fecha": "fecha en la URL de MVS Noticias: 19-ago-2026",
+      "eval": {
+        "puntaje": 51.0,
+        "veredicto": "guarda",
+        "desglose": {
+          "match_catalogo": 25.0,
+          "proceso": 0.0,
+          "tipo_de_obra": 15.0,
+          "capacidad": 10,
+          "frescura": 18.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "ningun proceso reconocido · 'subestacion' -> subestacion (electrico, peso 15 de 15) · 900 MDP (~49 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 47 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "subestacion"
+        ],
+        "familia": "electrico",
+        "familias_de_la_obra": [],
+        "ambiguedad": [
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "tipo_de_senal": "obra_nueva",
+      "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
+      "dias": 47,
+      "texto": "invertira 8 mil 900 millones de pesos en Nuevo Leon para construir cuatro subestaciones electricas nuevas y ampliar la capacidad de diez instalaciones mas, con incremento de 140 MVA, mas modernizacion de red"
     },
-    "por_que": "proceso 'metalmecanica' con 15 proyecto(s) en el catalogo (tablero_electrico, electroducto_busway, transformador) · no nombra ningun tipo de proyecto de FTS · 35 MDD (~35 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 178 dias · fuente 'prensa_industrial' · padron: no empata (0)",
-    "tipos_que_nombra": [],
-    "familia": null,
-    "familias_de_la_obra": [],
-    "ambiguedad": [
-     "fuera de la ventana de 90 dias: 178 dias",
-     "la nota no dice en que municipio",
-     "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
-    ],
-    "umbrales": {
-     "pasa": 60,
-     "guarda": 40
-    }
-   },
-   "tipo_de_senal": "obra_nueva",
-   "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
-   "dias": 178,
-   "texto": "invertira 35 millones de dolares en Nuevo Leon para manufactura de motores hibridos, con ampliacion de 31,350 metros cuadrados de nuevo espacio"
-  },
-  {
-   "empresa": "Inventec",
-   "planta": "Ciudad Juarez, Chih.",
-   "estado": "Chihuahua",
-   "anillo": 2,
-   "giro": "electronica servidores manufactura avanzada",
-   "fuente": "prensa_industrial",
-   "fecha": "2026-07-31",
-   "empata_padron": false,
-   "liga": "https://diario.mx/juarez/2026/jul/31/colocan-primera-piedra-en-proyecto-de-expansion-de-inventec-1130871.html",
-   "procedencia_fecha": "fecha en la URL de El Diario de Juarez: 31-jul-2026. Otras notas la ponen el 1-ago; se usa la mas temprana documentada",
-   "ambiguedad": [
-    "dos fuentes fechan la primera piedra el 31-jul y una el 5-ago"
-   ],
-   "eval": {
-    "puntaje": 36.0,
-    "veredicto": "archiva",
-    "desglose": {
-     "match_catalogo": 10.0,
-     "proceso": 0.0,
-     "tipo_de_obra": 0.0,
-     "capacidad": 10,
-     "frescura": 18.0,
-     "fuerza_de_fuente": 8.0,
-     "padron": 0
+    {
+      "empresa": "Waelzholz",
+      "planta": "Ramos Arizpe, Coah.",
+      "estado": "Coahuila",
+      "anillo": 1,
+      "giro": "acero laminacion metalmecanica tratamiento termico",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-08-11",
+      "empata_padron": false,
+      "liga": "https://eldiariodecoahuila.com.mx/2026/08/11/concreta-coahuila-inversion-de-65-millones-de-dolares-para-ramos-arizpe/",
+      "procedencia_fecha": "fecha en la URL de El Diario de Coahuila: 11-ago-2026",
+      "eval": {
+        "puntaje": 48.7,
+        "veredicto": "guarda",
+        "desglose": {
+          "match_catalogo": 22.7,
+          "proceso": 12.7,
+          "tipo_de_obra": 0.0,
+          "capacidad": 10,
+          "frescura": 18.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "proceso 'metalmecanica' con 15 proyecto(s) en el catalogo (tablero_electrico, electroducto_busway, transformador) · no nombra ningun tipo de proyecto de FTS · 65 MDD (~65 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 55 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [],
+        "familia": null,
+        "familias_de_la_obra": [],
+        "ambiguedad": [
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "tipo_de_senal": "obra_nueva",
+      "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
+      "dias": 55,
+      "texto": "arranca la construccion de su primera planta en Mexico con inversion de 65 millones de dolares, mas de mil doscientos millones de pesos, en el Parque Industrial Amistad; manufactura avanzada de acero laminado en frio para automotriz, electromovilidad y generacion de energia"
     },
-    "por_que": "ningun proceso reconocido · no nombra ningun tipo de proyecto de FTS · 450 MDD (~450 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 66 dias · fuente 'prensa_industrial' · padron: no empata (0)",
-    "tipos_que_nombra": [],
-    "familia": null,
-    "familias_de_la_obra": [],
-    "ambiguedad": [
-     "dos fuentes fechan la primera piedra el 31-jul y una el 5-ago",
-     "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
-    ],
-    "umbrales": {
-     "pasa": 60,
-     "guarda": 40
-    }
-   },
-   "tipo_de_senal": "obra_nueva",
-   "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
-   "dias": 66,
-   "texto": "colocan la primera piedra de su expansion con inversion de 450 millones de dolares; construccion de 43,000 metros cuadrados adicionales en su campus, compra de 30 hectareas e instalacion de 45 nuevas lineas de produccion para servidores de alto desempeno"
-  },
-  {
-   "empresa": "Megasteel",
-   "planta": "Gomez Palacio, Dgo.",
-   "estado": "Durango",
-   "anillo": 2,
-   "giro": "estructuras metalicas acero metalmecanica",
-   "fuente": "prensa_industrial",
-   "fecha": null,
-   "empata_padron": false,
-   "liga": "https://www.elsiglodetorreon.com.mx/noticia/2026/la-laguna-de-durango-atraera-mas-de-490-millones-de-dolares-en-nuevas-inversiones.html",
-   "procedencia_fecha": "NO HAY FECHA: la nota de El Siglo de Torreon la enlista dentro de un recuento regional sin fechar el anuncio de Megasteel",
-   "ambiguedad": [
-    "sin fecha documentada: va al techo minimo de frescura por un dato que falta, no por una senal debil"
-   ],
-   "eval": {
-    "puntaje": 32.7,
-    "veredicto": "archiva",
-    "desglose": {
-     "match_catalogo": 22.7,
-     "proceso": 12.7,
-     "tipo_de_obra": 0.0,
-     "capacidad": 10,
-     "frescura": 2,
-     "fuerza_de_fuente": 8.0,
-     "padron": 0
+    {
+      "empresa": "Hyundai WIA",
+      "planta": "Nuevo Leon",
+      "estado": "Nuevo Leon",
+      "anillo": 1,
+      "giro": "autopartes motores metalmecanica maquinado",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-04-10",
+      "empata_padron": false,
+      "liga": "https://clusterindustrial.com.mx/hyundai-wia-invertira-35-millones-de-dolares-en-nuevo-leon-para-producir-motores-hibridos/",
+      "procedencia_fecha": "anuncio del 10-abr-2026, fechado por ABC Noticias",
+      "ambiguedad": [
+        "fuera de la ventana de 90 dias: 178 dias",
+        "la nota no dice en que municipio"
+      ],
+      "eval": {
+        "puntaje": 40.7,
+        "veredicto": "guarda",
+        "desglose": {
+          "match_catalogo": 22.7,
+          "proceso": 12.7,
+          "tipo_de_obra": 0.0,
+          "capacidad": 10,
+          "frescura": 10.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "proceso 'metalmecanica' con 15 proyecto(s) en el catalogo (tablero_electrico, electroducto_busway, transformador) · no nombra ningun tipo de proyecto de FTS · 35 MDD (~35 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 178 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [],
+        "familia": null,
+        "familias_de_la_obra": [],
+        "ambiguedad": [
+          "fuera de la ventana de 90 dias: 178 dias",
+          "la nota no dice en que municipio",
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "tipo_de_senal": "obra_nueva",
+      "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
+      "dias": 178,
+      "texto": "invertira 35 millones de dolares en Nuevo Leon para manufactura de motores hibridos, con ampliacion de 31,350 metros cuadrados de nuevo espacio"
     },
-    "por_que": "proceso 'metalmecanica' con 15 proyecto(s) en el catalogo (tablero_electrico, electroducto_busway, transformador) · no nombra ningun tipo de proyecto de FTS · 200 MDD (~200 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: SIN FECHA: vale el minimo y queda marcado. Poner cero equivale a descartarla · fuente 'prensa_industrial' · padron: no empata (0)",
-    "tipos_que_nombra": [],
-    "familia": null,
-    "familias_de_la_obra": [],
-    "ambiguedad": [
-     "sin fecha documentada: va al techo minimo de frescura por un dato que falta, no por una senal debil",
-     "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia",
-     "sin fecha en el registro"
-    ],
-    "umbrales": {
-     "pasa": 60,
-     "guarda": 40
+    {
+      "empresa": "Inventec",
+      "planta": "Ciudad Juarez, Chih.",
+      "estado": "Chihuahua",
+      "anillo": 2,
+      "giro": "electronica servidores manufactura avanzada",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-07-31",
+      "empata_padron": false,
+      "liga": "https://diario.mx/juarez/2026/jul/31/colocan-primera-piedra-en-proyecto-de-expansion-de-inventec-1130871.html",
+      "procedencia_fecha": "fecha en la URL de El Diario de Juarez: 31-jul-2026. Otras notas la ponen el 1-ago; se usa la mas temprana documentada",
+      "ambiguedad": [
+        "dos fuentes fechan la primera piedra el 31-jul y una el 5-ago"
+      ],
+      "eval": {
+        "puntaje": 36.0,
+        "veredicto": "archiva",
+        "desglose": {
+          "match_catalogo": 10.0,
+          "proceso": 0.0,
+          "tipo_de_obra": 0.0,
+          "capacidad": 10,
+          "frescura": 18.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "ningun proceso reconocido · no nombra ningun tipo de proyecto de FTS · 450 MDD (~450 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 66 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [],
+        "familia": null,
+        "familias_de_la_obra": [],
+        "ambiguedad": [
+          "dos fuentes fechan la primera piedra el 31-jul y una el 5-ago",
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "tipo_de_senal": "obra_nueva",
+      "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
+      "dias": 66,
+      "texto": "colocan la primera piedra de su expansion con inversion de 450 millones de dolares; construccion de 43,000 metros cuadrados adicionales en su campus, compra de 30 hectareas e instalacion de 45 nuevas lineas de produccion para servidores de alto desempeno"
+    },
+    {
+      "empresa": "Megasteel",
+      "planta": "Gomez Palacio, Dgo.",
+      "estado": "Durango",
+      "anillo": 2,
+      "giro": "estructuras metalicas acero metalmecanica",
+      "fuente": "prensa_industrial",
+      "fecha": null,
+      "empata_padron": false,
+      "liga": "https://www.elsiglodetorreon.com.mx/noticia/2026/la-laguna-de-durango-atraera-mas-de-490-millones-de-dolares-en-nuevas-inversiones.html",
+      "procedencia_fecha": "NO HAY FECHA: la nota de El Siglo de Torreon la enlista dentro de un recuento regional sin fechar el anuncio de Megasteel",
+      "ambiguedad": [
+        "sin fecha documentada: va al techo minimo de frescura por un dato que falta, no por una senal debil"
+      ],
+      "eval": {
+        "puntaje": 32.7,
+        "veredicto": "archiva",
+        "desglose": {
+          "match_catalogo": 22.7,
+          "proceso": 12.7,
+          "tipo_de_obra": 0.0,
+          "capacidad": 10,
+          "frescura": 2,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "proceso 'metalmecanica' con 15 proyecto(s) en el catalogo (tablero_electrico, electroducto_busway, transformador) · no nombra ningun tipo de proyecto de FTS · 200 MDD (~200 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: SIN FECHA: vale el minimo y queda marcado. Poner cero equivale a descartarla · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [],
+        "familia": null,
+        "familias_de_la_obra": [],
+        "ambiguedad": [
+          "sin fecha documentada: va al techo minimo de frescura por un dato que falta, no por una senal debil",
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia",
+          "sin fecha en el registro"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "tipo_de_senal": "obra_nueva",
+      "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
+      "dias": null,
+      "texto": "invertira 200 millones de dolares en una planta de estructuras metalicas en el parque industrial de Grupo Simsa, con primera etapa de 50 millones de dolares y renta de dos naves industriales"
     }
-   },
-   "tipo_de_senal": "obra_nueva",
-   "tipo_de_donde": "derivado de la fuente 'prensa_industrial'",
-   "dias": null,
-   "texto": "invertira 200 millones de dolares en una planta de estructuras metalicas en el parque industrial de Grupo Simsa, con primera etapa de 50 millones de dolares y renta de dos naves industriales"
+  ],
+  "correccion_del_7_oct": "LA BITACORA ESTABA INCOMPLETA. El archivo decia 20 consultas y el issue #381 y el HTML de OneDrive decian 38. Las 38 eran el numero real de llamadas a WebSearch: lo que falto fue seguir escribiendo la bitacora despues del primer lote. Se completaron las 18 que faltaban, reconstruidas de la corrida. Es el mismo defecto que este repo lleva ocho veces arreglando -- un numero a mano que no casa con el dato-- y aparecio en el archivo cuya razon de existir es que eso no pase.",
+  "criterio_con_el_que_se_puntuo": {
+    "version_de_la_herramienta": "0.19.0",
+    "por_que_se_declara": "UNA CORRIDA ES UNA MEDICION FECHADA BAJO UN CRITERIO, y el criterio se mueve. El 7-oct, la DECISION 1 de #382 obligo a meter el vocabulario de arranque de obra en castellano, y con eso Waelzholz pasa de 48.7 a 93.1 e Inventec de 36.0 a 80.4. Mas tarde ese dia, al leer la salida entrada por entrada, aparecio un tercer caso: Megasteel, de 32.7 a 77.1, por «una planta de». Los puntajes de ESTE archivo NO se reescribieron: si se reescriben, se pierde el registro de lo que el radar dijo ese dia, que es justo lo que esta corrida documenta -- el sesgo del vocabulario-- y lo que justifico el cambio.",
+    "lo_que_cambiaria_con_el_criterio_de_hoy": {
+      "Waelzholz / Ramos Arizpe, Coah.": {
+        "antes": 48.7,
+        "veredicto_antes": "guarda",
+        "despues": 93.1,
+        "veredicto_despues": "pasa"
+      },
+      "Inventec / Ciudad Juarez, Chih.": {
+        "antes": 36.0,
+        "veredicto_antes": "archiva",
+        "despues": 80.4,
+        "veredicto_despues": "pasa"
+      },
+      "Megasteel / Gomez Palacio, Dgo.": {
+        "antes": 32.7,
+        "veredicto_antes": "archiva",
+        "despues": 77.1,
+        "veredicto_despues": "pasa",
+        "por_que": "el 7-oct entro «una planta de» al vocabulario: la nota dice «una planta de estructuras metalicas» y ninguna de las formas que habia -- nueva planta, primera planta, segunda planta-- aparece en esa frase, asi que una planta nueva de 200 MDD se archivaba como equipo dentro de una planta que ya opera"
+      }
+    },
+    "las_otras_doce": "no se mueven: medido sobre las 14 el 6-oct, el 7-oct y otra vez tras «una planta de»"
   }
- ]
 }

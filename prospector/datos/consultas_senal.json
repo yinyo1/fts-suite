@@ -1,15 +1,48 @@
 {
-  "version": 1,
+  "version": 2,
   "corte_padron": "2026-05",
-  "nota": "Conjunto de consultas dirigidas para el modo senal. Se corren desde Claude Code con WebSearch, que es lo unico que pasa el proxy de egress. La lectura del articulo completo la hace n8n. Ver docs/prospectar/fuentes-de-senal.md.",
+  "nota": "Conjunto de consultas dirigidas para el modo senal. Se corren desde Claude Code con WebSearch, que es lo unico que pasa el proxy de egress. La lectura del articulo completo la hace n8n. Ver docs/prospectar/fuentes-de-senal.md. VERSION 2 (#382): la v1 estaba escrita para ALIMENTOS Y BEBIDAS en Nuevo Leon y Coahuila -- el sector iba cosido en cada plantilla-- y la corrida del 5-oct tuvo que escribir sus 38 consultas a mano porque ninguna familia cubria lo que se pidio. Eso significa que el cron no podia repetir la corrida. La v2 agrega la geografia completa, el vocabulario de D1 y D3, y la familia F5 de constructores.",
   "terminos_evento": {
     "alto": [
-      "nueva planta", "planta nueva", "amplia planta", "ampliacion",
-      "arranque de operaciones", "inaugura", "nueva linea", "linea nueva",
-      "planta de tratamiento", "PTAR", "cogeneracion", "caldera", "torre de enfriamiento"
+      "nueva planta",
+      "planta nueva",
+      "amplia planta",
+      "ampliacion",
+      "arranque de operaciones",
+      "inaugura",
+      "nueva linea",
+      "linea nueva",
+      "planta de tratamiento",
+      "PTAR",
+      "cogeneracion",
+      "caldera",
+      "torre de enfriamiento",
+      "arranca la construccion",
+      "inicia construccion",
+      "primera piedra",
+      "arranque de obra",
+      "nueva nave",
+      "segunda planta",
+      "ampliacion de nave",
+      "subestacion",
+      "media tension",
+      "ampliacion de carga",
+      "automatizacion de linea",
+      "groundbreaking",
+      "breaks ground",
+      "new plant"
     ],
-    "medio": ["inversion", "expansion", "certificacion", "nearshoring", "capex"],
-    "bajo": ["vacante", "contratacion"]
+    "medio": [
+      "inversion",
+      "expansion",
+      "certificacion",
+      "nearshoring",
+      "capex"
+    ],
+    "bajo": [
+      "vacante",
+      "contratacion"
+    ]
   },
   "familias": [
     {
@@ -54,14 +87,53 @@
         "nave industrial OR parque industrial \"Nuevo Leon\" OR Coahuila alimentos OR bebidas construccion {anio}",
         "Solili nave industrial Monterrey OR Saltillo alimentos {anio}"
       ]
+    },
+    {
+      "clave": "F5_constructores_y_epc",
+      "cada": "semanal",
+      "para": "DECISION 2 de #382. El que CONSTRUYE publica que planta esta construyendo antes de que la planta exista como empresa, y es el comprador de la puerta (a): FTS le vende especialidad como subcontratista. Un EPC identificado vale mas que una obra, porque trae las demas obras que tiene en la region -- el caso BIC--.",
+      "plantillas": [
+        "\"{constructor}\" nueva nave industrial OR planta {estado} {anio} construye",
+        "\"{constructor}\" inicia construccion OR \"primera piedra\" planta {anio}",
+        "constructora OR EPC \"planta\" \"{municipio}\" obra industrial {anio}",
+        "\"quien construye\" OR \"a cargo de la construccion\" planta {empresa} {anio}",
+        "desarrollador industrial nave {municipio} inquilino OR \"build to suit\" {anio}"
+      ],
+      "desarrolladores_de_nave": [
+        "Vesta",
+        "Fibra Macquarie",
+        "Prologis",
+        "FINSA",
+        "VYNMSA",
+        "American Industries",
+        "Meor",
+        "Thor Urbana",
+        "Grupo Amistad",
+        "Hofusan",
+        "Davisa",
+        "Stiva",
+        "Grupo Simsa"
+      ],
+      "de_donde_salen_esos_nombres": "los que aparecieron en la corrida del 5-oct (FINSA, VYNMSA, Thor Urbana, Grupo Amistad, Hofusan, Grupo Simsa) mas los tres que la DECISION 2 nombra (Vesta, Fibra Macquarie, Prologis). Los demas se agregan cuando la corrida los encuentre: la lista se mide, no se adivina.",
+      "riesgo_medido": "un desarrollador de nave NO es un EPC: renta metros cuadrados. Puede ser cliente de FTS por la obra del parque -- acometida, subestacion-- pero no es quien monta la linea de produccion de su inquilino. Las dos cosas aparecen en la misma consulta y hay que separarlas al extraer."
     }
   ],
   "descarte": {
     "dominios_proveedor": [
-      "aqua.com.mx", "carbotecnia.info", "gruporivend.com", "iagua.es",
-      "condorchem.com", "veolia.com", "ecolab.com", "nalco.com", "suez.com"
+      "aqua.com.mx",
+      "carbotecnia.info",
+      "gruporivend.com",
+      "iagua.es",
+      "condorchem.com",
+      "veolia.com",
+      "ecolab.com",
+      "nalco.com",
+      "suez.com",
+      "ecolab.com",
+      "nalco.com"
     ],
-    "razon": "Son proveedores de tratamiento de agua. Aparecen mucho en las consultas de F3 y ninguno es prospecto: son competencia o contraparte."
+    "razon": "Son proveedores de tratamiento de agua. Aparecen mucho en las consultas de F3 y ninguno es prospecto: son competencia o contraparte.",
+    "razon_ecolab": "OJO, Y ES UNA EXCEPCION DECLARADA: ecolab.com y nalco.com estan en la lista de descarte porque como RESULTADO DE F3 son proveedores de tratamiento, igual que Veolia. Pero Ecolab/Nalco es ADEMAS el canal mas productivo de FTS (ver relacion-de-grupo.json). Descartar su DOMINIO en una consulta de agua es correcto; descartar la EMPRESA cuando la senal es de una planta suya seria perder una expansion lateral. El descarte es por dominio-en-resultado, no por cuenta."
   },
   "extraccion": {
     "obligatorio": [
@@ -76,5 +148,60 @@
       "3. por municipio; una sola planta ahi = empate unico, varias = AMBIGUO y se marca"
     ],
     "sin_empate": "Una nota que no empata con ninguna planta del padron NO se descarta: se guarda como candidata a entrar en el siguiente corte del DENUE."
+  },
+  "geografia": {
+    "noreste": [
+      "Nuevo Leon",
+      "Coahuila",
+      "Tamaulipas"
+    ],
+    "segundo_anillo": [
+      "Durango",
+      "Chihuahua",
+      "Sonora"
+    ],
+    "bajio": [
+      "Guanajuato",
+      "Queretaro",
+      "San Luis Potosi",
+      "Aguascalientes"
+    ],
+    "municipios_que_rinden": [
+      "Monterrey",
+      "Apodaca",
+      "Garcia",
+      "Santa Catarina",
+      "Pesqueria",
+      "Cienega de Flores",
+      "Escobedo",
+      "Salinas Victoria",
+      "Saltillo",
+      "Ramos Arizpe",
+      "Monclova",
+      "Torreon",
+      "Piedras Negras",
+      "Reynosa",
+      "Matamoros",
+      "Altamira",
+      "Nuevo Laredo",
+      "Gomez Palacio",
+      "Lerdo",
+      "Ciudad Juarez",
+      "Chihuahua",
+      "Hermosillo",
+      "Silao",
+      "Celaya",
+      "Irapuato",
+      "Queretaro",
+      "San Luis Potosi",
+      "Aguascalientes"
+    ],
+    "de_donde_sale": "DECISION 4 de #382. Los municipios son los que de verdad devolvieron algo en la corrida del 5-oct, mas los del Bajio que la decision agrega y que todavia no se han medido."
+  },
+  "ventanas": {
+    "descubrimiento_dias": 180,
+    "puerta_usuario_meses": 18,
+    "por_que_dos": "la ventana de descubrimiento mide la edad de la NOTA; la del usuario mide el tiempo desde la INAUGURACION, y empieza a contar cuando la otra ya termino. Ver flujo/puertas.py.",
+    "presupuesto_de_consultas": 150
   }
 }

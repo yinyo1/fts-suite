@@ -1,0 +1,2053 @@
+{
+  "version": 1,
+  "corrida": "radar-puertas-2026-10-07",
+  "sigue_a": "radar-descubrimiento-2026-10-05 (issue #381)",
+  "nota": "Refinamiento de #382: dos puertas por planta nueva, fuente de constructores, identidad de grupo y scope expandido. Las senales de la corrida del 5-oct se vuelven a puntuar CON EL CRITERIO DE HOY y se les calculan las puertas; su registro original queda intacto en el archivo de esa corrida.",
+  "hoy": "2026-10-07",
+  "version_de_la_herramienta": "0.20.0",
+  "geografia": {
+    "noreste": [
+      "Nuevo Leon",
+      "Coahuila",
+      "Tamaulipas"
+    ],
+    "segundo_anillo": [
+      "Durango",
+      "Chihuahua",
+      "Sonora"
+    ],
+    "bajio": [
+      "Guanajuato",
+      "Queretaro",
+      "San Luis Potosi",
+      "Aguascalientes"
+    ]
+  },
+  "ventanas": {
+    "descubrimiento_dias": 180,
+    "puerta_usuario_meses": 18
+  },
+  "presupuesto_de_consultas": 150,
+  "consultas_gastadas": 20,
+  "consultas": [
+    {
+      "n": 1,
+      "familia": "F1 Bajio",
+      "consulta": "\"nueva planta\" inversion Guanajuato Silao Celaya Irapuato 2026 primera piedra",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "La Moderna (primera piedra 4-jun), PepsiCo Celaya, Nestle-Purina Silao, Martinrea, HENN",
+      "util": true
+    },
+    {
+      "n": 2,
+      "familia": "F1 Bajio",
+      "consulta": "\"nueva planta\" OR \"primera piedra\" inversion Queretaro 2026 arranca construccion industrial",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "NetShape (inaugura 17-jul), KOSTAL, EOI Electronics, Koblenz, Harsco/Advance",
+      "util": true
+    },
+    {
+      "n": 3,
+      "familia": "F1 Bajio",
+      "consulta": "\"nueva planta\" inversion San Luis Potosi 2026 industrial arranca construccion",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "Daikin (3a planta + linea de chillers), KBY, PGI, SL MEX",
+      "util": true
+    },
+    {
+      "n": 4,
+      "familia": "F1 Sonora",
+      "consulta": "nueva planta inversion Sonora Hermosillo Guaymas Nogales 2026 industrial",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "Dormakaba Nogales 65 MDD, GE Aerospace Hermosillo 725 MDP",
+      "util": true
+    },
+    {
+      "n": 5,
+      "familia": "F2",
+      "consulta": "KOSTAL Queretaro primera piedra tercera planta 2097 millones pesos fecha",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "FUERA DE VENTANA: la primera piedra fue el 5-dic-2022. El resultado se veia actual y no lo era",
+      "util": true
+    },
+    {
+      "n": 6,
+      "familia": "F2",
+      "consulta": "Daikin San Luis Potosi tercera planta inaugura 1100 mdp chiller centrifugo fecha 2026",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "CONFIRMA: 1,100 MDP para 2026, de los cuales 880 MDP son una linea de chillers centrifugos",
+      "util": true
+    },
+    {
+      "n": 7,
+      "familia": "F2",
+      "consulta": "Nestle Purina Silao ampliacion planta 100 millones dolares fecha anuncio 2026",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "FUERA DE VENTANA: anuncio del 26-ene-2026 (254 dias)",
+      "util": true
+    },
+    {
+      "n": 8,
+      "familia": "F2",
+      "consulta": "Martinrea Guanajuato 50 mdd inversion 30 septiembre 2026 planta",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "CONFIRMA 30-sep-2026: prensa SIMPAC de 3,000 ton, linea de perfilado y celdas de automatizacion",
+      "util": true
+    },
+    {
+      "n": 9,
+      "familia": "F2",
+      "consulta": "Daikin campus San Luis Potosi inauguracion fecha octubre 2025 tercera planta",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "CONFIRMA inauguracion el 10-oct-2025: 11.9 meses, la puerta del usuario esta abierta",
+      "util": true
+    },
+    {
+      "n": 10,
+      "familia": "F5 constructores",
+      "consulta": "Vesta nueva nave industrial Mexico 2026 inquilino desarrollo build to suit noreste",
+      "fuente_buscada": "constructor_o_epc",
+      "resultado": "NADA por empresa: solo analisis de mercado (el noreste lidera absorcion, 30% de la obra es build-to-suit). Ninguna nave con inquilino nombrado",
+      "util": false
+    },
+    {
+      "n": 11,
+      "familia": "F5 constructores",
+      "consulta": "constructora EPC industrial Monterrey Saltillo 2026 obra planta \"a cargo de la construccion\"",
+      "fuente_buscada": "constructor_o_epc",
+      "resultado": "SOLO directorios (constructioncompanies.com.mx, paginas de constructoras). Ni un proyecto con su obra nombrada",
+      "util": false
+    },
+    {
+      "n": 12,
+      "familia": "F5 constructores",
+      "consulta": "quien construye planta Waelzholz Ramos Arizpe constructora obra Parque Amistad",
+      "fuente_buscada": "constructor_o_epc",
+      "resultado": "PARCIAL: no da el EPC de la planta, pero identifica a Grupo Amistad como dueno y desarrollador del parque, y que prepara mas parques",
+      "util": true
+    },
+    {
+      "n": 13,
+      "familia": "F5 constructores",
+      "consulta": "Grupo Amistad tres nuevos parques industriales Coahuila 2026 inversion fecha",
+      "fuente_buscada": "constructor_o_epc",
+      "resultado": "Amistad Laguna (primera piedra 5-sep-2023, fuera), Piedras Negras 50 ha, Queretaro 50 ha; Lennox inauguro 800,000 sqft en Chuy Maria en ago-2026",
+      "util": true
+    },
+    {
+      "n": 14,
+      "familia": "F4",
+      "consulta": "\"nueva planta\" OR \"primera piedra\" OR \"inicia construccion\" inversion Nuevo Leon Coahuila octubre 2026",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "Doosan Bobcat 300 MDD, ZC Rubber, LEGO (inaugura Packing C y pone primera piedra de Packing D el 1-oct), FINSA Garcia, Termoplasticos MNLH",
+      "util": true
+    },
+    {
+      "n": 15,
+      "familia": "F5 constructores",
+      "consulta": "Grupo La Moderna Irapuato planta galletas constructora obra 40 mdd quien construye",
+      "fuente_buscada": "constructor_o_epc",
+      "resultado": "NEGATIVO EXPLICITO: las notas dan monto, empleos y fecha y NINGUNA nombra al constructor",
+      "util": false
+    },
+    {
+      "n": 16,
+      "familia": "F5 constructores",
+      "consulta": "FINSA VYNMSA American Industries nueva nave industrial 2026 Nuevo Leon Coahuila construye inquilino",
+      "fuente_buscada": "constructor_o_epc",
+      "resultado": "FINSA Garcia primera piedra 27-ago-2026 con plan de 17 naves; VYNMSA Ramos Arizpe IV 20 naves; American Industries Leon",
+      "util": true
+    },
+    {
+      "n": 17,
+      "familia": "F2",
+      "consulta": "Doosan Bobcat Nuevo Leon inicia construccion planta 300 mdd fecha 2026 Salinas Victoria",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "la obra arranco en jun-2024 y la nota dice que opera a principios de 2026: la fecha de inauguracion NO se encontro",
+      "util": true
+    },
+    {
+      "n": 18,
+      "familia": "F2",
+      "consulta": "ZC Rubber inicia construccion nueva planta Coahuila fecha inversion 2026",
+      "fuente_buscada": "prensa_industrial",
+      "resultado": "CONFIRMA primera piedra 1-jun-2026 en el Parque Alianza, Derramadero, Saltillo: 10,095 MDP y 1,400 empleos",
+      "util": true
+    },
+    {
+      "n": 19,
+      "familia": "F5 constructores",
+      "consulta": "VYNMSA Ramos Arizpe primera piedra parque industrial 4000 millones pesos fecha 2026",
+      "fuente_buscada": "constructor_o_epc",
+      "resultado": "FUERA DE VENTANA: la primera piedra fue el 7-nov-2024",
+      "util": true
+    },
+    {
+      "n": 20,
+      "familia": "F5 constructores",
+      "consulta": "Parque Industrial Amistad Laguna primera piedra Torreon Matamoros 80 mdd fecha 2026",
+      "fuente_buscada": "constructor_o_epc",
+      "resultado": "FUERA DE VENTANA: la primera piedra fue el 5-sep-2023",
+      "util": true
+    }
+  ],
+  "resumen": {
+    "senales": 23,
+    "nuevas_de_esta_corrida": 9,
+    "heredadas_del_5_oct": 14,
+    "pasan": 20,
+    "guardan": 3,
+    "archivan": 0,
+    "en_ventana_de_180_dias": 19,
+    "por_fase": {
+      "(sin fase en el texto)": 1,
+      "anuncio": 8,
+      "inaugurada": 6,
+      "obra_arrancada": 8
+    },
+    "obra_nueva": 19,
+    "puerta_epc_abierta": 12,
+    "puerta_epc_por_averiguar": 1,
+    "puerta_epc_con_interlocutor_identificado": 1,
+    "puerta_usuario_abierta": 6,
+    "puerta_usuario_directo": 4,
+    "expansion_lateral": 0,
+    "planta_ya_intervenida": 0
+  },
+  "evaluadas": [
+    {
+      "empresa": "LEGO",
+      "planta": "Cienega de Flores, N.L.",
+      "estado": "Nuevo Leon",
+      "anillo": 1,
+      "texto": "anuncia inversion de 400 millones de dolares para nueva planta en Nuevo Leon; 62,000 metros cuadrados de infraestructura industrial y tecnologia entre 2026 y 2029",
+      "giro": "juguetes moldeo de plastico inyeccion",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-09-24",
+      "empata_padron": true,
+      "liga": "https://www.jornada.com.mx/noticia/2026/09/24/economia/grupo-lego-anuncia-inversion-por-400-mdd-para-nueva-planta-en-nuevo-leon",
+      "procedencia_fecha": "anuncio en la conferencia presidencial del 24-sep-2026, fechado por La Jornada y El Financiero",
+      "de_la_corrida": "2026-10-05",
+      "eval": {
+        "puntaje": 105.4,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 64.4,
+          "proceso": 10.0,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 25.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 8
+        },
+        "por_que": "proceso 'inyeccion' reconocido (por 'inyeccion'), sin proyectos en el catalogo todavia · 'nueva planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 400 MDD (~400 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 13 dias · fuente 'prensa_industrial' · padron: empata (+8)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "anuncio",
+        "fase_por": "anuncia",
+        "fases_ambiguas": [],
+        "es_obra_nueva": true,
+        "puertas": [
+          {
+            "puerta": "epc",
+            "estado": "abierta",
+            "interlocutor": "POR IDENTIFICAR",
+            "puntos_de_oportunidad": 20.0,
+            "por_que": "anuncio sin obra todavia: el EPC puede no estar elegido, y es el mejor momento para entrar a su lista de especialidad antes de que la cierre",
+            "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
+            "como_identificarlo": "la nota, el permiso de construccion del municipio o el boletin del parque industrial suelen nombrar al constructor. Busquedas: «constructora \"LEGO\" planta Cienega de Flores, N.L.», «quien construye la planta de LEGO», y el boletin del parque donde se instala",
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+          },
+          {
+            "puerta": "usuario",
+            "estado": "futura",
+            "interlocutor": "LEGO",
+            "puntos_de_oportunidad": 0.0,
+            "por_que": "la planta no esta inaugurada o no se sabe cuando: la puerta del usuario se abre en la inauguracion y dura 18 meses",
+            "angulo": "lo que el EPC no alcanzo: segunda linea, ampliacion de carga, mejoras y lo que quedo en lista de pendientes al arrancar",
+            "inauguracion": null,
+            "meses_desde_la_inauguracion": null,
+            "ventana_meses": 18,
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+          }
+        ],
+        "avisos": [
+          "la puerta que esta abierta HOY es la del EPC, y no sabemos quien es. Identificarlo es el primer trabajo de esta cuenta"
+        ]
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": 13
+    },
+    {
+      "empresa": "NIFCO",
+      "planta": "Chihuahua, Chih.",
+      "estado": "Chihuahua",
+      "anillo": 2,
+      "texto": "inaugura su segunda planta en Chihuahua con inversion de 8.8 millones de dolares; incorpora inyeccion de plastico, ensambles manuales y automatizados, manejo de material, almacenes, oficinas y sistemas auxiliares de apoyo a la produccion",
+      "giro": "autopartes inyeccion de plastico componentes automotriz",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-09-25",
+      "empata_padron": false,
+      "liga": "https://clusterindustrial.com.mx/nifco-invierte-8-8-mdd-en-segunda-planta-en-chihuahua/",
+      "procedencia_fecha": "fecha de publicacion de las notas de La Gaceta, El Bordo y Chihuahua Digital, las tres del 25-sep-2026",
+      "de_la_corrida": "2026-10-05",
+      "eval": {
+        "puntaje": 97.4,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 64.4,
+          "proceso": 10.0,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 25.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "proceso 'inyeccion' reconocido (por 'inyeccion'), sin proyectos en el catalogo todavia · 'segunda planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 8.8 MDD (~9 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 12 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "inaugurada",
+        "fase_por": "inaugura",
+        "fases_ambiguas": [],
+        "es_obra_nueva": true,
+        "puertas": [
+          {
+            "puerta": "epc",
+            "estado": "cerrada",
+            "interlocutor": "POR IDENTIFICAR",
+            "puntos_de_oportunidad": 0.0,
+            "por_que": "la planta ya se inauguro: el EPC entrego y se fue. Entrar ahora por esta puerta es llegar tarde a una obra que ya se pago",
+            "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
+            "como_identificarlo": "la nota, el permiso de construccion del municipio o el boletin del parque industrial suelen nombrar al constructor. Busquedas: «constructora \"NIFCO\" planta Chihuahua, Chih.», «quien construye la planta de NIFCO», y el boletin del parque donde se instala",
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+          },
+          {
+            "puerta": "usuario",
+            "estado": "abierta",
+            "interlocutor": "NIFCO",
+            "puntos_de_oportunidad": 8.0,
+            "por_que": "a 12 dia(s) de la inauguracion: recien inaugurada: todavia esta digiriendo la obra y el EPC acaba de entregar. Se habla, pero sin esperar orden",
+            "angulo": "lo que el EPC no alcanzo: segunda linea, ampliacion de carga, mejoras y lo que quedo en lista de pendientes al arrancar",
+            "inauguracion": "2026-09-25",
+            "meses_desde_la_inauguracion": 0.4,
+            "ventana_meses": 18,
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+          }
+        ],
+        "avisos": []
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": 12
+    },
+    {
+      "empresa": "Grupo La Moderna",
+      "planta": "Irapuato, Gto.",
+      "estado": "Guanajuato",
+      "anillo": 3,
+      "texto": "se coloca la primera piedra de su nueva fabrica de galletas con inversion de 40 millones de dolares y 300 empleos directos; complejo agroindustrial",
+      "giro": "alimentos galletas harina panificacion",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-06-04",
+      "empata_padron": false,
+      "liga": "https://periodicocorreo.com.mx/irapuato/2026/jun/04/se-coloca-primera-piedra-de-nueva-fabrica-de-galletas-de-grupo-la-moderna-en-irapuato-158575.html",
+      "procedencia_fecha": "fecha en la URL de Periodico Correo y boletin del gobierno de Guanajuato del 04-jun-2026",
+      "de_la_corrida": "2026-10-07",
+      "eval": {
+        "puntaje": 97.4,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 79.4,
+          "proceso": 25.0,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 10.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "proceso 'alimentos' con 83 proyecto(s) en el catalogo (integracion_control, instalacion_electrica, conveyor_y_manejo) · 'primera piedra' -> obra_nueva_integral (?, peso 44.4 de 15) · 40 MDD (~40 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 125 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "obra_arrancada",
+        "fase_por": "primera piedra",
+        "fases_ambiguas": [],
+        "es_obra_nueva": true,
+        "puertas": [
+          {
+            "puerta": "epc",
+            "estado": "abierta",
+            "interlocutor": "POR IDENTIFICAR",
+            "puntos_de_oportunidad": 25.0,
+            "por_que": "la obra esta en marcha: hay un EPC y esta comprando especialidad AHORA",
+            "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
+            "como_identificarlo": "la nota, el permiso de construccion del municipio o el boletin del parque industrial suelen nombrar al constructor. Busquedas: «constructora \"Grupo La Moderna\" planta Irapuato, Gto.», «quien construye la planta de Grupo La Moderna», y el boletin del parque donde se instala",
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+          },
+          {
+            "puerta": "usuario",
+            "estado": "futura",
+            "interlocutor": "Grupo La Moderna",
+            "puntos_de_oportunidad": 0.0,
+            "por_que": "la planta no esta inaugurada o no se sabe cuando: la puerta del usuario se abre en la inauguracion y dura 18 meses",
+            "angulo": "lo que el EPC no alcanzo: segunda linea, ampliacion de carga, mejoras y lo que quedo en lista de pendientes al arrancar",
+            "inauguracion": null,
+            "meses_desde_la_inauguracion": null,
+            "ventana_meses": 18,
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+          }
+        ],
+        "avisos": [
+          "la puerta que esta abierta HOY es la del EPC, y no sabemos quien es. Identificarlo es el primer trabajo de esta cuenta"
+        ]
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": 125
+    },
+    {
+      "empresa": "QSMX",
+      "planta": "Ramos Arizpe, Coah.",
+      "estado": "Coahuila",
+      "anillo": 1,
+      "texto": "inaugura nueva planta y centro de operaciones en el Parque Industrial Ramos Arizpe con inversion superior a 180 millones de pesos; amplia instalaciones para fabricacion de componentes y estructuras metalicas, logistica e inspeccion especializada",
+      "giro": "metalmecanica estructuras metalicas componentes automotriz",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-09-01",
+      "empata_padron": false,
+      "liga": "https://clusterindustrial.com.mx/qsmx-invierte-mas-de-180-mdp-en-su-nueva-planta-de-ramos-arizpe/",
+      "procedencia_fecha": "nota de El Heraldo de Saltillo del 01-sep-2026 sobre el mismo evento de inauguracion",
+      "de_la_corrida": "2026-10-05",
+      "eval": {
+        "puntaje": 93.1,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 67.1,
+          "proceso": 12.7,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 18.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "proceso 'metalmecanica' con 15 proyecto(s) en el catalogo (tablero_electrico, electroducto_busway, transformador) · 'nueva planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 180 MDP (~10 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 36 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "inaugurada",
+        "fase_por": "inaugura",
+        "fases_ambiguas": [],
+        "es_obra_nueva": true,
+        "puertas": [
+          {
+            "puerta": "epc",
+            "estado": "cerrada",
+            "interlocutor": "POR IDENTIFICAR",
+            "puntos_de_oportunidad": 0.0,
+            "por_que": "la planta ya se inauguro: el EPC entrego y se fue. Entrar ahora por esta puerta es llegar tarde a una obra que ya se pago",
+            "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
+            "como_identificarlo": "la nota, el permiso de construccion del municipio o el boletin del parque industrial suelen nombrar al constructor. Busquedas: «constructora \"QSMX\" planta Ramos Arizpe, Coah.», «quien construye la planta de QSMX», y el boletin del parque donde se instala",
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+          },
+          {
+            "puerta": "usuario",
+            "estado": "abierta",
+            "interlocutor": "QSMX",
+            "puntos_de_oportunidad": 8.0,
+            "por_que": "a 1 mes(es) de la inauguracion: recien inaugurada: todavia esta digiriendo la obra y el EPC acaba de entregar. Se habla, pero sin esperar orden",
+            "angulo": "lo que el EPC no alcanzo: segunda linea, ampliacion de carga, mejoras y lo que quedo en lista de pendientes al arrancar",
+            "inauguracion": "2026-09-01",
+            "meses_desde_la_inauguracion": 1.2,
+            "ventana_meses": 18,
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+          }
+        ],
+        "avisos": []
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": 36
+    },
+    {
+      "empresa": "Waelzholz",
+      "planta": "Ramos Arizpe, Coah.",
+      "estado": "Coahuila",
+      "anillo": 1,
+      "texto": "arranca la construccion de su primera planta en Mexico con inversion de 65 millones de dolares, mas de mil doscientos millones de pesos, en el Parque Industrial Amistad; manufactura avanzada de acero laminado en frio para automotriz, electromovilidad y generacion de energia",
+      "giro": "acero laminacion metalmecanica tratamiento termico",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-08-11",
+      "empata_padron": false,
+      "liga": "https://eldiariodecoahuila.com.mx/2026/08/11/concreta-coahuila-inversion-de-65-millones-de-dolares-para-ramos-arizpe/",
+      "procedencia_fecha": "fecha en la URL de El Diario de Coahuila: 11-ago-2026",
+      "de_la_corrida": "2026-10-05",
+      "eval": {
+        "puntaje": 93.1,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 67.1,
+          "proceso": 12.7,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 18.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "proceso 'metalmecanica' con 15 proyecto(s) en el catalogo (tablero_electrico, electroducto_busway, transformador) · 'arranca la construccion' -> obra_nueva_integral (?, peso 44.4 de 15) · 65 MDD (~65 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 57 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "obra_arrancada",
+        "fase_por": "arranca la construccion",
+        "fases_ambiguas": [],
+        "es_obra_nueva": true,
+        "puertas": [
+          {
+            "puerta": "epc",
+            "estado": "abierta",
+            "interlocutor": "POR IDENTIFICAR",
+            "puntos_de_oportunidad": 25.0,
+            "por_que": "la obra esta en marcha: hay un EPC y esta comprando especialidad AHORA",
+            "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
+            "como_identificarlo": "la nota, el permiso de construccion del municipio o el boletin del parque industrial suelen nombrar al constructor. Busquedas: «constructora \"Waelzholz\" planta Ramos Arizpe, Coah.», «quien construye la planta de Waelzholz», y el boletin del parque donde se instala",
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+          },
+          {
+            "puerta": "usuario",
+            "estado": "futura",
+            "interlocutor": "Waelzholz",
+            "puntos_de_oportunidad": 0.0,
+            "por_que": "la planta no esta inaugurada o no se sabe cuando: la puerta del usuario se abre en la inauguracion y dura 18 meses",
+            "angulo": "lo que el EPC no alcanzo: segunda linea, ampliacion de carga, mejoras y lo que quedo en lista de pendientes al arrancar",
+            "inauguracion": null,
+            "meses_desde_la_inauguracion": null,
+            "ventana_meses": 18,
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+          }
+        ],
+        "avisos": [
+          "la puerta que esta abierta HOY es la del EPC, y no sabemos quien es. Identificarlo es el primer trabajo de esta cuenta"
+        ]
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": 57
+    },
+    {
+      "empresa": "NetShape Mexico",
+      "planta": "Queretaro (Parque FINSA)",
+      "estado": "Queretaro",
+      "anillo": 3,
+      "texto": "inaugura su planta de produccion en el Parque Industrial FINSA con inversion de 239.36 millones de pesos y mas de 260 empleos",
+      "giro": "metalmecanica maquinado autopartes",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-07-17",
+      "empata_padron": false,
+      "inauguracion": "2026-07-17",
+      "liga": "https://clusterindustrial.com.mx/netshape-mexico-inaugura-nueva-planta-en-queretaro-con-inversion-de-239-36-millones-de-pesos/",
+      "procedencia_fecha": "la inauguracion fue el 17-jul-2026 segun Cluster Industrial y La Voz de Queretaro",
+      "de_la_corrida": "2026-10-07",
+      "eval": {
+        "puntaje": 93.1,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 67.1,
+          "proceso": 12.7,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 18.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "proceso 'metalmecanica' con 15 proyecto(s) en el catalogo (tablero_electrico, electroducto_busway, transformador) · 'inaugura su planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 239.36 MDP (~13 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 82 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "inaugurada",
+        "fase_por": "inaugura",
+        "fases_ambiguas": [],
+        "es_obra_nueva": true,
+        "puertas": [
+          {
+            "puerta": "epc",
+            "estado": "cerrada",
+            "interlocutor": "POR IDENTIFICAR",
+            "puntos_de_oportunidad": 0.0,
+            "por_que": "la planta ya se inauguro: el EPC entrego y se fue. Entrar ahora por esta puerta es llegar tarde a una obra que ya se pago",
+            "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
+            "como_identificarlo": "la nota, el permiso de construccion del municipio o el boletin del parque industrial suelen nombrar al constructor. Busquedas: «constructora \"NetShape Mexico\" planta Queretaro (Parque FINSA)», «quien construye la planta de NetShape Mexico», y el boletin del parque donde se instala",
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+          },
+          {
+            "puerta": "usuario",
+            "estado": "abierta",
+            "interlocutor": "NetShape Mexico",
+            "puntos_de_oportunidad": 8.0,
+            "por_que": "a 3 mes(es) de la inauguracion: recien inaugurada: todavia esta digiriendo la obra y el EPC acaba de entregar. Se habla, pero sin esperar orden",
+            "angulo": "lo que el EPC no alcanzo: segunda linea, ampliacion de carga, mejoras y lo que quedo en lista de pendientes al arrancar",
+            "inauguracion": "2026-07-17",
+            "meses_desde_la_inauguracion": 2.7,
+            "ventana_meses": 18,
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+          }
+        ],
+        "avisos": []
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": 82
+    },
+    {
+      "empresa": "FINSA",
+      "planta": "Garcia, N.L. (Parque Industrial Garcia)",
+      "estado": "Nuevo Leon",
+      "anillo": 1,
+      "texto": "coloca la primera piedra de su nuevo parque industrial de 92 hectareas con inversion de 220 millones de dolares; plan maestro de 17 naves industriales y 370,000 metros cuadrados rentables, primera nave de 28,573 metros cuadrados con inversion de 26 millones de dolares disponible en el primer trimestre de 2027",
+      "giro": "desarrollo industrial naves parque industrial",
+      "fuente": "constructor_o_epc",
+      "fecha": "2026-08-27",
+      "empata_padron": false,
+      "liga": "https://clusterindustrial.com.mx/finsa-invierte-220-mdd-en-nuevo-parque-industrial-de-92-hectareas-en-nuevo-leon/",
+      "procedencia_fecha": "primera piedra del 27-ago-2026 segun Mexico Business News y Cluster Industrial",
+      "epc": "FINSA (desarrollador y constructor del parque)",
+      "de_la_corrida": "2026-10-07",
+      "eval": {
+        "puntaje": 92.4,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 54.4,
+          "proceso": 0.0,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 18.0,
+          "fuerza_de_fuente": 20.0,
+          "padron": 0
+        },
+        "por_que": "ningun proceso reconocido · 'primera piedra' -> obra_nueva_integral (?, peso 44.4 de 15) · 220 MDD (~220 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 41 dias · fuente 'constructor_o_epc' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "obra_arrancada",
+        "fase_por": "primera piedra",
+        "fases_ambiguas": [],
+        "es_obra_nueva": true,
+        "puertas": [
+          {
+            "puerta": "epc",
+            "estado": "abierta",
+            "interlocutor": "FINSA (desarrollador y constructor del parque)",
+            "puntos_de_oportunidad": 25.0,
+            "por_que": "la obra esta en marcha: hay un EPC y esta comprando especialidad AHORA",
+            "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
+            "como_identificarlo": "",
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+          },
+          {
+            "puerta": "usuario",
+            "estado": "futura",
+            "interlocutor": "FINSA",
+            "puntos_de_oportunidad": 0.0,
+            "por_que": "la planta no esta inaugurada o no se sabe cuando: la puerta del usuario se abre en la inauguracion y dura 18 meses",
+            "angulo": "lo que el EPC no alcanzo: segunda linea, ampliacion de carga, mejoras y lo que quedo en lista de pendientes al arrancar",
+            "inauguracion": null,
+            "meses_desde_la_inauguracion": null,
+            "ventana_meses": 18,
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+          }
+        ],
+        "avisos": []
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": 41
+    },
+    {
+      "empresa": "Ecocab MX",
+      "planta": "Gomez Palacio, Dgo.",
+      "estado": "Durango",
+      "anillo": 2,
+      "texto": "inicia construccion de su tercera planta con inversion de 540 millones de pesos en el Parque Industrial SIMSA; nave industrial de 14,000 metros cuadrados en terreno de 25,000 para produccion de cable de cobre libre de oxigeno y arneses automotrices, arranque de operaciones en enero de 2027",
+      "giro": "arneses cableado cable de cobre autopartes",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-07-23",
+      "empata_padron": false,
+      "liga": "https://proyectostorreon.com/2026/07/23/inversion-coreana-ecocab-inicia-construccion-de-planta-en-gomez-palacio/",
+      "procedencia_fecha": "la nota de Proyectos Torreon esta fechada 23-jul-2026 y la ceremonia se anuncio para ese dia a las 10:00 en el Parque SIMSA",
+      "de_la_corrida": "2026-10-05",
+      "eval": {
+        "puntaje": 90.9,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 64.9,
+          "proceso": 10.5,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 18.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "proceso 'arneses_cableado' con 3 proyecto(s) en el catalogo (estructura_metalica, tuberia_y_montaje) · 'tercera planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 540 MDP (~29 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 76 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral",
+          "trabajos_civiles"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "obra_arrancada",
+        "fase_por": "inicia construccion",
+        "fases_ambiguas": [],
+        "es_obra_nueva": true,
+        "puertas": [
+          {
+            "puerta": "epc",
+            "estado": "abierta",
+            "interlocutor": "POR IDENTIFICAR",
+            "puntos_de_oportunidad": 25.0,
+            "por_que": "la obra esta en marcha: hay un EPC y esta comprando especialidad AHORA",
+            "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
+            "como_identificarlo": "la nota, el permiso de construccion del municipio o el boletin del parque industrial suelen nombrar al constructor. Busquedas: «constructora \"Ecocab MX\" planta Gomez Palacio, Dgo.», «quien construye la planta de Ecocab MX», y el boletin del parque donde se instala",
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+          },
+          {
+            "puerta": "usuario",
+            "estado": "futura",
+            "interlocutor": "Ecocab MX",
+            "puntos_de_oportunidad": 0.0,
+            "por_que": "la planta no esta inaugurada o no se sabe cuando: la puerta del usuario se abre en la inauguracion y dura 18 meses",
+            "angulo": "lo que el EPC no alcanzo: segunda linea, ampliacion de carga, mejoras y lo que quedo en lista de pendientes al arrancar. El historial dice que despues de esto sigue: instalacion_electrica, estructura_metalica",
+            "inauguracion": null,
+            "meses_desde_la_inauguracion": null,
+            "ventana_meses": 18,
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+          }
+        ],
+        "avisos": [
+          "la puerta que esta abierta HOY es la del EPC, y no sabemos quien es. Identificarlo es el primer trabajo de esta cuenta"
+        ]
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": 76
+    },
+    {
+      "empresa": "Dormakaba",
+      "planta": "Nogales, Son.",
+      "estado": "Sonora",
+      "anillo": 2,
+      "texto": "inaugura su nueva planta con inversion de 65 millones de dolares; mas de 254,000 pies cuadrados que duplican la capacidad de su instalacion anterior",
+      "giro": "metalmecanica cerraduras herrajes",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-04-29",
+      "empata_padron": false,
+      "inauguracion": "2026-04-29",
+      "liga": "https://www.elimparcial.com/son/nogales/2026/04/30/durazo-impulsa-inversion-y-empleos-con-nueva-planta-de-dormakaba-en-nogales/",
+      "procedencia_fecha": "Proyecto Puente la fecha el 29-abr-2026 y El Imparcial publica el 30-abr-2026",
+      "de_la_corrida": "2026-10-07",
+      "eval": {
+        "puntaje": 85.1,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 67.1,
+          "proceso": 12.7,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 10.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "proceso 'metalmecanica' con 15 proyecto(s) en el catalogo (tablero_electrico, electroducto_busway, transformador) · 'nueva planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 65 MDD (~65 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 161 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "inaugurada",
+        "fase_por": "inaugura",
+        "fases_ambiguas": [],
+        "es_obra_nueva": true,
+        "puertas": [
+          {
+            "puerta": "epc",
+            "estado": "cerrada",
+            "interlocutor": "POR IDENTIFICAR",
+            "puntos_de_oportunidad": 0.0,
+            "por_que": "la planta ya se inauguro: el EPC entrego y se fue. Entrar ahora por esta puerta es llegar tarde a una obra que ya se pago",
+            "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
+            "como_identificarlo": "la nota, el permiso de construccion del municipio o el boletin del parque industrial suelen nombrar al constructor. Busquedas: «constructora \"Dormakaba\" planta Nogales, Son.», «quien construye la planta de Dormakaba», y el boletin del parque donde se instala",
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+          },
+          {
+            "puerta": "usuario",
+            "estado": "abierta",
+            "interlocutor": "Dormakaba",
+            "puntos_de_oportunidad": 8.0,
+            "por_que": "a 5 mes(es) de la inauguracion: recien inaugurada: todavia esta digiriendo la obra y el EPC acaba de entregar. Se habla, pero sin esperar orden",
+            "angulo": "lo que el EPC no alcanzo: segunda linea, ampliacion de carga, mejoras y lo que quedo en lista de pendientes al arrancar",
+            "inauguracion": "2026-04-29",
+            "meses_desde_la_inauguracion": 5.3,
+            "ventana_meses": 18,
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+          }
+        ],
+        "avisos": []
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": 161
+    },
+    {
+      "empresa": "Pegatron",
+      "planta": "Ciudad Juarez, Chih.",
+      "estado": "Chihuahua",
+      "anillo": 2,
+      "texto": "invertira 330 millones de dolares en nueva planta y nueva nave industrial en Ciudad Juarez para componentes electronicos de electromovilidad y tecnologia para centros de datos; proyecto 2026-2029 con mil empleos",
+      "giro": "electronica componentes electronicos manufactura avanzada",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-08-20",
+      "empata_padron": false,
+      "liga": "https://diario.mx/juarez/2026/aug/20/celebra-gobernadora-inversion-de-pegatron-para-nueva-nave-industrial-en-juarez-1134292.html",
+      "procedencia_fecha": "fecha en la URL y el encabezado de El Diario de Juarez: 20-ago-2026",
+      "de_la_corrida": "2026-10-05",
+      "eval": {
+        "puntaje": 80.4,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 54.4,
+          "proceso": 0.0,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 18.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "ningun proceso reconocido · 'nueva planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 330 MDD (~330 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 48 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral",
+          "trabajos_civiles"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "anuncio",
+        "fase_por": "invertira",
+        "fases_ambiguas": [],
+        "es_obra_nueva": true,
+        "puertas": [
+          {
+            "puerta": "epc",
+            "estado": "abierta",
+            "interlocutor": "POR IDENTIFICAR",
+            "puntos_de_oportunidad": 20.0,
+            "por_que": "anuncio sin obra todavia: el EPC puede no estar elegido, y es el mejor momento para entrar a su lista de especialidad antes de que la cierre",
+            "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
+            "como_identificarlo": "la nota, el permiso de construccion del municipio o el boletin del parque industrial suelen nombrar al constructor. Busquedas: «constructora \"Pegatron\" planta Ciudad Juarez, Chih.», «quien construye la planta de Pegatron», y el boletin del parque donde se instala",
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+          },
+          {
+            "puerta": "usuario",
+            "estado": "futura",
+            "interlocutor": "Pegatron",
+            "puntos_de_oportunidad": 0.0,
+            "por_que": "la planta no esta inaugurada o no se sabe cuando: la puerta del usuario se abre en la inauguracion y dura 18 meses",
+            "angulo": "lo que el EPC no alcanzo: segunda linea, ampliacion de carga, mejoras y lo que quedo en lista de pendientes al arrancar. El historial dice que despues de esto sigue: instalacion_electrica, estructura_metalica",
+            "inauguracion": null,
+            "meses_desde_la_inauguracion": null,
+            "ventana_meses": 18,
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+          }
+        ],
+        "avisos": [
+          "la puerta que esta abierta HOY es la del EPC, y no sabemos quien es. Identificarlo es el primer trabajo de esta cuenta"
+        ]
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": 48
+    },
+    {
+      "empresa": "Inventec",
+      "planta": "Ciudad Juarez, Chih.",
+      "estado": "Chihuahua",
+      "anillo": 2,
+      "texto": "colocan la primera piedra de su expansion con inversion de 450 millones de dolares; construccion de 43,000 metros cuadrados adicionales en su campus, compra de 30 hectareas e instalacion de 45 nuevas lineas de produccion para servidores de alto desempeno",
+      "giro": "electronica servidores manufactura avanzada",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-07-31",
+      "empata_padron": false,
+      "liga": "https://diario.mx/juarez/2026/jul/31/colocan-primera-piedra-en-proyecto-de-expansion-de-inventec-1130871.html",
+      "procedencia_fecha": "fecha en la URL de El Diario de Juarez: 31-jul-2026. Otras notas la ponen el 1-ago; se usa la mas temprana documentada",
+      "ambiguedad": [
+        "dos fuentes fechan la primera piedra el 31-jul y una el 5-ago"
+      ],
+      "de_la_corrida": "2026-10-05",
+      "eval": {
+        "puntaje": 80.4,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 54.4,
+          "proceso": 0.0,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 18.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "ningun proceso reconocido · 'primera piedra' -> obra_nueva_integral (?, peso 44.4 de 15) · 450 MDD (~450 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 68 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "dos fuentes fechan la primera piedra el 31-jul y una el 5-ago",
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "obra_arrancada",
+        "fase_por": "primera piedra",
+        "fases_ambiguas": [],
+        "es_obra_nueva": true,
+        "puertas": [
+          {
+            "puerta": "epc",
+            "estado": "abierta",
+            "interlocutor": "POR IDENTIFICAR",
+            "puntos_de_oportunidad": 25.0,
+            "por_que": "la obra esta en marcha: hay un EPC y esta comprando especialidad AHORA",
+            "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
+            "como_identificarlo": "la nota, el permiso de construccion del municipio o el boletin del parque industrial suelen nombrar al constructor. Busquedas: «constructora \"Inventec\" planta Ciudad Juarez, Chih.», «quien construye la planta de Inventec», y el boletin del parque donde se instala",
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+          },
+          {
+            "puerta": "usuario",
+            "estado": "futura",
+            "interlocutor": "Inventec",
+            "puntos_de_oportunidad": 0.0,
+            "por_que": "la planta no esta inaugurada o no se sabe cuando: la puerta del usuario se abre en la inauguracion y dura 18 meses",
+            "angulo": "lo que el EPC no alcanzo: segunda linea, ampliacion de carga, mejoras y lo que quedo en lista de pendientes al arrancar",
+            "inauguracion": null,
+            "meses_desde_la_inauguracion": null,
+            "ventana_meses": 18,
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+          }
+        ],
+        "avisos": [
+          "la puerta que esta abierta HOY es la del EPC, y no sabemos quien es. Identificarlo es el primer trabajo de esta cuenta"
+        ]
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": 68
+    },
+    {
+      "empresa": "NIFCO",
+      "planta": "Apodaca, N.L.",
+      "estado": "Nuevo Leon",
+      "anillo": 1,
+      "texto": "invertira 85 millones de dolares en nueva planta en Apodaca, segunda del grupo en Nuevo Leon, y coloca la primera piedra en el Parque Mirador Industrial",
+      "giro": "autopartes inyeccion de plastico componentes automotriz",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-04-09",
+      "empata_padron": false,
+      "liga": "https://clusterindustrial.com.mx/nifco-invertira-85-mdd-en-nueva-planta-en-apodaca-y-eleva-apuesta-por-nuevo-leon/",
+      "procedencia_fecha": "anuncio del 9-abr-2026 durante la gira del gobernador por Asia",
+      "ambiguedad": [
+        "fuera de la ventana de 90 dias: 179 dias",
+        "la nota de la PRIMERA PIEDRA no trae fecha legible; si la obra arranco despues, la senal util es mas fresca que esta fecha"
+      ],
+      "de_la_corrida": "2026-10-05",
+      "eval": {
+        "puntaje": 76.4,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 64.4,
+          "proceso": 10.0,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 4.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "proceso 'inyeccion' reconocido (por 'inyeccion'), sin proyectos en el catalogo todavia · 'nueva planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 85 MDD (~85 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 181 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "fuera de la ventana de 90 dias: 179 dias",
+          "la nota de la PRIMERA PIEDRA no trae fecha legible; si la obra arranco despues, la senal util es mas fresca que esta fecha",
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "obra_arrancada",
+        "fase_por": "primera piedra",
+        "fases_ambiguas": [
+          "anuncio"
+        ],
+        "es_obra_nueva": true,
+        "puertas": [
+          {
+            "puerta": "epc",
+            "estado": "abierta",
+            "interlocutor": "POR IDENTIFICAR",
+            "puntos_de_oportunidad": 25.0,
+            "por_que": "la obra esta en marcha: hay un EPC y esta comprando especialidad AHORA",
+            "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
+            "como_identificarlo": "la nota, el permiso de construccion del municipio o el boletin del parque industrial suelen nombrar al constructor. Busquedas: «constructora \"NIFCO\" planta Apodaca, N.L.», «quien construye la planta de NIFCO», y el boletin del parque donde se instala",
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+          },
+          {
+            "puerta": "usuario",
+            "estado": "futura",
+            "interlocutor": "NIFCO",
+            "puntos_de_oportunidad": 0.0,
+            "por_que": "la planta no esta inaugurada o no se sabe cuando: la puerta del usuario se abre en la inauguracion y dura 18 meses",
+            "angulo": "lo que el EPC no alcanzo: segunda linea, ampliacion de carga, mejoras y lo que quedo en lista de pendientes al arrancar",
+            "inauguracion": null,
+            "meses_desde_la_inauguracion": null,
+            "ventana_meses": 18,
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+          }
+        ],
+        "avisos": [
+          "la nota nombra mas de una fase de obra (tambien anuncio): se tomo «obra_arrancada» por «primera piedra», que es la afirmacion mas fuerte. Si la fase real es otra, las dos puertas se mueven",
+          "la puerta que esta abierta HOY es la del EPC, y no sabemos quien es. Identificarlo es el primer trabajo de esta cuenta"
+        ]
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": 181
+    },
+    {
+      "empresa": "Doosan Bobcat",
+      "planta": "Salinas Victoria, N.L. (Interpuerto Monterrey)",
+      "estado": "Nuevo Leon",
+      "anillo": 1,
+      "texto": "inicia construccion de su planta de manufactura de 65,000 metros cuadrados con inversion de 300 millones de dolares; produce cargadores compactos de la serie M y arranca operaciones a principios de 2026, con certificacion LEED Silver",
+      "giro": "maquinaria pesada metalmecanica ensamble",
+      "fuente": "prensa_industrial",
+      "fecha": "2024-06-13",
+      "empata_padron": false,
+      "inauguracion": null,
+      "liga": "https://www.milenio.com/negocios/inicia-construccion-empresa-doosan-bobcat-nuevo-leon",
+      "procedencia_fecha": "la primera piedra en Interpuerto Monterrey la fecha ABC Noticias el 13-jun-2024",
+      "ambiguedad": [
+        "fuera de ventana por mucho (846 dias) y la nota dice que ARRANCA OPERACIONES a principios de 2026, pero no se encontro la fecha de inauguracion. Si inauguro en el 1T-2026 su puerta usuario esta en la ventana dulce; hay que confirmarlo antes de trabajarla"
+      ],
+      "de_la_corrida": "2026-10-07",
+      "eval": {
+        "puntaje": 75.1,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 67.1,
+          "proceso": 12.7,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 0.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "proceso 'metalmecanica' con 15 proyecto(s) en el catalogo (tablero_electrico, electroducto_busway, transformador) · 'inicia construccion' -> obra_nueva_integral (?, peso 44.4 de 15) · 300 MDD (~300 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 846 dias: ya no es senal, es historia · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "fuera de ventana por mucho (846 dias) y la nota dice que ARRANCA OPERACIONES a principios de 2026, pero no se encontro la fecha de inauguracion. Si inauguro en el 1T-2026 su puerta usuario esta en la ventana dulce; hay que confirmarlo antes de trabajarla",
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "obra_arrancada",
+        "fase_por": "inicia construccion",
+        "fases_ambiguas": [],
+        "es_obra_nueva": true,
+        "puertas": [
+          {
+            "puerta": "epc",
+            "estado": "desconocida",
+            "interlocutor": "POR IDENTIFICAR",
+            "puntos_de_oportunidad": 0.0,
+            "por_que": "la obra arranco hace 28 meses, mas de los 24 que se le dan a una obra industrial: el EPC probablemente ya entrego y se fue, pero ninguna fuente dice que la planta se inauguro. Averiguar si ya opera es lo primero, y de esa respuesta depende cual de las dos puertas se trabaja",
+            "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
+            "como_identificarlo": "la nota, el permiso de construccion del municipio o el boletin del parque industrial suelen nombrar al constructor. Busquedas: «constructora \"Doosan Bobcat\" planta Salinas Victoria, N.L. (Interpuerto Monterrey)», «quien construye la planta de Doosan Bobcat», y el boletin del parque donde se instala",
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+          },
+          {
+            "puerta": "usuario",
+            "estado": "desconocida",
+            "interlocutor": "Doosan Bobcat",
+            "puntos_de_oportunidad": 0.0,
+            "por_que": "la obra arranco hace mas de 24 meses y ninguna fuente dice que la planta se haya inaugurado. Si ya opera, esta puerta puede estar en su mejor momento; si no, sigue siendo futura. Una sola busqueda lo resuelve",
+            "angulo": "lo que el EPC no alcanzo: segunda linea, ampliacion de carga, mejoras y lo que quedo en lista de pendientes al arrancar",
+            "inauguracion": null,
+            "meses_desde_la_inauguracion": null,
+            "ventana_meses": 18,
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+          }
+        ],
+        "avisos": []
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": 846
+    },
+    {
+      "empresa": "Yokohama Rubber",
+      "planta": "Saltillo, Coah.",
+      "estado": "Coahuila",
+      "anillo": 1,
+      "texto": "invertira 115 millones de dolares en su segunda planta de llantas OTR en Saltillo para maquinaria minera, agricola y de construccion, con capacidad de 10,650 toneladas anuales; inicio de construccion en el tercer trimestre de 2026 y arranque de operaciones en el segundo trimestre de 2028",
+      "giro": "llantas hule vulcanizado caucho",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-05-21",
+      "empata_padron": false,
+      "liga": "https://clusterindustrial.com.mx/yokohama-invertira-115-mdd-en-nueva-planta-de-llantas-otr-en-saltillo-coahuila/",
+      "procedencia_fecha": "notas de El Heraldo de Saltillo y El Diario de Coahuila fechadas 21-may-2026",
+      "ambiguedad": [
+        "fuera de la ventana de 90 dias: 137 dias. SE INCLUYE MARCADA porque la obra arranca en el 3T-2026, o sea AHORA"
+      ],
+      "de_la_corrida": "2026-10-05",
+      "eval": {
+        "puntaje": 72.4,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 54.4,
+          "proceso": 0.0,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 10.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "ningun proceso reconocido · 'segunda planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 115 MDD (~115 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 139 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "fuera de la ventana de 90 dias: 137 dias. SE INCLUYE MARCADA porque la obra arranca en el 3T-2026, o sea AHORA",
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "anuncio",
+        "fase_por": "invertira",
+        "fases_ambiguas": [],
+        "es_obra_nueva": true,
+        "puertas": [
+          {
+            "puerta": "epc",
+            "estado": "abierta",
+            "interlocutor": "POR IDENTIFICAR",
+            "puntos_de_oportunidad": 20.0,
+            "por_que": "anuncio sin obra todavia: el EPC puede no estar elegido, y es el mejor momento para entrar a su lista de especialidad antes de que la cierre",
+            "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
+            "como_identificarlo": "la nota, el permiso de construccion del municipio o el boletin del parque industrial suelen nombrar al constructor. Busquedas: «constructora \"Yokohama Rubber\" planta Saltillo, Coah.», «quien construye la planta de Yokohama Rubber», y el boletin del parque donde se instala",
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+          },
+          {
+            "puerta": "usuario",
+            "estado": "futura",
+            "interlocutor": "Yokohama Rubber",
+            "puntos_de_oportunidad": 0.0,
+            "por_que": "la planta no esta inaugurada o no se sabe cuando: la puerta del usuario se abre en la inauguracion y dura 18 meses",
+            "angulo": "lo que el EPC no alcanzo: segunda linea, ampliacion de carga, mejoras y lo que quedo en lista de pendientes al arrancar",
+            "inauguracion": null,
+            "meses_desde_la_inauguracion": null,
+            "ventana_meses": 18,
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+          }
+        ],
+        "avisos": [
+          "la puerta que esta abierta HOY es la del EPC, y no sabemos quien es. Identificarlo es el primer trabajo de esta cuenta"
+        ]
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": 139
+    },
+    {
+      "empresa": "DH Autoware",
+      "planta": "Apodaca y Santa Catarina, N.L.",
+      "estado": "Nuevo Leon",
+      "anillo": 1,
+      "texto": "invertira 167 millones de dolares en Nuevo Leon para tarjetas madre automotrices; ampliacion de su planta en Apodaca de 28 mil metros cuadrados y construccion de una nueva nave en Santa Catarina",
+      "giro": "electronica automotriz tarjetas electronicas",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-04-13",
+      "empata_padron": false,
+      "liga": "https://clusterindustrial.com.mx/nuevo-leon-suma-inversion-de-167-millones-de-dolares-de-dh-autoware-y-proyecta-440-empleos/",
+      "procedencia_fecha": "anuncio del 13-abr-2026 en evento de promocion economica",
+      "ambiguedad": [
+        "fuera de la ventana de 90 dias: 175 dias"
+      ],
+      "de_la_corrida": "2026-10-05",
+      "eval": {
+        "puntaje": 72.4,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 54.4,
+          "proceso": 0.0,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 10.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "ningun proceso reconocido · 'nueva nave' -> obra_nueva_integral (?, peso 44.4 de 15) · 167 MDD (~167 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 177 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "fuera de la ventana de 90 dias: 175 dias",
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "anuncio",
+        "fase_por": "invertira",
+        "fases_ambiguas": [],
+        "es_obra_nueva": true,
+        "puertas": [
+          {
+            "puerta": "epc",
+            "estado": "abierta",
+            "interlocutor": "POR IDENTIFICAR",
+            "puntos_de_oportunidad": 20.0,
+            "por_que": "anuncio sin obra todavia: el EPC puede no estar elegido, y es el mejor momento para entrar a su lista de especialidad antes de que la cierre",
+            "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
+            "como_identificarlo": "la nota, el permiso de construccion del municipio o el boletin del parque industrial suelen nombrar al constructor. Busquedas: «constructora \"DH Autoware\" planta Apodaca y Santa Catarina, N.L.», «quien construye la planta de DH Autoware», y el boletin del parque donde se instala",
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+          },
+          {
+            "puerta": "usuario",
+            "estado": "futura",
+            "interlocutor": "DH Autoware",
+            "puntos_de_oportunidad": 0.0,
+            "por_que": "la planta no esta inaugurada o no se sabe cuando: la puerta del usuario se abre en la inauguracion y dura 18 meses",
+            "angulo": "lo que el EPC no alcanzo: segunda linea, ampliacion de carga, mejoras y lo que quedo en lista de pendientes al arrancar",
+            "inauguracion": null,
+            "meses_desde_la_inauguracion": null,
+            "ventana_meses": 18,
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+          }
+        ],
+        "avisos": [
+          "la puerta que esta abierta HOY es la del EPC, y no sabemos quien es. Identificarlo es el primer trabajo de esta cuenta"
+        ]
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": 177
+    },
+    {
+      "empresa": "TDI Manufacturing",
+      "planta": "Cienega de Flores, N.L.",
+      "estado": "Nuevo Leon",
+      "anillo": 1,
+      "texto": "inaugura nueva planta, la tercera en el estado, con inversion de 50 millones de dolares para sistemas de gestion termica de la industria automotriz",
+      "giro": "intercambiadores de calor gestion termica autopartes",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-04-17",
+      "empata_padron": false,
+      "liga": "https://clusterindustrial.com.mx/tdi-manufacturing-mexico-invierte-50-millones-de-dolares-e-inaugura-nueva-planta-en-nuevo-leon/",
+      "procedencia_fecha": "inauguracion del 17-abr-2026 segun MarkLines y Cluster Industrial",
+      "ambiguedad": [
+        "fuera de la ventana de 90 dias: 171 dias",
+        "ya esta inaugurada: la ventana de especificacion de obra ya cerro"
+      ],
+      "de_la_corrida": "2026-10-05",
+      "eval": {
+        "puntaje": 72.4,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 54.4,
+          "proceso": 0.0,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 10.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "ningun proceso reconocido · 'nueva planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 50 MDD (~50 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 173 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "fuera de la ventana de 90 dias: 171 dias",
+          "ya esta inaugurada: la ventana de especificacion de obra ya cerro",
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "inaugurada",
+        "fase_por": "inaugura",
+        "fases_ambiguas": [],
+        "es_obra_nueva": true,
+        "puertas": [
+          {
+            "puerta": "epc",
+            "estado": "cerrada",
+            "interlocutor": "POR IDENTIFICAR",
+            "puntos_de_oportunidad": 0.0,
+            "por_que": "la planta ya se inauguro: el EPC entrego y se fue. Entrar ahora por esta puerta es llegar tarde a una obra que ya se pago",
+            "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
+            "como_identificarlo": "la nota, el permiso de construccion del municipio o el boletin del parque industrial suelen nombrar al constructor. Busquedas: «constructora \"TDI Manufacturing\" planta Cienega de Flores, N.L.», «quien construye la planta de TDI Manufacturing», y el boletin del parque donde se instala",
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+          },
+          {
+            "puerta": "usuario",
+            "estado": "abierta",
+            "interlocutor": "TDI Manufacturing",
+            "puntos_de_oportunidad": 8.0,
+            "por_que": "a 6 mes(es) de la inauguracion: recien inaugurada: todavia esta digiriendo la obra y el EPC acaba de entregar. Se habla, pero sin esperar orden",
+            "angulo": "lo que el EPC no alcanzo: segunda linea, ampliacion de carga, mejoras y lo que quedo en lista de pendientes al arrancar",
+            "inauguracion": "2026-04-17",
+            "meses_desde_la_inauguracion": 5.7,
+            "ventana_meses": 18,
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+          }
+        ],
+        "avisos": []
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": 173
+    },
+    {
+      "empresa": "Daikin",
+      "planta": "San Luis Potosi (Campus Daikin)",
+      "estado": "San Luis Potosi",
+      "anillo": 3,
+      "texto": "inaugura su tercera planta dentro del nuevo Campus San Luis Potosi y anuncia nueva inversion de 1,100 millones de pesos para 2026: una linea de chillers centrifugos enfriados por agua con capacidad de 400 unidades al anio por 880 millones de pesos, mas ampliacion de componentes electronicos por 220 millones",
+      "giro": "aire acondicionado chillers equipo termico",
+      "fuente": "prensa_industrial",
+      "fecha": "2025-10-10",
+      "empata_padron": false,
+      "inauguracion": "2025-10-10",
+      "liga": "https://daikin-latinamerica.com/noticias/daikin-inaugura-campus-en-san-luis-potosi-e-invertira-1100-mdp-adicionales-en-2026/",
+      "procedencia_fecha": "la inauguracion del complejo fue el viernes 10-oct-2025 segun El Sol de San Luis y Potosinoticias",
+      "ambiguedad": [
+        "fuera de la ventana de 180 dias para DESCUBRIMIENTO (362 dias). Entra por la PUERTA USUARIO, cuya ventana se cuenta desde la inauguracion y todavia esta abierta"
+      ],
+      "de_la_corrida": "2026-10-07",
+      "eval": {
+        "puntaje": 66.4,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 54.4,
+          "proceso": 0.0,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 4.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "ningun proceso reconocido · 'tercera planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 1100 MDP (~59 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 362 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral",
+          "chiller"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "fuera de la ventana de 180 dias para DESCUBRIMIENTO (362 dias). Entra por la PUERTA USUARIO, cuya ventana se cuenta desde la inauguracion y todavia esta abierta",
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "inaugurada",
+        "fase_por": "inaugura",
+        "fases_ambiguas": [
+          "anuncio"
+        ],
+        "es_obra_nueva": true,
+        "puertas": [
+          {
+            "puerta": "epc",
+            "estado": "cerrada",
+            "interlocutor": "POR IDENTIFICAR",
+            "puntos_de_oportunidad": 0.0,
+            "por_que": "la planta ya se inauguro: el EPC entrego y se fue. Entrar ahora por esta puerta es llegar tarde a una obra que ya se pago",
+            "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
+            "como_identificarlo": "la nota, el permiso de construccion del municipio o el boletin del parque industrial suelen nombrar al constructor. Busquedas: «constructora \"Daikin\" planta San Luis Potosi (Campus Daikin)», «quien construye la planta de Daikin», y el boletin del parque donde se instala",
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+          },
+          {
+            "puerta": "usuario",
+            "estado": "abierta",
+            "interlocutor": "Daikin",
+            "puntos_de_oportunidad": 18.0,
+            "por_que": "a 12 mes(es) de la inauguracion: empieza a aparecer lo que el EPC no alcanzo, y ya hay quien lo note porque la planta lleva medio anio corriendo",
+            "angulo": "lo que el EPC no alcanzo: segunda linea, ampliacion de carga, mejoras y lo que quedo en lista de pendientes al arrancar. El historial dice que despues de esto sigue: tratamiento_de_agua, integracion_control",
+            "inauguracion": "2025-10-10",
+            "meses_desde_la_inauguracion": 11.9,
+            "ventana_meses": 18,
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+          }
+        ],
+        "avisos": [
+          "la nota nombra mas de una fase de obra (tambien anuncio): se tomo «inaugurada» por «inaugura», que es la afirmacion mas fuerte. Si la fase real es otra, las dos puertas se mueven"
+        ]
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": 362
+    },
+    {
+      "empresa": "ZC Rubber",
+      "planta": "Saltillo (Derramadero), Coah.",
+      "estado": "Coahuila",
+      "anillo": 1,
+      "texto": "colocan la primera piedra de su nueva planta de llantas en el Parque Industrial Alianza, zona de Derramadero, con inversion de 10,095 millones de pesos y 1,400 empleos",
+      "giro": "llantas hule vulcanizado caucho",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-06-01",
+      "empata_padron": false,
+      "liga": "https://www.milenio.com/estados/colocan-primera-piedra-de-empresa-zc-rubber-en-saltillo",
+      "procedencia_fecha": "la primera piedra se puso el 1-jun-2026 segun Milenio y Somos Industria",
+      "de_la_corrida": "2026-10-07",
+      "eval": {
+        "puntaje": 64.9,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 46.9,
+          "proceso": 0.0,
+          "tipo_de_obra": 44.4,
+          "capacidad": 2.5,
+          "frescura": 10.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "ningun proceso reconocido · 'nueva planta' -> obra_nueva_integral (?, peso 44.4 de 15) · 10095 MDP (~546 MDD) pasa el corte de 500 MDD: es un PROGRAMA CORPORATIVO, no una obra. Se reparte en anos, en varias plantas y con contratistas de otro tamano. Cuenta, y cuenta poco · frescura: 128 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "obra_arrancada",
+        "fase_por": "primera piedra",
+        "fases_ambiguas": [],
+        "es_obra_nueva": true,
+        "puertas": [
+          {
+            "puerta": "epc",
+            "estado": "abierta",
+            "interlocutor": "POR IDENTIFICAR",
+            "puntos_de_oportunidad": 25.0,
+            "por_que": "la obra esta en marcha: hay un EPC y esta comprando especialidad AHORA",
+            "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
+            "como_identificarlo": "la nota, el permiso de construccion del municipio o el boletin del parque industrial suelen nombrar al constructor. Busquedas: «constructora \"ZC Rubber\" planta Saltillo (Derramadero), Coah.», «quien construye la planta de ZC Rubber», y el boletin del parque donde se instala",
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+          },
+          {
+            "puerta": "usuario",
+            "estado": "futura",
+            "interlocutor": "ZC Rubber",
+            "puntos_de_oportunidad": 0.0,
+            "por_que": "la planta no esta inaugurada o no se sabe cuando: la puerta del usuario se abre en la inauguracion y dura 18 meses",
+            "angulo": "lo que el EPC no alcanzo: segunda linea, ampliacion de carga, mejoras y lo que quedo en lista de pendientes al arrancar",
+            "inauguracion": null,
+            "meses_desde_la_inauguracion": null,
+            "ventana_meses": 18,
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+          }
+        ],
+        "avisos": [
+          "la puerta que esta abierta HOY es la del EPC, y no sabemos quien es. Identificarlo es el primer trabajo de esta cuenta"
+        ]
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": 128
+    },
+    {
+      "empresa": "Martinrea",
+      "planta": "Silao, Gto. (Puerto Interior)",
+      "estado": "Guanajuato",
+      "anillo": 3,
+      "texto": "amplia su planta con inversion de 50 millones de dolares; instalacion de una prensa SIMPAC de 3,000 toneladas, una linea de perfilado Samco y celdas de automatizacion",
+      "giro": "metalmecanica estampado autopartes",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-09-30",
+      "empata_padron": false,
+      "liga": "https://www.am.com.mx/industria-automotriz/2026/09/30/martinrea-amplia-proveeduria-a-gm-silao-con-inversion-de-50-millones-de-dolares-1850215.html",
+      "procedencia_fecha": "fecha en la URL de AM y en el boletin del gobierno de Guanajuato del 30-sep-2026",
+      "de_la_corrida": "2026-10-07",
+      "eval": {
+        "puntaje": 64.1,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 31.1,
+          "proceso": 12.7,
+          "tipo_de_obra": 8.4,
+          "capacidad": 10,
+          "frescura": 25.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "proceso 'metalmecanica' con 15 proyecto(s) en el catalogo (tablero_electrico, electroducto_busway, transformador) · 'automatizacion' -> integracion_control (automatizacion, peso 8.4 de 15) · 50 MDD (~50 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 7 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "integracion_control"
+        ],
+        "familia": "automatizacion",
+        "familias_de_la_obra": [],
+        "ambiguedad": [
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "",
+        "fase_por": "",
+        "fases_ambiguas": [],
+        "es_obra_nueva": false,
+        "puertas": [
+          {
+            "puerta": "usuario_directo",
+            "estado": "abierta",
+            "interlocutor": "Martinrea",
+            "puntos_de_oportunidad": 22.0,
+            "por_que": "no es obra nueva: es equipo o linea dentro de una planta que ya opera. No hay EPC de por medio y el que decide es la planta, hoy",
+            "angulo": "lo que el equipo nuevo arrastra: acometida, tablero, integracion de control y la tuberia o el enfriamiento que pide. El historial dice que despues de esto sigue: conveyor_y_manejo, comisionamiento_y_arranque",
+            "por_que_vale_casi_tanto_como_una_obra": "la obra nueva es mas dinero pero mas lejana y con un EPC en medio; esto es menos dinero, sin intermediario y con fecha propia"
+          }
+        ],
+        "avisos": []
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": 7
+    },
+    {
+      "empresa": "CFE Nuevo Leon",
+      "planta": "varias, N.L.",
+      "estado": "Nuevo Leon",
+      "anillo": 1,
+      "texto": "invertira 8 mil 900 millones de pesos en Nuevo Leon para construir cuatro subestaciones electricas nuevas y ampliar la capacidad de diez instalaciones mas, con incremento de 140 MVA, mas modernizacion de red",
+      "giro": "transmision y distribucion de energia electrica",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-08-19",
+      "empata_padron": false,
+      "liga": "https://mvsnoticias.com/nuevo-leon/2026/8/19/nuevo-leon-tendra-cuatro-nuevas-subestaciones-electricas-cfe-confirma-inversion-742480.html",
+      "procedencia_fecha": "fecha en la URL de MVS Noticias: 19-ago-2026",
+      "de_la_corrida": "2026-10-05",
+      "eval": {
+        "puntaje": 51.0,
+        "veredicto": "guarda",
+        "desglose": {
+          "match_catalogo": 25.0,
+          "proceso": 0.0,
+          "tipo_de_obra": 15.0,
+          "capacidad": 10,
+          "frescura": 18.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "ningun proceso reconocido · 'subestacion' -> subestacion (electrico, peso 15 de 15) · 900 MDP (~49 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 49 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "subestacion"
+        ],
+        "familia": "electrico",
+        "familias_de_la_obra": [],
+        "ambiguedad": [
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "anuncio",
+        "fase_por": "invertira",
+        "fases_ambiguas": [],
+        "es_obra_nueva": false,
+        "puertas": [
+          {
+            "puerta": "usuario_directo",
+            "estado": "abierta",
+            "interlocutor": "CFE Nuevo Leon",
+            "puntos_de_oportunidad": 22.0,
+            "por_que": "no es obra nueva: es equipo o linea dentro de una planta que ya opera. No hay EPC de por medio y el que decide es la planta, hoy",
+            "angulo": "lo que el equipo nuevo arrastra: acometida, tablero, integracion de control y la tuberia o el enfriamiento que pide. El historial dice que despues de esto sigue: estructura_metalica, instalacion_electrica",
+            "por_que_vale_casi_tanto_como_una_obra": "la obra nueva es mas dinero pero mas lejana y con un EPC en medio; esto es menos dinero, sin intermediario y con fecha propia"
+          }
+        ],
+        "avisos": []
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": 49
+    },
+    {
+      "empresa": "Hyundai WIA",
+      "planta": "Nuevo Leon",
+      "estado": "Nuevo Leon",
+      "anillo": 1,
+      "texto": "invertira 35 millones de dolares en Nuevo Leon para manufactura de motores hibridos, con ampliacion de 31,350 metros cuadrados de nuevo espacio",
+      "giro": "autopartes motores metalmecanica maquinado",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-04-10",
+      "empata_padron": false,
+      "liga": "https://clusterindustrial.com.mx/hyundai-wia-invertira-35-millones-de-dolares-en-nuevo-leon-para-producir-motores-hibridos/",
+      "procedencia_fecha": "anuncio del 10-abr-2026, fechado por ABC Noticias",
+      "ambiguedad": [
+        "fuera de la ventana de 90 dias: 178 dias",
+        "la nota no dice en que municipio"
+      ],
+      "de_la_corrida": "2026-10-05",
+      "eval": {
+        "puntaje": 40.7,
+        "veredicto": "guarda",
+        "desglose": {
+          "match_catalogo": 22.7,
+          "proceso": 12.7,
+          "tipo_de_obra": 0.0,
+          "capacidad": 10,
+          "frescura": 10.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "proceso 'metalmecanica' con 15 proyecto(s) en el catalogo (tablero_electrico, electroducto_busway, transformador) · no nombra ningun tipo de proyecto de FTS · 35 MDD (~35 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 180 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [],
+        "familia": null,
+        "familias_de_la_obra": [],
+        "ambiguedad": [
+          "fuera de la ventana de 90 dias: 178 dias",
+          "la nota no dice en que municipio",
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "anuncio",
+        "fase_por": "invertira",
+        "fases_ambiguas": [],
+        "es_obra_nueva": false,
+        "puertas": [
+          {
+            "puerta": "usuario_directo",
+            "estado": "abierta",
+            "interlocutor": "Hyundai WIA",
+            "puntos_de_oportunidad": 22.0,
+            "por_que": "no es obra nueva: es equipo o linea dentro de una planta que ya opera. No hay EPC de por medio y el que decide es la planta, hoy",
+            "angulo": "lo que el equipo nuevo arrastra: acometida, tablero, integracion de control y la tuberia o el enfriamiento que pide",
+            "por_que_vale_casi_tanto_como_una_obra": "la obra nueva es mas dinero pero mas lejana y con un EPC en medio; esto es menos dinero, sin intermediario y con fecha propia"
+          }
+        ],
+        "avisos": []
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": 180
+    },
+    {
+      "empresa": "GE Aerospace",
+      "planta": "Hermosillo, Son.",
+      "estado": "Sonora",
+      "anillo": 2,
+      "texto": "invertira 725 millones de pesos para modernizar su planta con maquinaria y equipo de alta precision",
+      "giro": "aeroespacial maquinado metalmecanica",
+      "fuente": "prensa_industrial",
+      "fecha": "2026-05-21",
+      "empata_padron": false,
+      "liga": "https://eldiariodesonora.com.mx/sonora/2026/05/21/sonora-fortalece-liderazgo-industrial-inversion-725-millones-pesos.html",
+      "procedencia_fecha": "fecha en la URL de El Diario de Sonora: 21-may-2026",
+      "de_la_corrida": "2026-10-07",
+      "eval": {
+        "puntaje": 40.7,
+        "veredicto": "guarda",
+        "desglose": {
+          "match_catalogo": 22.7,
+          "proceso": 12.7,
+          "tipo_de_obra": 0.0,
+          "capacidad": 10,
+          "frescura": 10.0,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "proceso 'metalmecanica' con 15 proyecto(s) en el catalogo (tablero_electrico, electroducto_busway, transformador) · no nombra ningun tipo de proyecto de FTS · 725 MDP (~39 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: 139 dias · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [],
+        "familia": null,
+        "familias_de_la_obra": [],
+        "ambiguedad": [
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "anuncio",
+        "fase_por": "invertira",
+        "fases_ambiguas": [],
+        "es_obra_nueva": false,
+        "puertas": [
+          {
+            "puerta": "usuario_directo",
+            "estado": "abierta",
+            "interlocutor": "GE Aerospace",
+            "puntos_de_oportunidad": 22.0,
+            "por_que": "no es obra nueva: es equipo o linea dentro de una planta que ya opera. No hay EPC de por medio y el que decide es la planta, hoy",
+            "angulo": "lo que el equipo nuevo arrastra: acometida, tablero, integracion de control y la tuberia o el enfriamiento que pide",
+            "por_que_vale_casi_tanto_como_una_obra": "la obra nueva es mas dinero pero mas lejana y con un EPC en medio; esto es menos dinero, sin intermediario y con fecha propia"
+          }
+        ],
+        "avisos": []
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": 139
+    },
+    {
+      "empresa": "Megasteel",
+      "planta": "Gomez Palacio, Dgo.",
+      "estado": "Durango",
+      "anillo": 2,
+      "texto": "invertira 200 millones de dolares en una planta de estructuras metalicas en el parque industrial de Grupo Simsa, con primera etapa de 50 millones de dolares y renta de dos naves industriales",
+      "giro": "estructuras metalicas acero metalmecanica",
+      "fuente": "prensa_industrial",
+      "fecha": null,
+      "empata_padron": false,
+      "liga": "https://www.elsiglodetorreon.com.mx/noticia/2026/la-laguna-de-durango-atraera-mas-de-490-millones-de-dolares-en-nuevas-inversiones.html",
+      "procedencia_fecha": "NO HAY FECHA: la nota de El Siglo de Torreon la enlista dentro de un recuento regional sin fechar el anuncio de Megasteel",
+      "ambiguedad": [
+        "sin fecha documentada: va al techo minimo de frescura por un dato que falta, no por una senal debil"
+      ],
+      "de_la_corrida": "2026-10-05",
+      "eval": {
+        "puntaje": 77.1,
+        "veredicto": "pasa",
+        "desglose": {
+          "match_catalogo": 67.1,
+          "proceso": 12.7,
+          "tipo_de_obra": 44.4,
+          "capacidad": 10,
+          "frescura": 2,
+          "fuerza_de_fuente": 8.0,
+          "padron": 0
+        },
+        "por_que": "proceso 'metalmecanica' con 15 proyecto(s) en el catalogo (tablero_electrico, electroducto_busway, transformador) · 'una planta de' -> obra_nueva_integral (?, peso 44.4 de 15) · 200 MDD (~200 MDD) cae en el rango donde FTS puede tomar la obra completa: arriba del piso derivado del catalogo y abajo del corte de 500 MDD · frescura: SIN FECHA: vale el minimo y queda marcado. Poner cero equivale a descartarla · fuente 'prensa_industrial' · padron: no empata (0)",
+        "tipos_que_nombra": [
+          "obra_nueva_integral"
+        ],
+        "familia": "obra_nueva_integral",
+        "familias_de_la_obra": [
+          "automatizacion",
+          "electrico",
+          "estructura",
+          "manejo",
+          "servicio",
+          "termico_fluidos"
+        ],
+        "ambiguedad": [
+          "sin fecha documentada: va al techo minimo de frescura por un dato que falta, no por una senal debil",
+          "no empata con el corte vigente del DENUE. NO se descuenta: el corte es semestral y una planta nueva no existe ahi todavia",
+          "sin fecha en el registro"
+        ],
+        "umbrales": {
+          "pasa": 60,
+          "guarda": 40
+        }
+      },
+      "puertas": {
+        "fase": "anuncio",
+        "fase_por": "invertira",
+        "fases_ambiguas": [],
+        "es_obra_nueva": true,
+        "puertas": [
+          {
+            "puerta": "epc",
+            "estado": "abierta",
+            "interlocutor": "POR IDENTIFICAR",
+            "puntos_de_oportunidad": 20.0,
+            "por_que": "anuncio sin obra todavia: el EPC puede no estar elegido, y es el mejor momento para entrar a su lista de especialidad antes de que la cierre",
+            "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
+            "como_identificarlo": "la nota, el permiso de construccion del municipio o el boletin del parque industrial suelen nombrar al constructor. Busquedas: «constructora \"Megasteel\" planta Gomez Palacio, Dgo.», «quien construye la planta de Megasteel», y el boletin del parque donde se instala",
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+          },
+          {
+            "puerta": "usuario",
+            "estado": "futura",
+            "interlocutor": "Megasteel",
+            "puntos_de_oportunidad": 0.0,
+            "por_que": "la planta no esta inaugurada o no se sabe cuando: la puerta del usuario se abre en la inauguracion y dura 18 meses",
+            "angulo": "lo que el EPC no alcanzo: segunda linea, ampliacion de carga, mejoras y lo que quedo en lista de pendientes al arrancar",
+            "inauguracion": null,
+            "meses_desde_la_inauguracion": null,
+            "ventana_meses": 18,
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+          }
+        ],
+        "avisos": [
+          "la puerta que esta abierta HOY es la del EPC, y no sabemos quien es. Identificarlo es el primer trabajo de esta cuenta"
+        ]
+      },
+      "tipo_de_senal": "obra_nueva",
+      "dias": null
+    }
+  ]
+}

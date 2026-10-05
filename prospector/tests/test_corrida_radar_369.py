@@ -68,17 +68,45 @@ def test_la_ventana_declarada_se_respeta_o_se_marca():
     del hoy
 
 
-def test_los_puntajes_del_archivo_son_los_que_el_evaluador_produce_hoy():
+def test_los_puntajes_del_archivo_son_los_del_criterio_CON_EL_QUE_SE_CORRIO():
+    """Una corrida es una medicion fechada BAJO UN CRITERIO, y el criterio se mueve.
+
+    La version anterior de esta prueba comparaba contra el evaluador DE HOY y exigia
+    volver a correr la corrida cuando difirieran. Estaba mal pensada: el 7-oct la
+    DECISION 1 de #382 metio el vocabulario de arranque de obra, Waelzholz paso de
+    48.7 a 93.1, y «volver a correr la corrida» habria borrado el registro de lo que
+    el radar decia el 5-oct -- que es exactamente la evidencia que justifico el
+    cambio--. Un archivo de constancia que se reescribe cada vez que el criterio se
+    mueve deja de ser constancia.
+
+    Lo que SI se verifica, y sigue cazando la corrupcion del archivo:
+      1. el archivo declara con que version se puntuo;
+      2. las diferencias contra el evaluador de hoy estan DECLARADAS una por una, con
+         su antes y su despues. Una diferencia no declarada es rojo.
+    """
     cat = cargar_catalogo()
     hoy = date.fromisoformat(CORRIDA["hoy"])
+    crit = CORRIDA.get("criterio_con_el_que_se_puntuo") or {}
+    assert crit.get("version_de_la_herramienta"), (
+        "la corrida no declara con que version se puntuo")
+    declaradas = crit.get("lo_que_cambiaria_con_el_criterio_de_hoy") or {}
+    sin_declarar = {}
     for x in CORRIDA["evaluadas"]:
         r = evaluar(x, cat, hoy=hoy)
-        assert r["puntaje"] == x["eval"]["puntaje"], (
-            f"{x['empresa']} / {x['planta']}: el archivo dice "
-            f"{x['eval']['puntaje']} y el evaluador de hoy dice {r['puntaje']}. "
-            "O se movio un peso del radar y hay que volver a correr la corrida, o "
-            "el archivo se edito a mano. Las dos cosas hay que arreglarlas.")
-        assert r["veredicto"] == x["eval"]["veredicto"]
+        llave = f"{x['empresa']} / {x['planta']}"
+        if r["puntaje"] == x["eval"]["puntaje"]:
+            assert r["veredicto"] == x["eval"]["veredicto"], llave
+            continue
+        d = declaradas.get(llave)
+        if not d or d["antes"] != x["eval"]["puntaje"] or d["despues"] != r["puntaje"]:
+            sin_declarar[llave] = {"archivo": x["eval"]["puntaje"],
+                                   "evaluador_de_hoy": r["puntaje"],
+                                   "declarado": d}
+    assert not sin_declarar, (
+        "el evaluador de hoy puntua distinto que el archivo y la diferencia NO esta "
+        f"declarada en `criterio_con_el_que_se_puntuo`: {sin_declarar}. Si el "
+        "criterio cambio a proposito, declaralo ahi con su antes y su despues; si no, "
+        "alguien edito el archivo a mano.")
 
 
 def test_el_resumen_concuerda_con_las_filas():
@@ -113,6 +141,19 @@ NO_SON_PERSONAS = (
     "Tamaulipas Reynosa Matamoros", "Coahuila Parque Industrial",
     "Jaguar Industries Matamoros", "Jaguar Land Rover",
     "Parque Industrial Angostura",
+    # cazados al completar la bitacora de las 38 consultas el 7-oct: los cinco son
+    # cadenas de busqueda con nombres de ciudad, o razones sociales.
+    "Chihuahua Juarez Cuauhtemoc", "Cubico Sustainable Investments",
+    "Medline Nuevo Laredo", "Medline Industries Nuevo",
+    "Saltillo Monclova Piedras",
+    # cazados por la reja sobre la constancia del 7-oct, con la geografia
+    # expandida al Bajio, Chihuahua y Sonora: ciudades, parques, medios y razones
+    # sociales. La reja se queda encendida; la lista crece con la geografia.
+    "San Luis Potosi", "Campus San Luis", "Daikin San Luis",
+    "Guanajuato Silao Celaya", "Sonora Hermosillo Guaymas",
+    "Nestle Purina Silao", "American Industries Leon", "Doosan Bobcat Nuevo",
+    "Parque Industrial Garcia", "Parque Industrial Alianza",
+    "Mexico Business News",
 )
 
 
@@ -129,6 +170,15 @@ def test_la_constancia_no_lleva_datos_personales():
 
 
 def test_el_reporte_se_regenera_del_archivo_y_no_se_escribe_a_mano():
+    """El papel sale del dato. Lo que se fija es el CONTENIDO, no un sha256.
+
+    La version anterior fijaba el sha256 del HTML que se subio a OneDrive para #381.
+    Era una mala reja y duro un dia: acopla un archivo historico ya publicado a un
+    generador vivo y a la cadena de version de la herramienta, asi que se pone roja
+    cuando sube la version sin que el papel haya cambiado en nada que importe. El
+    sha256 de un papel publicado va en el issue que lo publica, que es donde sirve
+    para verificar una descarga.
+    """
     import os
     import subprocess
     import tempfile
@@ -139,8 +189,13 @@ def test_el_reporte_se_regenera_del_archivo_y_no_se_escribe_a_mano():
             capture_output=True, text=True,
             env={**os.environ, "SALIDA_RADAR": t + "/"})
         assert r.returncode == 0, r.stderr
-        # el sha256 que se publico en el issue de #369 y que se subio a OneDrive
-        assert ("c38a961b7eb9eb52e7b911165cd7ad17c7bb750327bacf9584895fecdf10bdba"
-                in r.stdout), (
-            "el reporte ya no reproduce el archivo que se subio a OneDrive. Si el "
-            f"cambio es a proposito, actualiza el sha. Salida:\n{r.stdout}")
+        ruta = [l for l in r.stdout.splitlines() if l.endswith(".html")][0]
+        doc = open(ruta, encoding="utf-8").read()
+    # las cinco que fueron a Rissia, y las dos rescatadas a mano
+    for quien in ("NIFCO", "QSMX", "Ecocab MX", "Pegatron", "Waelzholz", "Inventec"):
+        assert quien in doc, f"{quien} ya no aparece en el reporte"
+    # los numeros del pie salen del archivo, no de la mano
+    assert f"{CORRIDA['consultas_gastadas']} consultas" in doc
+    assert f"{CORRIDA['resumen']['senales']} señales" in doc
+    # y ni un dato personal
+    assert not _CORREO.findall(re.sub(r'https?://[^\s"]+', "", doc))

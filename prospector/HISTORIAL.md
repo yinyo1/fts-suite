@@ -1841,3 +1841,86 @@ canal que nadie audita.
 
 **Sigue abierto y sin tocar:** los datos personales en los issues públicos de este
 repo. Es acción hacia afuera y la decide Esteban.
+
+---
+
+# #382 (cierre) — Una planta nueva no es una señal: son dos, con dos compradores
+
+`0.20.0` · **1,200 pruebas** (eran 1,166). Continuación de #381, la primera corrida de
+descubrimiento.
+
+## Lo que cambió en el radar
+
+Esteban puso el caso BIC encima de la mesa: durante la obra compra el **EPC** que trae
+la planta llave en mano —FTS no le compite, le vende especialidad, y ese EPC trae más
+obra en la región—; de 12 a 18 meses **después de la inauguración** compra el
+**usuario**: lo que el EPC no alcanzó, la segunda línea, la ampliación de carga. El
+radar puntuaba `obra_nueva_integral` alto y lo trataba como una sola puerta, mandando a
+buscar al usuario de una planta que todavía no existe.
+
+`flujo/puertas.py` emite ahora dos puertas por planta nueva, cada una con su
+interlocutor, su ángulo y su estado —abierta, cerrada, futura o por averiguar—, más
+tres puertas que no son de obra nueva: el usuario directo de una planta que ya opera,
+la expansión lateral a otra división de la misma cuenta, y la planta donde FTS ya
+entró por un canal.
+
+**La ventana del usuario va al revés de la frescura normal:** vale más a los 12-18
+meses que a los 2. Viaja etiquetada CRITERIO declarado por Esteban, no medición.
+
+## Los tres defectos que salieron de LEER la salida, no de la suite
+
+1. **Yokohama Rubber** salía `inaugurada`, con su puerta de usuario abierta y «4.6
+   meses de inaugurada», porque «arranque de operaciones en el **segundo trimestre de
+   2028**» estaba en el vocabulario de inauguración. Una frase de futuro ponía la obra
+   en el pasado.
+2. **Doosan Bobcat** salía con «A·EPC ABIERTA · 25 — hay un EPC comprando AHORA» sobre
+   una primera piedra de **hace 846 días**. El mismo defecto por el otro lado: una
+   fecha vieja dejaba la obra en el presente.
+3. **Megasteel** —«invertirá 200 millones de dólares en **una planta de** estructuras
+   metálicas»— se **archivaba** con 32.7, porque ninguna de las formas del vocabulario
+   («nueva planta», «primera planta», «segunda planta») aparece en esa frase. Con
+   `una planta de`: 77.1 y pasa, con su puerta de EPC. Cero falsos positivos sobre las
+   23 señales.
+
+Los tres se encontraron mirando el entregable antes de publicarlo. Es la lección del
+turno: la suite comprueba lo que alguien pensó en comprobar; leer la salida completa
+encuentra lo que nadie pensó.
+
+## Ecolab es Nalco, y el punto ciego del intermediario tiene nombre
+
+Decisión de Esteban: una señal de Ecolab como planta o inversión probablemente es de
+otra división donde FTS no tiene historia. Misma cuenta, otra puerta. Se separaron dos
+relaciones que una sola tabla habría confundido, porque sus cartas de presentación son
+distintas: el **mismo grupo corporativo** (Ecolab/Nalco, Xignux) y la **planta
+alcanzada por un canal** (Arca, Topo Chico, Nemak, Ragasa). Odoo confirma que Nalco de
+México es la relación más productiva del CRM, y eso explica el punto ciego de #361: los
+leads de esas plantas cuelgan del partner **del canal**, no de la planta, así que
+cualquier cruce por `partner_id` los pierde.
+
+## Los números de la corrida dejaron de escribirse a mano
+
+El defecto que este repo ha arreglado ocho veces apareció **dos veces en un día**: el
+libro de consultas del 5-oct decía 20 cuando se gastaron 38, y el resumen del 7-oct
+siguió diciendo «inaugurada 7» después de que Yokohama dejara de serlo.
+`herramientas/sellar_constancia_puertas.py` recalcula puntajes, puertas, fases, días,
+versión y todo el resumen desde los módulos, y una prueba exige que el archivo en disco
+**sea** ese recálculo. El reporte también dejó de traer números en prosa.
+
+## Lo que Esteban decide, y el radar no decidió solo
+
+Dos entradas describen obra —las cuatro subestaciones nuevas de CFE y la ampliación de
+31,350 m² de Hyundai WIA— y hoy salen con una sola puerta. Quien construye una
+ampliación o una subestación no siempre es un EPC llave en mano: a veces lo contrata el
+usuario y en el caso de CFE sale a licitación pública, que es otra puerta con otras
+reglas. Se nombran en el entregable en vez de resolverse: equivocarse ahí es mandar a
+alguien a buscar un interlocutor que no existe.
+
+## Restricciones del turno
+
+Cero escrituras a Odoo —sólo lectura— · cero Lusha · purga no ejecutada ·
+`fts-mcp-odoo` intacto · sin datos personales en el repo ni en el issue. **No se corrió
+`prospecta`:** Esteban aprueba la lista y las puertas, y después se corre con el ángulo
+correcto por entrada.
+
+**Sigue abierto y sin tocar:** los datos personales en los issues públicos de este
+repo. Es acción hacia afuera y la decide Esteban.

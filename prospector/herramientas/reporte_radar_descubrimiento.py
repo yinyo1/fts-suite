@@ -8,6 +8,8 @@ SIN DATOS PERSONALES. Empresas, plantas, senales y ligas. Ni un nombre, ni un
 correo, ni un telefono: esta lista viaja por OneDrive.
 """
 import hashlib, html as H, json, sys
+sys.path.insert(0, __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__))))
+from flujo.sello import version
 from datetime import date
 
 import os
@@ -202,8 +204,8 @@ es una foto de mayo y una planta que se está construyendo no existe ahí todav�
 Suma cuando empata y no resta cuando no.</p>
 </div>
 
-<div class="foot">Generado por prospector 0.19.0 desde la corrida del
-{HOY.isoformat()} · 38 consultas · 14 señales · 9 pasan<br>
+<div class="foot">Generado por prospector {_c.get("version_de_la_herramienta", version())} desde la corrida del
+{HOY.isoformat()} · {_c["consultas_gastadas"]} consultas · {_c["resumen"]["senales"]} señales · {_c["resumen"]["pasan"]} pasan<br>
 Sin datos personales: empresas, plantas, señales y ligas.</div>
 </div>
 </body>

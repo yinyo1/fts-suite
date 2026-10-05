@@ -175,6 +175,35 @@ def relacion_de_grupo(empresa: str, ruta: str = "") -> dict:
     return {}
 
 
+def trabajo_via_canal(empresa: str, ruta: str = "") -> dict:
+    """La planta donde FTS ya trabajo PERO LE FACTURO A OTRO, si esta declarada.
+
+    Es la tercera relacion del archivo y NO es lo mismo que `relacion_de_grupo`:
+    Arca no es una division de Ecolab, es una planta que FTS intervino cobrandole a
+    Ecolab. La carta de presentacion que cada una sostiene es distinta, y por eso
+    son dos funciones.
+
+    ES EL PUNTO CIEGO DE #361, con nombre. Los leads de estas plantas cuelgan del
+    partner del CANAL, no del de la planta, asi que un cruce por `partner_id` de la
+    cuenta los pierde -- y eso fue justo lo que dejo incompleta la constancia de
+    Odoo del 29-sep--.
+    """
+    try:
+        with open(ruta or RUTA_GRUPOS, encoding="utf-8") as f:
+            d = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    e = _plano(empresa)
+    if not e:
+        return {}
+    for c in d.get("clientes_via_canal") or []:
+        for a in list(c.get("alias") or []) + [c.get("empresa")]:
+            m = _plano(a)
+            if m and (m == e or m in e or e in m):
+                return c
+    return {}
+
+
 def carta_de_presentacion(empresa: str, ciudad: str | None,
                           datos: dict | None = None) -> str:
     """La frase que la ficha puede sostener. Literal, para que nadie la adorne."""

@@ -134,9 +134,43 @@ def _cluster_del_modulo():
                    capture_output=True)
 
 
+class _BaseQueSeSalta:
+    """La base, pero si el cluster se muere A MEDIA PRUEBA la prueba se salta.
+
+    La comprobacion de antes solo miraba el cluster al ENTRAR a la prueba, y el
+    contenedor lo reapea en cualquier momento: el 7-oct la suite completa salio roja
+    dos veces con «connection to server on socket ... No such file or directory»
+    mientras el modulo solo pasaba verde, y cada vez en una prueba distinta. Un rojo
+    que depende de si /tmp sobrevivio es un rojo que entrena a ignorar el rojo.
+
+    Una prueba de este modulo solo puede ser roja por una regla del esquema. Si lo
+    que se cayo fue el servidor, se salta -- y si el servidor sigue vivo, el error
+    es real y se propaga--.
+    """
+
+    def __init__(self, base):
+        self._base = base
+
+    def __getattr__(self, nombre):
+        atributo = getattr(self._base, nombre)
+        if not callable(atributo):
+            return atributo
+
+        def envuelto(*a, **kw):
+            try:
+                return atributo(*a, **kw)
+            except SinPostgres as e:
+                if not self._base.vive():
+                    pytest.skip("el Postgres de prueba dejo de contestar a media "
+                                f"prueba: {str(e)[:140]}")
+                raise
+
+        return envuelto
+
+
 @pytest.fixture
 def base(_cluster_del_modulo):
-    """El cluster, comprobando que siga vivo ANTES de cada prueba.
+    """El cluster, comprobando que siga vivo ANTES de cada prueba y DURANTE.
 
     Si se murio a media corrida la prueba se SALTA, no falla: lo que estas pruebas
     verifican son las reglas del esquema, y un cluster reapeado no dice nada sobre
@@ -144,7 +178,7 @@ def base(_cluster_del_modulo):
     """
     if not _cluster_del_modulo.vive():
         pytest.skip("el Postgres de prueba dejo de contestar a media corrida")
-    return _cluster_del_modulo
+    return _BaseQueSeSalta(_cluster_del_modulo)
 
 
 def test_el_piloto_carga_y_sus_reglas_rechazan(base):
