@@ -154,6 +154,12 @@ NO_SON_PERSONAS = (
     "Nestle Purina Silao", "American Industries Leon", "Doosan Bobcat Nuevo",
     "Parque Industrial Garcia", "Parque Industrial Alianza",
     "Mexico Business News",
+    # cazados al escribir el parque industrial de cada senal el 6-oct (decision 3).
+    "Campus Daikin San", "Parque Mirador Industrial", "Parque Industrial Alianza",
+    # cazados en la segunda vuelta por parque del 6-oct: parques, desarrolladores y
+    # cadenas de busqueda con nombres de lugar.
+    "Parques Industriales Amistad", "Parque Industrial Las", "Aparece Hubs Park",
+    "Autoware Apodaca Santa", "Guanajuato Puerto Interior",
 )
 
 

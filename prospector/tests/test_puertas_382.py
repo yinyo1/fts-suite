@@ -180,7 +180,9 @@ def test_el_epc_sin_identificar_trae_como_buscarlo_y_lo_grita():
     p = P.puertas_de(_s(texto="arranca la construccion de su primera planta"),
                      CAT, hoy=HOY)
     epc = [q for q in p["puertas"] if q["puerta"] == P.PUERTA_EPC][0]
-    assert epc["interlocutor"] == "POR IDENTIFICAR"
+    # El «por identificar» ahora dice QUE se busca -- un EPC o un contratista
+    # general--, porque en una ampliacion no es lo mismo y no se busca igual.
+    assert epc["interlocutor"] == "POR IDENTIFICAR (EPC)"
     assert "constructora" in epc["como_identificarlo"]
     assert any("no sabemos quien es" in a for a in p["avisos"])
 
@@ -344,7 +346,7 @@ def test_la_constancia_de_la_corrida_ES_el_recalculo_de_los_modulos():
         assert a["puertas"] == b["puertas"], f"las puertas de {a['empresa']} estan a mano"
 
 
-def test_la_constancia_del_7_oct_no_lleva_datos_personales():
+def test_la_constancia_de_puertas_no_lleva_datos_personales():
     """La misma reja del 5-oct, sobre el archivo nuevo.
 
     No se duplica el detector: se importa el del 5-oct con su lista de lugares y
@@ -398,3 +400,173 @@ def test_una_obra_arrancada_RECIENTE_si_tiene_al_EPC_en_sitio():
     epc = next(q for q in P.puertas_de(s, hoy=HOY)["puertas"]
                if q["puerta"] == P.PUERTA_EPC)
     assert epc["estado"] == P.ABIERTA and epc["puntos_de_oportunidad"] == 25.0
+
+
+# ====================================================================
+# Las cuatro decisiones del 6-oct sobre #382
+# ====================================================================
+
+def test_los_dos_criterios_confirmados_siguen_dichos_como_criterios():
+    """Esteban confirmo el tope de obra y la ventana del usuario el 6-oct.
+
+    Confirmar un criterio NO lo vuelve una medicion, y el dia que el lazo 3 tenga
+    cierres que lo contradigan tiene que poder moverlo. Asi que el modulo sigue
+    obligado a decir que son criterios declarados y de quien son.
+    """
+    fuente = (RAIZ / "flujo" / "puertas.py").read_text(encoding="utf-8")
+    assert P.MESES_MAXIMOS_DE_OBRA == 24
+    assert P.MESES_DE_LA_VENTANA_DEL_USUARIO == 18
+    for cte in ("cuanto dura una obra antes de que el EPC se vaya",
+                "la ventana del usuario"):
+        i = fuente.index(cte)
+        bloque = fuente[i:i + 700]
+        assert "2026-10-06" in bloque, cte
+        assert "CRITERIO" in bloque and "NO MEDICION" in bloque, cte
+        assert "lazo 3" in bloque, cte
+    # Y el comentario de los 30.44 dias vuelve a estar en su constante: al insertar
+    # el tope de obra el 5-oct se quedo colgado de MESES_MAXIMOS_DE_OBRA, diciendo
+    # «promedio del anio gregoriano» de un numero de meses.
+    assert "DIAS_POR_MES = 30.44  # promedio del anio gregoriano" in fuente
+    assert "MESES_MAXIMOS_DE_OBRA = 24\n" in fuente
+
+
+def test_una_ampliacion_con_superficie_abre_la_puerta_del_CONTRATISTA():
+    """Decision 2: «Hyundai WIA: abre la puerta A. Una ampliacion de 31,350 m2
+    lleva contratista general»."""
+    s = _s(empresa="Hyundai WIA", planta="Nuevo Leon", fecha="2026-04-10",
+           giro="motores automotriz",
+           texto="invertira 35 millones de dolares en Nuevo Leon para manufactura de "
+                 "motores hibridos, con ampliacion de 31,350 metros cuadrados de "
+                 "nuevo espacio")
+    r = P.puertas_de(s, hoy=HOY)
+    assert r.get("es_ampliacion") is True and r["es_obra_nueva"] is False
+    cuales = {q["puerta"]: q for q in r["puertas"]}
+    # La puerta del contratista, abierta, y nombrada como lo que es.
+    a = cuales[P.PUERTA_EPC]
+    assert a["estado"] == P.ABIERTA and a["quien_construye"] == "contratista general"
+    assert "contratista general" in a["interlocutor"]
+    # Y la del usuario esta abierta HOY, no «futura»: la planta ya opera.
+    assert cuales[P.PUERTA_USUARIO_DIRECTO]["estado"] == P.ABIERTA
+    assert P.PUERTA_USUARIO not in cuales, (
+        "una ampliacion no tiene puerta de usuario FUTURA: el usuario ya esta ahi")
+
+
+def test_una_ampliacion_SIN_superficie_no_es_obra():
+    """Martinrea amplia su planta con una prensa y dos lineas. Eso es equipo, y no
+    hay contratista de obra: la reja tiene que distinguirlo de Hyundai."""
+    s = _s(empresa="Martinrea", planta="Silao, Gto.", fecha="2026-09-30",
+           texto="amplia su planta con inversion de 50 millones de dolares; "
+                 "instalacion de una prensa SIMPAC de 3,000 toneladas, una linea de "
+                 "perfilado Samco y celdas de automatizacion")
+    r = P.puertas_de(s, hoy=HOY)
+    assert not r.get("es_ampliacion")
+    assert {q["puerta"] for q in r["puertas"]} == {P.PUERTA_USUARIO_DIRECTO}
+
+
+def test_una_obra_de_entidad_publica_se_concursa_y_no_abre_las_otras_puertas():
+    """Decision 2: «CFE: NO abras puerta A. Sale a licitacion publica»."""
+    s = _s(empresa="CFE Nuevo Leon", planta="varias, N.L.", fecha="2026-08-19",
+           giro="generacion y transmision electrica",
+           texto="invertira 8 mil 900 millones de pesos en Nuevo Leon para construir "
+                 "cuatro subestaciones electricas nuevas y ampliar la capacidad de "
+                 "diez instalaciones mas, con incremento de 140 MVA")
+    r = P.puertas_de(s, hoy=HOY)
+    assert r.get("es_compra_publica") is True
+    cuales = {q["puerta"] for q in r["puertas"]}
+    assert cuales == {P.PUERTA_LICITACION}, (
+        f"una obra publica no abre puerta de EPC ni de usuario: {cuales}")
+    q = next(x for x in r["puertas"] if x["puerta"] == P.PUERTA_LICITACION)
+    # El angulo que Esteban dicto, con sus dos piezas.
+    assert "padron" in q["angulo"] and "CompraNet" in q["angulo"]
+    # Y lo que NO se puede decir, porque es el error que esta puerta evita.
+    assert "gerente" in q["lo_que_NO_se_puede_decir"]
+    # La segunda via, que si es una venta normal.
+    assert "subcontratista" in q["la_segunda_via"]
+
+
+def test_una_empresa_privada_no_se_vuelve_publica_por_las_letras():
+    for quien in ("Daikin", "Grupo Cementos Chihuahua", "Pacifico", "Cifunsa"):
+        assert P.entidad_de_compra_publica(quien) == "", quien
+
+
+def test_la_busqueda_del_constructor_pregunta_PRIMERO_por_el_parque():
+    """Decision 3: la medicion del 5-oct dijo que el parque es lo unico que contesta."""
+    con = P.puertas_de(_s(empresa="Waelzholz", planta="Ramos Arizpe, Coah.",
+                          parque="Parque Industrial Amistad",
+                          texto="arranca la construccion de su primera planta"),
+                       hoy=HOY)
+    a = next(q for q in con["puertas"] if q["puerta"] == P.PUERTA_EPC)
+    assert a["como_identificarlo"].startswith("POR EL PARQUE")
+    assert "Parque Industrial Amistad" in a["como_identificarlo"]
+    # Sin parque, la primera tarea es sacarlo, no preguntar por el constructor.
+    sin = P.puertas_de(_s(empresa="Yokohama Rubber", planta="Saltillo, Coah.",
+                          texto="invertira 115 millones en su segunda planta"),
+                       hoy=HOY)
+    b = next(q for q in sin["puertas"] if q["puerta"] == P.PUERTA_EPC)
+    assert "no nombra el parque" in b["como_identificarlo"]
+    assert "parque industrial" in b["como_identificarlo"]
+
+
+def test_el_parque_de_cada_senal_esta_EN_LA_FUENTE_y_no_en_mi_memoria():
+    """Decision 3 pide el parque «si la nota lo dice». Esta reja verifica el «si».
+
+    Lo escribi a mano leyendo las 23 notas, y una casilla escrita de memoria es
+    exactamente el defecto que este repo persigue. La regla es literal: el nombre del
+    parque -- lo que va antes del parentesis, que es solo una aclaracion de donde
+    queda-- tiene que aparecer TAL CUAL en el texto de la senal o en el nombre de la
+    planta. Las dos cosas vienen de la fuente; mi memoria no.
+    """
+    from herramientas.sellar_constancia_puertas import CONSTANCIA
+    from flujo.catalogo_proyectos import plano
+    c = json.load(open(CONSTANCIA, encoding="utf-8"))
+    sin_respaldo, con_parque = [], 0
+    for e in c["evaluadas"]:
+        if not e.get("parque"):
+            continue
+        con_parque += 1
+        nombre = plano(e["parque"].split("(")[0].strip())
+        fuente = plano(f"{e['texto']} {e['planta']}")
+        # Un parque puede venir de DOS lugares, y los dos valen: de la nota original,
+        # o de la segunda vuelta por parque del 6-oct. Lo que no vale es que venga de
+        # ninguna parte, asi que el que no esta en la nota tiene que decir de donde
+        # salio -- tres de ellos salieron de una consulta y lo declaran--.
+        if nombre not in fuente and not e.get("parque_procedencia"):
+            sin_respaldo.append((e["empresa"], e["parque"]))
+    assert con_parque >= 10, f"se perdieron los parques declarados: {con_parque}"
+    assert not sin_respaldo, (
+        f"estos parques no aparecen literalmente en la fuente de su senal: "
+        f"{sin_respaldo}")
+
+
+def test_los_conteos_de_nuevas_y_heredadas_NO_dependen_de_una_fecha():
+    """Salieron en cero al corregir el dia de la corrida, y nadie se habria dado cuenta.
+
+    `de_la_corrida` era una fecha y el resumen comparaba contra `hoy`. Las dos corridas
+    del 5-oct cayeron el mismo dia, asi que la fecha dejo de distinguirlas: «9 nuevas y
+    14 heredadas» se volvio «0 y 0» sin que ninguna prueba lo viera. Ahora el
+    identificador es el nombre de la corrida, y esto exige que sumen.
+    """
+    from herramientas.sellar_constancia_puertas import CONSTANCIA
+    c = json.load(open(CONSTANCIA, encoding="utf-8"))
+    r = c["resumen"]
+    assert r["nuevas_de_esta_corrida"] > 0 and r["heredadas_de_la_corrida_anterior"] > 0
+    assert (r["nuevas_de_esta_corrida"] + r["heredadas_de_la_corrida_anterior"]
+            == r["senales"])
+    assert not any(e["de_la_corrida"][:1].isdigit() for e in c["evaluadas"]), (
+        "`de_la_corrida` volvio a ser una fecha; tiene que ser el nombre de la corrida")
+
+
+def test_cada_constructor_identificado_trae_su_procedencia():
+    """La segunda vuelta por parque dejo cuatro constructores nuevos. Cada uno dice de
+    donde salio, porque «el constructor es X» es una afirmacion sobre el mundo y de
+    ella depende a quien se le llama."""
+    from herramientas.sellar_constancia_puertas import CONSTANCIA
+    c = json.load(open(CONSTANCIA, encoding="utf-8"))
+    con_epc = [e for e in c["evaluadas"] if e.get("epc")]
+    assert len(con_epc) >= 4, f"se perdieron los constructores hallados: {len(con_epc)}"
+    for e in con_epc:
+        assert e.get("epc_procedencia"), f"{e['empresa']} afirma un constructor sin fuente"
+        # y la puerta A lo lleva como interlocutor, no como «por identificar»
+        a = [q for q in e["puertas"]["puertas"] if q["puerta"] == P.PUERTA_EPC]
+        if a:
+            assert "POR IDENTIFICAR" not in a[0]["interlocutor"], e["empresa"]

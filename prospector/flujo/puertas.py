@@ -31,6 +31,7 @@ dato que faltaba.
 """
 from __future__ import annotations
 
+import re
 from datetime import date
 
 from .catalogo_proyectos import plano
@@ -45,6 +46,7 @@ PUERTA_USUARIO = "usuario"
 PUERTA_LATERAL = "expansion_lateral"
 PUERTA_VIA_CANAL = "planta_ya_intervenida"
 PUERTA_USUARIO_DIRECTO = "usuario_directo"
+PUERTA_LICITACION = "licitacion_publica"
 
 ABIERTA = "abierta"
 CERRADA = "cerrada"
@@ -53,9 +55,11 @@ DESCONOCIDA = "desconocida"
 
 # ===================================================== la ventana del usuario
 #
-# DECLARADA POR ESTEBAN, NO MEDIDA, y por eso viaja etiquetada: «después de la
-# inauguración, 12 a 18 meses, compra el usuario». El lazo 3 del motor 3 es el que
-# va a corregir estos tramos cuando haya cierres que los contradigan.
+# CONFIRMADA POR ESTEBAN EL 2026-10-06 (decision 1 de #382). Sigue siendo CRITERIO
+# DECLARADO Y NO MEDICION, y por eso viaja etiquetada: «después de la inauguración,
+# 12 a 18 meses, compra el usuario». El lazo 3 del motor 3 es el que va a corregir
+# estos tramos cuando haya cierres que los contradigan -- confirmar un criterio no lo
+# vuelve un dato--.
 #
 # Y la escala va AL REVES de la frescura normal, que es lo interesante: una nota
 # fresca vale más, pero una planta recién inaugurada vale MENOS -- todavía está
@@ -72,11 +76,13 @@ ESCALA_DEL_USUARIO = (
      "la ventana que Esteban nombro: segunda linea, ampliacion de carga y mejoras "
      "se presupuestan aqui"),
 )
-DIAS_POR_MES = 30.44
+DIAS_POR_MES = 30.44  # promedio del anio gregoriano: 365.25 / 12
 
 # ==================================== cuanto dura una obra antes de que el EPC se vaya
 #
-# CRITERIO, NO MEDICION, y pendiente de que Esteban lo confirme o lo mueva. Nace de
+# CONFIRMADO POR ESTEBAN EL 2026-10-06 (decision 1 de #382), con su razon: «una planta
+# industrial normal cierra entre 12 y 20 meses; 24 es tope». Sigue siendo CRITERIO
+# DECLARADO Y NO MEDICION, y el lazo 3 lo corrige cuando haya cierres. Nace de
 # un caso de la corrida: Doosan Bobcat puso su primera piedra el 13-jun-2024, o sea
 # hace 846 dias, y la puerta del EPC salia «ABIERTA · 25 -- hay un EPC comprando
 # especialidad AHORA--». No lo hay: una planta de 65,000 m2 no lleva dos anos y
@@ -93,7 +99,7 @@ DIAS_POR_MES = 30.44
 # inauguro, y el radar NO inventa una inauguracion que ninguna fuente dice. Se
 # declara DESCONOCIDA con el trabajo que falta -- averiguar si ya opera-- , que es
 # lo unico honesto con lo que el texto dice.
-MESES_MAXIMOS_DE_OBRA = 24  # promedio del anio gregoriano: 365.25 / 12
+MESES_MAXIMOS_DE_OBRA = 24
 
 ANGULO_EPC = ("subcontratista de especialidad: electrico, tuberia y automatizacion. "
               "FTS no compite con el EPC, le entrega la especialidad que el EPC "
@@ -101,6 +107,110 @@ ANGULO_EPC = ("subcontratista de especialidad: electrico, tuberia y automatizaci
               "en la siguiente obra de la region")
 ANGULO_USUARIO = ("lo que el EPC no alcanzo: segunda linea, ampliacion de carga, "
                   "mejoras y lo que quedo en lista de pendientes al arrancar")
+
+
+# ============================= la obra que compra por licitacion publica
+#
+# DECISION 2 de #382, de Esteban: «CFE: NO abras puerta A. Sale a licitacion publica;
+# es otra puerta con otras reglas».
+#
+# La senal de CFE -- 8,900 MDP para cuatro subestaciones nuevas en Nuevo Leon-- es la
+# mas on-target de la corrida para una casa electrica, y el radar le abria la puerta
+# del usuario directo con el angulo de siempre: «lo contrata mantenimiento o proyectos
+# de la planta». En una empresa del Estado eso es falso y hace perder el tiempo: no lo
+# contrata un gerente de planta al que se pueda llamar, sale a concurso y se gana
+# cumpliendo requisitos ANTES de que el concurso exista. Quien no esta en el padron de
+# contratistas el dia de la convocatoria no puede ni participar.
+#
+# Por eso la lista es DECLARADA y no adivinada del texto: de que una obra sea publica
+# depende quien la paga, no como esta escrita la nota.
+ENTIDADES_DE_COMPRA_PUBLICA = {
+    "cfe": "Comision Federal de Electricidad",
+    "comision federal de electricidad": "Comision Federal de Electricidad",
+    "pemex": "Petroleos Mexicanos",
+    "imss": "Instituto Mexicano del Seguro Social",
+    "issste": "ISSSTE",
+    "conagua": "Comision Nacional del Agua",
+    "sacmex": "Sistema de Aguas de la Ciudad de Mexico",
+    "servicios de agua y drenaje de monterrey": "SADM",
+}
+ANGULO_LICITACION = (
+    "esta obra no se vende, se concursa. El trabajo es ANTES del concurso: alta y "
+    "vigencia en el padron de contratistas y proveedores de la entidad, y seguimiento "
+    "de la convocatoria en CompraNet. Lo que FTS puede ofrecer -- especialidad "
+    "electrica, subestacion, media tension-- se acredita con los proyectos del "
+    "catalogo como experiencia comprobable, y hay una segunda via mas corta: entrar "
+    "como subcontratista de especialidad del contratista que gane"
+)
+
+
+def entidad_de_compra_publica(empresa: str) -> str:
+    """El nombre de la entidad si esta cuenta compra por licitacion, o cadena vacia.
+
+    Se compara contra la lista DECLARADA, por palabra y no por subcadena: «CFE» no
+    debe cazar «CFE Nuevo Leon» por accidente de letras sino por ser esa entidad, y
+    una empresa privada que lleve esas letras adentro no debe caer aqui.
+    """
+    p = plano(empresa)
+    for clave, nombre in ENTIDADES_DE_COMPRA_PUBLICA.items():
+        if p == clave or p.startswith(clave + " ") or f" {clave} " in f" {p} ":
+            return nombre
+    return ""
+
+
+# ===================== la ampliacion: hay obra, y la planta YA opera
+#
+# DECISION 2 de #382, de Esteban: «HYUNDAI WIA: abre la puerta A. Una ampliacion de
+# 31,350 m2 lleva contratista general».
+#
+# Una ampliacion no es una planta nueva -- no «compra una de cada cosa»-- pero tampoco
+# es equipo suelto: se construye, y lo construye alguien. Y a diferencia de la obra
+# nueva, la planta del lado ya esta operando, asi que la puerta del usuario NO es
+# futura: el usuario esta ahi hoy. Una ampliacion abre las DOS al mismo tiempo, que es
+# lo que la obra nueva no hace.
+#
+# El interlocutor de la puerta A no se llama EPC aqui: en una ampliacion normalmente
+# es un CONTRATISTA GENERAL, mas chico y mas cercano, y a veces lo coordina el dueno.
+# Se nombra distinto porque se busca distinto.
+#
+# Y el puntaje NO se toca: la decision 2 habla de puertas. Meter «ampliacion de N m2»
+# a TERMINOS_DE_TIPO le daria los 44.4 del tipo integral, que son de la planta que
+# compra una de cada cosa, y una ampliacion de 31,350 m2 no lo es.
+_AMPLIACION = re.compile(
+    r"\b(amplia|ampliacion|expansion|expande)\b[^.;]{0,80}?"
+    r"\b\d[\d,.\s]*\s*(metros cuadrados|m2|mil metros|pies cuadrados|hectareas)",
+    re.I)
+
+
+def obra_de_ampliacion(texto: str) -> bool:
+    """Una ampliacion con superficie declarada: hay obra y hay quien la construya."""
+    return bool(_AMPLIACION.search(plano(texto)))
+
+
+def _como_se_busca_al_constructor(senal: dict, quien: str = "EPC") -> str:
+    """Las consultas para hallar a quien construye, EN EL ORDEN QUE SI CONTESTO.
+
+    Decision 3 de #382. La corrida del 5-oct midio las tres formas de preguntar:
+      · «que constructoras industriales hay en Monterrey» -> DIRECTORIOS, cero obras.
+      · «quien construye la planta de X» -> las notas dan monto, empleos y fecha, y
+        ninguna nombra al constructor. Negativo explicito en el caso de La Moderna.
+      · por PARQUE -> es la que contesto. El dueno del parque sabe quien construye
+        adentro, lo publica, y de paso dice que mas trae en la region.
+    Asi que el parque va primero, y la pregunta por la planta queda de respaldo.
+    """
+    parque = (senal.get("parque") or "").strip()
+    empresa = senal.get("empresa") or ""
+    municipio = senal.get("planta") or ""
+    if parque:
+        return (f"POR EL PARQUE, que es la que contesto en la medicion: «quien "
+                f"construye en {parque}», «{parque} obra en construccion {empresa}», "
+                f"«{parque} constructora naves». De respaldo, por la planta: "
+                f"«constructora \"{empresa}\" planta {municipio}».")
+    return (f"la nota no nombra el parque, que es por donde si se encuentra. Primero "
+            f"hay que sacarlo: «{empresa} {municipio} parque industrial». Con el "
+            f"parque en mano, «quien construye en <parque>». De respaldo, y midio "
+            f"peor: «constructora \"{empresa}\" planta {municipio}», «quien "
+            f"construye la planta de {empresa}».")
 
 
 def _cuanto_hace(meses: float) -> str:
@@ -231,6 +341,38 @@ def puertas_de(senal: dict, catalogo: dict | None = None,
             f"por partner_id no los ve."
             + (f" {canal['ojo']}" if canal.get("ojo") else ""))
 
+    # ---------------------------- (e) la obra que se concursa, no se vende
+    #
+    # Va ANTES de las otras puertas y en vez de ellas: en una entidad publica no hay
+    # un gerente de planta que decida ni un EPC al que venderle especialidad por
+    # fuera del concurso. Emitir aqui tambien la puerta del usuario directo seria
+    # mandar a alguien a llamarle a quien no puede comprar.
+    entidad = entidad_de_compra_publica(senal.get("empresa") or "")
+    if entidad:
+        puertas.append({
+            "puerta": PUERTA_LICITACION,
+            "estado": ABIERTA,
+            "interlocutor": f"{entidad} — area de concursos y padron de contratistas",
+            "puntos_de_oportunidad": 22.0,
+            "por_que": ("la obra la paga una entidad publica: se concursa. El trabajo "
+                        "util pasa ANTES de que exista la convocatoria, y quien no "
+                        "esta en el padron el dia que sale no puede participar"),
+            "angulo": ANGULO_LICITACION,
+            "donde_se_sigue": "CompraNet, y el padron de proveedores de la entidad",
+            "lo_que_NO_se_puede_decir": (
+                "«hablemos con el gerente de la planta». No decide: decide el fallo "
+                "del concurso, y adelantarse por fuera no acelera nada."),
+            "la_segunda_via": ("subcontratista de especialidad del contratista que "
+                               "gane. Esa si es una venta normal, y se prepara "
+                               "mirando quien gana estos concursos en la region"),
+        })
+        avisos.append(
+            f"COMPRA PUBLICA ({entidad}): esta senal no abre puerta de EPC ni de "
+            f"usuario. Se concursa. Decision 2 de #382.")
+        return {"fase": fase, "fase_por": termino, "fases_ambiguas": otras,
+                "es_obra_nueva": es_obra_nueva, "es_compra_publica": True,
+                "puertas": puertas, "avisos": avisos}
+
     # -------------------------- (d) la senal que NO es obra nueva: compra el usuario
     #
     # HUECO QUE CERRO LA CORRIDA DEL 7-OCT. Martinrea anuncio 50 MDD en una prensa
@@ -260,11 +402,19 @@ def puertas_de(senal: dict, catalogo: dict | None = None,
                 "esto es menos dinero, sin intermediario y con fecha propia"),
         })
 
-    if not es_obra_nueva:
+    es_ampliacion = (not es_obra_nueva
+                     and obra_de_ampliacion(" ".join(str(senal.get(k) or "")
+                                                     for k in ("texto", "nota"))))
+    if not es_obra_nueva and not es_ampliacion:
         return {"fase": fase, "fase_por": termino, "fases_ambiguas": otras,
                 "es_obra_nueva": False, "puertas": puertas, "avisos": avisos}
 
     # ------------------------------------------------------------ (a) el EPC
+    #
+    # En una ampliacion el de esta puerta NO se llama EPC: suele ser un contratista
+    # general, mas chico y mas cercano, y a veces lo coordina el dueno. Se nombra
+    # distinto porque se busca distinto.
+    quien_construye = "contratista general" if es_ampliacion else "EPC"
     epc = (senal.get("epc") or "").strip()
     if fase == FASE_INAUGURADA:
         estado_epc, por_que_epc = CERRADA, (
@@ -304,19 +454,33 @@ def puertas_de(senal: dict, catalogo: dict | None = None,
     puertas.append({
         "puerta": PUERTA_EPC,
         "estado": estado_epc,
-        "interlocutor": epc or "POR IDENTIFICAR",
+        "interlocutor": epc or f"POR IDENTIFICAR ({quien_construye})",
+        "quien_construye": quien_construye,
         "puntos_de_oportunidad": puntos_epc,
         "por_que": por_que_epc,
         "angulo": ANGULO_EPC,
-        "como_identificarlo": "" if epc else (
-            "la nota, el permiso de construccion del municipio o el boletin del "
-            "parque industrial suelen nombrar al constructor. Busquedas: "
-            f"«constructora \"{senal.get('empresa')}\" planta "
-            f"{senal.get('planta') or ''}», «quien construye la planta de "
-            f"{senal.get('empresa')}», y el boletin del parque donde se instala"),
-        "y_ademas": ("un EPC identificado vale mas que esta obra: trae las demas "
-                     "obras que esta construyendo en la region"),
+        # La consulta por PARQUE primero. Medido en la corrida del 5-oct: preguntar
+        # «que constructoras hay» devuelve directorios, y preguntar por el constructor
+        # de una planta devuelve notas que no lo nombran. Lo que si contesto fue el
+        # parque: el dueno del parque sabe quien construye adentro y lo publica.
+        # Decision 3 de #382.
+        "como_identificarlo": "" if epc else _como_se_busca_al_constructor(
+            senal, quien_construye),
+        "y_ademas": (f"un {quien_construye} identificado vale mas que esta obra: trae "
+                     "las demas obras que esta construyendo en la region"),
     })
+
+    if es_ampliacion:
+        # La puerta del usuario de una ampliacion NO es futura y no se emite aqui: la
+        # planta ya opera y su puerta la emitio el bloque (d) como usuario directo.
+        # Emitir las dos diria que el usuario llega despues, y ya esta ahi.
+        avisos.append(
+            "AMPLIACION: hay obra -- y por eso hay puerta de contratista-- pero la "
+            "planta YA OPERA, asi que la puerta del usuario esta abierta HOY y no "
+            "despues de una inauguracion. Decision 2 de #382.")
+        return {"fase": fase, "fase_por": termino, "fases_ambiguas": otras,
+                "es_obra_nueva": False, "es_ampliacion": True,
+                "puertas": puertas, "avisos": avisos}
 
     # -------------------------------------------------------- (b) el usuario
     inauguracion = senal.get("inauguracion") or (

@@ -91,13 +91,12 @@
     {
       "clave": "F5_constructores_y_epc",
       "cada": "semanal",
-      "para": "DECISION 2 de #382. El que CONSTRUYE publica que planta esta construyendo antes de que la planta exista como empresa, y es el comprador de la puerta (a): FTS le vende especialidad como subcontratista. Un EPC identificado vale mas que una obra, porque trae las demas obras que tiene en la region -- el caso BIC--.",
+      "para": "DECISION 3 de #382, REORIENTADA el 6-oct. La pregunta ya no es «que constructoras hay» ni «quien construye la planta de X»: es «QUIEN CONSTRUYE EN ESTE PARQUE», una consulta por cada senal con la puerta del constructor abierta. El EPC sigue siendo el comprador de la puerta A -- FTS le vende especialidad como subcontratista-- y un EPC identificado vale mas que una obra porque trae las demas obras que tiene en la region (el caso BIC).",
       "plantillas": [
-        "\"{constructor}\" nueva nave industrial OR planta {estado} {anio} construye",
-        "\"{constructor}\" inicia construccion OR \"primera piedra\" planta {anio}",
-        "constructora OR EPC \"planta\" \"{municipio}\" obra industrial {anio}",
-        "\"quien construye\" OR \"a cargo de la construccion\" planta {empresa} {anio}",
-        "desarrollador industrial nave {municipio} inquilino OR \"build to suit\" {anio}"
+        "\"{parque}\" {municipio} quien construye naves constructora {empresa} obra",
+        "\"{parque}\" dueno OR desarrollador naves llave en mano OR \"build to suit\"",
+        "{empresa} {municipio} parque industrial ubicacion {anio}   # para SACAR el parque cuando la nota no lo dice",
+        "\"{parque}\" {anio} plantas en construccion inversion"
       ],
       "desarrolladores_de_nave": [
         "Vesta",
@@ -115,7 +114,18 @@
         "Grupo Simsa"
       ],
       "de_donde_salen_esos_nombres": "los que aparecieron en la corrida del 5-oct (FINSA, VYNMSA, Thor Urbana, Grupo Amistad, Hofusan, Grupo Simsa) mas los tres que la DECISION 2 nombra (Vesta, Fibra Macquarie, Prologis). Los demas se agregan cuando la corrida los encuentre: la lista se mide, no se adivina.",
-      "riesgo_medido": "un desarrollador de nave NO es un EPC: renta metros cuadrados. Puede ser cliente de FTS por la obra del parque -- acometida, subestacion-- pero no es quien monta la linea de produccion de su inquilino. Las dos cosas aparecen en la misma consulta y hay que separarlas al extraer."
+      "riesgo_medido": "un desarrollador de nave NO es un EPC: renta metros cuadrados. Puede ser cliente de FTS por la obra del parque -- acometida, subestacion-- pero no es quien monta la linea de produccion de su inquilino. Las dos cosas aparecen en la misma consulta y hay que separarlas al extraer. MEDIDO EL 6-OCT Y MATIZADO: el desarrollador SI es el constructor del edificio -- Amistad lo ofrece llave en mano, Alianza construia ocho plantas adentro de su parque-- y ese edificio es obra electrica, tuberia y estructura, que es justo lo que FTS vende. Lo que el desarrollador NO monta es la LINEA de produccion de su inquilino. Son dos ventas distintas en el mismo predio y la puerta A es la primera.",
+      "medicion_del_6_oct": {
+        "como_se_midio": "16 consultas sobre las 13 senales con puerta A abierta, una por parque",
+        "constructor_identificado_antes": 1,
+        "constructor_identificado_despues": 5,
+        "de_donde_salieron_los_cuatro_nuevos": "TODOS del parque: Grupo Amistad (Waelzholz), Grupo Alianza (ZC Rubber y Yokohama, el mismo parque de Derramadero) y Meor (Inventec, HubsPark Juarez)",
+        "las_dos_preguntas_que_NO_contestan": {
+          "que constructoras hay": "devuelve DIRECTORIOS. Medido el 5-oct, cero obras",
+          "quien construye la planta de X": "negativo explicito tres veces -- La Moderna dos, Pegatron una--: las notas dan monto, empleos y fecha y nunca al constructor"
+        },
+        "cuando_no_hay_a_quien_preguntarle": "en 8 de 13 la empresa construye por su cuenta -- LEGO, Pegatron, La Moderna, Hyundai WIA-- y no hay desarrollador en medio. Ahi la respuesta no esta publicada: va por el permiso de construccion del municipio o por la obra. El buscador ya se midio y no la trae."
+      }
     }
   ],
   "descarte": {

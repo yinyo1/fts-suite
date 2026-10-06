@@ -16,7 +16,7 @@ sys.path.insert(0, RAIZ)
 from flujo.sello import version                                   # noqa: E402
 from flujo.radar import plano                                    # noqa: E402
 
-CORRIDA = os.path.join(RAIZ, "datos", "radar-2026-10-07-puertas.json")
+CORRIDA = os.path.join(RAIZ, "datos", "radar-2026-10-05-puertas.json")
 SALIDA = os.environ.get("SALIDA_RADAR", "/tmp/")
 C = json.load(open(CORRIDA, encoding="utf-8"))
 HOY = date.fromisoformat(C["hoy"])
@@ -125,7 +125,7 @@ def _celda_de_puertas(p):
     for q in p["puertas"]:
         cls = q["estado"]
         quien = q.get("interlocutor") or "—"
-        if q["puerta"] == "epc" and quien == "POR IDENTIFICAR":
+        if q["puerta"] == "epc" and "POR IDENTIFICAR" in quien:
             quien = '<b style="color:var(--hot)">por identificar</b>'
         else:
             quien = e(quien)

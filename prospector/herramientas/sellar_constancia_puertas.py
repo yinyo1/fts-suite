@@ -33,7 +33,7 @@ from flujo import puertas as P                                     # noqa: E402
 from flujo.radar import cargar_catalogo, evaluar, tipo_de_senal_de  # noqa: E402
 from flujo.sello import version                                     # noqa: E402
 
-CONSTANCIA = os.path.join(RAIZ, "datos", "radar-2026-10-07-puertas.json")
+CONSTANCIA = os.path.join(RAIZ, "datos", "radar-2026-10-05-puertas.json")
 
 # Lo que el recalculo PRODUCE. Todo lo demas de cada entrada es dato de campo.
 DERIVADAS = ("eval", "puertas", "tipo_de_senal", "dias")
@@ -98,12 +98,15 @@ def resumen_de(evaluadas: list[dict], c: dict) -> dict:
                 identificado += 1
     return {
         "senales": len(evaluadas),
-        # `de_la_corrida` lleva la FECHA de la corrida que la encontro, no el
-        # nombre del archivo: 2026-10-05 son las heredadas, 2026-10-07 las de hoy.
+        # `de_la_corrida` lleva el NOMBRE de la corrida que la encontro, no su fecha:
+        # las dos corridas pasaron el mismo dia -- descubrimiento en la manana, puertas
+        # en la tarde-- y una fecha no las distingue. Cuando era una fecha, estos dos
+        # conteos salieron en CERO al corregir el dia de la corrida.
         "nuevas_de_esta_corrida": sum(1 for e in evaluadas
-                                      if e.get("de_la_corrida") == c["hoy"]),
-        "heredadas_del_5_oct": sum(1 for e in evaluadas
-                                   if e.get("de_la_corrida") == "2026-10-05"),
+                                      if e.get("de_la_corrida") == c["corrida"]),
+        "heredadas_de_la_corrida_anterior": sum(
+            1 for e in evaluadas
+            if e.get("de_la_corrida") and e["de_la_corrida"] != c["corrida"]),
         "pasan": sum(1 for e in evaluadas if e["eval"]["veredicto"] == "pasa"),
         "guardan": sum(1 for e in evaluadas if e["eval"]["veredicto"] == "guarda"),
         "archivan": sum(1 for e in evaluadas if e["eval"]["veredicto"] == "archiva"),
@@ -150,6 +153,16 @@ def _diferencias(viejo: dict, nuevo: dict) -> list[str]:
         pb = {p["puerta"]: p["estado"] for p in b["puertas"]["puertas"]}
         if pa != pb:
             d.append(f"{quien}: puertas {pa} -> {pb}")
+        elif a.get("puertas") != b["puertas"]:
+            # MISMO estado, distinto contenido. Pasaba desapercibido: el diff solo
+            # miraba puerta->estado, y el 6-oct Daikin quedo con el texto viejo de
+            # «como identificar al constructor» -- el que no traia el parque-- porque
+            # el estado no habia cambiado. La prueba de sellado lo vio y el sellador
+            # no: un diff mas angosto que su prueba es un diff que miente.
+            cambiadas = sorted(
+                k for pa_, pb_ in zip(a["puertas"]["puertas"], b["puertas"]["puertas"])
+                for k in set(pa_) | set(pb_) if pa_.get(k) != pb_.get(k))
+            d.append(f"{quien}: las puertas cambiaron por dentro ({', '.join(cambiadas)})")
     return d
 
 
