@@ -1924,3 +1924,87 @@ correcto por entrada.
 
 **Sigue abierto y sin tocar:** los datos personales en los issues públicos de este
 repo. Es acción hacia afuera y la decide Esteban.
+
+---
+
+# #383 (cierre) — El radar le estaba ofreciendo al cliente su propio producto
+
+`0.21.0` · **1,220 pruebas** (eran 1,200). Continuación de #382, con sus cuatro decisiones
+tomadas por Esteban.
+
+## Las cuatro, aplicadas
+
+**1 · Los dos criterios, confirmados y todavía criterios.** El tope de 24 meses de obra y
+la ventana de 18 meses del usuario quedan confirmadas, con la razón de Esteban escrita
+—«una planta industrial normal cierra entre 12 y 20 meses; 24 es tope»— y la etiqueta
+intacta: criterio declarado, no medición. Confirmar un criterio no lo vuelve un dato, y el
+lazo 3 tiene que poder moverlo.
+
+**2 · Dos puertas nuevas.** CFE no abre puerta de EPC: nace la puerta de **licitación
+pública**, con su ángulo propio —padrón de contratistas, CompraNet, y la segunda vía de
+entrar como subcontratista del que gane— y *en vez* de las otras, porque en una entidad
+pública no hay un gerente de planta al que llamarle. Hyundai WIA sí abre puerta de
+contratista: una ampliación con superficie declarada es obra, y como la planta ya opera
+abre **las dos puertas al mismo tiempo**, que es lo que una obra nueva no hace.
+
+**3 · La fuente de constructores, reorientada al parque, y paga.** 16 consultas sobre las 13
+puertas A abiertas: el constructor pasa de 1 a 5, y los cuatro nuevos salen **todos del
+parque**. Preguntar por la planta dio negativo explícito tres veces. El dueño del parque
+sabe quién construye adentro y lo publica; la empresa que construye por su cuenta no tiene
+a quién preguntarle, y en 8 de 13 la respuesta no está publicada.
+
+**4 y 5 · Las seis de puerta de usuario, corridas y cargadas al piloto.** Ver abajo.
+
+## 🔴 Tres de seis cuentas: la familia que el radar propone es el producto de la casa
+
+Corriendo `prospecta` sobre las seis, la vuelta interna decidió casi todo: **cero partner
+en Odoo y cero hilo en el buzón en las seis**. El buzón es la única fuente que en #355
+entregó personas y aquí está vacío, así que el bloque 1 de Daikin cerró con 10 consultas,
+0 de valor, **seco**, y las seis dan **cero interlocutores de valor con nombre y correo**.
+
+Lo que sí entregó vale más que esa lista:
+
+- **Daikin fabrica chillers** —y la inversión que detonó la señal *es* una línea de chillers
+  centrífugos de 400 unidades al año—. El radar le proponía la familia térmica.
+- **TDI es Yinlun TDI**: enfriadores, radiadores, calentadores de batería. Igual.
+- **QSMX no es una planta que compre**: es una casa de servicios que vende estructura,
+  inspección y apoyo a la operación de planta, o sea lo mismo que FTS, y lo que inauguró es
+  un centro de operaciones. No es un cliente mal apuntado: es un colega o un competidor.
+
+El radar las puntuó alto por el empate de giro, y ese mismo empate las descalifica en esa
+familia. `puertas.choque_de_familia` lo cierra, y mira **sólo el giro**: la primera versión
+miraba también el texto y marcó a CFE por «construir cuatro subestaciones», cuando CFE
+*compra* subestaciones. El texto dice qué compra la cuenta; el giro dice qué es.
+
+## Las primeras tarjetas que no nacieron de la mano de Esteban
+
+Las seis entran al piloto con `origen = 'radar'` y su puerta, con CHECK en el esquema,
+porque el lazo 3 corrige los criterios del radar y sólo puede hacerlo con tarjetas cuyo
+criterio salió de ahí. Su cadencia **no** son los 120 días de la señal: es la ventana de 18
+meses de la puerta del usuario. Daikin lo deja a la vista —nota de 360 días, y aún le
+quedan 187 de su mejor momento—. El tablero las muestra aparte y dice por qué.
+
+## La corrida estaba fechada dos días en el futuro
+
+La auditoría de apertura lo encontró: el archivo decía 2026-10-07 y la corrida fue el
+5-oct. NIFCO Apodaca salía con 181 días y 76.4 «fuera de ventana»; con la fecha real son
+179 y **82.4 dentro**, que es lo que #381 reportó ese día. Y al corregirlo, `de_la_corrida`
+dejó de poder ser una fecha: las dos corridas pasaron el mismo día.
+
+**Comparar contra una fecha rompió tres cosas en este turno** —los conteos de nuevas y
+heredadas, el marcador «heredada» de las 23 filas del reporte, y el sellado— y las tres
+tienen ahora su reja.
+
+## Restricciones del turno
+
+Cero escrituras a Odoo —sólo lectura— · cero Lusha · purga no ejecutada ·
+`fts-mcp-odoo` intacto · sin datos personales en el repo ni en el issue. Las personas que
+aparecieron en la corrida no se asentaron en ninguna parte: ninguna quedó confirmada en un
+puesto que compre lo que FTS vende, y el cero es el dato.
+
+**Lo que no se terminó, dicho tal cual:** las seis corridas quedaron abiertas en el
+orquestador y **no se emitió ficha**. La ficha exige `challenge`, y el challenge exige los
+13 módulos de la cascada agotados con tres fuentes distintas cada uno: ~150 consultas más
+sobre cuentas donde el bloque 1 ya salió seco y donde el buzón está vacío.
+
+**Sigue abierto y sin tocar:** los datos personales en los issues públicos de este repo.
