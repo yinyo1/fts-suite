@@ -1,0 +1,748 @@
+{
+  "que_es": "Enriquecimiento de las 20 tarjetas que Pablo cargo en crm.lead el 5-oct-2026 (leads 2285 a 2304). Cruce contra crm.lead, res.partner, sale.order y el buzon.",
+  "que_NO_lleva": "Ni un nombre, ni un correo, ni una liga de LinkedIn. Los 45 contactos viven en el chatter de Odoo y en el HTML de OneDrive, que son privados. Aqui va el PUESTO, el NIVEL y la FAMILIA, que es lo que el metodo necesita.",
+  "el_patron_es_una_FORMA_no_una_direccion": "`nombre.apellido@dominio` es la plantilla que los literales del buzon confirmaron, no la direccion de nadie. Las direcciones literales se quedaron en el buzon y en Odoo.",
+  "cero_escrituras_a_odoo": true,
+  "corte": "2026-10-06",
+  "sigue_a": [
+    "#383",
+    "#384"
+  ],
+  "totales": {
+    "tarjetas": 20,
+    "contactos": 45,
+    "contactos_que_el_brief_suponia": 60,
+    "tarjetas_con_al_menos_un_contacto": 19,
+    "distribucion_de_contactos_por_tarjeta": {
+      "0": 1,
+      "1": 5,
+      "2": 2,
+      "3": 12
+    },
+    "de_valor": 31,
+    "de_valor_y_de_planta": 14,
+    "de_planta": 21,
+    "regionales": 8,
+    "corporativos": 14,
+    "corporativos_fuera_de_mexico": 2,
+    "de_contexto": 9,
+    "ya_no_estan": 2,
+    "con_correo_derivable": 12,
+    "cuentas_con_patron_usable": 6,
+    "cuentas_sin_patron_alguno": 11,
+    "familias": {
+      "direccion": 3,
+      "proyectos": 15,
+      "contexto": 7,
+      "compras": 16,
+      "mantenimiento": 2,
+      "ingenieria": 2
+    },
+    "estados_de_cuenta": {
+      "duplicado_de_cuenta_viva": 5,
+      "cliente_activo": 2,
+      "tibia": 3,
+      "fria_con_senal": 5,
+      "fria": 5
+    }
+  },
+  "el_hallazgo": "SIETE de las 20 no son prospectos: cinco duplican una cuenta viva y dos son clientes donde FTS ya trabaja. Mondelez tiene 841 ordenes de venta confirmadas; Gamesa tiene TRES tarjetas y una cotizacion enviada; y en Arca Continental hay IPERCs liberados de marzo-2026.",
+  "las_dos_relaciones_de_grupo_que_nadie_habia_visto": [
+    {
+      "tarjetas": [
+        "BYDSA (2293)",
+        "Xignux / Qualtia (2286)"
+      ],
+      "grupo": "Xignux",
+      "como_se_supo": "la sala de prensa de xignux.com publica a BYDSA como empresa del grupo",
+      "por_que_importa": "en 2286 hay un contacto que ya respondio y pidio el brochure: es la puerta de las dos"
+    },
+    {
+      "tarjetas": [
+        "Bokados (2292)",
+        "Bebidas Mundiales (2291)"
+      ],
+      "grupo": "Arca Continental",
+      "como_se_supo": "el curso de seguridad que Bokados le pidio a FTS en 2024 esta hospedado en arcacontal.zoom.us",
+      "por_que_importa": "FTS ya tiene IPERCs liberados en Arca y paso el proceso de ingreso a la planta de Bokados",
+      "lo_que_falta_confirmar": "si Bebidas Mundiales es la entidad de Arca: una sola fuente debil lo sugiere"
+    }
+  ],
+  "patron_por_cuenta": {
+    "Cosmocel": {
+      "forma": null,
+      "dominio": "cosmocel.com",
+      "nivel": "ninguno",
+      "de_donde": "cero en buzon, cero en Odoo, cero en directorios",
+      "derivable": false
+    },
+    "Trouw": {
+      "forma": "nombre.apellido",
+      "dominio": "trouwnutrition.com",
+      "nivel": "solido",
+      "de_donde": "literal en Odoo (contacto historico de la cuenta)",
+      "derivable": true
+    },
+    "SuKarne": {
+      "forma": null,
+      "dominio": "sukarne.com",
+      "nivel": "ninguno",
+      "de_donde": "cero en buzon, cero en Odoo",
+      "derivable": false
+    },
+    "Sigma": {
+      "forma": null,
+      "dominio": "sigma-alimentos.com",
+      "nivel": "ninguno",
+      "de_donde": "cero en buzon, cero en Odoo",
+      "derivable": false
+    },
+    "Mondelez": {
+      "forma": "via_portal",
+      "dominio": "mx.ey.com",
+      "nivel": "solido",
+      "de_donde": "el alta de proveedores de Mondelez la opera EY: buzon literal del portal",
+      "derivable": false
+    },
+    "Mission": {
+      "forma": "en_conflicto",
+      "dominio": "missionfoods.com / aztecamilling.com",
+      "nivel": "en_conflicto",
+      "de_donde": "DOS literales en Odoo con formas distintas y dominios distintos",
+      "derivable": false
+    },
+    "Hersmex": {
+      "forma": "inicial+apellido+NN",
+      "dominio": "hersheys.com",
+      "nivel": "solido",
+      "de_donde": "literal en Odoo; el sufijo numerico NO se puede derivar",
+      "derivable": false
+    },
+    "Heineken": {
+      "forma": "nombre.apellido",
+      "dominio": "heineken.com",
+      "nivel": "confirmado",
+      "de_donde": "TRES literales del buzon, remitentes distintos",
+      "derivable": true
+    },
+    "Griffith": {
+      "forma": null,
+      "dominio": "griffithfoods.com",
+      "nivel": "ninguno",
+      "de_donde": "cero en buzon, cero en Odoo",
+      "derivable": false
+    },
+    "Grupo Gamesa": {
+      "forma": null,
+      "dominio": "pepsico.com",
+      "nivel": "ninguno",
+      "de_donde": "cero en buzon; el canal vivo es PepsiCo de Mexico",
+      "derivable": false
+    },
+    "Mars Wrigley": {
+      "forma": "nombre.apellido",
+      "dominio": "effem.com",
+      "nivel": "solido",
+      "de_donde": "literal del buzon (ingenieria de control 2022)",
+      "derivable": true
+    },
+    "BYDSA": {
+      "forma": null,
+      "dominio": "bydsa.com",
+      "nivel": "ninguno",
+      "de_donde": "cero propio; el grupo es Xignux",
+      "derivable": false
+    },
+    "Bokados": {
+      "forma": "inicial+apellido",
+      "dominio": "bokados.com",
+      "nivel": "solido",
+      "de_donde": "literal del buzon (ingreso a planta 2024)",
+      "derivable": true
+    },
+    "Bebidas Mundiales": {
+      "forma": "nombre.apellido",
+      "dominio": "arcacontal.com",
+      "nivel": "confirmado",
+      "de_donde": "DOS literales del buzon de Arca Continental -- OJO: la entidad de la tarjeta esta POR CONFIRMAR",
+      "derivable": true
+    },
+    "Barcel": {
+      "forma": null,
+      "dominio": "grupobimbo.com",
+      "nivel": "ninguno",
+      "de_donde": "cero en buzon; el grupo es Bimbo y si tiene un toque en Odoo",
+      "derivable": false
+    },
+    "LEGO": {
+      "forma": null,
+      "dominio": "lego.com",
+      "nivel": "ninguno",
+      "de_donde": "cero en buzon, cero en Odoo",
+      "derivable": false
+    },
+    "Metalsa": {
+      "forma": null,
+      "dominio": "metalsa.com",
+      "nivel": "ninguno",
+      "de_donde": "cero en buzon, cero en Odoo",
+      "derivable": false
+    },
+    "Cuprum": {
+      "forma": "nombre.apellido",
+      "dominio": "cuprum.com",
+      "nivel": "solido",
+      "de_donde": "literal del buzon (presentacion de proveedor 2025)",
+      "derivable": true
+    },
+    "Xignux": {
+      "forma": null,
+      "dominio": "qualtia.com",
+      "nivel": "ninguno",
+      "de_donde": "cero en buzon, cero en Odoo",
+      "derivable": false
+    },
+    "GAMESA Pepsi": {
+      "forma": null,
+      "dominio": "pepsico.com",
+      "nivel": "ninguno",
+      "de_donde": "cero en buzon; el canal vivo es PepsiCo de Mexico",
+      "derivable": false
+    }
+  },
+  "cuentas": {
+    "Mondelez": {
+      "lead": 2300,
+      "estado": "duplicado_de_cuenta_viva",
+      "contactos": 3,
+      "accion_propuesta": "ARCHIVAR la tarjeta como prospecto y CONVERTIRLA en una nota sobre la cuenta viva. Los tres contactos de CAPEX si se quedan: van al partner 7, no a un lead nuevo."
+    },
+    "Mission": {
+      "lead": 2299,
+      "estado": "duplicado_de_cuenta_viva",
+      "contactos": 3,
+      "accion_propuesta": "FUSIONAR con el partner 'Mission Foods' (id 1630) o enlazar como la PLANTA de Apodaca. No abrir cuenta nueva: duplicaria 14 SO."
+    },
+    "Hersmex": {
+      "lead": 2298,
+      "estado": "duplicado_de_cuenta_viva",
+      "contactos": 3,
+      "accion_propuesta": "FUSIONAR en 2244. Es el duplicado mas claro de los cinco: misma planta, misma ciudad, y 2244 ya tiene NDA."
+    },
+    "Bebidas Mundiales": {
+      "lead": 2291,
+      "estado": "cliente_activo",
+      "contactos": 2,
+      "accion_propuesta": "NO prospectar en frio. ENLAZAR con la relacion de Arca Continental (partner 784) y CONFIRMAR PRIMERO si Bebidas Mundiales es la entidad de Arca: lo sugiere una fuente debil y no esta confirmado. Y fijar UNA ciudad: la tarjeta trae cinco."
+    },
+    "Bokados": {
+      "lead": 2292,
+      "estado": "cliente_activo",
+      "contactos": 3,
+      "accion_propuesta": "ENLAZAR con el partner Bokados (id 723) y con la relacion de grupo de Arca Continental. Reactivar, no prospectar."
+    },
+    "Heineken": {
+      "lead": 2297,
+      "estado": "tibia",
+      "contactos": 3,
+      "accion_propuesta": "ENLAZAR con el partner 495 y revisar las 9 cotizaciones en borrador antes de cualquier toque. Y usar el patron: es el unico CONFIRMADO de las 20."
+    },
+    "GAMESA Pepsi": {
+      "lead": 2285,
+      "estado": "duplicado_de_cuenta_viva",
+      "contactos": 1,
+      "accion_propuesta": "FUSIONAR 2285 con 2295 (Grupo Gamesa) y ENLAZAR las dos con 2233, que es donde vive la cotizacion real. Y CORREGIR el partner de 2285: hoy el partner_name es el NOMBRE DE UNA PERSONA, no una empresa."
+    },
+    "Grupo Gamesa": {
+      "lead": 2295,
+      "estado": "duplicado_de_cuenta_viva",
+      "contactos": 0,
+      "accion_propuesta": "FUSIONAR en 2285 / 2233 y archivar. No tiene contenido propio: ni contacto, ni nota."
+    },
+    "Trouw": {
+      "lead": 2303,
+      "estado": "tibia",
+      "contactos": 3,
+      "accion_propuesta": "ENLAZAR con el partner 220 y PEDIR LIMPIEZA de su correo. El patron es solido, asi que los tres contactos se pueden derivar."
+    },
+    "Cuprum": {
+      "lead": 2287,
+      "estado": "fria_con_senal",
+      "contactos": 1,
+      "accion_propuesta": "PEGAR la historia de 2025 en el chatter y REEMPLAZAR el contacto: el de la tarjeta ya no trabaja ahi, segun el propio chatter."
+    },
+    "Xignux": {
+      "lead": 2286,
+      "estado": "fria_con_senal",
+      "contactos": 1,
+      "accion_propuesta": "DEJAR COMO ESTA y ENLAZAR con 2293 (BYDSA) como la misma relacion de grupo. Es la tarjeta que mejor va."
+    },
+    "BYDSA": {
+      "lead": 2293,
+      "estado": "fria_con_senal",
+      "contactos": 3,
+      "accion_propuesta": "ENLAZAR con 2286 (Xignux) como misma relacion de grupo. No tocar en frio."
+    },
+    "Barcel": {
+      "lead": 2290,
+      "estado": "fria",
+      "contactos": 3,
+      "accion_propuesta": "PEGAR la senal y el toque de Grupo Bimbo, y ENLAZAR con el lead 1563 como antecedente de grupo. Tarjeta valida: se queda."
+    },
+    "Sigma": {
+      "lead": 2301,
+      "estado": "fria",
+      "contactos": 3,
+      "accion_propuesta": "DEJAR COMO ESTA y pegar la senal. Es la mejor tarjeta FRIA del lote. Pero hay que fijar la planta: la tarjeta trae tres ciudades."
+    },
+    "Cosmocel": {
+      "lead": 2304,
+      "estado": "fria",
+      "contactos": 3,
+      "accion_propuesta": "DEJAR COMO ESTA y pegar la vacante y la conexion de LinkedIn ya aceptada. La via de entrada es la red que Esteban ya tiene, no el correo frio."
+    },
+    "SuKarne": {
+      "lead": 2302,
+      "estado": "fria",
+      "contactos": 3,
+      "accion_propuesta": "DEJAR COMO ESTA, pegar las dos senales y ORIENTAR EL TOQUE a mantenimiento y refrigeracion, no a CAPEX. Y corregir un contacto: su puesto dice Veracruz, no Escobedo."
+    },
+    "Griffith": {
+      "lead": 2296,
+      "estado": "fria",
+      "contactos": 3,
+      "accion_propuesta": "DEJAR COMO ESTA pero marcarla como la mas floja del lote: sin senal, sin historia, sin patron, y con un contacto cuya ubicacion la tarjeta registro solo como 'Mexico'."
+    },
+    "Mars Wrigley": {
+      "lead": 2294,
+      "estado": "tibia",
+      "contactos": 1,
+      "accion_propuesta": "PEGAR la historia de 2022 y CONSEGUIR OTRO CONTACTO: el unico de la tarjeta es un analista de supply chain outbound, que es el puesto mas lejano de la decision de los 45."
+    },
+    "LEGO": {
+      "lead": 2289,
+      "estado": "fria_con_senal",
+      "contactos": 2,
+      "accion_propuesta": "DEJAR COMO ESTA, marcar al contacto que se fue como 'ya no esta' para que nadie lo vuelva a tocar, y PEDIR LIMPIEZA de partner: LEGO esta DUPLICADO en res.partner (ids 2384 y 2385)."
+    },
+    "Metalsa": {
+      "lead": 2288,
+      "estado": "fria_con_senal",
+      "contactos": 1,
+      "accion_propuesta": "LA TARJETA NECESITA CONTACTO ANTES DE CUALQUIER TOQUE. No tiene nota en el chatter -- solo el aviso automatico-- y su unico contacto es de recursos humanos."
+    }
+  },
+  "contactos_por_puesto": [
+    {
+      "cuenta": "Cosmocel",
+      "puesto": "director de operaciones",
+      "nivel": "regional",
+      "planta_probable": "San Nicolas de los Garza",
+      "familia": "direccion",
+      "cercania": 20,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Cosmocel",
+      "puesto": "coordinador de ingenieria y proyectos",
+      "nivel": "planta",
+      "planta_probable": "San Nicolas de los Garza",
+      "familia": "proyectos",
+      "cercania": 10,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Cosmocel",
+      "puesto": "project engineer",
+      "nivel": "planta",
+      "planta_probable": "San Nicolas de los Garza",
+      "familia": "proyectos",
+      "cercania": 20,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Trouw",
+      "puesto": "gerente senior de supply chain y logistica",
+      "nivel": "regional",
+      "planta_probable": "San Nicolas de los Garza",
+      "familia": "contexto",
+      "cercania": 60,
+      "de_valor": false
+    },
+    {
+      "cuenta": "Trouw",
+      "puesto": "buyer",
+      "nivel": "planta",
+      "planta_probable": "San Nicolas de los Garza",
+      "familia": "compras",
+      "cercania": 20,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Trouw",
+      "puesto": "gerente de planta",
+      "nivel": "planta",
+      "planta_probable": "San Nicolas de los Garza",
+      "familia": "direccion",
+      "cercania": 10,
+      "de_valor": true
+    },
+    {
+      "cuenta": "SuKarne",
+      "puesto": "especialista y lider de compras facilities, commodities, CAPEX y OPEX",
+      "nivel": "regional",
+      "planta_probable": "Veracruz",
+      "familia": "compras",
+      "cercania": 20,
+      "de_valor": true
+    },
+    {
+      "cuenta": "SuKarne",
+      "puesto": "procurement manager",
+      "nivel": "corporativo",
+      "planta_probable": null,
+      "familia": "compras",
+      "cercania": 20,
+      "de_valor": true
+    },
+    {
+      "cuenta": "SuKarne",
+      "puesto": "gerente de compras",
+      "nivel": "regional",
+      "planta_probable": null,
+      "familia": "compras",
+      "cercania": 20,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Sigma",
+      "puesto": "jefe de compras MRO y CAPEX",
+      "nivel": "regional",
+      "planta_probable": "Linares / Sabinas Hidalgo / Monterrey",
+      "familia": "compras",
+      "cercania": 10,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Sigma",
+      "puesto": "CAPEX procurement",
+      "nivel": "corporativo",
+      "planta_probable": null,
+      "familia": "compras",
+      "cercania": 10,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Sigma",
+      "puesto": "CAPEX infrastructure projects buyer",
+      "nivel": "corporativo",
+      "planta_probable": null,
+      "familia": "compras",
+      "cercania": 0,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Mondelez",
+      "puesto": "director North America PMO CAPEX, innovation",
+      "nivel": "corporativo_fuera_de_mexico",
+      "planta_probable": null,
+      "familia": "proyectos",
+      "cercania": 45,
+      "de_valor": false
+    },
+    {
+      "cuenta": "Mondelez",
+      "puesto": "project manager CAPEX",
+      "nivel": "corporativo",
+      "planta_probable": null,
+      "familia": "proyectos",
+      "cercania": 20,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Mondelez",
+      "puesto": "PMO y CAPEX manager",
+      "nivel": "corporativo",
+      "planta_probable": null,
+      "familia": "proyectos",
+      "cercania": 20,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Mission",
+      "puesto": "gerente de mantenimiento",
+      "nivel": "planta",
+      "planta_probable": "Apodaca",
+      "familia": "mantenimiento",
+      "cercania": 10,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Mission",
+      "puesto": "head of demand planning",
+      "nivel": "corporativo",
+      "planta_probable": null,
+      "familia": "contexto",
+      "cercania": 90,
+      "de_valor": false
+    },
+    {
+      "cuenta": "Mission",
+      "puesto": "subdirector de operaciones",
+      "nivel": "regional",
+      "planta_probable": "Apodaca",
+      "familia": "direccion",
+      "cercania": 20,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Hersmex",
+      "puesto": "associate manager, CAPEX",
+      "nivel": "regional",
+      "planta_probable": "General Escobedo",
+      "familia": "compras",
+      "cercania": 10,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Hersmex",
+      "puesto": "executive engineer CAPEX y CAD",
+      "nivel": "corporativo_fuera_de_mexico",
+      "planta_probable": "Malasia",
+      "familia": "proyectos",
+      "cercania": 50,
+      "de_valor": false
+    },
+    {
+      "cuenta": "Hersmex",
+      "puesto": "sr project engineer",
+      "nivel": "planta",
+      "planta_probable": "General Escobedo",
+      "familia": "proyectos",
+      "cercania": 20,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Heineken",
+      "puesto": "procurement CAPEX leader",
+      "nivel": "corporativo",
+      "planta_probable": null,
+      "familia": "compras",
+      "cercania": 0,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Heineken",
+      "puesto": "CAPEX project manager",
+      "nivel": "regional",
+      "planta_probable": null,
+      "familia": "proyectos",
+      "cercania": 10,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Heineken",
+      "puesto": "director projects y engineering",
+      "nivel": "corporativo",
+      "planta_probable": null,
+      "familia": "proyectos",
+      "cercania": 10,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Griffith",
+      "puesto": "global CAPEX e indirect procurement sr. manager",
+      "nivel": "corporativo",
+      "planta_probable": null,
+      "familia": "compras",
+      "cercania": 10,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Griffith",
+      "puesto": "CI manager",
+      "nivel": "planta",
+      "planta_probable": "Santa Catarina",
+      "familia": "ingenieria",
+      "cercania": 40,
+      "de_valor": false
+    },
+    {
+      "cuenta": "Griffith",
+      "puesto": "production manager",
+      "nivel": "planta",
+      "planta_probable": "Santa Catarina",
+      "familia": "contexto",
+      "cercania": 60,
+      "de_valor": false
+    },
+    {
+      "cuenta": "Mars Wrigley",
+      "puesto": "supply chain outbound analyst",
+      "nivel": "planta",
+      "planta_probable": "Santa Catarina / Montemorelos",
+      "familia": "contexto",
+      "cercania": 90,
+      "de_valor": false
+    },
+    {
+      "cuenta": "BYDSA",
+      "puesto": "jefe de proyectos",
+      "nivel": "planta",
+      "planta_probable": "Guadalupe",
+      "familia": "proyectos",
+      "cercania": 10,
+      "de_valor": true
+    },
+    {
+      "cuenta": "BYDSA",
+      "puesto": "operations and supply chain",
+      "nivel": "planta",
+      "planta_probable": "Guadalupe",
+      "familia": "contexto",
+      "cercania": 60,
+      "de_valor": false
+    },
+    {
+      "cuenta": "BYDSA",
+      "puesto": "compras directas",
+      "nivel": "planta",
+      "planta_probable": "Guadalupe",
+      "familia": "compras",
+      "cercania": 41,
+      "de_valor": false
+    },
+    {
+      "cuenta": "Bokados",
+      "puesto": "jefe de ingenieria y proyectos",
+      "nivel": "planta",
+      "planta_probable": "Santa Catarina",
+      "familia": "proyectos",
+      "cercania": 10,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Bokados",
+      "puesto": "comprador",
+      "nivel": "planta",
+      "planta_probable": "Santa Catarina",
+      "familia": "compras",
+      "cercania": 20,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Bokados",
+      "puesto": "food production supervisor",
+      "nivel": "planta",
+      "planta_probable": "Santa Catarina",
+      "familia": "contexto",
+      "cercania": 70,
+      "de_valor": false
+    },
+    {
+      "cuenta": "Bebidas Mundiales",
+      "puesto": "coordinador de ingenieria",
+      "nivel": "planta",
+      "planta_probable": "Torreon/Nava/Guadalupe/Monterrey/Matamoros",
+      "familia": "ingenieria",
+      "cercania": 10,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Bebidas Mundiales",
+      "puesto": "gerente de proyecto",
+      "nivel": "planta",
+      "planta_probable": "Torreon/Nava/Guadalupe/Monterrey/Matamoros",
+      "familia": "proyectos",
+      "cercania": 10,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Barcel",
+      "puesto": "global indirect procurement manager",
+      "nivel": "corporativo",
+      "planta_probable": null,
+      "familia": "compras",
+      "cercania": 10,
+      "de_valor": true
+    },
+    {
+      "cuenta": "Barcel",
+      "puesto": "administrativa CAPEX y compras",
+      "nivel": "planta",
+      "planta_probable": "General Escobedo",
+      "familia": "compras",
+      "cercania": 30,
+      "de_valor": false
+    },
+    {
+      "cuenta": "Barcel",
+      "puesto": "ingenieria de proyecto",
+      "nivel": "planta",
+      "planta_probable": "General Escobedo",
+      "familia": "proyectos",
+      "cercania": 20,
+      "de_valor": true
+    },
+    {
+      "cuenta": "LEGO",
+      "puesto": "senior facilities technical manager",
+      "nivel": "planta",
+      "planta_probable": "Ciénega de Flores",
+      "familia": "mantenimiento",
+      "cercania": 10,
+      "de_valor": true
+    },
+    {
+      "cuenta": "LEGO",
+      "puesto": "compras (contacto anterior)",
+      "nivel": "ya_no_esta",
+      "planta_probable": null,
+      "familia": "compras",
+      "cercania": 100,
+      "de_valor": false
+    },
+    {
+      "cuenta": "Metalsa",
+      "puesto": "L&D specialist",
+      "nivel": "corporativo",
+      "planta_probable": null,
+      "familia": "contexto",
+      "cercania": 100,
+      "de_valor": false
+    },
+    {
+      "cuenta": "Cuprum",
+      "puesto": "portfolio manager / strategic CAPEX lead",
+      "nivel": "ya_no_esta",
+      "planta_probable": null,
+      "familia": "compras",
+      "cercania": 100,
+      "de_valor": false
+    },
+    {
+      "cuenta": "Xignux",
+      "puesto": "gerente de proyectos nuevos negocios",
+      "nivel": "corporativo",
+      "planta_probable": null,
+      "familia": "proyectos",
+      "cercania": 10,
+      "de_valor": true
+    },
+    {
+      "cuenta": "GAMESA Pepsi",
+      "puesto": "ingeniero (vendor setup en curso)",
+      "nivel": "planta",
+      "planta_probable": "San Nicolas / Monterrey",
+      "familia": "proyectos",
+      "cercania": 10,
+      "de_valor": true
+    }
+  ],
+  "entregable": {
+    "html": "enriquecimiento-20-tarjetas-pablo.html",
+    "destino": "OneDrive de Esteban",
+    "bytes": 61861,
+    "por_que_no_esta_en_el_repo": "lleva los 45 nombres y sus ligas de LinkedIn"
+  }
+}

@@ -2092,3 +2092,81 @@ M0c con una fuente que la compuerta de hoy rechaza.
 **Sigue abierto y sin tocar:** los datos personales en los issues públicos de este repo ·
 el partner duplicado de LEGO (`2384`/`2385`) · las cinco colisiones de «supervisor» en el
 vocabulario · el truncamiento del catálogo en B4.
+
+---
+
+# #385 · Enriquecer las 20 tarjetas que Pablo cargó, y descubrir que siete no son prospectos
+
+Pablo cargó 20 tarjetas de prospecto el 5-oct con contactos de compras CAPEX, PMO y proyectos.
+El perfil está bien apuntado. Lo que faltaba era lo que la herramienta da —correo, planta, nivel,
+historia y gancho— y al ir a buscarlo apareció algo que ninguna tarjeta decía.
+
+## Siete de las veinte no son prospectos
+
+| cuántas | qué son | la evidencia |
+|---|---|---|
+| **5** | duplican una cuenta viva | Mondelez, Mission, Hersmex, y Gamesa **dos veces** |
+| **2** | son clientes donde FTS ya trabaja | Bokados y la relación de Arca Continental |
+| 3 | tibias: ya hubo contacto y nadie lo registró | Heineken, Trouw, Mars |
+| 5 | frías con señal documentada | Cuprum, Xignux, BYDSA, LEGO, Metalsa |
+| 5 | frías de verdad | Barcel, Sigma, Cosmocel, SuKarne, Griffith |
+
+**Mondelez tiene 841 órdenes de venta confirmadas** —más 29 de Mondelez Global— y 293
+oportunidades ganadas repartidas en cuatro grafías de partner. Prospectarla en frío sería llamarle
+al cliente más grande de la casa para presentarnos. **Gamesa tiene tres tarjetas**: la 2285, la 2295
+y la 2233, que es donde vive la cotización enviada el 17-sep que Rissia está esperando; el
+`partner_name` de la 2285 es, además, **el nombre de una persona**. Y **Heineken ya invitó a FTS a
+una subasta electrónica** de automatización en 2023, con nueve cotizaciones en borrador que nunca
+cerraron: la pregunta correcta ahí no es el brochure, es qué faltó.
+
+## Las dos relaciones de grupo que nadie había visto
+
+Las dos salieron de leer el buzón, no de buscar en la web:
+
+- **BYDSA es de Xignux.** Lo publica la sala de prensa de `xignux.com`. Y en la tarjeta de Xignux hay
+  un contacto que ya respondió y pidió el brochure: es la misma puerta para las dos tarjetas.
+- **Bokados es de Arca Continental.** El curso de seguridad que Bokados le pidió a FTS en 2024 está
+  hospedado en `arcacontal.zoom.us`. Y en Arca FTS tiene **IPERCs liberados en marzo de 2026** por
+  andamio, cableado, montaje de estructura y conexión de PLC. Si Bebidas Mundiales es la entidad de
+  Arca —una sola fuente débil lo sugiere, y **queda por confirmar**— esa es su puerta también.
+
+## No son 60 contactos, son 45
+
+El brief suponía tres por tarjeta. Contados: **doce** traen tres, dos traen dos, cinco traen uno y
+**una no trae ninguno** —Grupo Gamesa, que tampoco tiene nota—. De los 45, **31 están a cercanía 20
+o menos** de la decisión, que es mucho más de lo que la cascada logró en 150 consultas sobre cuentas
+frías: aquí el trabajo humano ganó. Pero **solo 14 de esos 31 están en la planta**, y a un
+corporativo no se le vende una obra: se le pide la referencia.
+
+## El correo sigue siendo el cuello de botella, y ahora con número
+
+Solo **6 de 20** cuentas tienen patrón usable, y **11 no tienen ninguno**. Los seis salieron de
+literales que ya estaban en casa —el buzón y Odoo—, no de directorios: Heineken con **tres** literales
+de remitentes distintos, y Cuprum, Bokados, Mars, Trouw y Arca con uno cada uno. Tres más tienen
+patrón y no sirve: Mondelez va por el portal de EY, Mission está **en conflicto** con dos dominios
+distintos, y Hershey lleva un **sufijo numérico** que no se puede derivar.
+
+Es la misma regla de clase (c) de #384 vista desde el otro lado: la web no da el correo, pero **el
+buzón de la propia casa sí**, y nadie lo había cosechado.
+
+## Dos defectos de dato que hay que arreglar antes de cargar contactos
+
+- **LEGO está duplicado** en `res.partner`, ids `2384` y `2385`, los dos marcados como empresa.
+- **El partner de Trouw Nutrition tiene como correo el de Esteban** —nuestro propio correo en un
+  partner de cliente—. Y Mondelez tiene cuatro grafías de partner y unas 22 filas de partner.
+
+## Restricciones del turno
+
+Cero escrituras a Odoo —sólo lectura— · cero Lusha · purga no ejecutada · `fts-mcp-odoo` intacto ·
+sin datos personales en el issue ni en el repo. Los 45 contactos viven en el chatter de Odoo y en el
+HTML de OneDrive; en el repo quedan su **puesto, nivel y familia**, nunca su nombre.
+
+**Lo que no se terminó, dicho tal cual:** las señales se buscaron sólo en las seis cuentas frías sin
+historia —18 consultas— porque en las otras catorce el gancho es la relación que ya existe, y gastar
+consultas de prensa ahí habría sido gastar por gastar. Cosmocel y Sigma se cerraron en dos consultas
+cada una porque la segunda ya había resuelto el gancho. **Ninguna acción se ejecutó: las 20 siguen
+exactamente como Pablo las dejó**, y lo que hay es la propuesta y el texto listo para pegar.
+
+**Sigue abierto y sin tocar:** si Bebidas Mundiales es la entidad de Arca Continental · los datos
+personales en los issues públicos de este repo · el duplicado de LEGO · las cinco colisiones de
+«supervisor» · el truncamiento del catálogo en B4.
