@@ -2008,3 +2008,87 @@ orquestador y **no se emitió ficha**. La ficha exige `challenge`, y el challeng
 sobre cuentas donde el bloque 1 ya salió seco y donde el buzón está vacío.
 
 **Sigue abierto y sin tocar:** los datos personales en los issues públicos de este repo.
+
+---
+
+# #384 · El motor 2 sobre las cinco, y la regla de clase (c) declarada
+
+150 consultas de red, 30 por cuenta, tope adaptativo apagado. Las cinco cascadas
+cerradas con sus 13 módulos declarados, las cinco fichas entregadas en OneDrive y
+enlazadas en su tarjeta del piloto, y **siete defectos** que no vio la suite.
+
+## La medición: el enunciado del límite estaba mal, y el dato lo corrige
+
+La regla a medir era «si las cinco dan cero o uno, el límite queda confirmado». No dieron
+cero ni uno: dieron **cuatro interlocutores de valor con nombre**. Eso no refuta la
+sospecha —la **corrige**, y la versión corregida es más útil:
+
+| de las 150 consultas | cuántas |
+|---|---|
+| contactos de valor con nombre | **4** |
+| de ellos, de prensa de inauguración | **4 de 4** |
+| de ellos, a nivel de planta | **1 de 4** |
+| de ellos, con correo literal | **0 de 4** |
+| perfiles públicos de mantenimiento, proyectos o facilities | **0 de 150** |
+| cuentas que no aparecen en el buscador público | **3 de 5** |
+
+> **La web pública entrega nombres. Casi nunca el del que compra.**
+
+Con once casos ya no es sospecha, y queda escrita como regla en
+[`metodo/limite-de-clase-c.md`](metodo/limite-de-clase-c.md), no como nota al pie. A quien
+sí entrega la web: al parque industrial, a la cámara, al clúster y al que corta el listón
+—y ésas son las cuatro puertas que las cinco fichas proponen en vez del correo frío—.
+
+## Leer el artefacto antes de entregarlo sigue siendo el mejor detector
+
+Siete defectos, cero vistos por 1,220 pruebas. Cuatro son la misma lección en cuatro
+disfraces: **lo que se puede derivar no se le pide a quien escribió el estado** —`hits`,
+`modulo_origen`, la forma de M5, y los avisos repetidos de una corrida vieja—.
+
+Dos valen por sí solos. El **giro redactado a mano** en vez del del radar movía a Dormakaba
+de 85.1 a 72.4, con las dos cifras plausibles y ninguna fuente diciendo cuál manda; es el
+puntaje que el lazo 3 usa para corregir pesos. Y la ficha de Daikin **afirmaba haber
+verificado** una copia que ya no era la suya: el aviso no estaba viejo, estaba falso, y era
+justo la afirmación de verificación. Peor, mientras ese aviso se imprimía dentro del
+documento, **el documento contenía su propia medida** y no convergía: tres emisiones, tres
+SHA. La comparación vive ahora en el registro y en la consola, y el documento sólo lleva el
+aviso rojo cuando de verdad la liga apunta a otra versión.
+
+## La corrección de identidad que valía la corrida sola
+
+NetShape Mexico **no** es NetShape Technologies, la casa de metalurgia de polvos de Floyds
+Knobs, Indiana: es filial de **Shape Corp.**, hace estampado metálico y plástico, opera en
+México desde 2004 y en Querétaro desde 2010. El patrón de correo de la hoja era de la
+empresa equivocada: usarlo habría mandado el correo de Rissia a Indiana. Y el ángulo cambia
+entero —la casa ya sabe comprar local, así que no hay que presentarse—.
+
+## La ficha vive en la tarjeta, y QSMX sale escribiendo
+
+`tarjeta.ficha_url`, `ficha_entregada_el`, `ficha_bytes` y `ficha_sha256`, los cuatro o
+ninguno, puestos desde `corrida.entrega` y nunca a mano. Al enlazarlas se vio que la llave
+de la tarjeta y la de la corrida **no son la misma cadena** —la del radar viene como la
+escribió la nota, «San Luis Potosi (Campus Daikin)»— y un `=` entre las dos enlazaba cero
+sin quejarse.
+
+QSMX sale del piloto con su estado **escrito** en `fuera_del_piloto`: `posible_aliado`, su
+razón, el 93.1 que el radar le dio y por qué se equivocó. Omitirla la habría hecho
+reaparecer en la siguiente corrida del radar, y habría tirado el mejor ejemplo medido de
+`choque_de_familia`: el giro que la puntúa es el giro que la descalifica.
+
+## Restricciones del turno
+
+Cero escrituras a Odoo —sólo lectura— · cero Lusha · purga no ejecutada ·
+`fts-mcp-odoo` intacto · sin datos personales en el repo ni en el issue. Las cuatro personas
+de valor viven en las fichas, que están en OneDrive y no en el repo; aquí sólo está su
+**nivel**.
+
+**Lo que no se terminó, dicho tal cual:** M5 no quedó agotado en ninguna de las cinco
+—el tope de 30 se consumió antes de los tres bloques secos seguidos— y M6 y M7 quedaron
+`omitida_por_costo` con su razón. NetShape es la primera que vale reabrir si hay más
+presupuesto: es la única con tres apellidos de la casa con los que M6 tendría de dónde
+arrancar. Y la corrida vieja de Grupo Cuprum **ya no carga** con esta versión: una fila de
+M0c con una fuente que la compuerta de hoy rechaza.
+
+**Sigue abierto y sin tocar:** los datos personales en los issues públicos de este repo ·
+el partner duplicado de LEGO (`2384`/`2385`) · las cinco colisiones de «supervisor» en el
+vocabulario · el truncamiento del catálogo en B4.

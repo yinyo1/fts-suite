@@ -1,0 +1,71 @@
+{
+  "que_es": "Las cinco fichas del motor 2 sobre las cuentas de puerta de usuario, entregadas en OneDrive el 2026-10-06. Es la CONSTANCIA de la entrega, no la ficha: la ficha vive en la liga.",
+  "por_que_existe": "Porque las corridas viven en la carpeta de la sesion y la base del piloto en /tmp: las dos mueren al cerrar la sesion. El sha256 de cada ficha es lo unico que permite, manana, volver a emitirla desde una corrida regenerada y decir si la copia de la liga sigue siendo esa. El TAMANO NO VERIFICA CONTENIDO (#306).",
+  "que_NO_lleva": "Ni un nombre, ni un correo, ni un puesto de una persona. Las fichas los llevan y las fichas no estan en el repo: estan en OneDrive, que es privado.",
+  "como_se_verifica": "`herramientas/enlazar_ficha.py` lo lee de `corrida.entrega` y lo pone en `tarjeta.ficha_url` / `ficha_sha256` del piloto. Nada aqui se teclea.",
+  "verificacion_de_la_subida": "mismo_tamano_sin_hash en las cinco: el conector de SharePoint devuelve el tamano y NO devuelve sha256, asi que la comparacion es de tamano y se dice asi. El sha256 de abajo es del archivo LOCAL que se subio.",
+  "version_de_la_herramienta": "0.22.0",
+  "corte": "2026-10-06",
+  "fichas": [
+    {
+      "empresa": "Daikin",
+      "planta": "San Luis Potosi",
+      "url": "https://ftsmx0-my.sharepoint.com/personal/estebandelacruz_fts_mx/Documents/daikin-san-luis-potosi-ficha.html",
+      "bytes": 31440,
+      "sha256": "6fff07bee86a84f13a9e8acb90737cdba7eb4beb0666ec44fe99e0cec75a93fa",
+      "entregada_el": "2026-10-06T07:46:57.318605+00:00",
+      "verificacion": "mismo_tamano_sin_hash",
+      "la_copia_quedo_atras": false,
+      "consultas_de_red": 30,
+      "busquedas_registradas": 31
+    },
+    {
+      "empresa": "Dormakaba",
+      "planta": "Nogales",
+      "url": "https://ftsmx0-my.sharepoint.com/personal/estebandelacruz_fts_mx/Documents/dormakaba-nogales-ficha.html",
+      "bytes": 32975,
+      "sha256": "998c8fa710ecbf2e27500a3e65f7fce135970a9acc7a3de5faddf156ef1584a3",
+      "entregada_el": "2026-10-06T08:01:13.621328+00:00",
+      "verificacion": "mismo_tamano_sin_hash",
+      "la_copia_quedo_atras": false,
+      "consultas_de_red": 30,
+      "busquedas_registradas": 31
+    },
+    {
+      "empresa": "NIFCO",
+      "planta": "Chihuahua",
+      "url": "https://ftsmx0-my.sharepoint.com/personal/estebandelacruz_fts_mx/Documents/nifco-chihuahua-ficha.html",
+      "bytes": 30379,
+      "sha256": "beaaabd211e72711e7fff0c4591e4dbb2f16ab485c5b7283288b2ad23b25121a",
+      "entregada_el": "2026-10-06T08:06:53.410288+00:00",
+      "verificacion": "mismo_tamano_sin_hash",
+      "la_copia_quedo_atras": false,
+      "consultas_de_red": 30,
+      "busquedas_registradas": 31
+    },
+    {
+      "empresa": "NetShape Mexico",
+      "planta": "Queretaro",
+      "url": "https://ftsmx0-my.sharepoint.com/personal/estebandelacruz_fts_mx/Documents/netshape-mexico-queretaro-ficha.html",
+      "bytes": 35130,
+      "sha256": "2dd8e12a31bfe1e60cac3eeaeb9d251fe06a6d56c4619eaf9ab239587f42b815",
+      "entregada_el": "2026-10-06T08:04:12.991345+00:00",
+      "verificacion": "mismo_tamano_sin_hash",
+      "la_copia_quedo_atras": false,
+      "consultas_de_red": 30,
+      "busquedas_registradas": 31
+    },
+    {
+      "empresa": "TDI Manufacturing",
+      "planta": "Cienega de Flores",
+      "url": "https://ftsmx0-my.sharepoint.com/personal/estebandelacruz_fts_mx/Documents/tdi-manufacturing-cienega-de-flores-ficha.html",
+      "bytes": 29282,
+      "sha256": "488693f274d37a31e267ee1277efdda63b5706452035eb281fadf10322a04128",
+      "entregada_el": "2026-10-06T07:35:34.912424+00:00",
+      "verificacion": "mismo_tamano_sin_hash",
+      "la_copia_quedo_atras": false,
+      "consultas_de_red": 30,
+      "busquedas_registradas": 31
+    }
+  ]
+}
