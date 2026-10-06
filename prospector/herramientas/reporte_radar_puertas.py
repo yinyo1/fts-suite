@@ -41,6 +41,7 @@ NOMBRE_DE_PUERTA = {
  "usuario_directo": "Puerta unica · el usuario, hoy",
  "expansion_lateral": "Expansion lateral · misma cuenta, otra division",
  "planta_ya_intervenida": "Planta ya intervenida · FTS entro por un canal",
+ "licitacion_publica": "Puerta unica · se concursa, no se vende",
 }
 CSS = """
 :root{--paper:#f5f7f4;--ink:#1b2621;--muted:#66716c;--line:#dde3df;--card:#fff;
@@ -112,7 +113,8 @@ def e(x):
 
 ESTADO_CORTO = {"abierta": "ABIERTA", "cerrada": "cerrada",
                 "futura": "futura", "desconocida": "POR AVERIGUAR"}
-LETRA = {"epc": "A·EPC", "usuario": "B·usuario",
+LETRA = {"epc": "A·constructor", "usuario": "B·usuario",
+         "licitacion_publica": "unica·licitacion",
          "usuario_directo": "única·usuario", "expansion_lateral": "lateral",
          "planta_ya_intervenida": "ya intervenida"}
 
@@ -139,13 +141,21 @@ def _celda_de_puertas(p):
         if q["estado"] == "desconocida":
             # completo y sin cortar: a 190 caracteres quedaba «Averiguar si y»
             porque = f'<br><span class="sub">{e(q["por_que"])}</span>'
+        # El CHOQUE DE FAMILIA va en la puerta, no en una nota al pie: sin el, el
+        # angulo se lee como una venta y en tres de las seis cuentas que se corrieron
+        # era el producto de la casa.
+        choca = ""
+        if q.get("familias_que_NO_son_venta_aqui"):
+            choca = ('<br><b style="color:var(--hot)">OJO: '
+                     + e(", ".join(q["familias_que_NO_son_venta_aqui"]))
+                     + " no es venta aqui, es lo que esta casa vende</b>")
         sigue = ""
         if q["puerta"] in ("usuario", "usuario_directo") and "sigue: " in q["angulo"]:
             sigue = ('<br><span class="sub">sigue: '
                      + e(q["angulo"].split("sigue: ")[1]) + "</span>")
         out.append(f'<div class="puerta {cls}"><b>{e(LETRA[q["puerta"]])}</b> '
                    f'{e(ESTADO_CORTO[q["estado"]])} · {q["puntos_de_oportunidad"]:g}'
-                   f'{cola}<br>{quien}{porque}{sigue}</div>')
+                   f'{cola}<br>{quien}{porque}{choca}{sigue}</div>')
     return "".join(out)
 
 
@@ -174,7 +184,7 @@ def fila(x, i):
     return f"""<tr>
 <td class="num">{i}</td>
 <td><b>{e(x['empresa'])}</b><br><span class="sub">{e(x['planta'])}</span>
-<br><span class="sub">{e(x['estado'])}{'' if x['de_la_corrida']==C['hoy'] else ' · heredada'}</span></td>
+<br><span class="sub">{e(x['estado'])}{'' if x['de_la_corrida']==C['corrida'] else ' · heredada'}</span></td>
 <td>{e(x['texto'][:190])}<br><a href="{e(x['liga'])}">{e(x['liga'].split('/')[2])} — abrir</a>
 <br><span class="sub">{e(x['procedencia_fecha'][:95])}</span>{avisos}</td>
 <td>{fecha}</td>
@@ -208,10 +218,21 @@ _EJEMPLO_FRESCA = min(((x["empresa"], x["dias"]) for x in _CON_DIAS),
 _IDENT = [q["interlocutor"] for x in C["evaluadas"] for q in x["puertas"]["puertas"]
           if q["puerta"] == "epc" and q["estado"] == "abierta"
           and q.get("interlocutor") and "POR IDENTIFICAR" not in q["interlocutor"]]
+# De donde salio cada constructor: el parque o la propia nota. La diferencia es la
+# DECISION 3 entera, y la frase anterior se quedo diciendo «solo porque es quien
+# publica la nota» cuando eso ya solo aplica a uno de los cinco.
+_POR_EL_PARQUE = [q["interlocutor"] for x in C["evaluadas"]
+                  for q in x["puertas"]["puertas"]
+                  if q["puerta"] == "epc" and q["estado"] == "abierta"
+                  and x.get("epc_de_donde") == "parque"]
+_POR_LA_NOTA = [n for n in _IDENT if n not in _POR_EL_PARQUE]
 _LOS_IDENTIFICADOS = (
-    f"Y ese que si: {e(', '.join(_IDENT))} -- y solo porque es quien publica la "
-    "nota, no porque la nota diga quien construye para alguien mas."
-    if _IDENT else "Ninguna nota de esta corrida nombra al constructor.")
+    (f"<b>{len(_POR_EL_PARQUE)} de los {len(_IDENT)} salieron de preguntar por el "
+     f"PARQUE</b>, que es la unica de las tres formas de preguntar que contesta: "
+     + e("; ".join(_POR_EL_PARQUE)) + ". "
+     + (f"El otro, {e('; '.join(_POR_LA_NOTA))}, salio de la nota misma, y solo "
+        "porque el constructor ES quien la publica. " if _POR_LA_NOTA else ""))
+    if _IDENT else "Ninguna nota de esta corrida nombra al constructor. ")
 
 # LO QUE EL RADAR NO DECIDE SOLO. Hay entradas que describen obra -- subestaciones
 # nuevas, una ampliacion de 31,350 m2-- y que el radar trata como equipo dentro de
@@ -224,11 +245,29 @@ _OBRA_EN_EL_TEXTO = ("subestacion", "subestaciones", "ampliacion de",
 _SIN_PUERTA_DE_EPC = [
     x for x in C["evaluadas"]
     if not any(q["puerta"] == "epc" for q in x["puertas"]["puertas"])
+    # Una obra publica NO esta pendiente: Esteban la decidio el 6-oct y tiene su
+    # propia puerta. Seguir pidiendola para decidir es pedir dos veces lo mismo.
+    and not x["puertas"].get("es_compra_publica")
     and any(t in plano(x["texto"]) for t in _OBRA_EN_EL_TEXTO)]
 _CARTA_DE_DUDAS = "".join(
     f'<li><b>{e(x["empresa"])}</b> ({e(x["planta"])}): {e(x["texto"][:150])}…'
     f' <span class="sub">hoy sale con una sola puerta, la del usuario.</span></li>'
     for x in _SIN_PUERTA_DE_EPC)
+
+_PENDIENTE = ("""<div class="nota">
+<b>Lo que falta que decidas, y el radar no decide solo.</b>
+<ul style="margin:8px 0 8px 18px;padding:0">""" + _CARTA_DE_DUDAS + """</ul>
+Son obra: se construye algo. Pero quien construye una ampliacion o una subestacion
+no siempre es un EPC llave en mano -- a veces lo contrata el usuario mismo--. Si
+dices que si, el radar les abre su puerta A y la busqueda del constructor entra; si
+dices que no, se quedan como estan.</div>""") if _CARTA_DE_DUDAS else """<div class="ok">
+<b>Las dos que quedaban por decidir, decididas el 6-oct.</b>
+<b>Hyundai WIA</b> abre puerta de contratista: una ampliacion de 31,350 m2 lleva
+contratista general, y como la planta ya opera su puerta de usuario esta abierta HOY
+y no despues de una inauguracion -- las dos al mismo tiempo, que es lo que una obra
+nueva no hace--. <b>CFE</b> no: sale a licitacion publica, que es otra puerta con
+otras reglas, y tiene la suya con su propio angulo -- padron de contratistas y
+CompraNet--. No queda ninguna entrada esperando criterio.</div>"""
 
 cuerpo = ('<div class="tabla-scroll"><table class="lista">'
           '<tr><th>#</th><th>Cuenta</th><th>La senal y su fuente</th><th>Fecha</th>'
@@ -253,7 +292,7 @@ doc = f"""<!doctype html>
 <div class="kicker">Motor 1 · radar con dos puertas por planta nueva</div>
 <h1>{R['senales']} cuentas, y quien compra en cada una</h1>
 <p class="sub">Corrida del {HOY.isoformat()}. {R['nuevas_de_esta_corrida']} nuevas y
-{R['heredadas_del_5_oct']} heredadas del 5-oct, todas vueltas a puntuar con el
+{R['heredadas_de_la_corrida_anterior']} heredadas de la corrida de descubrimiento, todas vueltas a puntuar con el
 criterio de hoy. Ordenadas por puntaje.</p>
 
 <div class="ok"><b>Lo que cambio, y es lo que hay que leer antes de la lista.</b>
@@ -287,11 +326,13 @@ puerta dice ademas que tipo de proyecto sigue, medido por co-ocurrencia.</p>
 es obra nueva sino equipo o linea dentro de una planta que ya opera: no hay EPC de
 por medio y decide la planta. El angulo es lo que el equipo nuevo arrastra --
 acometida, tablero, integracion de control, enfriamiento--.</p>
-<p style="margin:0"><b>Como se identifica un EPC que no esta en la nota.</b> La nota,
-el permiso de construccion del municipio o el boletin del parque industrial suelen
-nombrar al constructor. Busquedas: «constructora "&lt;empresa&gt;" planta
-&lt;municipio&gt;», «quien construye la planta de &lt;empresa&gt;», y el boletin del
-parque donde se instala.</p>
+<p style="margin:0"><b>Como se identifica al constructor, medido el 6-oct.</b> Se
+probaron las tres formas de preguntar y solo una contesta: <b>por el PARQUE</b>
+— «quien construye en &lt;parque&gt;» —, porque el dueno del parque sabe quien
+construye adentro y lo publica. Preguntar «que constructoras hay» devuelve
+directorios, y preguntar «quien construye la planta de X» dio negativo explicito
+tres veces: las notas dan monto, empleos y fecha, y nunca al constructor. Cuando la
+nota no dice el parque, la primera tarea es sacarlo.</p>
 </div>
 
 <div class="card">
@@ -318,15 +359,7 @@ que esta lista deja servido y no resuelto.</p>
 
 {cuerpo}
 
-<div class="nota">
-<b>Lo que falta que decidas, y el radar no decide solo.</b>
-{_CARTA_DE_DUDAS and '<ul style="margin:8px 0 8px 18px;padding:0">' + _CARTA_DE_DUDAS + '</ul>' or ''}
-Son obra: se construye algo. Pero quien construye una ampliacion o una subestacion
-no siempre es un EPC llave en mano -- a veces lo contrata el usuario mismo, y en el
-caso de CFE sale a licitacion publica, que es otra puerta con otras reglas--. Si
-dices que si, el radar les abre su puerta A y la busqueda del constructor entra; si
-dices que no, se quedan como estan. No se resolvio solo porque equivocarse aqui es
-mandar a alguien a buscar a un interlocutor que no existe.</div>
+{_PENDIENTE}
 
 <div class="card">
 <h2>Como se lee el puntaje de la senal</h2>

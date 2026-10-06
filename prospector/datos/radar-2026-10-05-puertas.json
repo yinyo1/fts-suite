@@ -4,7 +4,7 @@
   "sigue_a": "radar-descubrimiento-2026-10-05 (issue #381)",
   "nota": "Refinamiento de #382: dos puertas por planta nueva, fuente de constructores, identidad de grupo y scope expandido. Las senales de la corrida del 5-oct se vuelven a puntuar CON EL CRITERIO DE HOY y se les calculan las puertas; su registro original queda intacto en el archivo de esa corrida.",
   "hoy": "2026-10-05",
-  "version_de_la_herramienta": "0.20.0",
+  "version_de_la_herramienta": "0.21.0",
   "geografia": {
     "noreste": [
       "Nuevo Leon",
@@ -768,7 +768,8 @@
       "dias": 55,
       "parque": "Parque Industrial Amistad (Ramos Arizpe)",
       "epc": "Grupo Amistad (Parques Industriales Amistad) — desarrollador del parque y constructor de nave llave en mano",
-      "epc_procedencia": "mexicoindustry y promexicoindustry: Amistad atrajo a Waelzholz a su parque Chuy Maria en Ramos Arizpe y ofrece construccion de nave industrial llave en mano. No dice que Amistad monte la linea de produccion: dice que construye el edificio, que es justo la obra donde FTS entra"
+      "epc_procedencia": "mexicoindustry y promexicoindustry: Amistad atrajo a Waelzholz a su parque Chuy Maria en Ramos Arizpe y ofrece construccion de nave industrial llave en mano. No dice que Amistad monte la linea de produccion: dice que construye el edificio, que es justo la obra donde FTS entra",
+      "epc_de_donde": "parque"
     },
     {
       "empresa": "NetShape Mexico",
@@ -935,7 +936,8 @@
       "tipo_de_senal": "obra_nueva",
       "dias": 39,
       "parque": "Parque Industrial Garcia (el que FINSA construye)",
-      "epc_procedencia": "la nota la publica FINSA sobre su propio parque: es dueno, desarrollador y constructor de las 17 naves del plan maestro. Es el unico constructor que la corrida del 5-oct trajo, y lo trajo porque el constructor ES quien publica -- no porque alguien lo haya averiguado--"
+      "epc_procedencia": "la nota la publica FINSA sobre su propio parque: es dueno, desarrollador y constructor de las 17 naves del plan maestro. Es el unico constructor que la corrida del 5-oct trajo, y lo trajo porque el constructor ES quien publica -- no porque alguien lo haya averiguado--",
+      "epc_de_donde": "la nota misma"
     },
     {
       "empresa": "Ecocab MX",
@@ -1275,7 +1277,8 @@
       "epc": "Meor — HubsPark Juarez, la plataforma industrial donde Inventec se instala",
       "epc_procedencia": "promexicoindustry: «Inventec to invest US 450 million in Ciudad Juarez through Meor's industrial platform», plan maestro de mas de 541,000 m2",
       "parque": "HubsPark Juarez, de Meor (Ciudad Juarez)",
-      "parque_procedencia": "hallado en la segunda vuelta del 6-oct, no en la nota original"
+      "parque_procedencia": "hallado en la segunda vuelta del 6-oct, no en la nota original",
+      "epc_de_donde": "parque"
     },
     {
       "empresa": "NIFCO",
@@ -1544,7 +1547,8 @@
       "epc": "Grupo Alianza — el mismo parque que ZC Rubber",
       "epc_procedencia": "la nota de Cluster Industrial y moderntiredealer ubican la planta en 610,000 m2 del Parque Industrial Alianza al sur de Saltillo. El constructor del parque es Grupo Alianza, por la misma evidencia que ZC Rubber",
       "parque": "Parque Industrial Alianza (sur de Saltillo)",
-      "parque_procedencia": "hallado en la segunda vuelta del 6-oct, no en la nota original"
+      "parque_procedencia": "hallado en la segunda vuelta del 6-oct, no en la nota original",
+      "epc_de_donde": "parque"
     },
     {
       "empresa": "DH Autoware",
@@ -1921,7 +1925,8 @@
       "dias": 126,
       "parque": "Parque Industrial Alianza (Derramadero, Saltillo)",
       "epc": "Grupo Alianza — desarrollador del Parque Industrial Alianza, construyendo ocho plantas ahi",
-      "epc_procedencia": "forbes y playersoflife: Grupo Alianza dirige el parque de Derramadero y en 2024 seguia con la construccion de ocho plantas nuevas adentro, casi todas automotrices de capital asiatico"
+      "epc_procedencia": "forbes y playersoflife: Grupo Alianza dirige el parque de Derramadero y en 2024 seguia con la construccion de ocho plantas nuevas adentro, casi todas automotrices de capital asiatico",
+      "epc_de_donde": "parque"
     },
     {
       "empresa": "Martinrea",
@@ -2301,5 +2306,6 @@
     "con_constructor_identificado_despues": 5,
     "veredicto": "La reorientacion SI paga, y paga donde Esteban dijo. De 13 puertas A, el constructor pasa de 1 a 5, y las cuatro nuevas salen TODAS del parque: Grupo Amistad (Waelzholz), Grupo Alianza (ZC Rubber y Yokohama, el mismo parque) y Meor (Inventec). Ninguna salio de preguntar por la planta. Las tres veces que se pregunto «quien construye la planta de X» -- La Moderna dos veces, Pegatron una-- el resultado fue negativo explicito: las notas dan monto, empleos y fecha y nunca al constructor.",
     "el_limite_que_queda": "en 8 de 13 no hay constructor, y el patron dice por que: LEGO, Pegatron, La Moderna y Hyundai WIA construyen por su cuenta -- no hay un desarrollador en medio a quien preguntarle-- y ahi la respuesta no esta publicada. Para esas ocho la via no es el buscador: es el permiso de construccion del municipio o la obra misma."
-  }
+  },
+  "que_es_epc_de_donde": "De cual de las tres formas de preguntar salio el constructor. Se declara en el dato y no se adivina del texto de la procedencia: al inferirlo por la palabra «parque» el reporte puso a FINSA del lado del parque -- su procedencia dice «su propio parque»-- y a Meor del lado de la nota, que es exactamente al reves."
 }

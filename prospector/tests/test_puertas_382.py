@@ -628,3 +628,44 @@ def test_el_choque_mira_el_GIRO_y_no_lo_que_la_cuenta_esta_comprando():
     assert P.choque_de_familia("aire acondicionado chillers equipo termico")
     assert P.choque_de_familia("intercambiadores de calor gestion termica autopartes")
     assert P.choque_de_familia("estructuras metalicas acero metalmecanica")
+
+
+def test_de_donde_salio_cada_constructor_se_DECLARA_y_no_se_adivina():
+    """El reporte lo infirio de la palabra «parque» y quedo al reves.
+
+    La procedencia de FINSA dice «su propio parque» -- porque FINSA ES el dueno del
+    parque-- y la de Meor dice «plataforma industrial». Buscar la palabra puso a FINSA
+    del lado de la consulta por parque y a Meor del lado de la nota, que es justo lo
+    contrario de lo que paso. La via se declara en el dato.
+    """
+    from herramientas.sellar_constancia_puertas import CONSTANCIA
+    c = json.load(open(CONSTANCIA, encoding="utf-8"))
+    con_epc = [e for e in c["evaluadas"] if e.get("epc")]
+    for e in con_epc:
+        assert e.get("epc_de_donde") in ("parque", "la nota misma"), e["empresa"]
+    por_parque = [e["empresa"] for e in con_epc if e["epc_de_donde"] == "parque"]
+    por_la_nota = [e["empresa"] for e in con_epc if e["epc_de_donde"] == "la nota misma"]
+    assert por_la_nota == ["FINSA"], (
+        "FINSA es el unico que salio de la nota, y por una razon que no se repite: "
+        f"el constructor ES quien publica. Salieron: {por_la_nota}")
+    assert len(por_parque) == 4, por_parque
+
+
+def test_el_reporte_distingue_las_NUEVAS_de_las_heredadas():
+    """Se rompio dos veces por lo mismo: comparar contra una FECHA.
+
+    Primero el resumen (nuevas y heredadas salieron en 0 y 0) y despues el reporte,
+    donde las 23 filas salieron marcadas «heredada» -- incluidas las 9 que esta
+    corrida encontro-- porque comparaba `de_la_corrida` contra `hoy` y
+    `de_la_corrida` ya es el NOMBRE de la corrida. Un papel que dice que no encontro
+    nada nuevo cuando encontro nueve es peor que no decir nada.
+    """
+    from herramientas.sellar_constancia_puertas import CONSTANCIA
+    c = json.load(open(CONSTANCIA, encoding="utf-8"))
+    gen = (RAIZ / "herramientas" / "reporte_radar_puertas.py").read_text(encoding="utf-8")
+    assert "x['de_la_corrida']==C['corrida']" in gen, (
+        "el reporte volvio a comparar la corrida contra una fecha")
+    nuevas = [e["empresa"] for e in c["evaluadas"]
+              if e["de_la_corrida"] == c["corrida"]]
+    assert len(nuevas) == c["resumen"]["nuevas_de_esta_corrida"] > 0
+    assert "Grupo La Moderna" in nuevas, "esa la encontro esta corrida, no la anterior"

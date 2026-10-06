@@ -131,21 +131,41 @@
       "archivo": "cuentas-con-puertas.html",
       "ruta_local": "/tmp/claude-0/-home-user-fts-mcp-odoo/1546b028-bc52-5085-aa2e-d270de370c32/scratchpad/radar-382/cuentas-con-puertas.html",
       "url": "https://ftsmx0-my.sharepoint.com/personal/estebandelacruz_fts_mx/Documents/cuentas-con-puertas.html",
-      "ts": "2026-10-05T18:32:11.807419+00:00",
+      "ts": "2026-10-06T05:51:52.720394+00:00",
       "local": {
-        "sha256": "a9be4d37995a4f3793968d895091e0087fd13d34702e905d3f9576e811ac9d4f",
-        "bytes": 38211
+        "sha256": "29dbe9b085a538d113e767b1e61a2e3b2638e8e3dbc777474ba93ba9f830906d",
+        "bytes": 40683
       },
       "sha256_subido": "",
-      "bytes_subidos": 38211,
+      "bytes_subidos": 40683,
       "hash_de_relectura": false,
       "base64_con_longitud_confirmada": true,
       "verificacion": "longitud_confirmada_en_base64",
       "avisos_de_verificacion": [
-        "Subido como BASE64 declarando la longitud exacta: el conector rechaza el envio si no decodifica a 38,211 bytes, asi que el transporte quedo comprobado del lado del servidor y el byte de mas de #306 no puede pasar por aqui. NO es una relectura: confirma la longitud de lo que llego, no su contenido. Para verificar contenido, `--sha256-releido`."
+        "Subido como BASE64 declarando la longitud exacta: el conector rechaza el envio si no decodifica a 40,683 bytes, asi que el transporte quedo comprobado del lado del servidor y el byte de mas de #306 no puede pasar por aqui. NO es una relectura: confirma la longitud de lo que llego, no su contenido. Para verificar contenido, `--sha256-releido`."
       ],
       "verificacion_aceptable": true,
-      "nota": "Lista con puertas de #382: 23 cuentas ordenadas por puntaje. Se subio como TEXTO con expectedBytes, no base64, y el conector confirmo la longitud exacta (38,211) al escribir. NO es relectura con hash: confirma la longitud de lo que llego, no su contenido. Reemplaza la version del 7-oct que traia el defecto de Yokohama."
+      "nota": "Lista con puertas, version del 6-oct: CFE pasa a licitacion publica, Hyundai WIA abre puerta de contratista, cinco constructores identificados por parque, choque de familia en cuatro entradas, y la fecha de la corrida corregida a 2026-10-05 (NIFCO Apodaca de 76.4 fuera de ventana a 82.4 dentro). Longitud confirmada por el conector; NO es relectura con hash. OJO AL REGENERAR: el pie de la copia subida dice «prospector 0.20.0» porque se genero ANTES de subir la version a 0.21.0 en el mismo turno. El contenido es identico salvo esa cadena -- que mide igual, asi que el tamano no cambia-- y por eso el sha256 de aqui no empata con el que el generador produce hoy. No se volvio a subir 55 KB por seis caracteres de pie."
+    },
+    {
+      "archivo": "seis-puertas-de-usuario.html",
+      "ruta_local": "/tmp/claude-0/-home-user-fts-mcp-odoo/1546b028-bc52-5085-aa2e-d270de370c32/scratchpad/radar-382/seis-puertas-de-usuario.html",
+      "url": "https://ftsmx0-my.sharepoint.com/personal/estebandelacruz_fts_mx/Documents/seis-puertas-de-usuario.html",
+      "ts": "2026-10-06T05:51:52.786598+00:00",
+      "local": {
+        "sha256": "ea32b93a9af9a772908ef9aef16e140983bdbf59a3bd3814c0d5741ff935f1e6",
+        "bytes": 14940
+      },
+      "sha256_subido": "",
+      "bytes_subidos": 14940,
+      "hash_de_relectura": false,
+      "base64_con_longitud_confirmada": true,
+      "verificacion": "longitud_confirmada_en_base64",
+      "avisos_de_verificacion": [
+        "Subido como BASE64 declarando la longitud exacta: el conector rechaza el envio si no decodifica a 14,940 bytes, asi que el transporte quedo comprobado del lado del servidor y el byte de mas de #306 no puede pasar por aqui. NO es una relectura: confirma la longitud de lo que llego, no su contenido. Para verificar contenido, `--sha256-releido`."
+      ],
+      "verificacion_aceptable": true,
+      "nota": "Las seis de puerta de usuario con lo que prospecta le corrigio al radar: 3 angulos corregidos de 6 por choque de familia, 0 interlocutores de valor con nombre y correo, y el por que medido. Sin nombres de personas. Longitud confirmada por el conector. OJO AL REGENERAR: el pie de la copia subida dice «prospector 0.20.0» porque se genero ANTES de subir la version a 0.21.0 en el mismo turno. El contenido es identico salvo esa cadena -- que mide igual, asi que el tamano no cambia-- y por eso el sha256 de aqui no empata con el que el generador produce hoy. No se volvio a subir 55 KB por seis caracteres de pie."
     }
   ]
 }

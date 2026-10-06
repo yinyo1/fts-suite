@@ -3,7 +3,75 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
-## 0.20.0 — 2026-10-07
+## 0.21.0 — 2026-10-06
+
+Las cuatro decisiones de #382 aplicadas, y la corrida de `prospecta` sobre las seis de
+puerta de usuario destapó que **el radar le estaba ofreciendo al cliente su propio
+producto**. **1,220 pruebas** (eran 1,200).
+
+### Los dos criterios, confirmados — y siguen siendo criterios
+
+`MESES_MAXIMOS_DE_OBRA = 24` y la ventana de 18 meses del usuario quedan confirmadas por
+Esteban el 6-oct, con su razón: «una planta industrial normal cierra entre 12 y 20 meses;
+24 es tope». Siguen etiquetadas **criterio declarado, no medición**: confirmar un criterio
+no lo vuelve un dato, y el lazo 3 tiene que poder moverlo. De paso, el comentario
+«promedio del año gregoriano» volvió a `DIAS_POR_MES`, de donde se había caído.
+
+### La puerta de licitación pública, y la ampliación que abre las dos a la vez
+
+**CFE no abre puerta de EPC.** Nace `PUERTA_LICITACION` con su ángulo propio —alta en el
+padrón de contratistas, seguimiento en CompraNet, y la segunda vía: subcontratista del
+que gane—, **en vez** de las otras dos: en una entidad pública no hay un gerente de planta
+al que llamarle, y decirle «hablemos con el gerente» es perder el tiempo. La lista de
+entidades es declarada, porque que una obra sea pública depende de quién la paga.
+
+**Hyundai WIA sí abre puerta de contratista.** Una ampliación con superficie declarada es
+obra y lleva contratista general —que no se llama EPC, es más chico y se busca distinto—.
+Y como la planta ya opera, su puerta de usuario está abierta **hoy**: una ampliación abre
+las dos al mismo tiempo, que es lo que una obra nueva no hace.
+
+### La fuente de constructores, reorientada al parque y medida
+
+16 consultas sobre las 13 puertas A abiertas. El constructor pasa de **1 a 5**, y los
+cuatro nuevos salen **todos del parque**: Grupo Amistad (Waelzholz), Grupo Alianza (ZC
+Rubber y Yokohama, el mismo parque de Derramadero) y Meor (Inventec, HubsPark Juárez).
+Ninguno salió de preguntar por la planta: eso dio negativo explícito tres veces. Cada
+señal lleva ahora su parque y cada constructor su procedencia y su vía.
+
+### 🔴 El radar vendía el producto del cliente
+
+Corriendo `prospecta` sobre las seis de puerta de usuario, **tres de seis** tenían el
+mismo defecto: la familia que el radar propone es lo que la casa fabrica o vende. Daikin
+fabrica chillers —y la inversión que detonó la señal **es** una línea de chillers—, TDI es
+Yinlun TDI (enfriadores, radiadores, calentadores de batería), y QSMX no es una planta que
+compre sino una casa de servicios que vende estructura, inspección y apoyo a la operación
+de planta: lo mismo que FTS. El radar las puntuó alto por el empate de giro, y ese mismo
+empate las descalifica en esa familia.
+
+`puertas.choque_de_familia` lo cierra, y **mira sólo el giro**: la primera versión miraba
+también el texto de la señal y marcó a CFE por «construir cuatro subestaciones», cuando
+CFE **compra** subestaciones. El texto dice qué compra la cuenta; el giro dice qué **es**.
+
+### Las primeras tarjetas que no nacieron de la mano de Esteban
+
+Las seis entran al piloto con `senal.origen = 'radar'` y `senal.puerta`, con su CHECK,
+porque el lazo 3 corrige los criterios del radar y sólo puede hacerlo con tarjetas cuyo
+criterio salió de ahí. Y su cadencia **no** son los 120 días de la señal: es la ventana de
+18 meses de la puerta del usuario. Daikin lo deja a la vista —nota de 360 días, y aún le
+quedan 187 días de su mejor momento—. El tablero las muestra aparte y dice por qué.
+
+### La corrida estaba fechada dos días en el futuro
+
+`datos/radar-2026-10-07-puertas.json` → `radar-2026-10-05-puertas.json`. El reloj decía
+2026-10-06 y los commits del turno anterior 2026-10-05. No es cosmético: de la fecha salen
+los días de antigüedad, la frescura y las caducidades que el motor 3 usa. NIFCO Apodaca
+salía con 181 días y 76.4 «fuera de ventana»; con la fecha real son 179 y **82.4 dentro**,
+que es lo que #381 reportó ese día. Y `de_la_corrida` dejó de ser una fecha: las dos
+corridas pasaron el mismo día, así que una fecha no las distingue. Al corregirlo, «9
+nuevas y 14 heredadas» se volvió «0 y 0» sin que ninguna prueba lo viera, y el reporte
+marcó las 23 filas como «heredada». Las dos cosas tienen ahora su reja.
+
+## 0.20.0 — 2026-10-05
 
 Una planta nueva deja de ser una señal y se vuelve **dos**, con dos compradores
 distintos y dos momentos. Refinamiento del radar tras la primera corrida de

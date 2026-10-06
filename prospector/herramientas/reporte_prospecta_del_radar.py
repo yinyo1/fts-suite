@@ -180,7 +180,9 @@ giro, y ese mismo empate es el que las descalifica en esa familia.</div>
 <div class="foot">Generado por prospector {version()} desde
 {os.path.basename(CORRIDA)} · {len(C['cuentas'])} cuentas ·
 {L['consultas_gastadas']} consultas<br>
-{e(C['sin_datos_personales'])}</div>
+Sin nombres ni correos de personas: ninguna de las seis entrego un interlocutor de
+valor confirmado, y ese cero es el dato. Lo que si viaja es el PUESTO que hay que
+buscar, que es dato de la casa y no de nadie.</div>
 </div>
 </body>
 </html>
