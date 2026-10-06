@@ -570,3 +570,61 @@ def test_cada_constructor_identificado_trae_su_procedencia():
         a = [q for q in e["puertas"]["puertas"] if q["puerta"] == P.PUERTA_EPC]
         if a:
             assert "POR IDENTIFICAR" not in a[0]["interlocutor"], e["empresa"]
+
+
+# ========== el choque de familia, hallado corriendo prospecta el 6-oct
+def test_la_familia_que_la_planta_FABRICA_no_es_venta_y_la_puerta_lo_dice():
+    """Tres de las seis cuentas de puerta de usuario chocaban.
+
+    Daikin fabrica chillers y el radar le proponia la familia termica; TDI es Yinlun
+    TDI -- enfriadores y radiadores-- y lo mismo; QSMX vende estructura y servicio de
+    planta, que es lo que vende FTS. Ofrecer enfriamiento a quien fabrica enfriadores
+    quema la llamada, y escribirle a QSMX como usuario final es escribirle a un
+    colega.
+    """
+    d = P.puertas_de(_s(empresa="Daikin", planta="San Luis Potosi",
+                        giro="aire acondicionado chillers HVAC",
+                        fecha="2025-10-10",
+                        texto="inaugura su tercera planta y anuncia una linea de "
+                              "chillers centrifugos enfriados por agua"), hoy=HOY)
+    assert any("CHOQUE DE FAMILIA" in a and "termico_fluidos" in a for a in d["avisos"])
+    for q in d["puertas"]:
+        assert "termico_fluidos" in q["familias_que_NO_son_venta_aqui"]
+        assert any("FABRICA equipo de enfriamiento" in x for x in q["por_que_no_lo_son"])
+
+    q = P.puertas_de(_s(empresa="QSMX", planta="Ramos Arizpe",
+                        giro="fabricacion de componentes y estructuras metalicas, "
+                             "inspeccion y apoyo a la operacion de planta",
+                        fecha="2026-09-01",
+                        texto="inaugura nueva planta y centro de operaciones"),
+                     hoy=HOY)
+    assert any("colega o un competidor" in a for a in q["avisos"])
+
+
+def test_una_planta_que_NO_choca_no_arrastra_el_aviso():
+    """La reja no se come el caso normal: NIFCO inyecta plastico y Dormakaba hace
+    cerraduras. Ninguna de las dos fabrica lo que FTS vende."""
+    for giro in ("inyeccion de plastico ensambles", "cerraduras mecanicas y electronicas"):
+        r = P.puertas_de(_s(giro=giro, texto="inaugura su segunda planta"), hoy=HOY)
+        assert not any("CHOQUE DE FAMILIA" in a for a in r["avisos"]), giro
+        for q in r["puertas"]:
+            assert "familias_que_NO_son_venta_aqui" not in q
+
+
+def test_el_choque_mira_el_GIRO_y_no_lo_que_la_cuenta_esta_comprando():
+    """CFE fue el falso positivo que lo destapo.
+
+    La primera version miraba el giro Y el texto de la senal. La nota de CFE dice
+    «construir cuatro subestaciones electricas» y la palabra disparo la regla
+    electrica, cuando CFE COMPRA subestaciones -- es el mejor cliente posible de una
+    casa electrica, no su competencia--. El texto dice que compra la cuenta; el giro
+    dice que ES.
+    """
+    assert P.choque_de_familia("transmision y distribucion de energia electrica") == []
+    assert P.choque_de_familia(
+        "transmision y distribucion de energia electrica",
+        "invertira para construir cuatro subestaciones electricas nuevas") == []
+    # Y los que SI chocan, chocan por su giro, con el giro tal como viene del archivo.
+    assert P.choque_de_familia("aire acondicionado chillers equipo termico")
+    assert P.choque_de_familia("intercambiadores de calor gestion termica autopartes")
+    assert P.choque_de_familia("estructuras metalicas acero metalmecanica")

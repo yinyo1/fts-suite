@@ -187,6 +187,81 @@ def obra_de_ampliacion(texto: str) -> bool:
     return bool(_AMPLIACION.search(plano(texto)))
 
 
+# ================== cuando la familia que FTS vende ES el negocio de la planta
+#
+# HALLADO EL 6-OCT CORRIENDO `prospecta` SOBRE LAS SEIS DE PUERTA DE USUARIO, y con
+# tres casos de seis, que es demasiado para dejarlo pasar:
+#
+#   · Daikin FABRICA chillers -- la inversion que detono la senal es una linea de
+#     chillers centrifugos de 400 unidades al anio--. El radar le proponia la familia
+#     termica.
+#   · TDI Manufacturing es Yinlun TDI: enfriadores, radiadores, modulos de
+#     refrigeracion y calentadores de bateria para automotriz. El radar le proponia
+#     «Termico · Electrico».
+#   · QSMX no es una planta: es una casa de SERVICIOS -- fabricacion de componentes y
+#     estructuras metalicas, inspeccion, apoyo a la operacion de planta, 550
+#     trabajadores-- y lo que inauguro es un centro de operaciones. El radar le
+#     proponia «Estructura · Electrico», que es lo que QSMX vende.
+#
+# Ofrecer enfriamiento a quien fabrica enfriadores no es un angulo debil: es un
+# angulo que quema la llamada. Y con QSMX es peor, porque no es un cliente mal
+# apuntado sino un COLEGA -- o un competidor-- al que se le estaba por escribir como
+# usuario final.
+#
+# El radar asigna familia por el giro de la planta, y cuando el giro ES la familia,
+# el empate que lo hizo puntuar alto es justamente el que lo descalifica. No se
+# archiva la cuenta: se le quita esa familia del angulo y se avisa, porque las otras
+# familias siguen valiendo -- a Daikin le falta acometida, tablero e integracion de
+# control para su linea nueva, y eso no lo fabrica--.
+FAMILIA_QUE_CHOCA_CON_EL_GIRO = (
+    # (palabras del giro, familia de FTS que deja de ser venta, como decirlo)
+    (("aire acondicionado", "chiller", "chillers", "hvac", "refrigeracion",
+      "enfriador", "enfriadores", "radiador", "radiadores", "gestion termica",
+      "climatizacion", "equipo termico", "intercambiadores de calor",
+      "intercambiador de calor"),
+     "termico_fluidos",
+     "esta planta FABRICA equipo de enfriamiento: la familia termica no es venta "
+     "aqui, es su producto. Lo que si le falta a una linea nueva es la acometida, "
+     "el tablero, la tuberia de proceso, el aire comprimido y la integracion de "
+     "control"),
+    (("estructuras metalicas", "estructura metalica", "obra civil",
+      "servicios industriales", "mantenimiento industrial", "montaje industrial"),
+     "estructura_metalica",
+     "esta casa VENDE lo mismo que FTS -- estructura, montaje, servicio de planta--. "
+     "No es un usuario final mal apuntado: es un colega o un competidor, y el trato "
+     "es de alianza o de nada"),
+    (("tablero", "tableros electricos", "subestacion", "subestaciones",
+      "transformador", "transformadores"),
+     "instalacion_electrica",
+     "esta planta fabrica equipo electrico: la familia electrica es su producto"),
+)
+
+
+def choque_de_familia(giro: str, texto: str = "") -> list[dict]:
+    """Las familias de FTS que esta cuenta NO compra porque las fabrica o las vende.
+
+    SOLO MIRA EL GIRO, y el `texto` se ignora a proposito. La primera version miraba
+    los dos y marco a CFE: su nota dice «construir cuatro subestaciones electricas» y
+    la palabra «subestacion» disparo la regla electrica. Pero CFE COMPRA
+    subestaciones, no las vende -- es el cliente perfecto de una casa electrica--. El
+    texto de una senal dice lo que la cuenta ESTA COMPRANDO; el giro dice lo que la
+    cuenta ES, y solo lo segundo sirve para saber si choca. En Daikin y TDI la primera
+    version acerto por casualidad, porque ahi el texto tambien hablaba de su producto.
+
+    Devuelve una lista, no un booleano: una casa puede chocar en mas de una familia,
+    y de cada choque hace falta saber CUAL familia se cae y como decirlo.
+    """
+    donde = plano(giro)
+    choques = []
+    for palabras, familia, como_decirlo in FAMILIA_QUE_CHOCA_CON_EL_GIRO:
+        golpe = next((w for w in palabras if w in donde), "")
+        if golpe:
+            choques.append({"familia_que_se_cae": familia,
+                            "por_la_palabra": golpe,
+                            "como_decirlo": como_decirlo})
+    return choques
+
+
 def _como_se_busca_al_constructor(senal: dict, quien: str = "EPC") -> str:
     """Las consultas para hallar a quien construye, EN EL ORDEN QUE SI CONTESTO.
 
@@ -288,6 +363,14 @@ def puertas_de(senal: dict, catalogo: dict | None = None,
 
     puertas: list[dict] = []
     avisos: list[str] = []
+
+    # El choque de familia se calcula ANTES de cualquier puerta: afecta el angulo de
+    # todas, y si se calculara despues habria que corregir cada una por separado.
+    choques = choque_de_familia(senal.get("giro") or "")
+    for ch in choques:
+        avisos.append(
+            f"CHOQUE DE FAMILIA ({ch['familia_que_se_cae']}, por «{ch['por_la_palabra']}»): "
+            f"{ch['como_decirlo']}")
 
     # ------------------------------------------------- (c) la expansion lateral
     grupo = relacion_de_grupo(senal.get("empresa") or "")
@@ -525,6 +608,14 @@ def puertas_de(senal: dict, catalogo: dict | None = None,
         "de_donde_sale_la_ventana": ("CRITERIO declarado por Esteban en #382, no "
                                      "medicion. El lazo 3 lo corrige"),
     })
+
+    if choques:
+        # La puerta no se lee sin esto: el angulo dice «segunda linea, ampliacion de
+        # carga» y el choque dice que una de esas lineas es la que la casa fabrica.
+        for q in puertas:
+            q["familias_que_NO_son_venta_aqui"] = [c["familia_que_se_cae"]
+                                                   for c in choques]
+            q["por_que_no_lo_son"] = [c["como_decirlo"] for c in choques]
 
     if otras:
         avisos.append(

@@ -204,12 +204,36 @@ CREATE TABLE senal (
     -- evaluador. Esas cuentas pueden contar conversiones por fuente y NO pueden
     -- corregir la curva de frescura ni los pesos por familia.
     evaluada          boolean NOT NULL DEFAULT false,
+    -- [operativo] QUIEN ENCONTRO LA SENAL. DECISION 5 de #382: las seis primeras
+    -- tarjetas que nacen del radar y no de la mano de Esteban se marcan asi, porque
+    -- son las que van a alimentar el lazo 3.
+    --
+    -- Y no es una etiqueta decorativa: el lazo 3 corrige los CRITERIOS del radar
+    -- -- la ventana de 18 meses de la puerta del usuario, el tope de 24 meses de
+    -- obra-- y solo puede hacerlo con tarjetas cuyo criterio salio del radar. Una
+    -- tarjeta que Esteban abrio a mano puede cerrar por razones que el radar nunca
+    -- vio, y meterla en esa cuenta ensucia la correccion. Separar los dos origenes
+    -- es lo que hace que el lazo 3 mida algo.
+    origen            text NOT NULL DEFAULT 'mano'
+        CHECK (origen IN ('mano', 'radar')),
+    -- [operativo] POR CUAL PUERTA se esta entrando. Una planta nueva tiene dos
+    -- compradores en dos momentos (#382), y el cierre significa cosas distintas
+    -- segun la puerta: que la puerta del EPC no cierre no dice nada de la del
+    -- usuario, que todavia no se abria. Sin esta columna el lazo 3 sumaria peras
+    -- con manzanas.
+    puerta            text
+        CHECK (puerta IS NULL OR puerta IN ('epc', 'usuario', 'usuario_directo',
+                                            'expansion_lateral',
+                                            'planta_ya_intervenida',
+                                            'licitacion_publica')),
     declarada         timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE INDEX senal_por_cuenta   ON senal (cuenta_id);
 CREATE INDEX senal_por_fuente   ON senal (fuente);
 CREATE INDEX senal_por_tipo     ON senal (tipo);
+-- El lazo 3 solo mira las del radar, y las mira por puerta.
+CREATE INDEX senal_del_radar    ON senal (origen, puerta) WHERE origen = 'radar';
 
 -- Una convocatoria sin fecha de cierre va a caducar por el plazo por omision, y
 -- puede vencer DESPUES de que la convocatoria cerro. Se permite guardarla -- el

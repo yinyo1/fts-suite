@@ -651,7 +651,13 @@
             "por_que": "la planta ya se inauguro: el EPC entrego y se fue. Entrar ahora por esta puerta es llegar tarde a una obra que ya se pago",
             "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
             "como_identificarlo": "POR EL PARQUE, que es la que contesto en la medicion: «quien construye en Parque Industrial Ramos Arizpe», «Parque Industrial Ramos Arizpe obra en construccion QSMX», «Parque Industrial Ramos Arizpe constructora naves». De respaldo, por la planta: «constructora \"QSMX\" planta Ramos Arizpe, Coah.».",
-            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region",
+            "familias_que_NO_son_venta_aqui": [
+              "estructura_metalica"
+            ],
+            "por_que_no_lo_son": [
+              "esta casa VENDE lo mismo que FTS -- estructura, montaje, servicio de planta--. No es un usuario final mal apuntado: es un colega o un competidor, y el trato es de alianza o de nada"
+            ]
           },
           {
             "puerta": "usuario",
@@ -663,10 +669,18 @@
             "inauguracion": "2026-09-01",
             "meses_desde_la_inauguracion": 1.1,
             "ventana_meses": 18,
-            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige",
+            "familias_que_NO_son_venta_aqui": [
+              "estructura_metalica"
+            ],
+            "por_que_no_lo_son": [
+              "esta casa VENDE lo mismo que FTS -- estructura, montaje, servicio de planta--. No es un usuario final mal apuntado: es un colega o un competidor, y el trato es de alianza o de nada"
+            ]
           }
         ],
-        "avisos": []
+        "avisos": [
+          "CHOQUE DE FAMILIA (estructura_metalica, por «estructuras metalicas»): esta casa VENDE lo mismo que FTS -- estructura, montaje, servicio de planta--. No es un usuario final mal apuntado: es un colega o un competidor, y el trato es de alianza o de nada"
+        ]
       },
       "tipo_de_senal": "obra_nueva",
       "dias": 34,
@@ -1686,7 +1700,13 @@
             "por_que": "la planta ya se inauguro: el EPC entrego y se fue. Entrar ahora por esta puerta es llegar tarde a una obra que ya se pago",
             "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
             "como_identificarlo": "la nota no nombra el parque, que es por donde si se encuentra. Primero hay que sacarlo: «TDI Manufacturing Cienega de Flores, N.L. parque industrial». Con el parque en mano, «quien construye en <parque>». De respaldo, y midio peor: «constructora \"TDI Manufacturing\" planta Cienega de Flores, N.L.», «quien construye la planta de TDI Manufacturing».",
-            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region",
+            "familias_que_NO_son_venta_aqui": [
+              "termico_fluidos"
+            ],
+            "por_que_no_lo_son": [
+              "esta planta FABRICA equipo de enfriamiento: la familia termica no es venta aqui, es su producto. Lo que si le falta a una linea nueva es la acometida, el tablero, la tuberia de proceso, el aire comprimido y la integracion de control"
+            ]
           },
           {
             "puerta": "usuario",
@@ -1698,10 +1718,18 @@
             "inauguracion": "2026-04-17",
             "meses_desde_la_inauguracion": 5.6,
             "ventana_meses": 18,
-            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige",
+            "familias_que_NO_son_venta_aqui": [
+              "termico_fluidos"
+            ],
+            "por_que_no_lo_son": [
+              "esta planta FABRICA equipo de enfriamiento: la familia termica no es venta aqui, es su producto. Lo que si le falta a una linea nueva es la acometida, el tablero, la tuberia de proceso, el aire comprimido y la integracion de control"
+            ]
           }
         ],
-        "avisos": []
+        "avisos": [
+          "CHOQUE DE FAMILIA (termico_fluidos, por «gestion termica»): esta planta FABRICA equipo de enfriamiento: la familia termica no es venta aqui, es su producto. Lo que si le falta a una linea nueva es la acometida, el tablero, la tuberia de proceso, el aire comprimido y la integracion de control"
+        ]
       },
       "tipo_de_senal": "obra_nueva",
       "dias": 171
@@ -1775,7 +1803,13 @@
             "por_que": "la planta ya se inauguro: el EPC entrego y se fue. Entrar ahora por esta puerta es llegar tarde a una obra que ya se pago",
             "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
             "como_identificarlo": "POR EL PARQUE, que es la que contesto en la medicion: «quien construye en Campus Daikin (San Luis Potosi)», «Campus Daikin (San Luis Potosi) obra en construccion Daikin», «Campus Daikin (San Luis Potosi) constructora naves». De respaldo, por la planta: «constructora \"Daikin\" planta San Luis Potosi (Campus Daikin)».",
-            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region",
+            "familias_que_NO_son_venta_aqui": [
+              "termico_fluidos"
+            ],
+            "por_que_no_lo_son": [
+              "esta planta FABRICA equipo de enfriamiento: la familia termica no es venta aqui, es su producto. Lo que si le falta a una linea nueva es la acometida, el tablero, la tuberia de proceso, el aire comprimido y la integracion de control"
+            ]
           },
           {
             "puerta": "usuario",
@@ -1787,10 +1821,17 @@
             "inauguracion": "2025-10-10",
             "meses_desde_la_inauguracion": 11.8,
             "ventana_meses": 18,
-            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige",
+            "familias_que_NO_son_venta_aqui": [
+              "termico_fluidos"
+            ],
+            "por_que_no_lo_son": [
+              "esta planta FABRICA equipo de enfriamiento: la familia termica no es venta aqui, es su producto. Lo que si le falta a una linea nueva es la acometida, el tablero, la tuberia de proceso, el aire comprimido y la integracion de control"
+            ]
           }
         ],
         "avisos": [
+          "CHOQUE DE FAMILIA (termico_fluidos, por «aire acondicionado»): esta planta FABRICA equipo de enfriamiento: la familia termica no es venta aqui, es su producto. Lo que si le falta a una linea nueva es la acometida, el tablero, la tuberia de proceso, el aire comprimido y la integracion de control",
           "la nota nombra mas de una fase de obra (tambien anuncio): se tomo «inaugurada» por «inaugura», que es la afirmacion mas fuerte. Si la fase real es otra, las dos puertas se mueven"
         ]
       },
@@ -2211,7 +2252,13 @@
             "por_que": "anuncio sin obra todavia: el EPC puede no estar elegido, y es el mejor momento para entrar a su lista de especialidad antes de que la cierre",
             "angulo": "subcontratista de especialidad: electrico, tuberia y automatizacion. FTS no compite con el EPC, le entrega la especialidad que el EPC subcontrata, y un EPC que ya tiene a FTS en su lista la vuelve a usar en la siguiente obra de la region",
             "como_identificarlo": "POR EL PARQUE, que es la que contesto en la medicion: «quien construye en parque industrial de Grupo Simsa (Gomez Palacio)», «parque industrial de Grupo Simsa (Gomez Palacio) obra en construccion Megasteel», «parque industrial de Grupo Simsa (Gomez Palacio) constructora naves». De respaldo, por la planta: «constructora \"Megasteel\" planta Gomez Palacio, Dgo.».",
-            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region"
+            "y_ademas": "un EPC identificado vale mas que esta obra: trae las demas obras que esta construyendo en la region",
+            "familias_que_NO_son_venta_aqui": [
+              "estructura_metalica"
+            ],
+            "por_que_no_lo_son": [
+              "esta casa VENDE lo mismo que FTS -- estructura, montaje, servicio de planta--. No es un usuario final mal apuntado: es un colega o un competidor, y el trato es de alianza o de nada"
+            ]
           },
           {
             "puerta": "usuario",
@@ -2223,10 +2270,17 @@
             "inauguracion": null,
             "meses_desde_la_inauguracion": null,
             "ventana_meses": 18,
-            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige"
+            "de_donde_sale_la_ventana": "CRITERIO declarado por Esteban en #382, no medicion. El lazo 3 lo corrige",
+            "familias_que_NO_son_venta_aqui": [
+              "estructura_metalica"
+            ],
+            "por_que_no_lo_son": [
+              "esta casa VENDE lo mismo que FTS -- estructura, montaje, servicio de planta--. No es un usuario final mal apuntado: es un colega o un competidor, y el trato es de alianza o de nada"
+            ]
           }
         ],
         "avisos": [
+          "CHOQUE DE FAMILIA (estructura_metalica, por «estructuras metalicas»): esta casa VENDE lo mismo que FTS -- estructura, montaje, servicio de planta--. No es un usuario final mal apuntado: es un colega o un competidor, y el trato es de alianza o de nada",
           "la puerta que esta abierta HOY es la del EPC, y no sabemos quien es. Identificarlo es el primer trabajo de esta cuenta"
         ]
       },

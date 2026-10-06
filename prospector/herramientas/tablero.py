@@ -72,6 +72,23 @@ def leer(b: Base, hoy: date) -> dict:
              FROM motor3.tarjeta GROUP BY 1) z), '{{}}'::jsonb),
       'reabiertas_vencidas', (SELECT count(*) FROM motor3.tarjeta
                               WHERE reabierta_vencida),
+      -- LAS QUE NACIERON DEL RADAR (#382, D5). Van aparte de las de la mano de
+      -- Esteban porque son las unicas que pueden corregir los CRITERIOS del radar:
+      -- una tarjeta abierta a mano cierra por razones que el radar nunca vio.
+      'del_radar', coalesce((
+         SELECT jsonb_agg(jsonb_build_object(
+                  'empresa', c.empresa, 'planta', c.planta,
+                  'puerta', s.puerta, 'puntaje', s.puntaje,
+                  'caduca_el', t.caduca_el,
+                  'dias', (t.caduca_el - '{hoy}'::date),
+                  'estado', t.estado::text,
+                  'toques', (SELECT count(*) FROM motor3.toque q
+                             WHERE q.tarjeta_id = t.id))
+                ORDER BY t.caduca_el)
+           FROM motor3.tarjeta t
+           JOIN motor3.senal s  ON s.id = t.senal_id
+           JOIN motor3.cuenta c ON c.id = t.cuenta_id
+          WHERE s.origen = 'radar'), '[]'::jsonb),
       'cuentas', (SELECT count(*) FROM motor3.cuenta),
       'toques', coalesce((
          SELECT jsonb_agg(jsonb_build_object(
@@ -215,6 +232,25 @@ def pintar(d: dict) -> str:
                  f"  · {v.get('toques', 0)} toque(s){aviso}")
         if v.get("por_que"):
             l.append(f"                  {str(v['por_que'])[:60]}")
+
+    # 3 bis · las que nacieron del radar
+    radar = d.get("del_radar") or []
+    if radar:
+        l.append(_titulo("LAS QUE NACIERON DEL RADAR, NO DE LA MANO"))
+        l.append("      Son las unicas que pueden corregir los criterios del radar:")
+        l.append("      su caducidad NO son los 120 dias de la senal, es la ventana")
+        l.append("      de 18 meses de la puerta del usuario. Si una de estas cierra,")
+        l.append("      el lazo 3 tiene con que mover esa ventana.")
+        l.append("")
+        for r in radar:
+            planta = r.get("planta") or "—"
+            aviso = "  ⚠ sin un solo toque" if not r.get("toques") else ""
+            l.append(f"      {r['caduca_el']}  ({str(r['dias']).rjust(4)} d)  "
+                     f"{r['empresa']} / {planta}")
+            l.append(f"                  puerta {r['puerta']} · puntaje "
+                     f"{r['puntaje']} · {r.get('toques', 0)} toque(s){aviso}")
+        l.append(f"      {len(radar)} del radar de "
+                 f"{d['tarjetas_por_estado'].get('abierta', 0)} abiertas en total")
 
     # 4 · las compuertas
     l.append(_titulo("LAS TRES COMPUERTAS DEL APRENDIZAJE"))
