@@ -6,9 +6,9 @@ en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenad
 ## 0.22.0 — 2026-10-06
 
 El motor 2 corrido sobre **las cinco cuentas de puerta de usuario**, 30 consultas cada
-una, 150 en total. La medición del límite de clase (c) sobre once casos, y **cinco
-defectos** que salieron de leer las fichas antes de entregarlas —ninguno lo vio la suite—.
-**1,250 pruebas** (eran 1,220).
+una, 150 en total. La medición del límite de clase (c) sobre once casos, las cinco fichas
+entregadas y enlazadas en su tarjeta del piloto, y **siete defectos** que salieron de leer
+las fichas antes de entregarlas —ninguno lo vio la suite—. **1,265 pruebas** (eran 1,220).
 
 ### El giro es entrada del evaluador, no una descripción
 
@@ -71,6 +71,37 @@ interlocutores de valor de esta vuelta, 4 de 4 salieron de prensa de inauguraci�
 está a nivel de planta, 0 de 4 traen correo literal, y 0 de 150 consultas entregaron un
 perfil público de mantenimiento, proyectos o facilities. A quien sí entrega: al parque, a
 la cámara, al clúster y al que corta el listón.
+
+### El séptimo defecto: el documento también colapsa los avisos repetidos
+
+Dormakaba salió con el párrafo de `[senal]` **dos veces**, con el arreglo de arriba ya
+puesto. El arreglo estaba bien y no alcanzaba: reemplazar ocurre **al escribir**, y los dos
+`senal --reevaluar` de Dormakaba fueron anteriores: el duplicado ya estaba en disco y la
+firma del estado lo cubría. Ahora `ficha.avisos_sin_repetir` lo colapsa **al emitir**, que
+es la única vuelta que repara lo viejo sola —la corrida no se reescribe, su firma no se
+toca—. `modo_procedencia` **no** lo colapsa a propósito: ahí el estado se audita tal como
+está guardado.
+
+Es la cuarta vez en la misma vuelta que la lección es la misma: lo que se puede derivar no
+se le pide a quien escribió el estado.
+
+### La ficha entregada vive en la tarjeta, y QSMX sale con su estado escrito
+
+`tarjeta.ficha_url`, `ficha_entregada_el`, `ficha_bytes` y `ficha_sha256`, los cuatro o
+ninguno por CHECK, y `herramientas/enlazar_ficha.py` que los pone **desde
+`corrida.entrega`**: nada se teclea, porque una liga declarada a mano puede apuntar a una
+ficha que nunca se subió. El sha256 está para poder volver a emitir la ficha y decir «la
+copia de la liga ya no es ésta» sin abrir la liga.
+
+Al enlazarlas se vio que la llave de la tarjeta y la de la corrida **no son la misma
+cadena**: la tarjeta nace del radar, cuya planta viene como la escribió la nota —«San Luis
+Potosi (Campus Daikin)»—, y la corrida la abre el operador con la ciudad pelada. Un `=`
+entre las dos enlazaba cero tarjetas sin quejarse. `tarjeta_de()` empareja por empresa, la
+ciudad desempata por prefijo de slug, y si quedan dos candidatas **no escribe** y lo dice.
+
+Y sacar a QSMX del piloto es escribir, no omitir: `fuera_del_piloto` guarda su estado
+—`posible_aliado`—, su razón, el 93.1 que el radar le dio y por qué se equivocó. Sin esa
+fila la cuenta desaparece y la siguiente corrida del radar la vuelve a traer.
 
 ### La ficha parcial
 

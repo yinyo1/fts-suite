@@ -146,6 +146,57 @@ COMMENT ON COLUMN cuenta.llave_de_reciclaje IS
 
 
 -- =============================================================================
+--  1b · LA QUE EL RADAR ACERTO EN VER Y ERRO EN LLAMAR PROSPECTO (#384)
+-- =============================================================================
+-- QSMX entro al piloto con 93.1 puntos, el segundo mejor de su corrida, y NO es
+-- un prospecto: es una casa de servicios industriales que vende lo que vende
+-- FTS. Colega o competidor, posible aliado, nunca cuenta.
+--
+-- Y no se borra, por dos razones. La primera es operativa: sin esta tabla la
+-- cuenta vuelve a entrar en la siguiente corrida del radar, porque nada en la
+-- base dice que ya se decidio que no. La segunda es que es LA MEJOR EVIDENCIA
+-- QUE TIENE EL LAZO 3: el giro que le dio los puntos es el mismo giro que la
+-- descalifica, asi que el caso no dice «el radar puntuo mal», dice «al radar le
+-- falta la pregunta de si el giro CHOCA con el de la casa». Borrarla seria tirar
+-- el unico ejemplo medido de `choque_de_familia`.
+--
+-- Una fila aqui NO es una tarjeta y nunca lo fue: no tiene senal, ni caducidad,
+-- ni toques, ni cierre, porque no se trabajo ni se va a trabajar. Por eso no es
+-- un `estado_de_tarjeta` mas -- meterla de `cerrada` le ensenaria al lazo 1 que
+-- una cuenta del radar no convirtio, cuando lo que paso es que nadie la toco--.
+CREATE TABLE fuera_del_piloto (
+    id             bigserial PRIMARY KEY,
+    empresa        text NOT NULL,
+    planta         text,
+    -- [operativo] Los tres estados declarados. No hay 'descartada' a secas: el
+    -- estado tiene que decir QUE es la cuenta, porque de eso depende que se hace
+    -- con ella -- a un posible aliado se le llama, a una que ya es cliente se le
+    -- revisa la cuenta, a la que no es planta no se le hace nada--.
+    estado         text NOT NULL,
+    razon          text NOT NULL,
+    -- [operativo] El puntaje que SI le dio el radar, tal como lo calculo. Es el
+    -- numero que el lazo 3 compara contra la decision humana.
+    puntaje_del_radar      numeric(5,1),
+    por_que_el_radar_erro  text,
+    decidido_por   text NOT NULL,
+    decidido_el    date NOT NULL,
+    registrado     timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT fuera_del_piloto_una_por_planta UNIQUE (empresa, planta),
+    CONSTRAINT fuera_del_piloto_estado_declarado
+        CHECK (estado IN ('posible_aliado', 'no_es_planta', 'ya_es_cliente')),
+    -- Una razon vacia es lo mismo que no tener razon, y dentro de un mes nadie
+    -- va a poder reconstruir por que esta cuenta se saco.
+    CONSTRAINT fuera_del_piloto_razon_no_vacia
+        CHECK (length(btrim(razon)) > 0)
+);
+
+COMMENT ON TABLE fuera_del_piloto IS
+  'Cuentas que el radar trajo y una persona declaro NO PROSPECTO, con la razon. '
+  'Espejo de datos/no-son-prospectos.json: el archivo es la fuente, esta tabla '
+  'es para que el piloto no las vuelva a abrir.';
+
+
+-- =============================================================================
 --  2 · LA SENAL, con el puntaje del evaluador TAL COMO FUE
 -- =============================================================================
 -- Es la tabla que el hallazgo H1 de #325 hizo necesaria. Sin ella, una tarjeta
@@ -297,8 +348,27 @@ CREATE TABLE tarjeta (
     -- [operativo] El id del lead en Odoo, cuando exista. NULL en la etapa 1,
     -- donde el CSV lo sube una persona y nadie devuelve el id.
     odoo_lead_id       integer,
+    -- [operativo] LA FICHA ENTREGADA (#384). La tarjeta es lo que la vendedora
+    -- abre; una ficha que no se alcanza DESDE la tarjeta no existe para ella, y
+    -- la version que si existe acaba siendo la que alguien le reenvio por chat.
+    --
+    -- Van los cuatro datos juntos a proposito. El sha256 esta porque el TAMANO NO
+    -- VERIFICA CONTENIDO (#306): con el se puede volver a emitir la ficha de la
+    -- corrida y comparar, y decir «lo que esta en la liga ya no es esta ficha»
+    -- sin abrir la liga. Sin la fecha no hay como juzgar si la copia es de antes
+    -- o de despues del ultimo cambio.
+    ficha_url          text,
+    ficha_entregada_el timestamptz,
+    ficha_bytes        integer,
+    ficha_sha256       char(64),
     abierta            timestamptz NOT NULL DEFAULT now(),
     cerrada            timestamptz,
+    -- Los cuatro o ninguno. Una liga sin fecha no se puede fechar, una liga sin
+    -- sha no se puede verificar, y un sha sin liga no apunta a nada: cada dato
+    -- solo, el conjunto miente por omision.
+    CONSTRAINT ficha_entregada_completa_o_nada
+        CHECK (num_nulls(ficha_url, ficha_entregada_el, ficha_bytes,
+                         ficha_sha256) IN (0, 4)),
     CONSTRAINT tarjeta_cerrada_tiene_fecha
         CHECK ((estado = 'cerrada') = (cerrada IS NOT NULL)),
     -- Una tarjeta que nace vencida SIN la caducidad que ya se le paso no se puede

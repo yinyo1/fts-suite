@@ -145,6 +145,30 @@ def filas(hoy: date, constancia: dict | None = None) -> dict:
     return {"cuentas": cuentas, "senales": senales, "tarjetas": tarjetas}
 
 
+def filas_de_fuera(fuera: dict[str, dict] | None = None) -> list[dict]:
+    """Las desmentidas tal como van a `fuera_del_piloto`. Sin tocar la base.
+
+    SACARLAS ES ESCRIBIR, NO OMITIR. `las_del_radar` ya no les abre tarjeta, y con
+    eso solo la cuenta DESAPARECE: nada en la base dice que se decidio que no, asi
+    que la siguiente corrida del radar la vuelve a traer y alguien la vuelve a
+    evaluar. El estado de QSMX es `posible_aliado`, no `ausente`.
+    """
+    fuera = desmentidas() if fuera is None else fuera
+    filas = []
+    for c in sorted(fuera.values(), key=lambda x: x["empresa"]):
+        filas.append({
+            "empresa": c["empresa"],
+            "planta": c.get("planta") or c.get("ciudad"),
+            "estado": c["estado"],
+            "razon": c["razon"],
+            "puntaje_del_radar": c.get("puntaje_que_le_dio_el_radar"),
+            "por_que_el_radar_erro": c.get("por_que_el_radar_se_equivoco"),
+            "decidido_por": c["decidido_por"],
+            "decidido_el": c["decidido_el"],
+        })
+    return filas
+
+
 def cargar(b: Base, hoy: date | None = None) -> dict:
     """Agrega las seis AL PILOTO YA CARGADO. No vuelve a aplicar el esquema: estas
     tarjetas conviven con las de la mano de Esteban, y distinguirlas es el punto."""
@@ -169,7 +193,15 @@ def cargar(b: Base, hoy: date | None = None) -> dict:
                       [{"tarjeta_id": tid, "senal_id": sid, "reabrio": False}])
         puestas.append({"llave": cu["llave_de_corrida"], "cuenta_id": cid,
                         "puntaje": se["puntaje"], "caduca": ta["caduca_el"]})
-    return {"tarjetas_del_radar": puestas, "resumen": resumen_del_piloto(b)}
+    sacadas = []
+    for d in filas_de_fuera():
+        ya = b.json("SELECT to_jsonb(id) FROM motor3.fuera_del_piloto WHERE empresa = "
+                    f"{_lit(d['empresa'])};")
+        if ya is None:
+            b.cargar_json("motor3.fuera_del_piloto", [d])
+        sacadas.append({"empresa": d["empresa"], "estado": d["estado"]})
+    return {"tarjetas_del_radar": puestas, "sacadas_del_piloto": sacadas,
+            "resumen": resumen_del_piloto(b)}
 
 
 def _lit(s: str) -> str:
@@ -188,6 +220,8 @@ def main(argv: list[str]) -> int:
     for cu, se, ta in zip(f["cuentas"], f["senales"], f["tarjetas"]):
         print(f"    · {cu['llave_de_corrida']:42} {se['puntaje']:>6} "
               f"{se['veredicto']:7} caduca {ta['caduca_el']}")
+    for d in filas_de_fuera():
+        print(f"    · {d['empresa']:42} {'':>6} FUERA   {d['estado']}")
     if not a.cargar:
         print("\n  (nada se cargo; corre con --cargar)")
         return 0
@@ -198,6 +232,8 @@ def main(argv: list[str]) -> int:
         print(f"\n  SIN POSTGRES: {e}")
         return 1
     print(f"\n  cargadas: {len(r['tarjetas_del_radar'])}")
+    for d in r["sacadas_del_piloto"]:
+        print(f"  FUERA DEL PILOTO: {d['empresa']} -> {d['estado']}")
     print(f"  {json.dumps(r['resumen'], ensure_ascii=False)}")
     return 0
 

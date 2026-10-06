@@ -495,6 +495,36 @@ def aviso_de_ficha_parcial(c: Corrida) -> str:
           'de la casa y las busquedas armadas para quien tenga Sales Navigator.</div>')
 
 
+def avisos_sin_repetir(avisos) -> list:
+    """Los avisos del documento, sin repeticiones exactas y en su orden.
+
+    Un aviso que describe un ESTADO -- «el puntaje se reevaluo hoy», «el padron
+    no cubre esta entidad»-- tiene UNA sola version cierta, y repetirlo no lo
+    hace mas cierto: hace la lista mas larga y mas facil de ignorar, que es lo
+    contrario de para lo que existe un aviso.
+
+    Quien los escribe ya reemplaza en vez de acumular -- MARCA_PADRON (#306),
+    MARCA_ANGULO, MARCA_SENAL (#384)--, pero esa limpieza ocurre al ESCRIBIR, y
+    una corrida guardada por una version anterior se queda con el duplicado para
+    siempre: su estado ya esta en disco y su firma lo cubre. La ficha de
+    Dormakaba salio asi, con el mismo parrafo de `[senal]` dos veces, de dos
+    `senal --reevaluar` anteriores al arreglo.
+
+    Por eso el documento tambien lo colapsa al EMITIR. Es la unica vuelta que
+    repara sola lo viejo: la corrida no se reescribe, su firma no se toca, y el
+    lector deja de ver el parrafo dos veces. `modo_procedencia` NO lo colapsa a
+    proposito -- ahi el estado se audita tal como esta guardado--.
+    """
+    vistos = set()
+    limpios = []
+    for a in avisos:
+        if a in vistos:
+            continue
+        vistos.add(a)
+        limpios.append(a)
+    return limpios
+
+
 def aviso_rojo(c: Corrida) -> str:
     """Solo lo que puede hacerla quedar mal EN LA LLAMADA. Si no hay, no sale.
 
@@ -1234,8 +1264,10 @@ def capa_tecnica(c: Corrida) -> str:
     # `corrida.entrega` con su fecha, y lo que el LECTOR necesita -- «la copia
     # que esta en la liga no es esta ficha»-- sale en el aviso ROJO, que solo
     # aparece cuando de verdad difieren y desaparece al volver a subirla.
-    avisos = "".join(f"<li>{html.escape(a)}</li>" for a in c.avisos
-                     if not a.startswith(MARCA_ENTREGA))
+    avisos = "".join(
+        f"<li>{html.escape(a)}</li>"
+        for a in avisos_sin_repetir(a for a in c.avisos
+                                    if not a.startswith(MARCA_ENTREGA)))
     sem = "".join(
         f'<li><b>{html.escape(r["que"])}</b>: <code>'
         f'{html.escape(str(r["valor"]))}</code> — de '
