@@ -24,15 +24,59 @@ HOY = date(2026, 10, 6)
 
 def test_entran_SOLO_las_de_puerta_de_usuario_abierta():
     """No entran las de EPC -- ahi el interlocutor es el constructor y la mitad esta
-    sin identificar-- ni las de licitacion publica, cuyo ciclo no es una tarjeta."""
+    sin identificar-- ni las de licitacion publica, cuyo ciclo no es una tarjeta.
+
+    ERAN SEIS Y SON CINCO desde #384, y el numero bajo por una DECISION, no por un
+    arreglo: QSMX tenia la puerta abierta y la corrida humana descubrio que no es
+    una planta que compre. Ver `test_las_desmentidas_NO_entran_al_piloto`.
+    """
     cuales = cr.las_del_radar()
-    assert len(cuales) == 6, [x["senal"]["empresa"] for x in cuales]
+    assert len(cuales) == 5, [x["senal"]["empresa"] for x in cuales]
     for x in cuales:
         assert x["puerta"]["puerta"] == P.PUERTA_USUARIO
         assert x["puerta"]["estado"] == P.ABIERTA
     nombres = {x["senal"]["empresa"] for x in cuales}
     assert "CFE Nuevo Leon" not in nombres, "una obra publica no es una tarjeta"
     assert "Waelzholz" not in nombres, "esa es puerta de EPC, no de usuario"
+
+
+def test_las_desmentidas_NO_entran_al_piloto():
+    """#384: la puerta abierta dice que la planta COMPRA, no que nos compre.
+
+    QSMX puntuo 93.1 y tenia la puerta de usuario abierta. Es una casa de
+    servicios que vende lo mismo que FTS. Abrirle tarjeta habria puesto a la
+    vendedora a prospectar a un competidor.
+    """
+    fuera = cr.desmentidas()
+    assert "QSMX" in fuera, "QSMX se declaro fuera del piloto en #384"
+    assert fuera["QSMX"]["estado"] == "posible_aliado"
+    assert fuera["QSMX"]["razon"], "un desmentido sin razon escrita no sirve"
+
+    nombres = {x["senal"]["empresa"] for x in cr.las_del_radar()}
+    assert "QSMX" not in nombres
+
+    # Y la contraprueba: SIN el desmentido si entraria. Sin esto la primera
+    # prueba pasaria igual si QSMX hubiera desaparecido de la constancia.
+    con_todas = {x["senal"]["empresa"] for x in cr.las_del_radar(fuera={})}
+    assert "QSMX" in con_todas, (
+        "QSMX sigue en la constancia del radar con su puerta abierta: lo que la "
+        "saca es el desmentido, no que el radar la haya dejado de ver")
+    assert len(con_todas) == len(nombres) + 1
+
+
+def test_el_desmentido_exige_razon_y_estado_conocido():
+    """Un archivo de desmentidos sin razon es una lista negra, y eso no se audita."""
+    import json
+    ruta = Path(cr.NO_SON_PROSPECTOS)
+    d = json.loads(ruta.read_text(encoding="utf-8"))
+    assert d["estados"], "los estados posibles se declaran, no se inventan por fila"
+    for c in d["cuentas"]:
+        assert c["estado"] in d["estados"], (
+            f"{c['empresa']}: estado '{c['estado']}' no esta declarado en `estados`")
+        assert len(c.get("razon", "")) > 80, (
+            f"{c['empresa']}: la razon tiene que explicar, no etiquetar")
+        assert c.get("decidido_por") and c.get("decidido_el"), (
+            f"{c['empresa']}: quien lo decidio y cuando son parte del desmentido")
 
 
 def test_el_orden_es_por_MADUREZ_de_la_puerta_y_Daikin_va_primero():

@@ -4,7 +4,7 @@
   "sigue_a": "radar-descubrimiento-2026-10-05 (issue #381)",
   "nota": "Refinamiento de #382: dos puertas por planta nueva, fuente de constructores, identidad de grupo y scope expandido. Las senales de la corrida del 5-oct se vuelven a puntuar CON EL CRITERIO DE HOY y se les calculan las puertas; su registro original queda intacto en el archivo de esa corrida.",
   "hoy": "2026-10-05",
-  "version_de_la_herramienta": "0.21.0",
+  "version_de_la_herramienta": "0.22.0",
   "geografia": {
     "noreste": [
       "Nuevo Leon",

@@ -52,7 +52,8 @@
       "planta": "Nogales, Son.",
       "meses_desde_la_inauguracion": 5.3,
       "puntaje": 85.1,
-      "giro": "cerraduras mecanicas y electronicas control de acceso",
+      "giro": "metalmecanica cerraduras herrajes",
+      "giro_como_lo_describe_la_nota": "cerraduras mecanicas y electronicas control de acceso",
       "el_angulo_del_radar": "CONFIRMADO",
       "familia_que_choca": "",
       "lo_que_la_corrida_encontro": "El angulo del radar aguanta tal cual, y la nota lo sostiene: 254,700 pies cuadrados, mas de 200 empleados, cerraduras mecanicas Y ELECTRONICAS a 40 paises. Una planta de producto electromecanico recien arrancada es exactamente donde falta lo que el EPC no alcanzo. Direccion publicada: Av. de los Nogales 170, San Carlos Oriente, Heroica Nogales.",
@@ -68,7 +69,8 @@
       "planta": "Queretaro (Parque FINSA)",
       "meses_desde_la_inauguracion": 2.7,
       "puntaje": 93.1,
-      "giro": "metalurgia de polvos componentes automotriz",
+      "giro": "metalmecanica maquinado autopartes",
+      "giro_como_lo_describe_la_nota": "metalurgia de polvos componentes automotriz",
       "el_angulo_del_radar": "AFINADO",
       "familia_que_choca": "",
       "lo_que_la_corrida_encontro": "El angulo aguanta y se afina: NetShape opera en Mexico desde 2004 y su PRIMERA planta de Queretaro es de 2010, asi que esta es la segunda y la casa ya sabe comprar localmente. 239.36 MDP, mas de 260 empleos, en el Parque Industrial FINSA.",
@@ -93,14 +95,18 @@
       "patron_de_correo_nota": "",
       "anclas": "",
       "consultas_gastadas": 2,
-      "interlocutores_de_valor_con_nombre_y_correo": 0
+      "interlocutores_de_valor_con_nombre_y_correo": 0,
+      "fuera_del_piloto_desde": "2026-10-06 (#384)",
+      "estado": "posible_aliado, no prospecto",
+      "donde_quedo_la_razon": "datos/no-son-prospectos.json"
     },
     {
       "empresa": "NIFCO",
       "planta": "Chihuahua, Chih.",
       "meses_desde_la_inauguracion": 0.4,
       "puntaje": 97.4,
-      "giro": "inyeccion de plastico ensambles autopartes",
+      "giro": "autopartes inyeccion de plastico componentes automotriz",
+      "giro_como_lo_describe_la_nota": "inyeccion de plastico ensambles autopartes",
       "el_angulo_del_radar": "CONFIRMADO",
       "familia_que_choca": "",
       "lo_que_la_corrida_encontro": "El angulo del radar es el que mejor aguanta de las seis, y la nota lo dice con sus palabras: la planta nueva incorpora inyeccion de plastico, ensambles manuales Y AUTOMATIZADOS, manejo de material, almacenes, oficinas y SISTEMAS AUXILIARES DE APOYO A LA PRODUCCION. Ese ultimo renglon es el pliego. NIFCO lleva 21 anios en el estado con 420 empleados directos y la planta proyecta 150 empleos mas en cinco anios: no es un recien llegado que esta aprendiendo a comprar.",
@@ -122,5 +128,7 @@
     "el_angulo_sembrado_se_afino_en": 1,
     "el_defecto_que_destapo": "TRES de SEIS cuentas tienen un CHOQUE DE FAMILIA: la familia que el radar propone es el producto o el servicio de la casa. Daikin fabrica chillers, TDI fabrica enfriadores y radiadores, QSMX vende estructura y servicio de planta. El radar las puntuo alto por el empate de giro, y ese mismo empate es el que las descalifica en esa familia. Quedo cerrado en codigo: `flujo.puertas.choque_de_familia`.",
     "lo_que_NO_se_termino": "las seis corridas quedaron ABIERTAS en el orquestador con su vuelta interna hecha y el bloque 1 de Daikin cerrado y medido (10 consultas, 0 de valor, SECO). NO se emitio ficha: la ficha exige `challenge`, y el challenge exige los 13 modulos de la cascada agotados con tres fuentes distintas cada uno. Eso son ~150 consultas mas sobre cuentas donde el bloque 1 ya salio seco y donde el buzon -- la unica fuente que da personas-- esta vacio."
-  }
+  },
+  "por_que_el_giro_es_el_del_radar": "EL GIRO NO ES UNA DESCRIPCION: ES ENTRADA DEL EVALUADOR. `puntos_de_proceso` busca el proceso del cliente DENTRO de la cadena del giro, asi que cambiar la redaccion cambia el puntaje. En esta vuelta (#384) la hoja traia el giro redactado a mano y no el del radar, y el defecto se vio al reevaluar la senal dentro de la corrida: Dormakaba bajaba de 85.1 a 72.4 y NetShape habria bajado igual, porque la palabra 'metalmecanica' -- que si esta en el giro del radar y no en el redactado-- vale 12.7 puntos de proceso. Nada se habia roto a la vista: las dos cifras eran plausibles y ninguna fuente decia cual mandaba. Ahora la llave `giro` lleva el del radar VERBATIM y la redaccion legible vive en `giro_como_lo_describe_la_nota`, que no entra a ningun calculo. La prueba test_giro_del_radar_384.py lo fija.",
+  "nota_de_384": "De las seis, CINCO se corrieron con el motor 2 el 6-oct-2026 (#384) a 30 consultas cada una. QSMX quedo FUERA: no es una planta que compre. Su razon vive en datos/no-son-prospectos.json y `cargar_del_radar` la saca del piloto leyendo ese archivo. La medicion de las cinco esta en datos/medicion-limite-clase-c-2026-10-06.json y la regla que salio de ella en metodo/limite-de-clase-c.md."
 }

@@ -209,6 +209,7 @@ def _armar(d: dict, ruta: str) -> Corrida:
     c.vocabulario = d.get("vocabulario", [])
     c.senal = d.get("senal", [])
     c.challenge_corrido = d.get("challenge_corrido", False)
+    c.ficha_parcial = dict(d.get("ficha_parcial", {}) or {})
     c.avisos = d.get("avisos", [])
     # Sin esto la entrega se perdia al releer del disco y `ficha` volvia a
     # reclamarla aunque ya estuviera subida. Es la MISMA familia de defecto que
@@ -806,6 +807,12 @@ def main(argv=None) -> int:
         if nombre == "ficha":
             s.add_argument("--modo", choices=["limpio", "procedencia"], default="limpio")
             s.add_argument("--salida", default=None)
+            s.add_argument("--parcial", action="store_true",
+                           help="emite la ficha CON MODULOS ABIERTOS, estampada como "
+                                "PARCIAL y con la lista de lo que falta. Para cuando "
+                                "la regla de parada cierra la cuenta antes de agotar "
+                                "la cascada: el papel sirve igual, pero tiene que "
+                                "decir de que tamano es el hueco")
     a = ap.parse_args(argv)
 
     try:
@@ -1291,8 +1298,17 @@ def main(argv=None) -> int:
                 # cambio entre los dos dias: se estaria corrigiendo la curva con
                 # un numero que la curva ya afecto.
                 sen["puntaje_reevaluado_hoy"] = True
+                # SE REEMPLAZA, NO SE ACUMULA (#384). Dos `senal --reevaluar` en
+                # la misma corrida dejaban el mismo aviso DOS VECES en la ficha,
+                # y la de Daikin salio asi. Es la misma leccion de MARCA_PADRON
+                # (#306, D1) y de MARCA_ANGULO: un aviso que describe un ESTADO
+                # -- «este puntaje se reevaluo»-- tiene una sola version cierta,
+                # y repetirlo no lo hace mas cierto, solo hace la lista mas larga
+                # y mas facil de ignorar.
+                marca = MARCA_SENAL + "El puntaje se REEVALUO hoy"
+                c.avisos = [a for a in c.avisos if not a.startswith(marca)]
                 c.avisos.append(
-                    MARCA_SENAL + "El puntaje se REEVALUO hoy, no es el del dia "
+                    marca + ", no es el del dia "
                     "de la corrida: la frescura de la senal cambio desde "
                     "entonces. Sirve para los pesos por familia y para la "
                     "conversion por fuente; NO sirve para corregir la curva de "
@@ -1717,9 +1733,30 @@ def main(argv=None) -> int:
             return 0
 
         if a.cmd == "ficha":
-            if not c.challenge_corrido:
+            # LA FICHA PARCIAL, Y POR QUE NO ES UN AGUJERO EN LA COMPUERTA.
+            #
+            # La compuerta existe porque una ficha que cruza a medias produce el falso
+            # consenso del Caso F: dos fuentes que se repiten una a la otra se leen
+            # como confirmacion. Eso sigue siendo verdad.
+            #
+            # Lo que #384 agrega es el caso en que la corrida se cierra A PROPOSITO
+            # antes de agotar la cascada -- la regla de parada de Esteban: si el
+            # segundo bloque de 10 sale seco, se cierra la cuenta ahi--. Ahi el papel
+            # SI sirve: trae el patron de correo, el vocabulario de la casa y las
+            # busquedas armadas para quien tenga Sales Navigator. Negarselo a Rissia
+            # porque un modulo quedo abierto es quedarse con cero en lugar de con lo
+            # que hay.
+            #
+            # La compuerta no se rodea, se declara: `--parcial` estampa la ficha, lista
+            # los modulos abiertos y dice que ningun dato de esta ficha es CONFIRMADO.
+            # Sin `--parcial` la compuerta sigue cerrada igual que antes.
+            if not c.challenge_corrido and not a.parcial:
                 raise CompuertaCerrada(
-                    "No se emite ficha sin challenge. Corre: challenge")
+                    "No se emite ficha sin challenge. Corre: challenge. Y si la "
+                    "cuenta se cerro a proposito antes de agotar la cascada, "
+                    "`ficha --parcial`: sale estampada y con el hueco medido.")
+            if a.parcial and not c.challenge_corrido:
+                c.marcar_ficha_parcial()
             # Se vuelve a leer la historia declarada AQUI, no solo al abrir. Dos
             # razones: una corrida abierta antes de que el dato existiera no la
             # tiene en sus avisos, y el operador puede declarar la planta de un

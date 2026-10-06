@@ -145,6 +145,11 @@ class Corrida:
     vocabulario: list = field(default_factory=list)  # titulos cosechados
     senal: list = field(default_factory=list)        # hallazgos de prensa
     challenge_corrido: bool = False
+    # #384: la ficha se emitio con modulos abiertos, A PROPOSITO, porque la regla de
+    # parada cerro la cuenta antes de agotar la cascada. Guarda CUALES quedaron
+    # abiertos, porque el papel tiene que poder decir de que tamano es el hueco -- y
+    # porque la lista cambia por cuenta: no es lo mismo cerrar sin M9 que sin M5--.
+    ficha_parcial: dict = field(default_factory=dict)
     avisos: list = field(default_factory=list)
     # Los tres textos que la ficha necesita y el codigo NO puede derivar: son
     # CRITERIO, y el criterio es del operador. Se cargan con `registrar`. Si
@@ -544,9 +549,61 @@ class Corrida:
             "base64_con_longitud_confirmada": bool(base64_con_longitud_confirmada),
             "verificacion": verificacion, "avisos_de_verificacion": avisos,
         }
+        # TAMBIEN SE REEMPLAZAN (#384). Una entrega nueva deja sin valor los
+        # avisos de la anterior: sus cifras son de un archivo que ya no existe.
+        self.avisos = [a for a in self.avisos
+                       if not a.startswith(MARCA_ENTREGA)]
+        # Y VAN FECHADOS, que es lo que los vuelve historia en vez de afirmacion
+        # (#384). La ficha IMPRIME su propio tamano en este aviso, asi que
+        # registrar una entrega cambia la ficha, y volver a emitirla deja el
+        # aviso hablando de la version anterior. Fechado, eso deja de ser un
+        # error: dice de QUE entrega habla. Sin fecha era una afirmacion sobre
+        # «esta ficha» que se volvia falsa sola.
+        dia = self.entrega["ts"][:10]
         for a in avisos:
-            self.avisos.append(MARCA_ENTREGA + a)
+            self.avisos.append(f"{MARCA_ENTREGA}entrega del {dia}: {a}")
         return self.entrega
+
+    # ------------------------------------------------- la entrega envejece
+    #
+    # DEFECTO ENCONTRADO LEYENDO LA FICHA DE DAIKIN (#384). La corrida se
+    # entrego, despues se le corrigio el giro y la ficha se volvio a emitir. La
+    # ficha nueva seguia imprimiendo el aviso de la entrega vieja -- «local
+    # 31,436 contra 31,436 subidos. Coinciden»-- sobre un archivo que ya pesaba
+    # 31,951. La afirmacion no estaba vieja: estaba FALSA, y era justo la
+    # afirmacion de verificacion.
+    #
+    # El tamano no se compara aqui: se compara el SHA, que es lo unico que
+    # distingue un archivo de otro del mismo tamano. Es la leccion de #306.
+    def entrega_quedo_atras(self, ruta_local: str | None = None) -> dict | None:
+        """La entrega registrada ya NO corresponde al archivo en disco.
+
+        Devuelve el detalle, o None si no hay entrega, si no hay archivo con que
+        comparar, o si siguen casando.
+        """
+        e = self.entrega or {}
+        if not e.get("url"):
+            return None
+        ruta = ruta_local or e.get("archivo") or ""
+        if not ruta or not os.path.exists(ruta):
+            return None
+        antes = (e.get("local") or {}).get("sha256")
+        if not antes:
+            return None
+        ahora = self.huella(ruta)
+        if ahora["sha256"] == antes:
+            return None
+        return {
+            "url": e["url"], "archivo": ruta, "ts_de_la_entrega": e.get("ts"),
+            "sha256_entregado": antes, "sha256_de_ahora": ahora["sha256"],
+            "bytes_entregados": (e.get("local") or {}).get("bytes"),
+            "bytes_de_ahora": ahora["bytes"],
+            "por_que_importa": (
+                "la copia que esta en el destino NO es esta ficha. Lo que la "
+                "vendedora abra por esa liga es la version anterior, y los "
+                "avisos de verificacion de esa entrega hablan de un archivo que "
+                "ya no existe. Hay que volver a subirla y volver a registrarla."),
+        }
 
     def declarar_sin_entregar(self, razon: str) -> dict:
         """El operador decide no sacarla. Queda escrito que la ficha es volatil."""
@@ -1696,6 +1753,29 @@ class Corrida:
                 "modulo": "M11", "que_hace": "Emitir. Ya paso el challenge.",
                 "chao1": est.a_dict()}
 
+    def modulos_abiertos(self) -> list[str]:
+        """Los modulos de la cascada que no estan cerrados, en orden de ola."""
+        return [m for _k, _t, mods in OLAS for m in mods if not self.mod(m).cerrado]
+
+    def marcar_ficha_parcial(self) -> dict:
+        """Deja escrito que esta ficha sale con huecos, y cuales.
+
+        No basta con que la ficha diga «PARCIAL»: lo que sirve es saber QUE falto. Una
+        ficha sin M9 -- aduanas-- es casi completa; una sin M5 no tiene a nadie. El
+        lector no puede distinguirlas si el papel solo dice «parcial».
+        """
+        abiertos = self.modulos_abiertos()
+        self.ficha_parcial = {
+            "modulos_abiertos": abiertos,
+            "challenge_corrido": self.challenge_corrido,
+            "ficha_parcial": self.ficha_parcial,
+            "consultas_gastadas": self.presupuesto.gastadas,
+            "por_que": ("la corrida se cerro antes de agotar la cascada. Ningun dato "
+                        "de esta ficha paso el cruce del challenge, asi que ninguno "
+                        "es CONFIRMADO: lo que hay es lo que una fuente dijo."),
+        }
+        return self.ficha_parcial
+
     # ---------------------------------------------------------------- persist
     # ------------------------------------------------- firma contra edicion a mano
     #
@@ -1736,11 +1816,37 @@ class Corrida:
         "loop_puede_seguir", "loop_lo_detiene", "fuera_de_la_poblacion",
     )
 
+    # Y LOS DERIVADOS QUE NO SON LLAVES DE ARRIBA, sino campos ADENTRO de una
+    # llave que si se hashea. La lista de arriba cuida los derivados de primer
+    # nivel y dejaba pasar estos, que es el mismo defecto una capa mas abajo.
+    #
+    # Lo encontro la ficha de Daikin (#384), leyendola antes de entregarla: salio
+    # con "ESTADO EDITADO A MANO" en el primer renglon, sobre una corrida que
+    # nunca se toco por fuera de la herramienta. La secuencia es esta:
+    #
+    #   1. `registrar` trae un contacto que YA estaba en la lista. `agregar` le
+    #      sube `hits` de 1 a 2 en memoria -- correcto, es un hallazgo mas-- y
+    #      `guardar` firma ese estado.
+    #   2. Al releer, `_recalcular_hits` DERIVA `hits` del registro de busquedas
+    #      y lo deja en 1, que es la cifra verdadera.
+    #   3. La firma del archivo (hits=2) ya no casa con la del estado reabierto
+    #      (hits=1), y la ficha acusa una edicion a mano que no existio.
+    #
+    # `hits` y `modulo_origen` son justo los dos campos que `_recalcular_hits`
+    # deriva, y por eso son justo los dos que la firma no puede mirar. El riesgo
+    # de que la marca se vuelva ruido -- que es el argumento de CAMPOS_DERIVADOS--
+    # es peor aqui: se disparaba en la corrida NORMAL, no al actualizar la
+    # herramienta.
+    CAMPOS_DERIVADOS_DEL_CONTACTO = ("hits", "modulo_origen")
+
     def firma(self) -> str:
         d = self.a_dict()
         d.pop(self.CAMPO_FIRMA, None)
         for k in self.CAMPOS_DERIVADOS:
             d.pop(k, None)
+        d["contactos"] = [{k: v for k, v in c.items()
+                           if k not in self.CAMPOS_DERIVADOS_DEL_CONTACTO}
+                          for c in d.get("contactos", [])]
         crudo = json.dumps(d, ensure_ascii=False, sort_keys=True,
                            separators=(",", ":"))
         return hashlib.sha256(crudo.encode("utf-8")).hexdigest()[:32]
@@ -1777,6 +1883,7 @@ class Corrida:
             "vocabulario": self.vocabulario,
             "senal": self.senal,
             "challenge_corrido": self.challenge_corrido,
+            "ficha_parcial": self.ficha_parcial,
             "nivel": self.nivel,
             "sembrado": self.sembrado,
             "angulo": self.angulo,

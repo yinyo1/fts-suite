@@ -59,7 +59,7 @@ import re
 
 from .confianza import CONFIRMADO, DESMENTIDO, EN_CONFLICTO, SOLIDO, CANDIDATO, N1_CONFIRMADO, N2_PARCIAL, N3_PUESTO
 from .confianza import puesto_nunca_decisor
-from .estado import Corrida, RESPONDIO, PENDIENTE
+from .estado import Corrida, RESPONDIO, PENDIENTE, MARCA_ENTREGA
 from .catalogo_proyectos import plano as _plano
 from .sello import sello
 from .ubicacion_de_proyectos import (carta_de_presentacion, HISTORIA_AQUI,
@@ -459,6 +459,42 @@ def estado_de_cuenta(c: Corrida) -> tuple[str, str]:
     return ("Sin historia declarada en esta planta", "nil")
 
 
+def aviso_de_ficha_parcial(c: Corrida) -> str:
+    """El sello de la ficha que salio con la cascada a medias (#384).
+
+    Va ARRIBA y en rojo, antes del gancho, porque cambia como se lee todo lo de
+    abajo: sin challenge no hay dato CONFIRMADO, solo dato de una fuente. Y nombra
+    los modulos abiertos, porque el tamano del hueco depende de cuales son -- una
+    ficha sin M9 (aduanas) es casi completa; una sin M5 no tiene a nadie--.
+    """
+    p = getattr(c, "ficha_parcial", None) or {}
+    if not p:
+        return ""
+    abiertos = p.get("modulos_abiertos") or []
+    QUE_ES = {
+        "M4": "el motor de combinaciones",
+        "M5": "la busqueda de personas por puesto",
+        "M6": "los individuales por nombre",
+        "M7": "los PDFs publicos",
+        "M8": "los padrones de gobierno",
+        "M9": "aduanas",
+    }
+    lista = ", ".join(f"{m} ({QUE_ES.get(m, 'sin descripcion')})" for m in abiertos)
+    falta_gente = "M5" in abiertos or "M6" in abiertos
+    return (
+        '<div class="aviso"><b>FICHA PARCIAL.</b> Esta corrida se cerro '
+        f'a proposito antes de agotar la cascada, con {p.get("consultas_gastadas", 0)} '
+        'consultas gastadas. <b>No paso el challenge</b>, asi que ningun dato de aqui '
+        'es CONFIRMADO: lo que hay es lo que UNA fuente dijo, y el cruce que atrapa el '
+        'falso consenso no se corrio.'
+        + (f' Modulos abiertos: {html.escape(lista)}.' if lista else '')
+        + (' <b>Entre ellos los que buscan personas</b>, asi que la ausencia de '
+           'contactos aqui NO es prueba de que no haya: es prueba de que no se '
+           'termino de buscar.' if falta_gente else '')
+        + ' Lo que si sirve tal cual: el patron de correo, el vocabulario de puestos '
+          'de la casa y las busquedas armadas para quien tenga Sales Navigator.</div>')
+
+
 def aviso_rojo(c: Corrida) -> str:
     """Solo lo que puede hacerla quedar mal EN LA LLAMADA. Si no hay, no sale.
 
@@ -501,6 +537,23 @@ def aviso_rojo(c: Corrida) -> str:
             "la herramienta. Parte de lo que sigue puede no venir de una busqueda "
             "registrada. Vale la pena confirmarlo contra las fuentes antes de "
             "llamar.")
+    # LA LIGA ENTREGADA APUNTA A OTRA VERSION (#384). Encontrado leyendo la ficha
+    # de Daikin: se entrego, se le corrigio el giro, se volvio a emitir, y la
+    # ficha nueva seguia imprimiendo «local 31,436 contra 31,436 subidos.
+    # Coinciden» sobre un archivo que ya pesaba 31,951.
+    #
+    # Va en el aviso ROJO y no en el tecnico porque es exactamente lo que este
+    # bloque existe para atrapar: la vendedora abre la liga, lee OTRA cosa, y la
+    # llama con lo que esta pantalla le dijo.
+    atras = c.entrega_quedo_atras()
+    if atras:
+        partes.append(
+            "<b>LA COPIA ENTREGADA NO ES ESTA FICHA.</b> Esta ficha se volvio a "
+            "emitir despues de entregarla, y la que esta en la liga es la "
+            f"anterior ({atras['bytes_entregados']:,} bytes contra "
+            f"{atras['bytes_de_ahora']:,} de ahora). Lo que se abra por esa liga "
+            "NO es lo que dice esta pantalla. Hay que volver a subirla y volver "
+            "a registrar la entrega antes de repartirla.")
     if not partes:
         return ""
     return ('<div class="aviso"><b>Ojo antes de llamar:</b>'
@@ -1169,7 +1222,20 @@ def capa_tecnica(c: Corrida) -> str:
             f'<td class="c">{html.escape(b.ts[:10])}</td>'
             f'<td class="c">{liga}</td></tr>')
 
-    avisos = "".join(f"<li>{html.escape(a)}</li>" for a in c.avisos)
+    # EL AVISO DE ENTREGA NO ENTRA AL DOCUMENTO (#384). No es censura: es que la
+    # ficha NO PUEDE CONTENER SU PROPIA MEDIDA. Ese aviso compara el tamano de la
+    # ficha contra el de la copia subida; si se imprime aqui, registrar una
+    # entrega cambia la ficha, volver a emitirla cambia el aviso, y la cifra
+    # nunca converge -- medido: tres emisiones seguidas dieron tres sha
+    # distintos--. Peor todavia, cada emision deja al documento afirmando un
+    # tamano que ya no es el suyo.
+    #
+    # La comparacion no se pierde: la imprime `entregar` en la consola, vive en
+    # `corrida.entrega` con su fecha, y lo que el LECTOR necesita -- «la copia
+    # que esta en la liga no es esta ficha»-- sale en el aviso ROJO, que solo
+    # aparece cuando de verdad difieren y desaparece al volver a subirla.
+    avisos = "".join(f"<li>{html.escape(a)}</li>" for a in c.avisos
+                     if not a.startswith(MARCA_ENTREGA))
     sem = "".join(
         f'<li><b>{html.escape(r["que"])}</b>: <code>'
         f'{html.escape(str(r["valor"]))}</code> — de '
@@ -1540,6 +1606,8 @@ def modo_limpio(c: Corrida) -> str:
 <h1>{html.escape(c.empresa)}{f", planta {html.escape(c.ciudad)}" if c.ciudad else ""}</h1>
 <p class="sub">{html.escape(c.giro or "giro sin registrar")}{f" · {html.escape(c.ciudad)}" if c.ciudad else ""} · {len(c.busquedas())} busquedas registradas</p>
 <span class="estado {estado_cls}">{html.escape(estado_txt)}</span>
+
+{aviso_de_ficha_parcial(c)}
 
 {aviso_rojo(c)}
 

@@ -186,6 +186,43 @@ CONSULTAS_PARA_CORTAR_POR_LIMITE_DE_FUENTE = 12
 FORMAS_QUE_EL_CORTE_EXIGE_CUBIERTAS = 3
 
 
+# LA FORMA DE UNA CONSULTA DE M5 SE DERIVA DE SU TEXTO (#384).
+#
+# ANTES se leia SOLO de `Busqueda.etiqueta`, o sea de que el operador la
+# declarara. En la vuelta de las cinco cuentas de puerta de usuario se corrieron
+# las TRES formas en las cinco -- 66 consultas-- y no se etiqueto ni una. El
+# detector quedo ciego en las cinco y la ficha no pudo decir «esta empresa no
+# aparece en el buscador publico» en las dos cuentas donde era cierto, que son
+# justo las que mas necesitaban la busqueda de Sales Navigator armada.
+#
+# La compuerta no estaba mal: faltaba el dato. Pero ese dato NO hacia falta
+# pedirlo: la forma esta en el texto de la consulta, porque es el texto lo que la
+# distingue. `site:mx.linkedin.com/in` es el corpus mexicano, `site:linkedin.com/in`
+# el global, y sin operador es la forma simple. Derivarlo vuelve imposible el
+# modo de falla, que es la misma leccion que `hits`, que `modulo_origen` y que
+# los contadores de agotado: un dato que se puede derivar de la evidencia no se
+# le pide al operador.
+#
+# La etiqueta sigue MANDANDO cuando existe: hay consultas raras -- un alias, un
+# buscador distinto-- donde el operador sabe mas que el texto.
+FORMA_M5_MX = "linkedin_mx"
+FORMA_M5_GLOBAL = "linkedin_global"
+FORMA_M5_SIMPLE = "simple"
+
+
+def forma_de_m5(busqueda) -> str:
+    """La forma de M5 de una busqueda: la etiqueta si la hay, o la del texto."""
+    etiqueta = (getattr(busqueda, "etiqueta", "") or "").strip().lower()
+    if etiqueta:
+        return etiqueta
+    texto = (getattr(busqueda, "consulta", "") or "").lower()
+    if "mx.linkedin.com/in" in texto:
+        return FORMA_M5_MX
+    if "linkedin.com/in" in texto:
+        return FORMA_M5_GLOBAL
+    return FORMA_M5_SIMPLE
+
+
 def corta_por_limite_de_fuente(busquedas_de_m5,
                                solo_las_primeras: bool = True
                                ) -> tuple[bool, str]:
@@ -213,7 +250,8 @@ def corta_por_limite_de_fuente(busquedas_de_m5,
     Tres condiciones, y las tres tienen que cumplirse:
 
       1. Se corrieron al menos doce consultas.
-      2. Esas doce cubren las tres formas de M5 (`Busqueda.etiqueta`).
+      2. Esas doce cubren las tres formas de M5. La forma se DERIVA del texto
+         de la consulta (ver `forma_de_m5`); la etiqueta solo la sobrescribe.
       3. Las doce declararon `perfiles_de_la_empresa` y las doce dieron CERO.
 
     La tercera es la que impide cortar a ciegas: una consulta que no declaro el
@@ -227,7 +265,7 @@ def corta_por_limite_de_fuente(busquedas_de_m5,
     primeras = todas[:n] if solo_las_primeras else todas
 
     cuantas = len(primeras)
-    formas = {(b.etiqueta or "").strip().lower() for b in primeras}
+    formas = {forma_de_m5(b) for b in primeras}
     formas.discard("")
     if len(formas) < FORMAS_QUE_EL_CORTE_EXIGE_CUBIERTAS:
         return (False,

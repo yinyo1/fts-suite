@@ -3,6 +3,82 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.22.0 — 2026-10-06
+
+El motor 2 corrido sobre **las cinco cuentas de puerta de usuario**, 30 consultas cada
+una, 150 en total. La medición del límite de clase (c) sobre once casos, y **cinco
+defectos** que salieron de leer las fichas antes de entregarlas —ninguno lo vio la suite—.
+**1,250 pruebas** (eran 1,220).
+
+### El giro es entrada del evaluador, no una descripción
+
+La hoja de #383 traía el giro redactado a mano en vez del del radar. Las dos frases son
+ciertas y describen la misma casa, pero `puntos_de_proceso` busca el proceso del cliente
+DENTRO de la cadena del giro: con el giro de la hoja, **Dormakaba bajaba de 85.1 a 72.4**
+y NetShape habría bajado igual, porque la palabra «metalmecanica» vale 12.7 puntos. Ese
+puntaje es el que el lazo 3 usa para corregir pesos. El modo de falla era el peor: las dos
+cifras plausibles, ninguna fuente diciendo cuál manda. Ahora `giro` lleva el del radar
+verbatim, la redacción legible vive en `giro_como_lo_describe_la_nota`, y
+`test_giro_del_radar_384.py` lo fija.
+
+### La forma de M5 se deriva del texto, no se le pide al operador
+
+Las 66 consultas de M5 de esta vuelta se corrieron con las tres formas y **ninguna se
+etiquetó**. El detector de límite de fuente leía la forma solo de `Busqueda.etiqueta`, así
+que quedó ciego en las cinco cuentas y la ficha no podía decir «esta empresa no aparece en
+el buscador público» donde era cierto —que es justo donde ese aviso lleva la búsqueda de
+Sales Navigator armada—. La compuerta no estaba mal: pedía un dato que no hacía falta
+pedir, porque el texto lo dice. `compuertas.forma_de_m5` lo deriva y la etiqueta solo lo
+sobrescribe. Con eso puesto: **tres de las cinco cuentas no están en el buscador público**.
+
+### La firma del estado no puede acusar a una corrida limpia
+
+La ficha de Daikin salió con «ESTADO EDITADO A MANO» sobre una corrida que nunca se tocó
+por fuera. `hits` se DERIVA del registro al releer, y vive dentro de `contactos`, que la
+firma hasheaba: cualquier `registrar` que confirmara a alguien ya conocido dejaba la firma
+sin casar. `CAMPOS_DERIVADOS_DEL_CONTACTO` los saca del hash. Una alarma que suena en la
+corrida normal es peor que ninguna.
+
+### Un aviso que describe un estado se reemplaza, y la ficha no contiene su propia medida
+
+Tres defectos de la misma familia:
+
+- `senal --reevaluar` dos veces dejaba **el mismo aviso dos veces**. Ahora reemplaza, como
+  `MARCA_PADRON` desde #306 y `MARCA_ANGULO` desde #330.
+- La ficha de Daikin se entregó, se le corrigió el giro, se volvió a emitir, y seguía
+  imprimiendo «local 31,436 contra 31,436 subidos. Coinciden» sobre un archivo que ya
+  pesaba 31,951. No estaba vieja: estaba **falsa**, y era la afirmación de verificación.
+  `entrega_quedo_atras()` lo detecta por SHA —no por tamaño, que es la lección de #306— y
+  el **aviso rojo** le dice a la vendedora que la liga apunta a otra versión.
+- Y el de fondo: mientras ese aviso se imprimía dentro de la ficha, **el documento
+  contenía su propia medida** y no podía converger. Medido: tres emisiones seguidas, tres
+  SHA distintos. Ahora el aviso va fechado, vive en el registro y en la consola, y queda
+  fuera del documento. La ficha vuelve a ser idempotente.
+
+### El desmentido: una cuenta puede tener la puerta abierta y no ser prospecto
+
+`datos/no-son-prospectos.json` y `cargar_del_radar.desmentidas()`. QSMX tenía la puerta de
+usuario abierta y 93.1 de puntaje, y es una casa de servicios que vende lo mismo que FTS:
+abrirle tarjeta habría puesto a la vendedora a prospectar a un competidor. La exclusión
+vive en un archivo y no en una lista en el código, porque la siguiente va a aparecer y lo
+que hay que escribir entonces es su razón. El piloto pasa de seis tarjetas a cinco.
+
+### La regla de clase (c), con once casos
+
+`metodo/limite-de-clase-c.md` y `datos/medicion-limite-clase-c-2026-10-06.json`. Ya no es
+sospecha: **la web entrega nombres, casi nunca el del que compra**. De los cuatro
+interlocutores de valor de esta vuelta, 4 de 4 salieron de prensa de inauguración, 1 de 4
+está a nivel de planta, 0 de 4 traen correo literal, y 0 de 150 consultas entregaron un
+perfil público de mantenimiento, proyectos o facilities. A quien sí entrega: al parque, a
+la cámara, al clúster y al que corta el listón.
+
+### La ficha parcial
+
+`ficha --parcial` emite con módulos abiertos, estampada y con la lista de lo que falta.
+Acabó sin usarse en las cinco cuentas —cerrar cada módulo con su estado y su razón es la
+declaración más fuerte, y permite correr el challenge— y se queda porque cierra el caso del
+operador que para en seco sin cerrar nada.
+
 ## 0.21.0 — 2026-10-06
 
 Las cuatro decisiones de #382 aplicadas, y la corrida de `prospecta` sobre las seis de

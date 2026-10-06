@@ -1,0 +1,28 @@
+{
+  "que_es": "Cuentas que el RADAR puntuo alto y que NO son prospectos, con la razon escrita y su estado. No es una lista negra: es un DESMENTIDO con fecha. El radar las propuso de buena fe y una corrida humana descubrio que no eran lo que parecian, y eso es exactamente lo que el lazo 2 existe para aterrizar.",
+  "por_que_es_otro_archivo": "`relacion-de-grupo.json` contesta «que relacion hay con el GRUPO» y toda su redaccion es sobre altas de proveedor y canal. Meter aqui un «no es prospecto» mezclaria dos cosas que no significan lo mismo, que es el error que ese archivo declara en su propio `por_que_es_otro_archivo`. Y `ubicacion-de-proyectos.json` contesta otra cosa mas.",
+  "que_NO_lleva": "Ni una persona, ni un correo, ni un telefono. El repo es publico.",
+  "para_que_se_lee": "1) `cargar_del_radar` las SACA del piloto, para que no se le abra tarjeta a quien no se le va a vender. 2) El lazo 2 usa el desmentido para corregir el evaluador: una casa cuyo GIRO es la familia que el radar propone no deberia puntuar 93. 3) La vendedora no se topa dos veces con la misma cuenta.",
+  "estados": {
+    "posible_aliado": "No compra lo que FTS vende: lo VENDE. Es colega o competidor. El trato posible es de alianza, subcontratacion o nada, y lo decide Esteban, no una corrida de prospeccion.",
+    "no_es_planta": "Lo que inauguro no es una planta que produzca: es oficina, centro de distribucion o centro de operaciones. No tiene la obra que FTS vende.",
+    "ya_es_cliente": "Tiene historia en Odoo o en el buzon. No va por la via de prospeccion en frio."
+  },
+  "corte": "2026-10-06",
+  "cuentas": [
+    {
+      "empresa": "QSMX",
+      "planta": "Ramos Arizpe, Coah.",
+      "estado": "posible_aliado",
+      "puntaje_que_le_dio_el_radar": 93.1,
+      "de_la_corrida": "radar-puertas-2026-10-05",
+      "decidido_el": "2026-10-06",
+      "decidido_por": "Esteban, en la instruccion de #384",
+      "razon": "QSMX no es una planta que compre: es una casa de SERVICIOS que vende lo mismo que FTS -- fabricacion de componentes y estructuras metalicas, logistica, inspeccion especializada, control de calidad y apoyo a la operacion de planta--, con 550 trabajadores en Mexico y EE.UU. desde 2014. Y lo que inauguro no es una planta de produccion: es un CENTRO DE OPERACIONES corporativo. Es colega o competidor, y el trato es de alianza o de nada.",
+      "por_que_el_radar_se_equivoco": "El radar la puntuo 93.1 JUSTAMENTE por el giro que la descalifica: `metalmecanica estructuras metalicas componentes automotriz` empata con la familia `estructura_metalica` del catalogo de FTS y el evaluador lo leyo como proceso del cliente, cuando era el giro de un competidor. Es el caso mas fuerte que tiene `choque_de_familia`, y la razon por la que esa funcion mira el GIRO y no el texto de la nota.",
+      "lo_que_queda_por_decidir": "Si se le busca como ALIADO. Una casa de 550 personas que ya hace inspeccion y apoyo a la operacion en Coahuila y Texas puede ser subcontratista de FTS o socio en pliegos grandes. Eso NO es una corrida de prospeccion y no lo decide la herramienta.",
+      "sacada_del_piloto": true,
+      "fuera_de_prospecta": true
+    }
+  ]
+}

@@ -1,0 +1,158 @@
+{
+  "medicion": "limite de clase (c) sobre cinco cuentas frias de puerta de usuario",
+  "corrida": "prospecta-2026-10-06-cinco-puertas-de-usuario",
+  "hoy": "2026-10-06",
+  "sigue_a": "#383",
+  "issue": "#384",
+  "sin_datos_personales": "este archivo vive en un repo PUBLICO. Lleva el NIVEL de cada interlocutor y NUNCA su nombre; los nombres viven solo en la corrida de la sesion (que .gitignore excluye) y en la ficha de OneDrive.",
+  "tope_por_cuenta": 30,
+  "por_que_30": "acordado por Esteban para esta vuelta, con tope adaptativo apagado. `tope` solo SUBE el techo de la herramienta -- que sigue en 60-- asi que los 30 son disciplina del operador, no compuerta, y por eso se declaran aqui.",
+  "cuentas": [
+    {
+      "empresa": "Daikin",
+      "planta": "San Luis Potosi",
+      "consultas_de_red": 30,
+      "filas_del_registro": 31,
+      "bloques_cerrados": 3,
+      "bloques_secos": 2,
+      "consultas_de_m5": 11,
+      "estado_de_m5": "omitida_por_costo",
+      "contactos": 3,
+      "de_valor_con_nombre": 1,
+      "niveles_de_los_de_valor": [
+        "direccion general de la entidad mexicana"
+      ],
+      "con_correo_literal": 0,
+      "vocabulario_de_la_casa": 6,
+      "senales_fechadas": 6,
+      "el_buscador_publico_NO_tiene_a_la_empresa": false,
+      "por_que_lo_dice_el_detector": "apenas 11 de 12 consultas: todavia no se puede decir que el buscador no tenga a la empresa"
+    },
+    {
+      "empresa": "TDI Manufacturing",
+      "planta": "Cienega de Flores, N.L.",
+      "consultas_de_red": 30,
+      "filas_del_registro": 31,
+      "bloques_cerrados": 3,
+      "bloques_secos": 3,
+      "consultas_de_m5": 14,
+      "estado_de_m5": "respondio",
+      "contactos": 0,
+      "de_valor_con_nombre": 0,
+      "niveles_de_los_de_valor": [],
+      "con_correo_literal": 0,
+      "vocabulario_de_la_casa": 5,
+      "senales_fechadas": 5,
+      "el_buscador_publico_NO_tiene_a_la_empresa": true,
+      "por_que_lo_dice_el_detector": "14 consultas, las 3 formas cubiertas, y CERO perfiles de la empresa en todas. El limite es de la fuente"
+    },
+    {
+      "empresa": "Dormakaba",
+      "planta": "Nogales, Son.",
+      "consultas_de_red": 30,
+      "filas_del_registro": 31,
+      "bloques_cerrados": 3,
+      "bloques_secos": 2,
+      "consultas_de_m5": 14,
+      "estado_de_m5": "omitida_por_costo",
+      "contactos": 1,
+      "de_valor_con_nombre": 1,
+      "niveles_de_los_de_valor": [
+        "direccion de operaciones del grupo (global, no de la planta)"
+      ],
+      "con_correo_literal": 0,
+      "vocabulario_de_la_casa": 5,
+      "senales_fechadas": 6,
+      "el_buscador_publico_NO_tiene_a_la_empresa": true,
+      "por_que_lo_dice_el_detector": "14 consultas, las 3 formas cubiertas, y CERO perfiles de la empresa en todas. El limite es de la fuente"
+    },
+    {
+      "empresa": "NetShape Mexico",
+      "planta": "Queretaro (Parque FINSA)",
+      "consultas_de_red": 30,
+      "filas_del_registro": 31,
+      "bloques_cerrados": 3,
+      "bloques_secos": 2,
+      "consultas_de_m5": 13,
+      "estado_de_m5": "omitida_por_costo",
+      "contactos": 5,
+      "de_valor_con_nombre": 2,
+      "niveles_de_los_de_valor": [
+        "direccion general de la entidad mexicana",
+        "gerencia de planta"
+      ],
+      "con_correo_literal": 0,
+      "vocabulario_de_la_casa": 7,
+      "senales_fechadas": 5,
+      "el_buscador_publico_NO_tiene_a_la_empresa": false,
+      "por_que_lo_dice_el_detector": "5 de las 13 consultas SI trajeron perfil de la empresa: el buscador la tiene, y lo que falla es otra cosa -- orden, vocabulario o redaccion-- que se arregla aqui y no en Sales Navigator"
+    },
+    {
+      "empresa": "NIFCO",
+      "planta": "Chihuahua, Chih.",
+      "consultas_de_red": 30,
+      "filas_del_registro": 31,
+      "bloques_cerrados": 3,
+      "bloques_secos": 3,
+      "consultas_de_m5": 14,
+      "estado_de_m5": "respondio",
+      "contactos": 0,
+      "de_valor_con_nombre": 0,
+      "niveles_de_los_de_valor": [],
+      "con_correo_literal": 0,
+      "vocabulario_de_la_casa": 6,
+      "senales_fechadas": 5,
+      "el_buscador_publico_NO_tiene_a_la_empresa": true,
+      "por_que_lo_dice_el_detector": "14 consultas, las 3 formas cubiertas, y CERO perfiles de la empresa en todas. El limite es de la fuente"
+    }
+  ],
+  "totales": {
+    "cuentas": 5,
+    "consultas_de_red": 150,
+    "bloques_cerrados": 15,
+    "bloques_secos": 12,
+    "consultas_de_m5": 66,
+    "contactos": 9,
+    "de_valor_con_nombre": 4,
+    "con_correo_literal": 0,
+    "de_valor_a_nivel_de_planta": 1,
+    "de_valor_que_salieron_de_prensa": 4,
+    "de_valor_que_salieron_de_busqueda_de_personas": 0,
+    "perfiles_publicos_de_mantenimiento_proyectos_o_facilities": 0,
+    "cuentas_sin_presencia_en_el_buscador_publico": 3
+  },
+  "lo_que_la_cascada_aporto_sobre_la_vuelta_interna_y_el_bloque_1": [
+    {
+      "cuenta": "NetShape Mexico",
+      "aporte": "CORRECCION DE IDENTIDAD. La hoja de #383 la tenia como metalurgia de polvos y con patron de correo de netshapetech.com. Son DOS casas distintas: la de Queretaro es filial de Shape Corp. y hace estampado metalico y plastico. El patron correcto es otro dominio. Usar el de la hoja habria mandado el correo a una empresa de Indiana.",
+      "vale_la_corrida": true
+    },
+    {
+      "cuenta": "NetShape Mexico",
+      "aporte": "DOS interlocutores de valor con nombre, uno de ellos GERENCIA DE PLANTA, mas el patron de correo de la casa correcta con cinco formas y sus porcentajes.",
+      "vale_la_corrida": true
+    },
+    {
+      "cuenta": "Daikin",
+      "aporte": "El MEDC, donde esta la ingenieria que especifica, no esta en la planta sino en el parque de emprendimiento del ITESM con ~100 empleados. Cambia DONDE buscar.",
+      "vale_la_corrida": true
+    },
+    {
+      "cuenta": "TDI Manufacturing",
+      "aporte": "El parque que construyo sus tres naves tiene directiva publica con nombres. Es la puerta A de esta y de futuras senales del mismo parque.",
+      "vale_la_corrida": true
+    },
+    {
+      "cuenta": "Dormakaba",
+      "aporte": "ANCLA LITERAL: un buzon publico de la casa que resuelve cual de los dos dominios usa la region, que era justo lo que las dos fuentes del patron discutian. Mas la norma de SU producto, que da a quien certifica.",
+      "vale_la_corrida": true
+    },
+    {
+      "cuenta": "NIFCO",
+      "aporte": "Cero contactos y una entrada datada que todavia no pasa: la feria del giro en noviembre. Mas la norma que vuelve OBLIGATORIO el pliego que su propia nota describe.",
+      "vale_la_corrida": true
+    }
+  ],
+  "veredicto": "El limite NO quedo en cero o uno: quedo en CUATRO con nombre, y eso CORRIGE el enunciado en vez de negarlo. Los cuatro salieron de prensa de inauguracion, uno solo es de nivel de planta y ninguno trae correo literal. Cero de 150 consultas entregaron un perfil publico de mantenimiento, proyectos o facilities. La regla declarada en metodo/limite-de-clase-c.md es la version corregida: la web entrega a los que cortan el liston, a los del parque y a los de la camara, no al que compra.",
+  "la_forma_de_m5_no_se_etiqueto": "LAS 66 CONSULTAS DE M5 SE CORRIERON CON LAS TRES FORMAS Y NINGUNA SE ETIQUETO. El detector de limite de fuente leia la forma solo de la etiqueta, asi que quedo ciego en las cinco cuentas y la ficha no podia decir «esta empresa no aparece en el buscador publico» donde era cierto -- que es justo donde ese aviso lleva la busqueda de Sales Navigator armada--. Se corrigio derivando la forma del TEXTO de la consulta (compuertas.forma_de_m5), y con eso el detector contesta: TRES de las cinco no estan en el buscador publico. Tambien se corrigieron cuatro filas donde `--perfiles` se habia declarado en 1 contando perfiles que la nota misma decia que NO eran de la casa: `--perfiles` cuenta perfiles DE LA EMPRESA."
+}

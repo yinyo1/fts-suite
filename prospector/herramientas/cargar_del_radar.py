@@ -1,10 +1,12 @@
 """Las primeras tarjetas que NACEN DEL RADAR y no de la mano de Esteban (#382, D5).
 
-POR QUE ESTAS SEIS Y NO OTRAS. Son las unicas de la corrida con la puerta del
-USUARIO abierta hoy: la planta ya inauguro y esta dentro de la ventana de 18 meses
+POR QUE ESTAS CINCO Y NO OTRAS. Son las de la corrida con la puerta del
+USUARIO abierta hoy, menos las DESMENTIDAS: la planta ya inauguro y esta dentro de la ventana de 18 meses
 en que compra lo que el EPC no alcanzo. Las de puerta de EPC no entran todavia --
 ahi el interlocutor es el constructor y la mitad esta sin identificar-- y las de
-licitacion publica tampoco, porque su ciclo no es una tarjeta de prospeccion.
+licitacion publica tampoco, porque su ciclo no es una tarjeta de prospeccion. Y
+de las seis con puerta de usuario, QSMX salio en #384: tenia la puerta abierta y
+no es una planta que compre. Ver `desmentidas` y datos/no-son-prospectos.json.
 
 LO QUE ESTAS TARJETAS TIENEN Y LAS DEL PILOTO NO: `origen = 'radar'` y la puerta por
 la que se entra. No es etiqueta decorativa. El lazo 3 corrige los CRITERIOS del
@@ -41,17 +43,45 @@ from sellar_constancia_puertas import CONSTANCIA                    # noqa: E402
 
 PUERTA_QUE_ENTRA = P.PUERTA_USUARIO
 
+# EL DESMENTIDO, Y POR QUE SE LEE AQUI (#384).
+#
+# La puerta abierta dice que la planta ESTA EN LA VENTANA en que compra. No dice
+# que vaya a comprarle a FTS. QSMX tenia la puerta abierta y 93.1 de puntaje, y la
+# corrida humana descubrio que no es una planta que compre: es una casa de
+# servicios que vende lo mismo que FTS. Abrirle tarjeta habria puesto a la
+# vendedora a prospectar a un competidor.
+#
+# La exclusion vive en un ARCHIVO y no en una lista aqui adentro a proposito: la
+# siguiente va a aparecer, y cuando aparezca lo que hay que escribir es su razon,
+# no una linea de codigo. Y el lazo 2 lee el mismo archivo para corregir el
+# evaluador, que es donde el defecto de verdad esta.
+NO_SON_PROSPECTOS = os.path.join(RAIZ, "datos", "no-son-prospectos.json")
 
-def las_del_radar(constancia: dict | None = None) -> list[dict]:
+
+def desmentidas(ruta: str | None = None) -> dict[str, dict]:
+    """Las cuentas declaradas NO PROSPECTO, por empresa. Vacio si no hay archivo."""
+    ruta = ruta or NO_SON_PROSPECTOS
+    if not os.path.exists(ruta):
+        return {}
+    with open(ruta, encoding="utf-8") as f:
+        d = json.load(f)
+    return {c["empresa"]: c for c in d.get("cuentas", [])
+            if c.get("sacada_del_piloto")}
+
+
+def las_del_radar(constancia: dict | None = None,
+                  fuera: dict[str, dict] | None = None) -> list[dict]:
     """Las senales de la corrida con la puerta del usuario ABIERTA, mas maduras
-    primero -- que es el orden en que Esteban las mando a prospecta--."""
+    primero -- que es el orden en que Esteban las mando a prospecta--, MENOS las
+    desmentidas."""
     c = constancia or json.load(open(CONSTANCIA, encoding="utf-8"))
+    fuera = desmentidas() if fuera is None else fuera
     salen = []
     for e in c["evaluadas"]:
         u = next((q for q in e["puertas"]["puertas"]
                   if q["puerta"] == PUERTA_QUE_ENTRA and q["estado"] == P.ABIERTA),
                  None)
-        if u:
+        if u and e["empresa"] not in fuera:
             salen.append({"senal": e, "puerta": u})
     # mas madura primero: la que lleva mas meses desde la inauguracion
     salen.sort(key=lambda x: -(x["puerta"].get("meses_desde_la_inauguracion") or 0))
