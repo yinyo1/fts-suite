@@ -1486,6 +1486,10 @@ test('#386 Code - Marca piloto: sólo enciende con el archivo en main y piloto=t
   assert.equal(marca({ statusCode: 404, body: '404: Not Found' }), false);
   assert.equal(marca({ statusCode: 200, body: raw }), true);
   assert.equal(marca({ statusCode: 200, body: JSON.parse(raw) }), true);
+  // La forma REAL que entrega n8n (HTTP Request 4.2, responseFormat text + fullResponse): el cuerpo en `data`.
+  assert.equal(marca({ data: raw, headers: { 'content-type': 'text/plain; charset=utf-8' }, statusCode: 200, statusMessage: 'OK' }), true);
+  assert.equal(marca({ data: '404: Not Found', statusCode: 404 }), false);
+  assert.equal(marca({ data: '{"piloto":false}', statusCode: 200 }), false);
   assert.equal(marca({ statusCode: 200, body: '{"piloto":false}' }), false);
   assert.equal(marca({ statusCode: 200, body: '<html>' }), false);
   assert.equal(marca({ error: { message: 'ETIMEDOUT' } }), false);
