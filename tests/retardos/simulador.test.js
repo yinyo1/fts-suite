@@ -262,10 +262,13 @@ conPg('modo sombra: redirige a sombra_destinatarios con [SOMBRA]; modo real: al 
     assert.deepEqual(s.para, ['sombra@example.com']);
     assert.match(s.asunto, /^\[SOMBRA\] /);
     assert.match(s.html, /demo1@example[.]com/);
+    // AJUSTE #386 (7-oct-2026): antes, cambiar modo a real hacía real lo pendiente de un caso de sombra.
+    // Ahora un caso de sombra se queda en sombra: la pista real abre su propio caso desde la activación
+    // (prueba "go-live con una bandera" abajo).
     config(B, 'modo', 'real');
     const r = B.j('SELECT retardos.por_enviar(10)').find((x) => x.tipo === 'aviso_trabajador');
-    assert.deepEqual(r.para, ['demo1@example.com']);
-    assert.doesNotMatch(r.asunto, /SOMBRA/);
+    assert.deepEqual(r.para, ['sombra@example.com']);
+    assert.match(r.asunto, /^\[SOMBRA\] /);
   } finally { B.fin(); }
 });
 
@@ -1277,3 +1280,171 @@ conPg('calendario que el lector no alcanzó (campos null): la ingesta no truena 
     assert.equal(B.q("SELECT calendario_id || '|' || coalesce(cal_horas_semana::text, 'null') || '|' || coalesce(cal_dias::text, 'null') FROM retardos.empleado WHERE employee_id = 1"), '9|null|null');
   } finally { B.fin(); }
 });
+
+// ════════════════════════════════════════════════════════════════════════════
+// #386 · Modo piloto, go-live con una bandera, destinatarios y PPA aparte
+// ════════════════════════════════════════════════════════════════════════════
+const uno = (emp, fecha, hhmm) => [chec(emp, fecha || '2026-09-01', hhmm || '07:45')];
+function correosAviso(B) {
+  config(B, 'aviso_cc_rh', ['rh1@example.com', 'rh2@example.com']);
+  config(B, 'aviso_cc_sin_jefe', ['direccion@example.com']);
+}
+const envioDe = (B, tipo) => B.j("SELECT row_to_json(e) FROM retardos.envio e WHERE tipo = '" + tipo + "' ORDER BY id DESC LIMIT 1");
+
+conPg('#386 go-live con una bandera: el trigger fija real_inicio; lo de sombra sigue en sombra; la pista real cuenta desde la activación', () => {
+  const B = base();
+  try {
+    correosAviso(B);
+    config(B, 'sombra_destinatarios', ['sombra@example.com']);
+    ingestar(B, tres(1));
+    assert.equal(B.q("SELECT string_agg(pista || ':' || accion, ',') FROM retardos.caso"), 'sombra:carta_compromiso');
+    // La bandera.
+    config(B, 'modo', 'real');
+    assert.notEqual(B.q("SELECT retardos.cfg_txt('real_inicio')"), '');
+    assert.equal(B.q("SELECT retardos.cfg_txt('real_desde') = retardos.hoy_local()::text"), 't');
+    assert.equal(B.q("SELECT count(*) FROM retardos.bitacora WHERE evento = 'paso_a_real'"), '1');
+    // Lo pendiente del caso de sombra sale como sombra.
+    assert.ok(B.j('SELECT retardos.por_enviar(20)').every((x) => x.modo === 'sombra'));
+    // Pista real desde el 2-sep: sólo cuentan los retardos del 2 y 3 de sep → aviso (nivel 1), no carta.
+    config(B, 'real_inicio', '2026-09-02T00:00:00-06:00');
+    const r = ingestar(B, tres(1));
+    assert.equal(r.casos_pista_real.length, 1);
+    const c = B.j("SELECT row_to_json(k) FROM retardos.caso k WHERE pista = 'real'");
+    assert.equal(c.accion, 'aviso'); assert.equal(c.retardos_n, 2); assert.equal(c.modo_al_abrir, 'real');
+    assert.equal(B.q("SELECT count(*) FROM retardos.caso_retardo WHERE caso_id = " + c.id), '2');
+    // Otra corrida no duplica.
+    assert.equal(ingestar(B, tres(1)).casos_pista_real.length, 0);
+    const real = B.j('SELECT retardos.por_enviar(20)').find((x) => x.tipo === 'notificacion' && x.modo === 'real');
+    assert.deepEqual(real.para, ['demo1@example.com']);
+    assert.deepEqual(real.cc, ['rh1@example.com', 'rh2@example.com', 'supervisor@example.com']);
+    assert.doesNotMatch(real.asunto, /SOMBRA/);
+    // Reversa: una línea. El mismo envío vuelve a salir como sombra.
+    config(B, 'modo', 'sombra');
+    assert.equal(B.q("SELECT count(*) FROM retardos.bitacora WHERE evento = 'regreso_a_sombra'"), '1');
+    const otra = B.j('SELECT retardos.por_enviar(20)').find((x) => x.id === real.id);
+    assert.equal(otra.modo, 'sombra'); assert.deepEqual(otra.para, ['sombra@example.com']);
+  } finally { B.fin(); }
+});
+
+conPg('#386 piloto: arranca con la marca del merge, sólo para la lista; el interruptor lo apaga', () => {
+  const B = base();
+  try {
+    correosAviso(B);
+    config(B, 'sombra_destinatarios', ['sombra@example.com']);
+    config(B, 'piloto_employee_ids', [1]);
+    B.j('SELECT retardos.por_enviar(5, ' + lit({ piloto_marca: false }) + ')');
+    assert.equal(B.q("SELECT retardos.cfg('piloto_inicio')::text"), 'null');
+    B.j('SELECT retardos.por_enviar(5, ' + lit({ piloto_marca: true }) + ')');
+    assert.notEqual(B.q("SELECT retardos.cfg('piloto_inicio')::text"), 'null');
+    assert.equal(B.q("SELECT count(*) FROM retardos.bitacora WHERE evento = 'piloto_activado'"), '1');
+    const fijo = B.q("SELECT retardos.cfg_txt('piloto_inicio')");
+    B.j('SELECT retardos.por_enviar(5, ' + lit({ piloto_marca: true }) + ')');
+    assert.equal(B.q("SELECT retardos.cfg_txt('piloto_inicio')"), fijo, 'queda fijado: no se mueve');
+    config(B, 'piloto_inicio', '2026-08-31T00:00:00-06:00');
+    ingestar(B, [...tres(1), ...tres(2)], [EMP(1), EMP(2), SUP]);
+    assert.equal(B.q("SELECT string_agg(employee_id || ':' || pista || ':' || modo_al_abrir, ',' ORDER BY employee_id) FROM retardos.caso"),
+      '1:real:piloto,2:sombra:sombra');
+    let lista = B.j('SELECT retardos.por_enviar(20)');
+    const de = (emp) => lista.filter((x) => x.caso && x.caso.employee_id === emp);
+    assert.ok(de(1).length > 0 && de(1).every((x) => x.modo === 'real'));
+    assert.ok(de(2).length > 0 && de(2).every((x) => x.modo === 'sombra'));
+    assert.equal(B.q("SELECT retardos.cfg_txt('modo')"), 'sombra', 'el piloto no toca el modo global');
+    config(B, 'piloto_habilitado', false);
+    lista = B.j('SELECT retardos.por_enviar(20)');
+    assert.ok(de(1).every((x) => x.modo === 'sombra'));
+  } finally { B.fin(); }
+});
+
+conPg('#386 destinatarios: CC RH + jefe; sin jefe CC dirección con leyenda y marca; jefe sin correo; dirección; sin repetidos', () => {
+  const B = base();
+  try {
+    correosAviso(B);
+    const emps = [EMP(1), EMP(2, { parent_id: null }), EMP(3, { parent_id: 901 }), EMP(4, { parent_id: 4 }),
+                  EMP(5, { email: 'rh1@example.com' }), SUP, EMP(901, { email: null, parent_id: null, hora_entrada: 8 })];
+    ingestar(B, [1, 2, 3, 4, 5].flatMap((e) => uno(e)), emps);
+    const env = (emp) => B.j("SELECT row_to_json(x) FROM (SELECT e.para, e.cc, e.cuerpo_html, k.jefe_estado FROM retardos.envio e JOIN retardos.caso k ON k.id = e.caso_id WHERE k.employee_id = " + emp + ") x");
+    let e = env(1);
+    assert.deepEqual(e.para, ['demo1@example.com']); assert.deepEqual(e.cc, ['rh1@example.com', 'rh2@example.com', 'supervisor@example.com']);
+    assert.equal(e.jefe_estado, 'ok'); assert.doesNotMatch(e.cuerpo_html, /Falta asignarle jefe/);
+    e = env(2);
+    assert.deepEqual(e.para, ['demo2@example.com']); assert.deepEqual(e.cc, ['rh1@example.com', 'rh2@example.com', 'direccion@example.com']);
+    assert.equal(e.jefe_estado, 'sin_jefe');
+    assert.ok(e.cuerpo_html.indexOf('Falta asignarle jefe en Odoo') >= 0 && e.cuerpo_html.indexOf('Falta asignarle jefe en Odoo') < 300, 'leyenda arriba');
+    assert.equal(B.q("SELECT count(*) FROM retardos.bitacora b JOIN retardos.caso k ON k.id = b.caso_id WHERE b.evento = 'sin_jefe' AND k.employee_id = 2"), '1');
+    e = env(3);
+    assert.equal(e.jefe_estado, 'jefe_sin_correo'); assert.deepEqual(e.cc, ['rh1@example.com', 'rh2@example.com', 'direccion@example.com']);
+    assert.match(e.cuerpo_html, /no tiene un correo utilizable/);
+    e = env(4);
+    assert.equal(e.jefe_estado, 'direccion'); assert.deepEqual(e.cc, ['rh1@example.com', 'rh2@example.com']);
+    assert.doesNotMatch(e.cuerpo_html, /Falta asignarle/);
+    e = env(5);
+    assert.deepEqual(e.para, ['rh1@example.com']); assert.deepEqual(e.cc, ['rh2@example.com', 'supervisor@example.com'], 'quien va en Para no se repite en CC');
+    // El panel marca el caso sin jefe.
+    const lista = panelS(B, { accion: 'listar' });
+    assert.equal(lista.casos.find((c) => c.employee_id === 2).jefe_estado, 'sin_jefe');
+    assert.equal(lista.casos.find((c) => c.employee_id === 1).pista, 'sombra');
+    assert.ok(lista.piloto && Array.isArray(lista.piloto.empleados));
+    // Carta compromiso: la copia a la persona también lleva CC a RH y jefe (antes iba sin CC).
+    ingestar(B, tres(6), [EMP(6), SUP]);
+    const t = envioDe(B, 'aviso_trabajador');
+    assert.deepEqual(t.para, ['demo6@example.com']); assert.deepEqual(t.cc, ['rh1@example.com', 'rh2@example.com', 'supervisor@example.com']);
+  } finally { B.fin(); }
+});
+
+conPg('#386 sin aviso_cc_rh configurado: la copia cae a RH (respaldo), nunca sin copia', () => {
+  const B = base();
+  try {
+    config(B, 'rh_destinatarios', ['rhrespaldo@example.com']);
+    ingestar(B, uno(1));
+    assert.deepEqual(envioDe(B, 'notificacion').cc, ['rhrespaldo@example.com', 'supervisor@example.com']);
+  } finally { B.fin(); }
+});
+
+conPg('#386 PPA aparte: 10 min tarde no es retardo; mover ppa_minutos no cambia el conteo; el aviso separa las dos reglas', () => {
+  const B = base();
+  try {
+    config(B, 'ppa_minutos', 12);
+    const r = ingestar(B, [chec(1, '2026-09-01', '07:10'), chec(1, '2026-09-02', '07:15:00'), chec(1, '2026-09-03', '07:15:01')]);
+    assert.equal(r.contados, 1, 'sólo 07:15:01 es retardo; 07:10 y 07:15:00 no, aunque pierdan PPA');
+    const h = envioDe(B, 'notificacion').cuerpo_html;
+    const iRet = h.indexOf('<b>Retardo.</b>'), iPpa = h.indexOf('Premio de puntualidad (PPA)');
+    assert.ok(iRet > 0 && iPpa > iRet, 'dos párrafos, retardo primero');
+    assert.match(h, /<b>15 minutos<\/b> de tolerancia/);
+    assert.match(h, /a más tardar <b>12 minutos<\/b>/);
+    assert.match(h, /lo revisa Nómina/);
+    assert.equal(B.q("SELECT estado_texto FROM retardos.plantilla WHERE clave = 'notificacion_aviso'"), 'pendiente_validacion_rh');
+  } finally { B.fin(); }
+});
+
+conPg('#386 jornada: la semana es real sólo si empieza después de la activación', () => {
+  const B = base();
+  try {
+    config(B, 'modo', 'real');
+    config(B, 'real_inicio', '2026-10-05T12:00:00Z');
+    assert.equal(B.q("SELECT retardos.pista_semana(1, '2026-10-02')"), 'sombra');
+    assert.equal(B.q("SELECT retardos.pista_semana(1, '2026-10-09')"), 'real');
+    config(B, 'modo', 'sombra');
+    assert.equal(B.q("SELECT retardos.pista_semana(1, '2026-10-09')"), 'sombra');
+  } finally { B.fin(); }
+});
+
+conPg('#386 simular_aviso: corre el código real y no deja rastro', () => {
+  const B = base();
+  try {
+    correosAviso(B);
+    ingestar(B, [chec(1, '2026-09-01', '06:50')]);
+    const antes = B.q("SELECT (SELECT count(*) FROM retardos.caso) || '/' || (SELECT count(*) FROM retardos.envio) || '/' || (SELECT count(*) FROM retardos.bitacora) || '/' || (SELECT parent_id FROM retardos.empleado WHERE employee_id = 1)");
+    B.q("INSERT INTO retardos.retardo (employee_id, fecha, attendance_id, hora_local, seg_local, hora_esperada, tolerancia_min, minutos_tarde, estado, periodo) VALUES (1, '2026-09-04', 5555, 7.5, 27000, 7, 15, 30, 'contado', '2026-09')");
+    const s = B.j("SELECT retardos.simular_aviso(" + lit({ employee_id: 1, periodo: '2026-09', sin_jefe: true }) + ")");
+    assert.equal(s.simulado, true);
+    assert.equal(s.caso.jefe_estado, 'sin_jefe'); assert.equal(s.caso.pista, 'real');
+    assert.equal(s.envios.length, 1);
+    assert.deepEqual(s.envios[0].cc, ['rh1@example.com', 'rh2@example.com', 'direccion@example.com']);
+    assert.match(s.envios[0].html, /Falta asignarle jefe en Odoo/);
+    assert.equal(s.retardos.length, 1);
+    B.q("DELETE FROM retardos.retardo WHERE attendance_id = 5555");
+    const despues = B.q("SELECT (SELECT count(*) FROM retardos.caso) || '/' || (SELECT count(*) FROM retardos.envio) || '/' || (SELECT count(*) FROM retardos.bitacora) || '/' || (SELECT parent_id FROM retardos.empleado WHERE employee_id = 1)");
+    assert.equal(despues, antes);
+  } finally { B.fin(); }
+});
+
