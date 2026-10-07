@@ -76,6 +76,9 @@ function ingestar(B, checadas, empleados, extra) {
 // retardos_0006: el modo con suspensión reemplaza a nivel_maximo_habilitado/suspensiones_habilitadas (0005).
 function habilitarTodo(B) { config(B, 'modo_sanciones', 'con_suspension'); }
 function config(B, clave, valor) { B.q("UPDATE retardos.config SET valor = " + lit(valor) + " WHERE clave = '" + clave + "'"); }
+// AJUSTE #386 B (7-oct-2026): desde retardos_0012 sólo la pista REAL vence, escala, genera recordatorios y alertas,
+// y el acta sólo se notifica con modo = real. Las pruebas de esos flujos corren en real, contando desde una fecha vieja.
+function enReal(B) { config(B, 'real_desde', '2000-01-01'); config(B, 'modo', 'real'); }
 function enviarTodo(B) {
   const lista = B.j('SELECT retardos.por_enviar(100)') || [];
   for (const e of lista) B.j('SELECT retardos.marcar_envio(' + lit({ id: e.id, ok: true, modo: e.modo, para_efectivo: e.para }) + ')');
@@ -347,6 +350,7 @@ conPg('doble envío e ingesta repetida: nada se duplica', () => {
 
 conPg('cron repetido: verificar dos veces el mismo día no duplica recordatorios; el segundo vencimiento escala', () => {
   const B = base();
+  enReal(B);   // AJUSTE #386 B
   try {
     ingestar(B, tres(1)); enviarTodo(B);
     B.q("UPDATE retardos.caso SET vence_at = now() - interval '1 hour'");
@@ -366,10 +370,12 @@ conPg('cron repetido: verificar dos veces el mismo día no duplica recordatorios
 
 conPg('suspensión: se verifica contra checadas y Nómina; si hubo checada, alerta', () => {
   const B = base();
+  enReal(B);   // AJUSTE #386 B
   try {
     B.q("UPDATE retardos.escalera SET umbral = 1 WHERE nivel = 4; UPDATE retardos.escalera SET activo = false WHERE nivel < 4");
     habilitarTodo(B); // retardos_0005: estas pruebas son del flujo CON suspensiones habilitadas
-    const folio = ingestar(B, [chec(1, '2026-09-01', '09:00')]).casos_nuevos[0];
+    ingestar(B, [chec(1, '2026-09-01', '09:00')]);   // AJUSTE #386 B: en pista real el folio no viene en casos_nuevos
+    const folio = B.q('SELECT folio FROM retardos.caso ORDER BY id DESC LIMIT 1');
     enviarTodo(B);
     B.j('SELECT retardos.panel(' + lit({ accion: 'registrar_negativa', folio, actor: 'rh', rol: 'editor', testigo1: 'Testigo A', testigo2: 'Testigo B' }) + ')');
     const p = B.j('SELECT retardos.panel(' + lit({ accion: 'programar_accion', folio, actor: 'rh', rol: 'editor', desde: '2026-09-07', dias: 2 }) + ')');
@@ -385,10 +391,12 @@ conPg('suspensión: se verifica contra checadas y Nómina; si hubo checada, aler
 
 conPg('suspensión aplicada: sin checadas y en Nómina → ACCION_VERIFICADA y CERRADO', () => {
   const B = base();
+  enReal(B);   // AJUSTE #386 B
   try {
     B.q("UPDATE retardos.escalera SET umbral = 1 WHERE nivel = 4; UPDATE retardos.escalera SET activo = false WHERE nivel < 4");
     habilitarTodo(B); // retardos_0005: estas pruebas son del flujo CON suspensiones habilitadas
-    const folio = ingestar(B, [chec(1, '2026-09-01', '09:00')]).casos_nuevos[0];
+    ingestar(B, [chec(1, '2026-09-01', '09:00')]);   // AJUSTE #386 B: en pista real el folio no viene en casos_nuevos
+    const folio = B.q('SELECT folio FROM retardos.caso ORDER BY id DESC LIMIT 1');
     enviarTodo(B);
     B.j('SELECT retardos.panel(' + lit({ accion: 'registrar_negativa', folio, actor: 'rh', rol: 'editor', testigo1: 'Testigo A', testigo2: 'Testigo B' }) + ')');
     B.j('SELECT retardos.panel(' + lit({ accion: 'programar_accion', folio, actor: 'rh', rol: 'editor', desde: '2026-09-07', dias: 2 }) + ')');
@@ -474,6 +482,7 @@ function diaPorDia(B, ch) {
 }
 conPg('modo sin suspensión (complemento S2): aviso, carta y acta se notifican; la suspensión queda RETENIDO sin correo', () => {
   const B = base();
+  enReal(B);   // AJUSTE #386 B
   try {
     const cfg = B.j("SELECT jsonb_build_object('v', valor, 'c', confirmado) FROM retardos.config WHERE clave = 'modo_sanciones'");
     assert.deepEqual(cfg, { v: 'sin_suspension', c: false });
@@ -777,6 +786,7 @@ conPg('hojas: PDF con 3 hojas de distintos folios, página anexa, duplicado idem
 
 conPg('plazos contra RH: vence → recordatorio a RH con copia al jefe; vence otra vez → Dirección', () => {
   const B = base();
+  enReal(B);   // AJUSTE #386 B
   try {
     config(B, 'rh_destinatarios', ['rh.demo@example.com']);
     ingestar(B, tres(1)); enviarTodo(B);
@@ -798,6 +808,7 @@ conPg('plazos contra RH: vence → recordatorio a RH con copia al jefe; vence ot
 
 conPg('alertas individuales: suspensión en dos meses, dos actas firmadas y reincidencia tras acta; nunca cambian el modo', () => {
   const B = base();
+  enReal(B);   // AJUSTE #386 B
   try {
     config(B, 'contar_desde', '2000-01-01');
     const emps = [EMP(1), EMP(2), EMP(3), SUP];
@@ -848,6 +859,7 @@ conPg('alertas individuales: suspensión en dos meses, dos actas firmadas y rein
 
 conPg('alertas globales: sin reducción contra la línea base de sombra y plantilla en acta, sólo después de 8 semanas en real', () => {
   const B = base();
+  enReal(B);   // AJUSTE #386 B
   try {
     config(B, 'contar_desde', '2000-01-01');
     const emps = [1, 2, 3, 4, 5].map((i) => EMP(i)).concat([SUP]);
@@ -1209,6 +1221,7 @@ conPg('jornada: fuera de la ventana el conteo vuelve a empezar', () => {
 
 conPg('jornada: 3er aviso firmado y confirmado por RH se cierra; con medidas habilitadas, el descuento se verifica contra Nómina', () => {
   const B = base();
+  enReal(B);   // AJUSTE #386 B
   try {
     config(B, 'jornada_desde', '2026-01-01');
     const corta = ['10:06', '10:06', '10:06', '10:06', '06:00'];
@@ -1301,12 +1314,13 @@ conPg('#386 go-live con una bandera: el trigger fija real_inicio; lo de sombra s
     // La bandera.
     config(B, 'modo', 'real');
     assert.notEqual(B.q("SELECT retardos.cfg_txt('real_inicio')"), '');
-    assert.equal(B.q("SELECT retardos.cfg_txt('real_desde') = retardos.hoy_local()::text"), 't');
+    // AJUSTE #386 B: el UPDATE de modo ya no mueve real_desde (fecha fija de retardos_0012).
+    assert.equal(B.q("SELECT retardos.cfg_txt('real_desde')"), '2026-10-12');
     assert.equal(B.q("SELECT count(*) FROM retardos.bitacora WHERE evento = 'paso_a_real'"), '1');
     // Lo pendiente del caso de sombra sale como sombra.
     assert.ok(B.j('SELECT retardos.por_enviar(20)').every((x) => x.modo === 'sombra'));
     // Pista real desde el 2-sep: sólo cuentan los retardos del 2 y 3 de sep → aviso (nivel 1), no carta.
-    config(B, 'real_inicio', '2026-09-02T00:00:00-06:00');
+    config(B, 'real_desde', '2026-09-02');   // AJUSTE #386 B: cuenta desde la fecha fija, no desde la activación
     const r = ingestar(B, tres(1));
     assert.equal(r.casos_pista_real.length, 1);
     const c = B.j("SELECT row_to_json(k) FROM retardos.caso k WHERE pista = 'real'");
@@ -1340,7 +1354,7 @@ conPg('#386 piloto: arranca con la marca del merge, sólo para la lista; el inte
     const fijo = B.q("SELECT retardos.cfg_txt('piloto_inicio')");
     B.j('SELECT retardos.por_enviar(5, ' + lit({ piloto_marca: true }) + ')');
     assert.equal(B.q("SELECT retardos.cfg_txt('piloto_inicio')"), fijo, 'queda fijado: no se mueve');
-    config(B, 'piloto_inicio', '2026-08-31T00:00:00-06:00');
+    config(B, 'piloto_desde', '2026-08-31');   // AJUSTE #386 B: el piloto cuenta desde su fecha fija
     ingestar(B, [...tres(1), ...tres(2)], [EMP(1), EMP(2), SUP]);
     assert.equal(B.q("SELECT string_agg(employee_id || ':' || pista || ':' || modo_al_abrir, ',' ORDER BY employee_id) FROM retardos.caso"),
       '1:real:piloto,2:sombra:sombra');
@@ -1416,11 +1430,11 @@ conPg('#386 PPA aparte: 10 min tarde no es retardo; mover ppa_minutos no cambia 
   } finally { B.fin(); }
 });
 
-conPg('#386 jornada: la semana es real sólo si empieza después de la activación', () => {
+conPg('#386 jornada: la semana es real sólo si empieza después de la fecha de inicio', () => {
   const B = base();
   try {
     config(B, 'modo', 'real');
-    config(B, 'real_inicio', '2026-10-05T12:00:00Z');
+    config(B, 'real_desde', '2026-10-05');   // AJUSTE #386 B: fecha fija, ya no el instante de activación
     assert.equal(B.q("SELECT retardos.pista_semana(1, '2026-10-02')"), 'sombra');
     assert.equal(B.q("SELECT retardos.pista_semana(1, '2026-10-09')"), 'real');
     config(B, 'modo', 'sombra');
@@ -1491,5 +1505,106 @@ conPg('#386 retardos_0011: la tabla del aviso dice min:seg, no minutos enteros',
     assert.match(html, /Tiempo tarde \(min:seg\)/);
     assert.match(html, />15:16</);
     assert.doesNotMatch(html, />15</);
+  } finally { B.fin(); }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// #386 B · retardos_0012: conteo desde cero con fechas fijas, acta hasta el go-live, casos de RH
+// ════════════════════════════════════════════════════════════════════════════
+conPg('#386 B conteo: fechas fijas a las 00:00; un retardo del mismo día anterior a la activación cuenta; lo previo no', () => {
+  const B = base();
+  try {
+    correosAviso(B);
+    config(B, 'piloto_employee_ids', [1]);
+    config(B, 'piloto_desde', '2026-09-02');
+    config(B, 'piloto_inicio', '2026-09-02T12:00:00-06:00');      // se habilitó al mediodía del 2-sep
+    ingestar(B, [...tres(1), ...tres(2)], [EMP(1), EMP(2), SUP]);   // 1, 2 y 3 de sep, todos tarde
+    const c1 = B.j("SELECT row_to_json(k) FROM retardos.caso k WHERE employee_id = 1 AND pista = 'real'");
+    assert.equal(c1.retardos_n, 2, 'el 2-sep 08:00 cuenta aunque el piloto se habilitó a las 12:00; el 1-sep no');
+    assert.equal(B.q("SELECT count(*) FROM retardos.caso WHERE employee_id = 2 AND pista = 'real'"), '0', 'el resto sigue en sombra');
+    // Go-live: modo real habilita; real_desde (fija) decide desde cuándo.
+    config(B, 'real_desde', '2026-09-03');
+    config(B, 'modo', 'real');
+    assert.equal(B.q("SELECT retardos.cfg_txt('real_desde')"), '2026-09-03', 'el UPDATE de modo no la mueve');
+    ingestar(B, tres(2), [EMP(1), EMP(2), SUP]);
+    assert.equal(B.q("SELECT retardos_n FROM retardos.caso WHERE employee_id = 2 AND pista = 'real'"), '1', 'sólo el 3-sep');
+    assert.equal(B.q("SELECT to_char(retardos.a_local(retardos.inicio_real(1)), 'YYYY-MM-DD HH24:MI') || '|' || to_char(retardos.a_local(retardos.inicio_real(2)), 'YYYY-MM-DD HH24:MI')"),
+      '2026-09-02 00:00|2026-09-03 00:00', 'el piloto conserva su fecha después del go-live');
+    // Reincidencia del panel: sólo pista real.
+    assert.equal(B.q("SELECT max(meses_con_casos) FROM retardos.v_reincidencia WHERE employee_id = 2"), '1');
+  } finally { B.fin(); }
+});
+
+conPg('#386 B sombra: los casos de sombra no vencen, no escalan, no generan recordatorios ni alertas de modo', () => {
+  const B = base();
+  try {
+    B.q("UPDATE retardos.escalera SET umbral = 1 WHERE nivel = 2; UPDATE retardos.escalera SET activo = false WHERE nivel <> 2");
+    ingestar(B, [chec(1, '2026-09-01', '09:00')]);
+    enviarTodo(B);
+    B.q("UPDATE retardos.caso SET vence_at = now() - interval '10 days'");
+    const antes = B.q("SELECT estado || '/' || (SELECT count(*) FROM retardos.envio) FROM retardos.caso");
+    const v = B.j('SELECT retardos.verificar()');
+    assert.equal(v.vencidos + v.escalados + v.recordatorios_rh, 0);
+    assert.equal(B.q("SELECT estado || '/' || (SELECT count(*) FROM retardos.envio) FROM retardos.caso"), antes);
+    // Suspensiones de sombra en dos meses: sin alerta de modo.
+    B.q("INSERT INTO retardos.caso (folio, employee_id, periodo, nivel, accion, motivo_apertura, estado, requiere_firma, retardos_n, modo_al_abrir, pista) VALUES ('RET-2026-9001', 1, '2026-08', 4, 'suspension', 'umbral', 'RETENIDO', true, 7, 'sombra', 'sombra'), ('RET-2026-9002', 1, '2026-09', 4, 'suspension', 'umbral', 'RETENIDO', true, 7, 'sombra', 'sombra')");
+    B.j('SELECT retardos.evaluar_alertas()');
+    assert.equal(B.q("SELECT count(*) FROM retardos.alerta_modo"), '0');
+  } finally { B.fin(); }
+});
+
+conPg('#386 B acta: retenida mientras modo no sea real, piloto incluido; con el go-live se notifica', () => {
+  const B = base();
+  try {
+    correosAviso(B);
+    B.q("UPDATE retardos.escalera SET umbral = 1 WHERE nivel = 3; UPDATE retardos.escalera SET activo = false WHERE nivel <> 3");
+    config(B, 'piloto_employee_ids', [1]);
+    config(B, 'piloto_desde', '2026-08-31');
+    config(B, 'piloto_inicio', '2026-08-31T00:00:00-06:00');
+    ingestar(B, uno(1), [EMP(1), EMP(2), SUP]);
+    const c = B.j("SELECT row_to_json(k) FROM retardos.caso k WHERE employee_id = 1 AND pista = 'real'");
+    assert.equal(c.accion, 'acta'); assert.equal(c.estado, 'RETENIDO');
+    assert.match(B.q("SELECT motivo FROM retardos.bitacora WHERE caso_id = " + c.id + " AND a = 'RETENIDO'"), /Acta alcanzada, retenida hasta el go-live/);
+    assert.equal(B.q("SELECT count(*) FROM retardos.envio WHERE caso_id = " + c.id), '0');
+    config(B, 'real_desde', '2026-08-31');
+    config(B, 'modo', 'real');
+    ingestar(B, uno(2), [EMP(1), EMP(2), SUP]);
+    const c2 = B.j("SELECT row_to_json(k) FROM retardos.caso k WHERE employee_id = 2 AND pista = 'real'");
+    assert.equal(c2.accion, 'acta'); assert.notEqual(c2.estado, 'RETENIDO');
+  } finally { B.fin(); }
+});
+
+conPg('#386 B casos de RH: sólo los resuelve quien está asignado y siempre con copia a Dirección', () => {
+  const B = base();
+  try {
+    correosAviso(B);
+    config(B, 'casos_rh', { 1: { atiende_empleado: 2 } });
+    config(B, 'escalamiento_cc', ['direccion@example.com']);
+    ingestar(B, uno(1), [EMP(1), EMP(2), SUP]);
+    const folio = B.q('SELECT folio FROM retardos.caso WHERE employee_id = 1');
+    // Los avisos de la persona de RH llevan CC a Dirección.
+    assert.ok(B.j('SELECT retardos.destinos_aviso(1)').cc.indexOf('direccion@example.com') >= 0);
+    // Sin usuario asignado: nadie lo resuelve.
+    let r = panelS(B, { accion: 'cancelar', folio, motivo: 'Prueba de casos de RH' });
+    assert.equal(r.error, 'CASO_RH_SIN_RESPONSABLE');
+    config(B, 'casos_rh_usuarios', { 2: 'atiende.demo' });
+    r = panelS(B, { accion: 'cancelar', folio, motivo: 'Prueba de casos de RH' });
+    assert.equal(r.error, 'CASO_RH_OTRO_RESPONSABLE');
+    // Sin correo para la copia: tampoco.
+    config(B, 'escalamiento_cc', []);
+    r = panelS(B, { accion: 'cancelar', folio, motivo: 'Prueba de casos de RH', actor: 'atiende.demo' });
+    assert.equal(r.error, 'COPIA_RH_FALTANTE');
+    config(B, 'casos_rh_cc', ['direccion@example.com']);
+    r = panelS(B, { accion: 'cancelar', folio, motivo: 'Prueba de casos de RH', actor: 'atiende.demo' });
+    assert.equal(r.ok, true);
+    const copia = B.j("SELECT row_to_json(e) FROM retardos.envio e WHERE clave_dedupe LIKE '%:copia_rh:%'");
+    assert.deepEqual(copia.para, ['direccion@example.com']);
+    // El panel lo marca y no expone el usuario.
+    const l = panelS(B, { accion: 'listar', incluir_cerrados: true });
+    const x = l.casos.find((k) => k.folio === folio);
+    assert.equal(x.caso_rh.atiende_empleado, 2); assert.equal(x.caso_rh.atiende_usuario, undefined);
+    assert.ok(l.conteo && l.conteo.piloto_desde === '2026-10-08' && l.conteo.real_desde === '2026-10-12');
+    // El sistema (verificar, lector) no queda bloqueado por la guardia.
+    assert.equal(B.q("SELECT retardos.actor_sistema('sistema') AND retardos.actor_sistema('correo:x@y.mx') AND NOT retardos.actor_sistema('rh.demo')"), 't');
   } finally { B.fin(); }
 });

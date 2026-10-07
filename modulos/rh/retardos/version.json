@@ -1,9 +1,15 @@
 {
-  "version": "V1.04",
+  "version": "V1.05",
   "fecha": "2026-10-07",
   "modulo": "rh/retardos",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Contador propio de este modulo.",
   "historial": [
+    {
+      "version": "V1.05",
+      "fecha": "2026-10-07",
+      "titulo": "Conteo desde cero y casos de RH (#386, decisiones del 7-oct)",
+      "nota": "Aviso arriba con la fecha desde la que cuenta cada pista (piloto 8-oct, resto 12-oct) y si el acta esta retenida hasta el paso a real. El detalle de cada caso muestra su fecha de conteo. Los casos de personas de RH llevan la marca caso de RH y un aviso con quien los atiende y la copia a Direccion; si otra persona intenta resolverlos, el servidor lo rechaza con un mensaje claro. Configuracion muestra piloto_desde, real_desde, acta_solo_en_real y casos_rh."
+    },
     {
       "version": "V1.04",
       "fecha": "2026-10-07",

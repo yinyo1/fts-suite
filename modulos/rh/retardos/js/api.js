@@ -131,7 +131,7 @@
     caso(P[6], 2, 'IMPUGNADO', 3, -5, 1),
     caso(P[7], 4, 'ACCION_PROGRAMADA', 7, -12, null, { accion_desde: fecha(3), accion_hasta: fecha(3) }),
     caso(P[0], 4, 'RETENIDO', 7, 0, null),
-    caso(P[4], 1, 'NOTIFICADO', 1, 0, null, { pista: 'real', modo_al_abrir: 'piloto', periodo: '2026-10' }),
+    caso(P[4], 1, 'NOTIFICADO', 1, 0, null, { pista: 'real', modo_al_abrir: 'piloto', periodo: '2026-10', conteo_desde: '08/10/2026', caso_rh: { atiende_empleado: 503, atiende_nombre: 'Irene Demo', copia: 'Dirección' } }),
     caso(P[6], 1, 'NOTIFICADO', 2, 0, null, { pista: 'real', modo_al_abrir: 'piloto', periodo: '2026-10', jefe_estado: 'sin_jefe', supervisor: null, leyenda_jefe: 'Falta asignarle jefe en Odoo' })
   ];
   CASOS.forEach(function (c) {
@@ -328,7 +328,7 @@
   })();
   function listaFila(c) {
     return { folio: c.folio, employee_id: c.employee_id, nombre: c.nombre, nivel: c.nivel, accion: c.accion, estado: c.estado, periodo: c.periodo,
-             retardos_n: c.retardos_n, abierto_at: c.abierto_at, vence_at: c.vence_at, ruta: c.ruta, modo_al_abrir: c.modo_al_abrir, tipo: c.tipo, pista: c.pista, jefe_estado: c.jefe_estado,
+             retardos_n: c.retardos_n, abierto_at: c.abierto_at, vence_at: c.vence_at, ruta: c.ruta, modo_al_abrir: c.modo_al_abrir, tipo: c.tipo, pista: c.pista, jefe_estado: c.jefe_estado, caso_rh: c.caso_rh || null,
              dias_abierto: c.dias_abierto, evidencias: c.evidencias.length };
   }
   function datosCaso(c) {
@@ -340,7 +340,8 @@
     var actor = 'rh.demo';
     try {
       if (d.accion === 'listar') {
-        return { ok: true, casos: CASOS.filter(function (c) { return d.incluir_cerrados || (c.estado !== 'CERRADO' && c.estado !== 'CANCELADO_POR_RH'); }).map(listaFila), salud: saludDemo(), piloto: { empleados: [505, 507], habilitado: true, inicio: iso(-0.5), modo: 'sombra', real_inicio: null } };
+        return { ok: true, casos: CASOS.filter(function (c) { return d.incluir_cerrados || (c.estado !== 'CERRADO' && c.estado !== 'CANCELADO_POR_RH'); }).map(listaFila), salud: saludDemo(), piloto: { empleados: [505, 507], habilitado: true, inicio: iso(-0.5), modo: 'sombra', real_inicio: null },
+                 conteo: { piloto_desde: '2026-10-08', real_desde: '2026-10-12', jornada_desde: '2026-10-09', piloto_habilitado: true, modo: 'sombra', acta_retenida: true } };
       }
       if (d.accion === 'config') return { ok: true, config: CONFIG, escalera: ESCALERA, escalera_jornada: ESCALERA_J, exclusiones: EXCL.filter(function (x) { return x.activo; }), festivos: FESTIVOS, plantillas: PLANTILLAS };
       if (d.accion === 'jornada') return jornadaDemo(d.semana);

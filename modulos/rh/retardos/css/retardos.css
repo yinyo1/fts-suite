@@ -78,6 +78,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .aviso.mal{background:var(--red-l);border-color:var(--red)}
 .aviso.bien{background:var(--green-l);border-color:var(--green)}
 .aviso.demo{background:var(--amber-l);border-color:var(--amber)}
+.aviso.info{background:var(--blue-l);border-color:var(--blue)}
 .aviso ul{margin:4px 0 0;padding-left:18px}
 
 /* ── Resumen por estado ── */
