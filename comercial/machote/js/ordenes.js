@@ -553,10 +553,11 @@
         d.className = 'aviso orl-nota';
         d.innerHTML = apagada
           ? '<strong>Hoy las órdenes se crean en Odoo, a mano.</strong> Crearlas desde la ' +
-            'suite está <b>apagado a propósito</b>: el webhook tardaba ~29 minutos y el ' +
-            'navegador cortaba a los 10 s, así que contestaba error y creaba la orden de ' +
-            'todos modos. Se enciende con los tres cambios de ' +
-            '<code>docs/comercial/POR-QUE-NO-SE-PODIA-CONFIRMAR.md</code>. ' +
+            'suite está <b>apagado a propósito</b>. Lo que lo apagó —el webhook tardaba ' +
+            '~29 minutos y el navegador corta a los 10 s, así que contestaba error y creaba ' +
+            'la orden de todos modos— <b>ya se arregló</b>: ahora tarda ~14 s. Sigue apagado ' +
+            'porque el ciclo sólo se ha recorrido desde el servidor, no desde esta pantalla, ' +
+            'y porque al confirmar todavía no sale el correo de handoff a Operaciones. ' +
             'Cuando la orden ya exista en Odoo, aparece en esta lista y se le liga su machote.'
           : '<strong>Se crea desde la cotización.</strong> Abre el machote y usa ' +
             '<b>Confirmar orden</b>: de ahí salen el cliente, los renglones y los ' +

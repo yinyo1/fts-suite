@@ -1,11 +1,17 @@
 {
-  "version": "V1.50",
-  "build": "V1.50",
-  "fecha": "2026-09-30",
+  "version": "V1.51",
+  "build": "V1.51",
+  "fecha": "2026-10-07",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.51",
+      "pr": null,
+      "fecha": "2026-10-07",
+      "nota": "EL CICLO COMPLETO SE RECORRIO DE PUNTA A PUNTA, Y CREAR LA ORDEN TARDA 14.4 s, NO 29 MINUTOS (#387 - Estacion 3). Se aplicaron y PUBLICARON las tres banderas executeOnce de comercial/orden-crear-v2 (versionId == activeVersionId == 51ea256e) y se recorrio machote -> orden -> confirmacion sobre el cliente de prueba 2260: crear la orden 14,405 ms contra los 28 min 46 s medidos el 29-sep (ejecuciones 119858 y 119865). Nacieron la orden SO11910 en estado sale, la cuenta analitica 3136, el proyecto 2387, el presupuesto 436 con sus DOS EJES EN LA MISMA LINEA -account_id del plan 1 mas x_plan20_id del rubro, que es justo lo que la captura separada rompia- y la junta de arranque 4720. Todo leido de vuelta de Odoo, no del success del endpoint. || LA LLAVE DE LA COMPUERTA, APLICADA Y PUBLICADA. comercial/confirmar ya devuelve en modo evaluar el bloque confirmacion del machote -po, iva, anticipo, contacto-, que es lo que le faltaba al candado para poder revisar una cotizacion que NO esta en este navegador. Se hizo con un nodo NUEVO despues de Code - Compuerta 2 y no editando ese nodo: son 296 lineas y por MCP hay que reescribirlo entero, que es lo que CLAUDE.md 17 #2 dice que no se hace sobre un activo. Probado con una fila que SI sale, no con un null. || UNA CONFIRMACION QUE FALLA A LA MITAD NO DEJA NADA COLGANDO, y se provoco: SO11890 tenia dos renglones sin product_id -el defecto de la v1- asi que el paso 6 revento con el mensaje de Odoo. Se quedo en el paso 5 de 7, la orden SIGUE EN BORRADOR, y la analitica 3137, el proyecto 2388 y el presupuesto 437 quedaron guardados para que el reintento los REUSE: un solo proyecto por orden, verificado en Odoo. || LOS DOS INTERRUPTORES SIGUEN APAGADOS, y lo que se corrigio es el MOTIVO ESCRITO en ellos: cuatro pantallas decian que el webhook tarda ~29 minutos y ya no es cierto. Un numero medido que se queda en presente envejece hacia la verdad. Ahora dicen lo que de verdad falta: recorrer el ciclo desde el NAVEGADOR -lo de hoy se midio desde el servidor, y dos mitades probadas por separado no son un ciclo probado- y que al confirmar salga el correo de handoff, que hoy NO sale. || EL ABANICO ERAN ~4,327 LLAMADAS, NO ~47,000: el calculo usaba 178 impuestos y el nodo de produccion filtra type_tax_use=sale + active + company_id in [1,6], que devuelve 16."
+    },
     {
       "version": "V1.50",
       "pr": null,

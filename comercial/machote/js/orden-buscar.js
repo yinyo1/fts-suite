@@ -151,10 +151,11 @@
       '«sin orden». Búscala por número antes de darla por inexistente.</p>' +
       '<p><strong>Si de verdad no existe:</strong> se crea en Odoo, como se han creado ' +
       'todas hasta hoy, y se vuelve aquí a ligarla. Emitirla desde esta pantalla está ' +
-      'apagado a propósito y no es un permiso que te falte: ' +
-      '<code>comercial/orden-crear-v2</code> tarda ~29 minutos en contestar y el ' +
-      'navegador corta a los 10 s, así que se ve un error y la orden se crea de todas ' +
-      'formas. Encenderlo sin arreglar eso produce órdenes duplicadas.</p>' +
+      'apagado a propósito y no es un permiso que te falte. El motivo original —que ' +
+      '<code>comercial/orden-crear-v2</code> tardara ~29 minutos y el navegador cortara ' +
+      'a los 10 s, así que se veía un error y la orden se creaba igual— <strong>ya se ' +
+      'arregló</strong>: ahora tarda ~14 s. Sigue apagado hasta recorrer el ciclo desde ' +
+      'el navegador y hasta que al confirmar salga el correo de handoff.</p>' +
       '</details>';
   }
 

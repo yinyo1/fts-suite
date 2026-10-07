@@ -39,7 +39,7 @@ Odoo - getAll terminos de pago  → corre 96 veces    → × 44 = 4,224 items
 Odoo - getAll incoterms         → corre 4,224 veces → × 11 = 46,464 items
 ```
 
-O sea **~4,300 idas y vueltas a Odoo por cada intento de crear una orden**, y
+O sea **~4,327 idas y vueltas (1 + 6 + 96 + 4,224) a Odoo por cada intento de crear una orden**, y
 **46,464 items** en memoria de un proceso de 8 GB que además sirve el kiosko
 (§20 #14).
 

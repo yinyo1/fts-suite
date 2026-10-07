@@ -1403,30 +1403,45 @@
    * consola, queda otra pantalla que llame a la misma función, y queda el
    * siguiente que escriba un camino nuevo sin enterarse. La puerta no.
    *
-   * POR QUÉ, y es medido, no supuesto (29-sep-2026, #294):
-   * `comercial/orden-crear-v2` tarda ~29 minutos en contestar —tres lecturas
-   * de Odoo sin `executeOnce`, que se repiten una vez por renglón—. El
-   * navegador corta a los 10 s y enseña un error, pero la orden SÍ se crea:
+   * POR QUÉ NACIERON APAGADAS, y era medido (29-sep-2026, #294):
+   * `comercial/orden-crear-v2` tardaba ~29 minutos en contestar —tres lecturas
+   * de Odoo sin `executeOnce`, que se repetían una vez por renglón—. El
+   * navegador corta a los 10 s y enseñaba un error, pero la orden SÍ se creaba:
    * las corridas 119858 y 119865 terminaron en `success` a los 28 min 41 s y
-   * 28 min 46 s, con SO11905 y SO11906 detrás. Quien ve el error asume que no
-   * pasó nada y vuelve a picarle; la reserva que impide el duplicado dura 2
-   * minutos y la corrida tarda 29, así que el segundo clic encuentra la
-   * reserva caducada. (Eso último es resta de dos números medidos y NO se
-   * ejerció: probarlo cuesta una orden de más.)
+   * 28 min 46 s. Quien ve el error asume que no pasó nada y vuelve a picarle;
+   * la reserva que impide el duplicado dura 2 minutos y la corrida tardaba 29,
+   * así que el segundo clic encontraba la reserva caducada. (Eso último es
+   * resta de dos números medidos y NO se ejerció: cuesta una orden de más.)
    *
-   * QUÉ TIENE QUE PASAR PARA ENCENDERLAS: los tres cambios de
-   * `docs/comercial/POR-QUE-NO-SE-PODIA-CONFIRMAR.md` §Resumen. Son de
-   * workflows ACTIVOS, así que los aplica Esteban, no esta rama. */
+   * ── ESO YA SE ARREGLÓ (7-oct-2026, #387) ──
+   * Las tres banderas `executeOnce` están aplicadas y PUBLICADAS, y el ciclo
+   * se recorrió completo sobre cliente de prueba: crear la orden tardó
+   * **14.4 s** (ejecución 132266, SO11910), no 29 minutos. O sea que el motivo
+   * que escribió este apagado ya no existe, y el número de arriba es historia,
+   * no estado. Se deja escrito en pasado a propósito: un número medido que se
+   * queda en presente envejece hacia la verdad y alguien lo cita (§20 #19).
+   *
+   * QUÉ FALTA PARA ENCENDERLAS, que no es el tiempo:
+   *   1. Recorrer el ciclo DESDE EL NAVEGADOR. Lo de arriba se midió por el
+   *      servidor, llamando a los webhooks; el pegamento del navegador —la
+   *      sesión, el corte a los 10 s, lo que pinta la pantalla— NO se ejerció.
+   *      Dos mitades probadas por separado no son un ciclo probado (§20 #21).
+   *   2. Que al confirmar salga el correo de handoff. Hoy NO sale: lo manda el
+   *      radar, y el paso 5 esconde la orden del radar antes de confirmar, a
+   *      propósito. Confirmar desde la suite deja a Operaciones sin aviso.
+   *   3. La decisión de Esteban, que es de negocio y no de código.
+   * Detalle y crudos en el #387. */
   var EMITIR_ENCENDIDO = false;      // ← el interruptor. Una linea.
   var CONFIRMAR_ENCENDIDO = false;   // ← el otro.
   var EMISION_APAGADA = {
     ok: false,
     error: 'EMISION_APAGADA',
-    mensaje: 'Crear la orden en Odoo está apagado a propósito. El webhook tarda ~29 ' +
-             'minutos y el navegador corta a los 10 s: contestaba error y creaba la orden ' +
-             'de todos modos, y un segundo clic creaba una segunda. Se enciende cuando se ' +
-             'apliquen los tres cambios de POR-QUE-NO-SE-PODIA-CONFIRMAR.md. ' +
-             'Mientras tanto, las órdenes se crean a mano en Odoo.'
+    mensaje: 'Crear la orden en Odoo está apagado a propósito. Lo que lo apagó —que el ' +
+             'webhook tardara ~29 minutos y el navegador cortara a los 10 s— ya se ' +
+             'arregló: ahora tarda ~14 s. Sigue apagado porque el ciclo sólo se ha ' +
+             'recorrido desde el servidor, no desde esta pantalla, y porque al confirmar ' +
+             'todavía no sale el correo de handoff a Operaciones. Mientras tanto, las ' +
+             'órdenes se crean a mano en Odoo. El detalle está en el issue #387.'
   };
   var CONFIRMACION_APAGADA = {
     ok: false,

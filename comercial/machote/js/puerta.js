@@ -168,13 +168,16 @@
     var s = o.servidor;
     if (!s) {
       duras.push({ id: 'sin-revisar', fuente: 'servidor',
-        que: 'Todavía no se ha revisado contra Odoo',
+        /* Sin «contra Odoo»: la pastilla de la fuente, tres líneas abajo en
+          * `linea()`, ya lo pone. Decía «Todavía no se ha revisado contra Odoo
+          * contra Odoo» y la frase la destapó una captura, no el diff. */
+        que: 'Todavía no se ha revisado',
         porque: 'Lo que esta pantalla ve es la captura; lo que se va a escribir se ' +
                 'compara contra la orden real. Sin esa comparación no se confirma.',
         donde: 'Se pide sola al abrir este cuadro.' });
     } else if (s.ok !== true) {
       duras.push({ id: 'servidor-no', fuente: 'servidor',
-        que: 'No se pudo revisar contra Odoo',
+        que: 'No se pudo revisar',
         porque: (s.mensaje || 'El servidor no contestó lo que se esperaba.') +
                 ' No poder revisar no es lo mismo que estar bien.',
         donde: 'Vuelve a intentarlo; si sigue, avísale a Esteban.' });
@@ -337,7 +340,11 @@
     var h = '<div class="pu-final aviso warn"><strong>Paso 3 · Confirmar en Odoo — APAGADO</strong>' +
             '<p class="tiny">' + motivo + '</p>';
     if (F && F.FINAL && F.FINAL.condiciones) {
-      h += '<p class="tiny">Se enciende cuando estén los tres cambios de ' +
+      /* NO dice cuántas son: decía «los tres cambios» y el 7-oct pasaron a
+        * cinco, con dos ya hechas. Un número escrito a mano al lado de una
+        * lista que crece se contradice solo — y lo cazó una captura (§20 #20),
+        * porque leyendo el arreglo de condiciones nadie mira el encabezado. */
+      h += '<p class="tiny">Lo que falta, y lo que ya está, de ' +
            '<code>' + F.FINAL.donde + '</code>:</p><ul class="tiny">';
       F.FINAL.condiciones.forEach(function (c) { h += '<li>' + c + '</li>'; });
       h += '</ul>';
