@@ -46,6 +46,25 @@ lo único que garantiza que la base se pueda recrear.
 5. **Sin contraseñas.** Este repo es público. Los roles nacen `NOLOGIN` y sin contraseña;
    un humano les pone una después, fuera de git.
 
+## El esquema `retardos` (#334) tiene numeración y runner propios
+
+`db/migrations/retardos/retardos_NNNN_*.sql` se numera **por módulo** (`retardos_0001`,
+`retardos_0002`…) y la aplica su propio runner, **`retardos/db-migrate`** (id
+`7u2IPDSuX5x40TGY`, inactivo, a mano), con el mismo contrato que el de abajo: SHA fijo,
+`sha256`, una migración por corrida, orden exigido, read-back. El prefijo del nombre evita
+la ambigüedad que la numeración global resuelve en los demás: `schema_migrations.version`
+queda `retardos_0004`, que no choca con `004`. Su código vive en `retardos/n8n/`.
+
+Dos reglas más, medidas al construirlo (detalle en `docs/retardos/BLINDAJE.md` §6):
+
+7. **Nada de `{{` en un `.sql`.** El nodo Postgres evalúa las llaves dobles como expresión
+   de n8n aunque vengan dentro del texto. Las plantillas de correo usan `[[campo]]`.
+8. **Nada de `$` seguido de `'`, `&`, `` ` `` o un dígito.** El texto llega al nodo por un
+   `String.replace` y esas parejas se sustituyen en silencio: un `CHECK (x ~ '...{4}$')`
+   llegó mutilado a la base. Las expresiones regulares van sin ancla de fin
+   (`char_length` + clases negadas). El runner de retardos rechaza `{{` y `$$`, y el
+   simulador vigila las dos cosas.
+
 ## Cómo se aplican
 
 Por el workflow n8n **`comercial/db-migrate`** (id `4hyzXjkr31h8DPPS`), que lee los `.sql`

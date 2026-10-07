@@ -1,0 +1,44 @@
+{
+  "version": "V1.05",
+  "fecha": "2026-10-07",
+  "modulo": "rh/retardos",
+  "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Contador propio de este modulo.",
+  "historial": [
+    {
+      "version": "V1.05",
+      "fecha": "2026-10-07",
+      "titulo": "Conteo desde cero y casos de RH (#386, decisiones del 7-oct)",
+      "nota": "Aviso arriba con la fecha desde la que cuenta cada pista (piloto 8-oct, resto 12-oct) y si el acta esta retenida hasta el paso a real. El detalle de cada caso muestra su fecha de conteo. Los casos de personas de RH llevan la marca caso de RH y un aviso con quien los atiende y la copia a Direccion; si otra persona intenta resolverlos, el servidor lo rechaza con un mensaje claro. Configuracion muestra piloto_desde, real_desde, acta_solo_en_real y casos_rh."
+    },
+    {
+      "version": "V1.04",
+      "fecha": "2026-10-07",
+      "titulo": "Modo piloto, jefe faltante y PPA aparte (#386)",
+      "nota": "Aviso arriba con el estado del piloto (listo, activo desde, apagado) o del modo real. Cada caso dice si va en pista real (piloto) o en sombra. Bandeja nueva Falta jefe en Odoo: casos de personas sin jefe directo o con jefe sin correo, con la leyenda arriba del detalle y la instruccion de asignarlo en Odoo. El detalle explica que el premio de puntualidad es otra regla (5 minutos, lo calcula Nomina). Configuracion muestra piloto, copias de cada aviso, leyenda y minutos de PPA."
+    },
+    {
+      "version": "V1.03",
+      "fecha": "2026-09-28",
+      "titulo": "Reglas definitivas: tolerancia 15 minutos y jornada semanal FTS (#334, reglas R3)",
+      "nota": "Tolerancia de 15 minutos al segundo, lunes a viernes, hora del centro. Pestana Jornada semanal: semaforo por persona, horas efectivas de viernes a jueves con desglose por dia (sabado y domingo suman horas y nunca son retardo) y bandeja Jornada por revisar (entrada sin salida, asistencias de mas de 16 horas, incidencias abiertas): ahi no sale aviso hasta que RH confirma, corrige o marca que no aplica. Pestana Propuestas de medida del tercer aviso, que quedan retenidas. Configuracion muestra las reglas de jornada, los avisos, los dias feriados (agregar y quitar) y el estado de cada texto de correo (pendiente de RH)."
+    },
+    {
+      "version": "V1.02",
+      "fecha": "2026-09-28",
+      "titulo": "RH recolecta firmas, hojas por confirmar y reincidencia (#334, complemento S2)",
+      "nota": "Firmas por recolectar ordenadas por fecha limite, con boton para imprimir la hoja (la misma que genera el correo). Hojas por confirmar: la hoja junto a la sugerencia del lector, con confirmar firmada, negativa, impugnacion, corregir folio, pedir de nuevo o descartar; carga de varias hojas a la vez. Calidad de datos muestra correo de empresa, personal, cual se usa y por que. Reincidencia acumulada con semaforo y alertas de cambio de modo (cambiar, posponer o descartar con motivo; el modo nunca cambia solo). Nivel de suspension se muestra como no aplicado."
+    },
+    {
+      "version": "V1.01",
+      "fecha": "2026-09-28",
+      "titulo": "Calidad de datos, arranque suave y dias que no cuentan corregido (#334, sesion 2)",
+      "nota": "Pestana Calidad de datos: por persona, hora de ficha y de calendario, mediana y percentil 25 de su primera checada de 90 dias, porcentaje de dias tarde con su hora, hora sugerida (solo referencia) y banderas; RH marca revisado con nota y queda en la bitacora. Casos RETENIDO (nivel alcanzado, no notificado) con su propia tarjeta. El formulario de dias que no cuentan pedia 'todos' y 'festivo', que la base no acepta (employee_id obligatorio y sin tipo festivo): ahora pide el numero de empleado y usa los tipos de la base. Los avisos ya no se enciman."
+    },
+    {
+      "version": "V1.00",
+      "fecha": "2026-09-28",
+      "titulo": "Primera version del panel de Retardos v2 (#334)",
+      "nota": "Casos por estado, detalle con la hoja firmada, validar o pedir otra vez, negativa con dos testigos, impugnacion, suspension de 1 a 8 dias y dias que no cuentan. Habla con el webhook retardos/panel firmado con el token del Suite + HMAC + nonce (#123). Modo de practica con datos inventados."
+    }
+  ]
+}
