@@ -178,32 +178,47 @@ function asserts() {
     t('v1.03 · hay grupos con dos monedas (si no, la prueba de abajo no prueba nada)',
       mixtas.length > 0, mixtas.length + ' etapas mezclan monedas');
     const malSub = [];
+    /* v1.15 (#388) · se prueban DOS columnas, y a proposito una de cada clase.
+       Desde F2 la inclusion en el subtotal se decide POR COLUMNA: `costo_real` se
+       mide en las lineas analiticas, asi que un proyecto sin presupuesto SI cuenta;
+       `costo_pres` sale del presupuesto, asi que no puede contar. Antes de 1.15 la
+       prueba solo miraba `costo_real` con el filtro de presupuesto puesto, o sea
+       exigia la regla vieja — y por eso fue lo unico que se puso rojo al cambiarla.
+       Probando las dos, el gate cubre los dos sentidos del error: esconder dinero
+       medido, e inventar una linea base que no existe. */
+    const COLS_SUB = [
+      { id: 'costo_real', todas: true },    // de las lineas analiticas: cuentan todos
+      { id: 'costo_pres', todas: false }    // del presupuesto: solo quien lo tiene
+    ];
     cat.forEach(e => {
       const el = Array.prototype.filter.call(D.querySelectorAll('#tabla tbody tr.grupo'),
         x => x.getAttribute('data-grupo') === e.nombre)[0];
       if (!el) return;
+      COLS_SUB.forEach(col => {
       /* Por `data-col`, no por posición: el colspan de la etiqueta corrió los
          índices, y una prueba que cuenta celdas se rompe sola. */
-      const td = el.querySelector('[data-col="costo_real"]');
-      if (!td) { malSub.push(e.nombre + ': no hay celda data-col="costo_real"'); return; }
-      const fs = sobre.datos.filas.filter(f => f.etapa === e.nombre && f.estado_dato !== 'sin_presupuesto');
+      const td = el.querySelector('[data-col="' + col.id + '"]');
+      if (!td) { malSub.push(e.nombre + ': no hay celda data-col="' + col.id + '"'); return; }
+      const fs = sobre.datos.filas.filter(f => f.etapa === e.nombre &&
+        (col.todas || f.estado_dato !== 'sin_presupuesto'));
       const por = {};
-      fs.forEach(f => { if (typeof f.costo_real === 'number') por[f.moneda] = (por[f.moneda] || 0) + f.costo_real; });
+      fs.forEach(f => { if (typeof f[col.id] === 'number') por[f.moneda] = (por[f.moneda] || 0) + f[col.id]; });
       const monedas = Object.keys(por).sort();
       if (!monedas.length) {
-        if (!/—/.test(td.textContent)) malSub.push(e.nombre + ': esperaba raya, dice "' + td.textContent + '"');
+        if (!/—/.test(td.textContent)) malSub.push(e.nombre + '/' + col.id + ': esperaba raya, dice "' + td.textContent + '"');
         return;
       }
       /* Una cifra por moneda, con el signo de SU moneda: US$ sólo para USD. */
       if (monedas.length !== (td.textContent.match(/\$/g) || []).length)
-        malSub.push(e.nombre + ': ' + monedas.length + ' monedas y ' + (td.textContent.match(/\$/g) || []).length + ' cifras');
+        malSub.push(e.nombre + '/' + col.id + ': ' + monedas.length + ' monedas y ' + (td.textContent.match(/\$/g) || []).length + ' cifras');
       monedas.forEach(m => {
         const esperada = W.Panel.dinero(por[m], m);
         if (td.textContent.indexOf(esperada.replace(/<[^>]+>/g, '')) < 0)
-          malSub.push(e.nombre + '/' + m + ': esperaba ' + esperada + ', dice "' + td.textContent + '"');
+          malSub.push(e.nombre + '/' + col.id + '/' + m + ': esperaba ' + esperada + ', dice "' + td.textContent + '"');
       });
       if (monedas.indexOf('USD') < 0 && /US\$/.test(td.textContent))
-        malSub.push(e.nombre + ': dice US$ sin tener dólares');
+        malSub.push(e.nombre + '/' + col.id + ': dice US$ sin tener dólares');
+      });
     });
     t('v1.03 · el subtotal de cada grupo es la suma de SUS proyectos, partida por moneda',
       malSub.length === 0, malSub.slice(0, 4).join(' | '));
@@ -318,6 +333,63 @@ function asserts() {
       m.n_lineas_subsidio_unicas <= (m.n_lineas_cross_company + m.n_lineas_empresa_ajena) &&
       m.n_lineas_subsidio_unicas >= Math.max(m.n_lineas_cross_company, m.n_lineas_empresa_ajena),
       m.n_lineas_cross_company + ' + ' + m.n_lineas_empresa_ajena + ' → ' + m.n_lineas_subsidio_unicas + ' únicas');
+  }
+
+  /* ── v1.15 (#388) · F2 y F3 en pantalla ────────────────────────────────
+   * Las tres cosas que tienen que cumplirse para que las cifras sean creíbles,
+   * y que ninguna otra prueba cubre:
+   *   1. la raya se corrió: un proyecto SIN presupuesto ya muestra su costo
+   *      real (es un dato medido) pero sigue con raya en lo que sale del
+   *      presupuesto. Las dos mitades, porque arreglar una y romper la otra es
+   *      exactamente el error de ida y vuelta de #388.
+   *   2. CERO_NO_ES_DATO: ninguna fila marcada `sin_gasto_atribuido` se queda
+   *      callada. Un 0 en el costo con 85,000 de costo presupuestado al lado es
+   *      el modo de fallo que abrió el issue, y la alerta es lo único que lo
+   *      dice en la fila.
+   *   3. la tercera tira existe y trae sus tres cifras. */
+  if (sobre.datos.resumen && typeof sobre.datos.resumen.sin_gasto_atribuido === 'number') {
+    const filas104 = sobre.datos.filas;
+    const trs = Array.prototype.slice.call(D.querySelectorAll('#tabla tbody tr:not(.grupo)'));
+    /* El índice de columna sale del propio contrato, no de contar celdas a mano:
+       las filas de datos pintan un <td> por columna en orden, así que el orden
+       declarado por el servidor ES el orden de la pantalla. */
+    const COLS = sobre.datos.columnas || [];
+    const celdaDe = (tr, colId) => {
+      const i = COLS.findIndex(c => c.id === colId);
+      return i < 0 ? null : tr.children[i];
+    };
+    /* 1a · sin presupuesto PERO con costo real medido: la celda trae número */
+    const sinPresConCosto = filas104.filter(f => f.estado_dato === 'sin_presupuesto' && typeof f.costo_real === 'number' && f.costo_real > 1);
+    t('v1.15 · hay filas sin presupuesto con costo real (si no, lo de abajo no prueba nada)',
+      sinPresConCosto.length > 0, sinPresConCosto.length + ' filas');
+    let rayaIndebida = 0, faltaRaya = 0, sinAlerta = 0;
+    trs.forEach(tr => {
+      const id = Number((tr.querySelector('.proj') || {}).getAttribute && tr.querySelector('.proj').getAttribute('data-id'));
+      const f = filas104.find(x => x.id === id);
+      if (!f) return;
+      const cReal = celdaDe(tr, 'costo_real'), cAch = celdaDe(tr, 'costo_achieved');
+      /* 1a: lo medido NO puede salir con raya */
+      if (cReal && typeof f.costo_real === 'number' && f.costo_real > 1 && /—/.test(cReal.textContent)) rayaIndebida++;
+      /* 1b: lo que sale del presupuesto SÍ tiene que salir con raya sin él */
+      if (cAch && f.estado_dato === 'sin_presupuesto' && !/—/.test(cAch.textContent)) faltaRaya++;
+      /* 2: nunca un cero mudo */
+      if (f.sin_gasto_atribuido === true && !(f.alertas || []).length) sinAlerta++;
+      if (f.sin_gasto_atribuido === true && !tr.querySelector('.al')) sinAlerta++;
+    });
+    t('v1.15 · F2 · un costo real medido nunca sale con raya, ni sin presupuesto',
+      rayaIndebida === 0, rayaIndebida + ' celdas con raya sobre un número');
+    t('v1.15 · F2 · lo que sale del presupuesto sigue con raya sin presupuesto',
+      faltaRaya === 0, faltaRaya + ' celdas de costo_achieved con número sin linea base');
+    t('v1.15 · F3 · CERO_NO_ES_DATO: ninguna fila sin gasto atribuido se queda callada',
+      sinAlerta === 0, sinAlerta + ' filas marcadas sin alerta visible');
+    /* 3 · la tercera tira */
+    const k3 = D.getElementById('kpis3');
+    const tarjetas3 = k3 ? k3.querySelectorAll('.kpi, [class*="kpi"]').length : 0;
+    t('v1.15 · F3 · la tercera tira de tarjetas existe y trae sus tres cifras',
+      !!k3 && tarjetas3 >= 3, 'tarjetas: ' + tarjetas3);
+    t('v1.15 · F3 · la tira dice el % de gasto sin rubro y su monto',
+      !!k3 && /%/.test(k3.textContent) && /\$/.test(k3.textContent),
+      k3 ? k3.textContent.replace(/\s+/g, ' ').slice(0, 120) : 'sin #kpis3');
   }
 
   t('cero errores de consola', errores.length === 0, errores.slice(0, 3).join(' | '));

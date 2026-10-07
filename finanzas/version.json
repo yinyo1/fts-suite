@@ -1,9 +1,14 @@
 {
-  "version": "V1.14",
-  "fecha": "2026-10-02",
+  "version": "V1.15",
+  "fecha": "2026-10-07",
   "modulo": "finanzas",
   "esquema": "V<mayor>.<menor de dos dígitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.15",
+      "pr": null,
+      "nota": "Rentabilidad (#388): CIFRAS CONFIABLES. Tres cambios al motor fin/rentabilidad-motor, los tres medidos contra Odoo. F1 — 'Odoo - getAll budget lines' ahora filtra budget_analytic_state en [confirmed, done]: habia presupuestos CANCELADOS y en BORRADOR sumando como vigentes, y por eso un proyecto mostraba su ingreso SEIS veces (6 copias del mismo presupuesto). F2 — `ingreso_real` y `costo_real` ya NO salen de `achieved_amount` del presupuesto: se suman DIRECTO de account.analytic.line por la cuenta analitica del proyecto, sin exigir rubro del plan 20 ni que la fecha caiga en la ventana del presupuesto. Ese era el bug de fondo: `achieved_amount` solo cuenta una linea cuando coinciden LAS TRES cosas, falla una y el gasto esta posteado, pagado y conciliado mientras la pantalla marca 0 — 45 de 225 proyectos. Nodo nuevo `Odoo - getAll lineas reales` (categorias `invoice` + `vendor_bill` unicamente: `other` son movimientos de banco e IVA y contarlos duplicaria cada factura con su pago). La suma respeta la moneda, nunca cruza MXN con USD. Las cifras del presupuesto se CONSERVAN como campos aditivos `ingreso_achieved` / `costo_achieved`, que contestan la otra pregunta: cuanto consumi de lo apartado. Contrato a 1.04. F3 — `gasto_fuera_presupuesto` por proyecto (real menos lo que el presupuesto reconoce) con su `fuera_desglose` de cuatro causas nombradas (sin_rubro / rubro_sin_renglon / fuera_de_ventana / no_explicado), nodo nuevo `Code - F3 cero no es dato` que marca y lista los proyectos con costo presupuestado y CERO gasto colgado de su cuenta (su margen sale al 100% y es mentira), y tercera tira de tarjetas con el indicador global que hay que ver bajar: 78.4% del gasto de proyecto se captura SIN rubro del plan 20. Endpoint fin/rentabilidad: la raya de 'sin presupuesto' se corrio del real a los *_achieved — sin cambios de seguridad, el token y el scope no se tocan. Armazon shared/panel/panel-tabla.js: `enSubtotal` ahora se pregunta POR COLUMNA, porque dejar fuera del subtotal una celda que SI muestra un numero rompe lo unico que una tabla de dinero tiene que cumplir. Gate de contrato a 178 verificaciones duras (10 nuevas de 1.04, probadas con tres sabotajes) y la comparacion con el golden se hace contra `achieved_*`, que es el campo que heredo la vieja definicion. Odoo SOLO LECTURA: no se edito ni un presupuesto, ni un rubro, ni una cuenta."
+    },
     {
       "version": "V1.14",
       "pr": null,
