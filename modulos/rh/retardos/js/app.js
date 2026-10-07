@@ -81,7 +81,9 @@
       CASO_RH_OTRO_RESPONSABLE: 'Es un caso de una persona de RH: sólo lo resuelve quien tiene asignado.', CASO_RH_SIN_RESPONSABLE: 'Es un caso de una persona de RH y todavía no hay responsable asignado. Avisa a Dirección.',
       COPIA_RH_FALTANTE: 'Es un caso de una persona de RH y no hay correo de Dirección para la copia. Avisa a sistemas.', MEDIDA_INEXISTENTE: 'Esa propuesta ya no existe. Recarga.', MEDIDA_YA_DECIDIDA: 'Esa propuesta ya se decidió. Recarga.'
     };
-    return M[r.error] || ('El servidor no aceptó la acción (' + esc(r.error || 'sin código') + ').');
+    // panel_seguro corta el código en el primer espacio, y algunos RAISE traen dos puntos pegados (MOTIVO_OBLIGATORIO:).
+    var cod = String(r.error || '').replace(/:+$/, '');
+    return M[cod] || ('El servidor no aceptó la acción (' + esc(cod || 'sin código') + ').');
   }
 
   async function pedir(datos) {
