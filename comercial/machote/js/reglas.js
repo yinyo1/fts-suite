@@ -571,6 +571,13 @@
        *
        * Ahora exige una DECISIÓN por cada concepto: un importe, o un «no se
        * ocupa» explícito. Lo que no se puede es dejarlo sin mirar. */
+      /* ── La frontera es NUEVO LEÓN, y es una DECISIÓN, no un descuido ──
+       * Lo pidió Montalvo explícito en septiembre de 2026 y quedó decidido
+       * entonces: lo que dispara el viaje es salir del estado, no salir de
+       * Monterrey. Una obra en Apodaca o en Guadalupe NO pide viáticos, y eso
+       * es a propósito — la gente vuelve a dormir a su casa.
+       * Queda escrito aquí, junto a la regla, porque en el #387 se anotó como
+       * «desviación» de «fuera de Monterrey» y no lo es. */
       id: 'viaje-sin-resolver', severidad: 'dura', area: 'Viaje',
       titulo: 'Hay conceptos de viaje sin decidir',
       evaluar: (m, c) => {

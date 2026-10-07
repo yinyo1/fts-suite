@@ -34,16 +34,31 @@ Sus cuatro lecturas de Odoo van **encadenadas en línea** y **ninguna lleva
 ```
 Postgres - Reservar y leer   → 1 fila
 Odoo - getAll listas de precio  → 6 items
-Odoo - getAll impuestos         → corre 6 veces  → 6 × 178 = 1,068 items
-Odoo - getAll terminos de pago  → corre 1,068 veces → × 44 = 46,992 items
-Odoo - getAll incoterms         → corre 46,992 veces → × 11 = 516,912 items
+Odoo - getAll impuestos         → corre 6 veces     → 6 × 16 = 96 items
+Odoo - getAll terminos de pago  → corre 96 veces    → × 44 = 4,224 items
+Odoo - getAll incoterms         → corre 4,224 veces → × 11 = 46,464 items
 ```
 
-O sea **~47,000 idas y vueltas a Odoo por cada intento de crear una orden**, y
-medio millón de items en memoria de un proceso de 8 GB que además sirve el
-kiosko (§20 #14).
+O sea **~4,300 idas y vueltas a Odoo por cada intento de crear una orden**, y
+**46,464 items** en memoria de un proceso de 8 GB que además sirve el kiosko
+(§20 #14).
 
-**Medido, no deducido.** Reproducir el caso completo habría costado 47,000
+> ### ⚠️ Corrección del 7-oct-2026: este abanico decía «~47,000» y son **~4,327**
+>
+> La cuenta de arriba usaba **178 impuestos**. Pero el nodo de producción no lee
+> todos: filtra `type_tax_use = sale` + `active` + `company_id in [1,6]`, y eso
+> devuelve **16** (medido el 7-oct, ejecución `132163`, sobre una copia fiel del
+> nodo con sus tres filtros). Rehecha la cuenta: **~4,327 llamadas**, no ~48,000.
+>
+> **Los 29 minutos siguen siendo reales y medidos** (`119858`/`119865`), y el
+> arreglo es idéntico — pero el número que estaba escrito no era el del nodo de
+> producción, y un número en un documento envejece hacia la verdad: alguien lo
+> iba a citar. El 178 salió de una sonda cuyo nodo **no copiaba los filtros**.
+>
+> 📌 Es §20 #19 otra vez, y esta vez el instrumento era la sonda: una copia que
+> no copia los filtros mide otro nodo.
+
+**Medido, no deducido.** Reproducir el caso completo habría costado 4,327
 llamadas, así que se probó la regla con **dos** nodos (ejecución `119876`):
 
 ```
@@ -86,7 +101,12 @@ O sea que la v2 **funciona**. Y por eso es peor:
 la duración real), **no lo ejercí**: comprobarlo cuesta media hora de reloj. Lo
 digo como lo que es, una consecuencia, no una observación.
 
-### El cambio exacto
+### El cambio exacto — ✅ **APLICADO Y PUBLICADO el 7-oct-2026**
+
+> Las tres banderas están puestas y **corriendo**: read-back `active: true` con
+> `versionId == activeVersionId == 51ea256e-408f-4bc6-97bb-7f63b09d66d0`. La
+> versión anterior, para revertir, es `c8b06545-6c5d-44b2-b416-07fe3a5e3b26`.
+> Detalle y medición en el **#387**.
 
 Tres banderas. La primera lectura recibe **una** fila de la reserva, así que no
 necesita nada; las otras tres sí:
