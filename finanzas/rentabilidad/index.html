@@ -90,6 +90,7 @@
   <section class="vista" id="vPortada">
     <div class="kpis" id="kpis"></div>
     <div class="kpis" id="kpis2"></div>
+    <div class="kpis" id="kpis3"></div>
     <div class="leyenda" id="leyenda"></div>
     <details class="salv"><summary>Salvedades — qué <em>no</em> cubre este número</summary>
       <div class="cuerpo" id="salvCuerpo"></div></details>
@@ -172,7 +173,7 @@
 var P = Panel.montar({
   ruta: '/webhook/fin/rentabilidad',
   titulo: 'Rentabilidad por proyecto',
-  sub: 'FTS Suite · panel · contrato 1 · v1.03',
+  sub: 'FTS Suite · panel · contrato 1 · v1.04',
   volver: { href: '../index.html', txt: '← Finanzas' },
   login: '../../shared/login.html',
   /* Este panel NO guarda nada en el navegador. La lista vacía es la declaración,
@@ -187,7 +188,7 @@ var esc = Panel.esc, nfm = Panel.nfm, dinero = Panel.dinero, pct = Panel.pct;
 
 /* Badge de versión (V1.14): el número de finanzas/version.json junto al título, para verificar a
    simple vista que un deploy quedó. El gate lo coteja contra ese archivo. */
-var RENT_BUILD = 'V1.14';
+var RENT_BUILD = 'V1.15';
 (function () {
   var h1 = document.querySelector('header h1');
   if (h1) h1.insertAdjacentHTML('beforeend', '<span class="p-badge" id="rentBadge" title="versión desplegada">' + esc(RENT_BUILD) + '</span>');
@@ -244,9 +245,20 @@ function pintarPortada(){
     P.kpi('warn',r.parcial,'presupuesto parcial','margen optimista: falta costo plan','parcial')+
     P.kpi('neu',r.sin_presupuesto,'sin presupuesto','lista de trabajo, no error','sin_presupuesto')+
     P.kpi('bad',r.con_alerta,'con alerta de umbral','contra presupuesto, no contra el pasado','')+
-    P.kpi(r.margen_pct===null?'neu':(r.margen_pct<0?'bad':'ok'),
+    /* v1.15 · el margen YA NO es «de los que tienen presupuesto»: desde F2 el
+       ingreso y el costo reales salen de las líneas analíticas, así que entran
+       TODOS los proyectos con movimiento, y el número se movió mucho.
+       EL COLOR NO ES POR EL NÚMERO, ES POR SI SE PUEDE LEER. Mientras haya un
+       solo proyecto con costo presupuestado y cero gasto atribuido, este margen
+       está sobreestimado por construcción y pintarlo verde sería afirmar una
+       utilidad que todavía no se puede sostener — el mismo error de #388, ahora
+       en la tarjeta grande. Se pone en ámbar hasta que ese conteo llegue a cero,
+       que es exactamente el avance que hay que poder ver. */
+    P.kpi(r.margen_pct===null?'neu':(r.margen_pct<0?'bad':(r.sin_gasto_atribuido?'warn':'ok')),
         (r.margen_pct===null?'—':r.margen_pct.toFixed(1)+'%'),
-        'margen de los que sí tienen dato','$'+nfm(r.margen_real_mxn)+' MXN · ver salvedades','');
+        'margen real, todos los proyectos',
+        '$'+nfm(r.margen_real_mxn)+' MXN · de líneas analíticas'+
+        (r.sin_gasto_atribuido?(' · sobreestimado: '+esc(r.sin_gasto_atribuido)+' proyectos sin su costo'):''),'');
 
   /* SEGUNDA FILA (v1.01): la desviación. La primera fila dice si HAY dato; ésta
      dice qué dice el dato. Van separadas porque contestan preguntas distintas y
@@ -264,6 +276,30 @@ function pintarPortada(){
         dg.length?dg.map(function(x){return x.proyectos+' en plan '+x.plan_de_la_cuenta+'→'+x.plan_que_toca;}).join(' · '):'ninguno','')+
     P.kpi('neu',(mo.balance===null||mo.balance===undefined)?'—':('$'+nfm(Math.abs(mo.balance))),
         'MO por reasignar',(mo.leido?((mo.moneda||'MXN')+' · renglón propio, no se reparte'):'no se pudo leer la cuenta'),'');
+
+  /* TERCERA FILA (v1.15, F3 de #388): el dinero que el presupuesto NO ve. Va
+     aparte de las otras dos porque contesta una tercera pregunta — la primera
+     dice si hay dato, la segunda qué dice el dato, y ésta cuánto dato se está
+     quedando fuera del presupuesto. Las tres cifras son del mismo tamaño y
+     ninguna se puede leer sin las otras. */
+  var pct=(r.gasto_sin_rubro_pct===null||r.gasto_sin_rubro_pct===undefined)?null:r.gasto_sin_rubro_pct;
+  document.getElementById('kpis3').innerHTML=
+    /* El sobregasto de VERDAD: proyectos que sí tienen presupuesto y se les sale.
+       Se separa del de los que no tienen presupuesto porque no se arreglan igual. */
+    P.kpi(r.gasto_fuera_con_presupuesto?'bad':'neu',
+        '$'+nfm(r.gasto_fuera_con_presupuesto_mxn),'gasto fuera del presupuesto',
+        esc(r.gasto_fuera_con_presupuesto)+' proyectos con presupuesto · MXN equivalentes','')+
+    /* CERO_NO_ES_DATO: presupuesto de costo y CERO gasto colgado de la cuenta.
+       Su margen sale al 100% y es mentira. Es la lista de trabajo de F4. */
+    P.kpi(r.sin_gasto_atribuido?'bad':'ok',r.sin_gasto_atribuido,'sin gasto atribuido',
+        'tienen costo presupuestado y cero líneas de gasto: su margen está sobreestimado','')+
+    /* El indicador que hay que ver BAJAR. No es un error del panel: es cuánto
+       gasto de proyecto se capturó sin rubro del plan 20, así que entra al costo
+       real (F2) pero no se puede desglosar ni comparar contra un presupuesto. */
+    P.kpi((pct!==null&&pct>50)?'warn':'neu',(pct===null?'—':pct.toFixed(1)+'%'),
+        'gasto de proyecto sin rubro',
+        '$'+nfm(r.gasto_sin_rubro_mxn)+' MXN en '+esc(r.gasto_sin_rubro_lineas)+' líneas · contra $'+
+        nfm(r.gasto_con_rubro_mxn)+' con rubro','');
 
   /* La leyenda con los números que rigen los colores, la hora del dato y el tipo
      de cambio. Si la config no se pudo leer, se DICE aquí y no sólo en salvedades:
@@ -325,8 +361,25 @@ function visibles(){
    `horas_real` queda FUERA de la lista a proposito: no sale del presupuesto,
    sale del kiosko. Un proyecto sin presupuesto puede tener 500 horas reales, y
    taparlas seria ocultar un dato cierto — el error opuesto, y del mismo tamano. */
-var DEL_PRESUPUESTO = { ingreso_pres:1, ingreso_real:1, costo_pres:1, costo_real:1,
-                        margen_real:1, margen_pct:1, consumo_mat:1, consumo_mo:1,
+/* Los campos que NO EXISTEN sin una linea base, y que por eso salen con raya en
+   vez de con 0 para un proyecto sin presupuesto.
+
+   v1.15 (F2 de #388) · la lista CAMBIO DE INQUILINOS, y el motivo es el unico que
+   cuenta: de donde sale cada numero. `ingreso_real`, `costo_real` y el margen YA
+   NO salen del presupuesto — se suman directo de las lineas analiticas de la
+   cuenta del proyecto. Un proyecto sin presupuesto puede tener gasto real
+   perfectamente cierto, y taparlo seria el error OPUESTO y del mismo tamano, el
+   mismo que esta nota siempre advirtio para `horas_real`. Entran en su lugar los
+   `*_achieved`, que son los que de verdad vienen del presupuesto (lo que Odoo
+   reconoce como consumido), y `gasto_fuera_presupuesto`, que es una diferencia
+   CONTRA el presupuesto: sin presupuesto no es cero, es que no aplica — y ademas
+   valdria exactamente lo mismo que `costo_real`, o sea el mismo numero dos veces.
+   Esta lista manda tambien en los subtotales (ver `enSubtotal`), asi que se
+   mantiene en UN solo lugar. */
+var DEL_PRESUPUESTO = { ingreso_pres:1, costo_pres:1,
+                        ingreso_achieved:1, costo_achieved:1,
+                        gasto_fuera_presupuesto:1,
+                        consumo_mat:1, consumo_mo:1,
                         horas_plan:1, consumo_horas:1,
                         /* v1.01: bonos y otros tambien salen del budget, asi que
                            un proyecto sin linea base no los puede mostrar en 0.
@@ -420,7 +473,17 @@ function pintarTabla(){
     celda: celda,
     /* Quién entra a los subtotales. El armazón no sabe cómo se llama «no tener
        línea base» en este panel, así que lo pregunta. */
-    enSubtotal: function(r){ return r.estado_dato !== 'sin_presupuesto'; },
+    /* v1.15 · se pregunta POR COLUMNA. Antes todas las columnas de dinero salian
+       del presupuesto y una sola respuesta por fila alcanzaba; desde F2 (#388) el
+       ingreso y el costo reales salen de las lineas analiticas, asi que dejar a un
+       proyecto sin presupuesto fuera de ESE subtotal esconderia dinero medido. La
+       misma lista que decide la raya decide la suma — no hay dos criterios que
+       puedan separarse con el tiempo. Sin columna contesta por la fila, que es lo
+       que necesita la nota «(N sin dato, fuera del subtotal)». */
+    enSubtotal: function(r,c){
+      if(c && !DEL_PRESUPUESTO[c.id]) return true;
+      return r.estado_dato !== 'sin_presupuesto';
+    },
     vacio: 'Sin proyectos con ese filtro.',
     repintar: pintarTabla,
     alClic: { sel:'.proj', fn:function(el){ abrirDetalle(Number(el.getAttribute('data-id'))); } }

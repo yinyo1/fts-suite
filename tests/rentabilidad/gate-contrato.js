@@ -132,8 +132,70 @@ ok(r.total === filas.length, 'resumen.total no coincide con filas.length',
 if (typeof r.margen_real_mxn === 'number')
   ok(Math.abs(r.margen_real_mxn - (r.ingreso_real_mxn - r.costo_real_mxn)) < 0.01,
      'resumen: margen_real_mxn no es ingreso menos costo');
-['total', 'completo', 'parcial', 'sin_presupuesto', 'ingreso_real_mxn', 'costo_real_mxn']
+['total', 'completo', 'parcial', 'sin_presupuesto']
   .forEach(k => deriva(r[k], g.resumen[k], 'resumen.' + k));
+/* CONTRATO 1.04 (#388) · `ingreso_real_mxn` y `costo_real_mxn` CAMBIARON DE
+   DEFINICION: hasta 1.03 salian de `achieved_amount` del presupuesto, desde 1.04
+   se suman directo de account.analytic.line. Compararlos contra el golden diria
+   "356% de deriva de Odoo" cuando lo que se movio fue la regla, no los datos — un
+   aviso que miente sobre su propia causa es peor que no tenerlo. Lo que SI es
+   comparable con el golden es el campo que heredo la vieja definicion:
+   `achieved_*_mxn`. Ahi la deriva vuelve a significar lo que decia. */
+if (typeof r.achieved_ingreso_mxn === 'number') {
+  deriva(r.achieved_ingreso_mxn, g.resumen.ingreso_real_mxn, 'resumen.achieved_ingreso_mxn (vs el ingreso_real de 1.03)');
+  deriva(r.achieved_costo_mxn,   g.resumen.costo_real_mxn,   'resumen.achieved_costo_mxn (vs el costo_real de 1.03)');
+} else {
+  deriva(r.ingreso_real_mxn, g.resumen.ingreso_real_mxn, 'resumen.ingreso_real_mxn');
+  deriva(r.costo_real_mxn,   g.resumen.costo_real_mxn,   'resumen.costo_real_mxn');
+}
+
+/* ── 5b · CONTRATO 1.04 (#388): lo que F2 y F3 agregaron, en DURO ─────────
+ * Esto no es "campos nuevos que estaria bien tener": es la unica red que impide
+ * que una sesion futura devuelva el costo real al `achieved` del presupuesto sin
+ * que nada truene. El bug de #388 era invisible justo porque el contrato no
+ * exigia nada de esto. Si el motor deja de traerlo, el gate se pone rojo. */
+if (typeof r.achieved_costo_mxn === 'number') {
+  const CLAVES_104 = ['ingreso_achieved', 'costo_achieved', 'gasto_fuera_presupuesto',
+                      'fuera_desglose', 'lineas_reales', 'sin_gasto_atribuido'];
+  const falta104 = {};
+  let malFuera = 0, malDesglose = 0, malLineas = 0, malFlag = 0, nFlag = 0;
+  filas.forEach(f => {
+    CLAVES_104.forEach(k => { if (!(k in f)) falta104[k] = (falta104[k] || 0) + 1; });
+    /* identidad: el gasto fuera del presupuesto ES el real menos lo que el
+       presupuesto reconoce. Si deja de cumplirse, alguien lo calculo por otro
+       lado y ya no se sabe contra que se esta comparando. */
+    if (typeof f.gasto_fuera_presupuesto === 'number' &&
+        typeof f.costo_real === 'number' && typeof f.costo_achieved === 'number' &&
+        Math.abs(f.gasto_fuera_presupuesto - (f.costo_real - f.costo_achieved)) > 0.02) malFuera++;
+    const fd = f.fuera_desglose;
+    if (!fd || ['sin_rubro','rubro_sin_renglon','fuera_de_ventana','no_explicado']
+               .some(k => typeof fd[k] !== 'number')) malDesglose++;
+    const lr = f.lineas_reales;
+    if (!lr || ['ingreso','costo','costo_sin_rubro'].some(k => typeof lr[k] !== 'number')) malLineas++;
+    if (typeof f.sin_gasto_atribuido !== 'boolean') malFlag++;
+    if (f.sin_gasto_atribuido === true) nFlag++;
+  });
+  Object.keys(falta104).forEach(k =>
+    ok(false, 'falta la clave de fila del contrato 1.04 `' + k + '`', 'en ' + falta104[k] + ' filas'));
+  ok(malFuera === 0, 'gasto_fuera_presupuesto != costo_real - costo_achieved', malFuera + ' filas');
+  ok(malDesglose === 0, 'fuera_desglose incompleto (4 causas numericas)', malDesglose + ' filas');
+  ok(malLineas === 0, 'lineas_reales incompleto (ingreso/costo/costo_sin_rubro)', malLineas + ' filas');
+  ok(malFlag === 0, 'sin_gasto_atribuido no es booleano', malFlag + ' filas');
+  /* CERO_NO_ES_DATO: el conteo del resumen tiene que ser el de las filas. Una
+     lista que se vacia sola se lee como "ya no pasa" (regla 20 #18). */
+  ok(r.sin_gasto_atribuido === nFlag, 'resumen.sin_gasto_atribuido no cuenta las filas marcadas',
+     r.sin_gasto_atribuido + ' vs ' + nFlag);
+  ok(r.gasto_fuera_con_presupuesto + r.gasto_fuera_sin_presupuesto === r.con_gasto_fuera_presupuesto,
+     'el reparto con/sin presupuesto no suma el total de proyectos con gasto fuera',
+     r.gasto_fuera_con_presupuesto + '+' + r.gasto_fuera_sin_presupuesto + ' != ' + r.con_gasto_fuera_presupuesto);
+  ['REAL_DESDE_LINEAS', 'GASTO_FUERA_DEL_PRESUPUESTO', 'GASTO_SIN_RUBRO'].forEach(cod =>
+    ok((sobre.salvedades || []).some(x => x && x.codigo === cod),
+       'falta la salvedad del contrato 1.04 `' + cod + '`'));
+  const sv = (sobre.salvedades || []).find(x => x && x.codigo === 'MARGEN_SUBESTIMA_COSTO');
+  ok(!sv || (Array.isArray(sv.filas) && sv.filas.length === nFlag),
+     'MARGEN_SUBESTIMA_COSTO no lista los proyectos sin gasto atribuido',
+     sv ? ((sv.filas || []).length + ' vs ' + nFlag) : 'sin salvedad');
+}
 
 /* ── 6 · multi-moneda: ningún agregado del contrato mezcla monedas ───────── */
 /* Los agregados del resumen llevan el sufijo _mxn por diseño. Cualquier campo

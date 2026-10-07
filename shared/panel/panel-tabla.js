@@ -82,8 +82,19 @@
    */
   function filaGrupo(op, g, rs, abierto, colapsable) {
     var P = G.Panel;
-    var conDato = op.enSubtotal ? rs.filter(op.enSubtotal) : rs;
+    /* `enSubtotal` se pregunta DOS veces y a proposito. Sin columna contesta por
+       la fila entera y de ahi sale la nota «(N sin dato, fuera del subtotal)».
+       Con columna contesta por esa columna, porque desde que una tabla mezcla
+       columnas que salen de una linea base con columnas que salen de hechos
+       medidos, la respuesta ya no puede ser la misma para todas: dejar fuera del
+       subtotal una celda que SI muestra un numero rompe lo unico que una tabla
+       de dinero tiene que cumplir, que es que sume. */
+    var conDato = op.enSubtotal ? rs.filter(function (r) { return op.enSubtotal(r); }) : rs;
     var sinDato = rs.length - conDato.length;
+    var deCol = function (c) {
+      if (!op.enSubtotal) return rs;
+      return rs.filter(function (r) { return op.enSubtotal(r, c); });
+    };
     var uni = (op.grupos && op.grupos.unidad) || null;
     var cuenta = uni ? (rs.length + ' ' + uni) : String(rs.length);
     /* La etiqueta ocupa TODAS las columnas iniciales que no suman, no sólo la
@@ -112,7 +123,7 @@
       var dc = ' data-col="' + P.esc(c.id) + '"';
       if (!c.suma) return '<td' + dc + '></td>';       // Regla 2
       if (c.kind === 'dinero') {                        // Regla 3
-        var ss = sumasPorMoneda(conDato, c);
+        var ss = sumasPorMoneda(deCol(c), c);
         if (!ss.length) return '<td class="num"' + dc + '><span class="raya">—</span></td>';
         return '<td class="num"' + dc + '>' + ss.map(function (x) {
           return P.dinero(x.suma, x.moneda);
@@ -120,9 +131,10 @@
       }
       /* Las columnas numéricas que NO son dinero (horas) no tienen moneda que
          cruzar, así que siguen saliendo con una sola cifra, como siempre. */
-      var hay = conDato.some(function (r) { return typeof r[c.id] === 'number'; });
+      var rsc = deCol(c);
+      var hay = rsc.some(function (r) { return typeof r[c.id] === 'number'; });
       if (!hay) return '<td class="num"' + dc + '><span class="raya">—</span></td>';
-      var s = conDato.reduce(function (a, r) {
+      var s = rsc.reduce(function (a, r) {
         var v = r[c.id]; return a + (typeof v === 'number' ? v : 0);
       }, 0);
       return '<td class="num"' + dc + '>' + P.nfm(s) + '</td>';
@@ -177,7 +189,7 @@
 
   /**
    * Pinta la tabla. Devuelve cuántas filas quedaron pintadas.
-   * op = { tabla, columnas, filas, orden, grupo, celda, enSubtotal, vacio,
+   * op = { tabla, columnas, filas, orden, grupo, celda, enSubtotal(r[,c]), vacio,
    *        repintar, alClic:{sel,fn}, grupos }
    *
    * `grupos` es OPCIONAL y sólo hace algo cuando hay `grupo`. Sin él, el
