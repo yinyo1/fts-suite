@@ -1,6 +1,6 @@
 # Retardos v2 · Reinicio de conteo (decisiones del 7-oct-2026)
 
-Issue #386. **Nada de esto se ha ejecutado.** Se corre en este orden después del "va" de Esteban.
+Issue #386. **Ejecutado el 7-oct-2026 con el "va" de Esteban**: `0012` aplicada a las 17:48 UTC (ejecución 132514) y 34 casos cancelados a las 17:49 UTC (ejecución 132517). Pendiente: el responsable de RH (§2), en cuanto Magaly tenga scopes. El merge lo hace Esteban.
 
 | Decisión | Qué la cumple |
 |---|---|
@@ -64,7 +64,7 @@ Lo esperado: `cancelados = 22`. Cancelar es terminal: no hay reversa. La bitáco
 SELECT estado, count(*) FROM retardos.caso WHERE periodo IN ('2026-08','2026-09') GROUP BY 1 ORDER BY 1;
 ```
 
-**Quedan abiertos, en sombra, 12 casos más** (5 de septiembre vencidos y 7 de octubre esperando firma). Con `retardos_0012` ya no vencen ni escalan; si se decide cancelarlos también, es la misma sentencia con su lista.
+**Ejecutado con 34 folios, no 22.** Esteban decidió cancelar también los otros 12 abiertos en sombra (5 de septiembre vencidos: RET-2026-0001, 0013, 0027, 0028, 0030; 7 de octubre esperando firma: RET-2026-0042, 0043, 0045, 0046, 0049, 0050, 0052) con el mismo motivo. Se corrió la misma sentencia con la lista de 34, exigiendo `pista = 'sombra'` y el estado leído: `cancelados = 34`, ningún folio sin tocar, 0 correos generados.
 
 ## 4. Merge del PR #344
 
