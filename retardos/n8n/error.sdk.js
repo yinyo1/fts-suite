@@ -1,0 +1,9 @@
+import { workflow, node, trigger } from '@n8n/workflow-sdk';
+const PG = { postgres: { id: 'Zu4Y9UuzGwCBN8lH', name: 'fts-suite-db · fts_admin' } };
+const GRAPH = { oAuth2Api: { id: 'Mh5kBNduMzOl3nzT', name: 'Microsoft Graph - sales' } };
+const disparo = trigger({ type: 'n8n-nodes-base.errorTrigger', version: 1, config: { name: 'Error Trigger' } });
+const registrar = node({ type: 'n8n-nodes-base.postgres', version: 2.6, config: { name: 'Postgres - Registrar falla', credentials: PG, alwaysOutputData: true, onError: 'continueRegularOutput', parameters: { operation: 'executeQuery', query: "SELECT retardos.latido($1::jsonb) AS corrida, retardos.cfg('alertas_destinatarios') AS para, retardos.cfg_txt('remitente') AS remitente", options: { queryReplacement: "={{ JSON.stringify({ workflow: 'retardos/error', ok: false, leidos: 0, error: String(($json.workflow || {}).name || '?') + ' | ' + String(($json.execution || {}).lastNodeExecuted || '?') + ' | ' + String((($json.execution || {}).error || {}).message || '').slice(0, 300), resumen: { ejecucion: String(($json.execution || {}).id || ''), workflow_id: String(($json.workflow || {}).id || '') } }) }}" } } } });
+const armar = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Code - Armar alerta', parameters: { mode: 'runOnceForAllItems', jsCode: __ALERTA__ } } });
+const enviar = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { name: 'HTTP - Graph alerta', credentials: GRAPH, retryOnFail: true, maxTries: 3, waitBetweenTries: 5000, parameters: { method: 'POST', url: "={{ 'https://graph.microsoft.com/v1.0/users/' + $json.remitente + '/sendMail' }}", authentication: 'genericCredentialType', genericAuthType: 'oAuth2Api', sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.graph) }}', options: {} } } });
+export default workflow('retardos-error', 'retardos/error')
+  .add(disparo).to(registrar).to(armar).to(enviar);

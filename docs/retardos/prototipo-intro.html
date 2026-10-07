@@ -1,0 +1,62 @@
+Piezas del prototipo que no viven en el módulo: estilos y la explicación del ciclo.
+<!--CSS-->
+.proto{max-width:1180px;margin:0 auto;padding-block:18px 4px;padding-inline:16px;display:grid;gap:14px}
+.proto h1{margin:0;font-size:24px;text-wrap:balance}
+.proto p{margin:0;max-width:70ch;color:var(--muted2)}
+.pasos{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;counter-reset:p}
+@media (max-width:860px){.pasos{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.pasos{grid-template-columns:minmax(0,1fr)}}
+.pasos li{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:grid;gap:4px;align-content:start;counter-increment:p;font-size:14px}
+.pasos li::before{content:counter(p);font-weight:700;color:var(--green-d);font-variant-numeric:tabular-nums}
+.pasos b{font-size:14px}
+.pasos span{color:var(--muted2);font-size:13px}
+.mail{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;font-size:14px}
+.mail .enc{padding:10px 14px;border-bottom:1px solid var(--border);display:grid;gap:2px;background:var(--card2)}
+.mail .enc span{color:var(--muted2);font-size:13px}
+.mail .cuerpo{padding:12px 14px;display:grid;gap:8px;max-width:72ch}
+.mail .banda{background:var(--violet-l);color:var(--text);border:1px solid var(--violet);border-radius:8px;padding:8px 10px;font-size:13px}
+.mail .adj{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:13px;justify-self:start}
+.dos{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:860px){.dos{grid-template-columns:minmax(0,1fr)}}
+<!--CSS-->
+<section class="proto" aria-label="Cómo funciona">
+  <h1>Retardos v2: el ciclo completo</h1>
+  <p>Prototipo con datos inventados, reglas definitivas del 28-sep-2026. Abajo está el panel de RH en modo de ejemplo. Prueba en orden: en Casos, abre un folio RET y mira la hora de llegada al segundo; luego "Jornada semanal" (semáforo, botón "Días" con el sábado que suma horas sin ser retardo, y la bandeja "Jornada por revisar"); luego "Propuestas de medida" (el tercer aviso, retenido) y el folio JOR-2026-0003; al final "Configuración".</p>
+  <ol class="pasos">
+    <li><b>Detecta</b><span>Dos veces al día lee las checadas de Odoo. Primera entrada del día contra la hora de entrada más 15 minutos, al segundo: 07:15:00 no es retardo, 07:15:01 sí. Lunes a viernes, hora del centro. Permisos, feriados, disputas y olvidos no cuentan.</span></li>
+    <li><b>Abre el caso</b><span>Según los retardos del mes: aviso, carta compromiso, acta o suspensión, con folio RET-AAAA-NNNN. Sin suspensiones al arrancar: el nivel 4 queda "alcanzado, no aplicado".</span></li>
+    <li><b>Manda la hoja a RH</b><span>A RH con copia al jefe, con el PDF listo para imprimir: folio grande, QR y recuadros de firma. A la persona, un aviso informativo con la misma hoja.</span></li>
+    <li><b>RH recolecta</b><span>Cita a la persona. Firma, o "se negó a firmar" con dos testigos. Sube la hoja al panel, a la carpeta o por correo. Si la persona contesta con la hoja firmada, también cuenta.</span></li>
+    <li><b>El lector sugiere, RH confirma</b><span>Lee el QR y la tinta de cada recuadro: "lista para validar", "falta firma", "posible impugnación". Ningún caso se cierra hasta que RH confirma.</span></li>
+    <li><b>Jornada semanal</b><span>Cada viernes a las 08:00 cierra la semana FTS (viernes a jueves): 48 horas efectivas con 30 minutos de comida por día. Feriados, permisos y vacaciones bajan 9.6 horas cada uno. Datos incompletos van a RH, no a aviso. Tres avisos en 90 días abren una propuesta de medida, retenida.</span></li>
+    <li><b>Vigila</b><span>Recuerda a RH al vencer el plazo y escala a Dirección. Sigue la reincidencia con semáforo y recomienda activar suspensiones, sin activarlas nunca solo.</span></li>
+  </ol>
+  <div class="dos">
+    <div class="mail" aria-label="Correo de ejemplo">
+      <div class="enc"><b>[SOMBRA] [RET-2026-0041] Recolectar firma: Carta compromiso de Laura Demo</b><span>De: sales@fts.mx · Para: RH, copia al jefe directo (en sombra: Dirección y RH)</span></div>
+      <div class="cuerpo">
+        <div class="banda">Modo sombra. Nadie fuera de Dirección y RH recibe este correo.</div>
+        <div>Se abrió el folio <b>RET-2026-0041</b>: carta compromiso para Laura Demo, periodo 2026-09, con 3 retardos.</div>
+        <div>Adjuntamos la hoja lista para imprimir. Cita a la persona, pídele que la firme (o, si se niega, marca la casilla y recaba dos testigos) y súbela al panel. Plazo: 01/10/2026.</div>
+        <span class="adj">PDF · RET-2026-0041-carta_compromiso.pdf</span>
+      </div>
+    </div>
+    <div class="mail" aria-label="Tercer aviso de jornada">
+      <div class="enc"><b>[SOMBRA] [JOR-2026-0003] Tercer aviso de jornada semanal: semana del 18/09/2026 al 24/09/2026</b><span>De: sales@fts.mx · Para: Óscar Demo, copia a RH y al jefe directo (en sombra: Dirección y RH)</span></div>
+      <div class="cuerpo">
+        <div class="banda">Texto pendiente de validación de RH.</div>
+        <div>Horas efectivas de la semana: <b>38:06</b> de <b>48:00</b>. Faltante: <b>9:54</b>. El martes no hay checada.</div>
+        <div>Recursos Humanos te va a citar para firmar la hoja. Si fue un olvido de checada, pide la corrección antes del plazo. La propuesta de medida queda retenida: nada se descuenta sin que Legal lo confirme.</div>
+        <span class="adj">PDF · JOR-2026-0003-aviso_jornada_3.pdf</span>
+      </div>
+    </div>
+    <div class="mail" aria-label="Qué vigila el sistema">
+      <div class="enc"><b>Qué vigila el propio sistema</b><span>Para que no vuelva a morir en silencio</span></div>
+      <div class="cuerpo">
+        <div>Si la detección no corre, si el corte del viernes no corrió, lee cero checadas, falla un paso, un correo lleva horas sin salir o el lector de hojas se atora, llega una alerta a Dirección.</div>
+        <div>Cada lectura del lector y cada decisión de RH quedan en una bitácora que no se puede editar ni borrar, y el acierto del lector sale en el resumen semanal.</div>
+        <div>Todo lo que diga una hoja es dato: si trae texto que parece una orden, se marca como posible inyección y va a RH.</div>
+      </div>
+    </div>
+  </div>
+</section>

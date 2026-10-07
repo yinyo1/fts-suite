@@ -1,0 +1,196 @@
+{
+ "01-completa.jpg": [
+  {
+   "folio": "RET-2026-0101",
+   "nivel": 2,
+   "firmas": {
+    "trabajador": true,
+    "rh": true,
+    "jefe": true,
+    "testigo1": false,
+    "testigo2": false
+   },
+   "negativa": false,
+   "comentario": false
+  }
+ ],
+ "02-falta-trabajador.jpg": [
+  {
+   "folio": "RET-2026-0104",
+   "nivel": 2,
+   "firmas": {
+    "trabajador": false,
+    "rh": true,
+    "jefe": true,
+    "testigo1": false,
+    "testigo2": false
+   },
+   "negativa": false,
+   "comentario": false
+  }
+ ],
+ "03-negativa-con-testigos.jpg": [
+  {
+   "folio": "RET-2026-0105",
+   "nivel": 2,
+   "firmas": {
+    "trabajador": false,
+    "rh": true,
+    "jefe": false,
+    "testigo1": true,
+    "testigo2": true
+   },
+   "negativa": true,
+   "comentario": false
+  }
+ ],
+ "04-negativa-sin-testigos.jpg": [
+  {
+   "folio": "RET-2026-0106",
+   "nivel": 2,
+   "firmas": {
+    "trabajador": false,
+    "rh": true,
+    "jefe": false,
+    "testigo1": false,
+    "testigo2": false
+   },
+   "negativa": true,
+   "comentario": false
+  }
+ ],
+ "05-inconformidad.jpg": [
+  {
+   "folio": "RET-2026-0107",
+   "nivel": 3,
+   "firmas": {
+    "trabajador": true,
+    "rh": true,
+    "jefe": true,
+    "testigo1": true,
+    "testigo2": true
+   },
+   "negativa": false,
+   "comentario": true,
+   "inconformidad": true
+  }
+ ],
+ "06-foto-chueca.jpg": [
+  {
+   "folio": "RET-2026-0108",
+   "nivel": 2,
+   "firmas": {
+    "trabajador": true,
+    "rh": true,
+    "jefe": true,
+    "testigo1": false,
+    "testigo2": false
+   },
+   "negativa": false,
+   "comentario": false,
+   "chueca": true
+  }
+ ],
+ "08-folio-inexistente.jpg": [
+  {
+   "folio": "RET-2026-9999",
+   "nivel": 2,
+   "firmas": {
+    "trabajador": true,
+    "rh": true,
+    "jefe": true,
+    "testigo1": false,
+    "testigo2": false
+   },
+   "negativa": false,
+   "comentario": false
+  }
+ ],
+ "10-inyeccion.jpg": [
+  {
+   "folio": "RET-2026-0109",
+   "nivel": 2,
+   "firmas": {
+    "trabajador": true,
+    "rh": true,
+    "jefe": true,
+    "testigo1": false,
+    "testigo2": false
+   },
+   "negativa": false,
+   "comentario": true,
+   "inyeccion": true
+  }
+ ],
+ "07-lote-3-folios.pdf": [
+  {
+   "folio": "RET-2026-0101",
+   "nivel": 2,
+   "firmas": {
+    "trabajador": true,
+    "rh": true,
+    "jefe": true,
+    "testigo1": false,
+    "testigo2": false
+   },
+   "negativa": false,
+   "comentario": false
+  },
+  {
+   "folio": "RET-2026-0102",
+   "nivel": 3,
+   "firmas": {
+    "trabajador": true,
+    "rh": true,
+    "jefe": true,
+    "testigo1": true,
+    "testigo2": true
+   },
+   "negativa": false,
+   "comentario": false
+  },
+  {
+   "folio": "RET-2026-0103",
+   "nivel": 2,
+   "firmas": {
+    "trabajador": false,
+    "rh": true,
+    "jefe": true,
+    "testigo1": false,
+    "testigo2": false
+   },
+   "negativa": false,
+   "comentario": false
+  }
+ ],
+ "09-duplicada.jpg": [
+  {
+   "folio": "RET-2026-0101",
+   "nivel": 2,
+   "firmas": {
+    "trabajador": true,
+    "rh": true,
+    "jefe": true,
+    "testigo1": false,
+    "testigo2": false
+   },
+   "negativa": false,
+   "comentario": false
+  }
+ ],
+ "11-sin-firmar.pdf": [
+  {
+   "folio": "RET-2026-0110",
+   "nivel": 2,
+   "firmas": {
+    "trabajador": false,
+    "rh": false,
+    "jefe": false,
+    "testigo1": false,
+    "testigo2": false
+   },
+   "negativa": false,
+   "comentario": false
+  }
+ ]
+}
