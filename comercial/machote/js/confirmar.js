@@ -205,11 +205,35 @@
    * no se reinventan: son los mismos ids con los que el flujo automático
    * lleva meses creando presupuestos. El signo es del rubro, no del capturista:
    * el ingreso suma y los costos restan, siempre. */
+  /* Se exporta abajo: la puerta compara el handoff guardado contra ESTE
+   * mismo cálculo. Dos lecturas distintas del mismo número serían una carrera
+   * silenciosa (§20 #4), así que hay una sola. */
   var RUBROS = [
     { id: 1171, nombre: '1. Ingreso',      signo:  1, pista: 'El subtotal de la orden.' },
     { id: 1177, nombre: '2.1 Mano de Obra', signo: -1, pista: 'Lo presupuestado de MO.' },
     { id: 1176, nombre: '2.2 Materiales',   signo: -1, pista: 'Lo presupuestado de material.' }
   ];
+
+  /* ── El presupuesto del MACHOTE ──────────────────────────────────────────
+   * El motor ya calcula la mano de obra y los materiales, separados y con
+   * signo (`calc.budget.manoObra` / `.materiales`, negativos porque son
+   * costos). No hace falta que nadie los vuelva a teclear.
+   *
+   * Devuelve `null` —y no ceros— cuando la cotización no está en este
+   * navegador. Son dos cosas distintas: «este trabajo no lleva mano de obra»
+   * y «no pude mirar». Un cero las junta, y el que llama acabaría proponiendo
+   * un presupuesto en cero como si fuera una decisión (§20 #11). */
+  function budgetDelMachote(o) {
+    try {
+      if (!o || !o.machote_id) return null;
+      var m = (G.MachoteApp && G.MachoteApp.machotePorUuid)
+        ? G.MachoteApp.machotePorUuid(o.machote_id) : null;
+      if (!m || !G.MachoteCalc || !G.MachoteCalc.calcular) return null;
+      var c = G.MachoteCalc.calcular(m);
+      if (!c || !c.budget) return null;
+      return c.budget;
+    } catch (e) { return null; }
+  }
 
   function montoDe(o, rid) {
     var p = (o.handoff && o.handoff.presupuesto) || [];
@@ -217,9 +241,24 @@
       if (Number(p[i].rubro_id) === rid) return Math.abs(Number(p[i].monto) || 0);
     }
     /* Sin capturar, el ingreso se propone solo: es el subtotal de la orden, y
-     * teclearlo a mano sólo abre la puerta a un dedazo. Los costos NO se
-     * proponen — inventar un costo es peor que dejarlo en cero. */
+     * teclearlo a mano sólo abre la puerta a un dedazo. */
     if (rid === 1171) return Number(o.subtotal_odoo || o.total_machote || 0);
+
+    /* ── Mano de obra y materiales: se PRECARGAN del machote (#387 C) ──
+     * Antes salían en cero, y el motivo escrito era «inventar un costo es
+     * peor que dejarlo en cero». Era correcto y la conclusión no:
+     * PRECARGAR NO ES INVENTAR. El machote ya los tiene calculados, y un
+     * presupuesto que nace en cero no es prudente — es un presupuesto que
+     * nadie va a poder usar para medir nada, y la rentabilidad por proyecto
+     * se queda sin su mitad de costos (Frente A, R1).
+     *
+     * Si la cotización no está en este navegador se queda en cero, que ahí
+     * sí es lo honesto: no hay de dónde sacarlo. El candado del cuadre lo
+     * dice con todas sus letras en vez de dejarlo pasar en silencio. */
+    var b = budgetDelMachote(o);
+    if (!b) return 0;
+    if (rid === 1177) return Math.abs(Number(b.manoObra) || 0);
+    if (rid === 1176) return Math.abs(Number(b.materiales) || 0);
     return 0;
   }
 
@@ -570,6 +609,10 @@
 
   G.MachoteConfirmar = {
     montar: montar,
+    /* La puerta lo usa para el candado del cuadre. Se expone la MISMA
+     * función, no una copia: dos cálculos del mismo número es una carrera
+     * silenciosa y el que pierde no deja rastro (§20 #4). */
+    budgetDelMachote: budgetDelMachote,
     _estado: function () { return _st; },
     _rubros: RUBROS
   };

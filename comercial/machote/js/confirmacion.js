@@ -484,6 +484,44 @@
           donde: 'En DATOS, en el bloque del anticipo.' });
       }
     }
+
+    /* ── 7 · EL ADICIONAL NO SE LE CUELGA A LA ORDEN DEL PADRE (#387 D) ──
+     * La regla, de Esteban: un adicional es trabajo extra sobre una orden YA
+     * CONFIRMADA, y nace como orden NUEVA ligada a ella. Lo que este candado
+     * impide es lo contrario: que alguien declare la copia adicional de
+     * SO-X y después la emita sobre la MISMA SO-X, que es como se le acaban
+     * agregando renglones a una orden que el cliente ya autorizó por otro
+     * importe.
+     *
+     * Se mira la liga REAL del servidor, no el campo `so` que alguien
+     * teclea: ese es texto y no prueba nada. Si la orden propia todavía no
+     * existe, no hay nada que comparar y el candado calla — todavía no hay
+     * manera de equivocarse.
+     *
+     * Lo que este candado NO hace es exigir que el padre siga confirmado:
+     * eso se vuelve a mirar en el servidor al escribir la liga, que es donde
+     * el dato es de verdad. Preguntarlo aquí sería una copia del estado de
+     * Odoo en el navegador, o sea un segundo escritor de la misma verdad
+     * (§20 #4). */
+    var ad = m && m.adicional_de;
+    if (ad && Number(ad.odoo_so_id)) {
+      var mia = null;
+      try {
+        mia = (window.MachoteAlmacen && window.MachoteAlmacen.ordenDe)
+          ? window.MachoteAlmacen.ordenDe(m.id) : null;
+      } catch (e) { mia = null; }
+      if (mia && Number(mia.id) === Number(ad.odoo_so_id)) {
+        f.push({ id: 'adicional-misma-orden', dureza: 'dura', codigo: 'ADICIONAL_MISMA_ORDEN',
+          que: 'Este adicional está ligado a la MISMA orden de la que es adicional',
+          porque: 'Un adicional es trabajo extra sobre ' +
+                  (ad.odoo_so_name || ('la orden ' + ad.odoo_so_id)) +
+                  ', así que tiene que ser una orden NUEVA. Confirmarlo sobre la misma ' +
+                  'le cambiaría el importe a una orden que el cliente ya autorizó con su ' +
+                  'orden de compra, y eso no se vería como un error: se vería como un dato.',
+          donde: 'Desliga la orden en el paso 1 de «Confirmar orden» y emite una nueva.' });
+      }
+    }
+
     return f;
   }
 

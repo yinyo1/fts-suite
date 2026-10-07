@@ -42,6 +42,21 @@
 (function (G) {
   'use strict';
 
+  /* Sin decimales a propósito: este candado habla de miles de pesos, y dos
+   * centavos de diferencia no son lo que hace saltar el candado (la
+   * tolerancia es de un peso). */
+  function money(n, mon) {
+    var x = Number(n);
+    if (!isFinite(x)) return '—';
+    var ent = Math.round(Math.abs(x)).toString();
+    var out = '';
+    for (var i = 0; i < ent.length; i++) {
+      if (i > 0 && (ent.length - i) % 3 === 0) out += ',';
+      out += ent.charAt(i);
+    }
+    return '$' + out + (mon ? ' ' + mon : '');
+  }
+
   function esc(s) {
     return String(s === null || s === undefined ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -159,6 +174,65 @@
         porque: 'Sin ellos no se puede afirmar que la cotización esté completa, y ' +
                 'afirmarlo sin haber mirado es peor que no poder.',
         donde: 'Recarga la pantalla.' });
+    }
+
+    /* ── 1b · EL PRESUPUESTO TIENE QUE CUADRAR CON EL MACHOTE (#387 C) ────
+     * El presupuesto que se escribe en Odoo es lo único que después permite
+     * decir si un proyecto ganó o perdió. Si sus costos no son los del
+     * machote, la rentabilidad por proyecto mide otra cosa — y el error no se
+     * ve nunca, porque un presupuesto equivocado se parece mucho a uno bueno.
+     *
+     * Se compara sólo MANO DE OBRA y MATERIALES. El ingreso ya lo cuadra el
+     * servidor contra el subtotal de la orden, y el VIAJE todavía no tiene
+     * rubro propio en el plan 20 (queda anotado: hoy no se presupuesta, y es
+     * una pérdida conocida, no un descuido de aquí).
+     *
+     * La tolerancia es de UN PESO, la misma con la que el motor decide su
+     * propio `budget.cuadra`. Más apretado haría saltar el candado por
+     * redondeos de centavo; más flojo dejaría pasar un dedazo de verdad. */
+    /* El presupuesto sale del `calc` que ya recibe esta función: es el mismo
+     * objeto con el que la pantalla precarga los campos, así que no hay dos
+     * cálculos que puedan discrepar. */
+    var bud = (o.calc && o.calc.budget) ? o.calc.budget : null;
+    var presServidor = (o.servidor && o.servidor.handoff && Array.isArray(o.servidor.handoff.presupuesto))
+      ? o.servidor.handoff.presupuesto : null;
+    if (bud && presServidor && presServidor.length) {
+      var deRubro = function (rid) {
+        for (var i = 0; i < presServidor.length; i++) {
+          if (Number(presServidor[i].rubro_id) === rid) return Math.abs(Number(presServidor[i].monto) || 0);
+        }
+        return null;
+      };
+      var pares = [
+        { rid: 1177, et: 'la mano de obra', mach: Math.abs(Number(bud.manoObra) || 0) },
+        { rid: 1176, et: 'los materiales',  mach: Math.abs(Number(bud.materiales) || 0) }
+      ];
+      var fuera = [];
+      pares.forEach(function (x) {
+        var cap = deRubro(x.rid);
+        if (cap === null) return;                 // ese rubro no se capturó: lo pide el servidor
+        if (Math.abs(cap - x.mach) > 1) {
+          fuera.push(x.et + ' dice ' + money(cap, o.servidor && o.servidor.moneda) +
+            ' y el machote calcula ' + money(x.mach, o.servidor && o.servidor.moneda));
+        }
+      });
+      if (fuera.length) {
+        duras.push({ id: 'presupuesto-no-cuadra', fuente: 'machote',
+          que: 'El presupuesto no cuadra con la cotización',
+          porque: 'En el handoff, ' + fuera.join('; ') + '. El presupuesto de Odoo es lo ' +
+                  'único con lo que después se mide si el proyecto ganó o perdió: si sus ' +
+                  'costos no son los que se costearon, la rentabilidad mide otra cosa y ' +
+                  'nadie lo nota.',
+          donde: 'Arriba, en «El presupuesto, por rubro». Se precargan solos del machote; ' +
+                 'si los cambiaste a propósito, cámbialos en la cotización y vuelve.' });
+      }
+    } else if (!bud && presServidor && presServidor.length) {
+      blandas.push({ id: 'presupuesto-sin-comprobar', fuente: 'machote',
+        que: 'No se pudo comprobar que el presupuesto cuadre con la cotización',
+        porque: 'La cotización no está en este navegador, así que aquí no hay mano de obra ' +
+                'ni materiales calculados contra los que comparar. Los montos que se ' +
+                'escriban van tal cual a Odoo sin que nadie los revise.',
+        donde: 'No impide confirmar. Ábrela donde se capturó si quieres la comprobación.' });
     }
 
     /* ── 2 · Lo que dijo el servidor (Compuerta 2) ────────────────────────

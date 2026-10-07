@@ -317,11 +317,29 @@ Son workflows **ACTIVOS**: los aplica Esteban, no una rama.
 
 ## Resumen de lo que hay que aplicar, en orden
 
-| # | workflow | cambio | riesgo |
+> ### ✅ Los tres están APLICADOS Y PUBLICADOS (7-oct-2026, #387)
+>
+> Esta tabla se queda como registro de lo que hubo que hacer, no como pendiente.
+
+| # | workflow | cambio | estado |
 |---|---|---|---|
-| 1 | `Cyapm1EfPPbTxSi5` confirmar | una llave más en la respuesta de `Code - Compuerta 2` | el más bajo: es aditivo y nadie lo exige |
-| 2 | `H2HOG8LqoYUVg3hU` orden-crear-v2 | tres `executeOnce: true` | bajo, y es lo que la desatasca |
-| 3 | — | dejar de usar `comercial/orden-crear` (v1) en cuanto 2 funcione | ninguno, es no usarla |
+| 1 | `Cyapm1EfPPbTxSi5` confirmar | una llave más en la respuesta de `Code - Compuerta 2` | ✅ aplicado y publicado. No dentro de ese nodo —son 296 líneas y editarlo por MCP obliga a reescribirlo entero (§17 #2)— sino en un **nodo nuevo** detrás de él. |
+| 2 | `H2HOG8LqoYUVg3hU` orden-crear-v2 | tres `executeOnce: true` | ✅ aplicado y publicado. Crear la orden pasó de **28 min 46 s** a **~5–14 s**. |
+| 3 | — | dejar de usar `comercial/orden-crear` (v1) en cuanto 2 funcione | 🟡 la suite ya sólo llama a la v2. La v1 sigue **activa** y las órdenes que dejó siguen sin producto; la compuerta ahora las **frena** en vez de decir «todo listo». |
+
+---
+
+## Lo que se cerró el 7-oct-2026, y lo único que falta (#387)
+
+| | |
+|---|---|
+| **El correo de handoff** | ✅ Existe. `comercial/confirmar` lo manda como **paso 8**, después de lo irreversible. Hasta ese día el único que avisaba era el radar, y el paso 5 le **esconde** la orden al radar: confirmar desde la suite dejaba a Operaciones sin enterarse. Hoy va **sólo a Esteban** (`EN_PRUEBAS = true` en `Code - Armar correo`); el destino real `newordersnotification@fts.mx` está escrito al lado. |
+| **La compuerta que mentía** | ✅ Decía «Todo listo para confirmar» sobre una orden con renglones sin producto, que Odoo se niega a confirmar. Ahora los lee y **corrige el veredicto**. |
+| **El presupuesto** | ✅ Mano de obra y materiales se **precargan del machote** y un candado duro exige que cuadren. Nacían en cero. |
+| **Los adicionales** | ✅ Se declaran al duplicar y la liga al padre se escribe en Odoo (`origin_order_id` + `origin`). Era el único de los siete candados sin empezar. |
+| 🔴 **Lo único que falta** | **Recorrer el ciclo desde el NAVEGADOR.** Todo lo de arriba se midió llamando a los webhooks desde el servidor. El pegamento del navegador —la sesión, el corte a los 10 s de `n8nFetch`, lo que pinta la pantalla mientras el servidor tarda— **no se ha ejercido**, y dos mitades probadas por separado no son un ciclo probado (§20 #21). |
+
+Por eso `EMITIR_ENCENDIDO` y `CONFIRMAR_ENCENDIDO` siguen en `false`.
 
 Después de **cada** edit: read-back de `active`, y `versionId` contra
 `activeVersionId` (§3 y §17 2b). Y `publish_workflow` al final, que con este MCP

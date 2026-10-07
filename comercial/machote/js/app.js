@@ -57,7 +57,7 @@
    *   2. el `?v=` de la URL con la que el navegador lo bajó,
    *   3. la que declara cada pieza que se carga aparte (hoy el motor).
    * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
-  const VERSION_ARCHIVO = 'V1.51';
+  const VERSION_ARCHIVO = 'V1.52';
 
   const VERSION_URL = (function () {
     try {
@@ -1829,12 +1829,44 @@
                    'la orden de compra del cliente.\n\n' +
                    'La suite NO crea ninguna cotización en Odoo al duplicar.')) return;
 
+      /* ── ¿ES UN ADICIONAL? (#387 D) ─────────────────────────────────
+       * Un adicional es trabajo extra sobre una orden YA CONFIRMADA. No se
+       * le agregan renglones a esa orden —el cliente autorizó un importe con
+       * una PO, y cambiárselo por debajo es exactamente lo que no se hace—:
+       * nace una orden NUEVA ligada a la de antes.
+       *
+       * Se DECLARA, no se adivina. El mismo cliente puede pedir un trabajo
+       * nuevo que no es adicional de nada, así que inferirlo del cliente o
+       * de la fecha llenaría Odoo de ligas falsas. Y se pregunta aquí porque
+       * duplicar es el gesto con el que de verdad empieza un adicional: ya
+       * está delante la cotización de la que viene.
+       *
+       * Sólo se ofrece si el original tiene orden EN EL SERVIDOR (la libreta
+       * de sincronización, no el campo tecleado `m.so`): sin orden no hay
+       * padre al que ligar. */
+      const padre = (A && A.ordenDe) ? A.ordenDe(m.id) : null;
+      let adicionalDe = null;
+      if (padre && padre.id) {
+        if (confirm('¿Esta copia es un ADICIONAL de ' + (padre.nombre || ('la orden ' + padre.id)) + '?\n\n' +
+                    'Sí = trabajo extra sobre esa orden. Nace como orden NUEVA, ligada a ' +
+                    'ella en Odoo, y la de antes no se toca.\n\n' +
+                    'No = es una cotización independiente que sólo reaprovecha el contenido.')) {
+          adicionalDe = { odoo_so_id: padre.id, odoo_so_name: padre.nombre || null,
+                          de_machote: m.id, declarado_at: new Date().toISOString() };
+        }
+      }
+
       const copia = JSON.parse(JSON.stringify(m));
       copia.id = 'M-' + Date.now();
-      copia.nombre = m.nombre + ' (copia)';
+      copia.nombre = m.nombre + (adicionalDe ? ' (adicional)' : ' (copia)');
       /* Lo de la transacción, fuera. */
       copia.folio = null; copia.folio_txt = null;
       copia.so = null;
+      /* La liga al padre es del hijo, no se hereda: si el original ya era
+       * adicional de otra, la copia es adicional de lo que se acaba de decir
+       * o de nada. Encadenar adicionales de adicionales sin que nadie lo
+       * decida es cómo se pierde de vista cuál era el trabajo original. */
+      copia.adicional_de = adicionalDe;
       copia.estado = (G.MachoteDocumento && G.MachoteDocumento.FLUJO)
         ? G.MachoteDocumento.FLUJO[0] : copia.estado;
       const _s = (G.SuiteAuth && G.SuiteAuth.getSession()) || null;
@@ -1852,7 +1884,10 @@
        * uuid del original haría que la primera subida sobrescribiera al
        * original — un solo escritor por identidad (§20 #4). */
       location.hash = '#/m/' + copia.id;
-      toast('Duplicada. Nace sin folio, sin historial y sin orden.');
+      toast(adicionalDe
+        ? ('Adicional de ' + (adicionalDe.odoo_so_name || adicionalDe.odoo_so_id) +
+           '. Nace sin folio y sin orden; al confirmarla se liga a la de antes.')
+        : 'Duplicada. Nace sin folio, sin historial y sin orden.');
     });
 
     $$('[data-borrar]').forEach(b => b.onclick = async (ev) => {

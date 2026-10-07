@@ -49,10 +49,11 @@
       '— aplicados y publicados: crear la orden tarda ~14 s, no 29 minutos.',
       '✅ La llave que faltaba en la respuesta de <code>Code - Compuerta 2</code> ' +
       '— aplicada y publicada: ya devuelve el bloque de confirmación.',
+      '✅ Que al confirmar salga el correo de handoff — <b>ya sale</b>, como paso 8 de ' +
+      '<code>comercial/confirmar</code>. Hoy va <b>sólo a Esteban</b> mientras se prueba; ' +
+      'el destino real está escrito y se activa con una línea.',
       'Recorrer el ciclo desde ESTA pantalla. Lo de arriba se midió llamando a los ' +
       'webhooks desde el servidor, y el pegamento del navegador no se ha ejercido.',
-      'Que al confirmar salga el correo de handoff. Hoy lo manda el radar, y confirmar ' +
-      'desde la suite esconde la orden del radar a propósito: nadie se enteraría.',
       'Dejar de usar <code>comercial/orden-crear</code> (v1), que crea renglones sin ' +
       'producto y Odoo después no deja confirmar la orden.'
     ],

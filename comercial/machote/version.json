@@ -1,11 +1,17 @@
 {
-  "version": "V1.51",
-  "build": "V1.51",
+  "version": "V1.52",
+  "build": "V1.52",
   "fecha": "2026-10-07",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.52",
+      "pr": null,
+      "fecha": "2026-10-07",
+      "nota": "LOS PENDIENTES DEL MVP: EL CORREO DE HANDOFF, LA COMPUERTA QUE MENTIA, EL PRESUPUESTO PRECARGADO Y LOS ADICIONALES (#387). || EL CORREO DE HANDOFF EXISTE Y SALE. Hasta hoy el unico que avisaba a operaciones era el radar, y el paso 5 de la confirmacion le ESCONDE la orden al radar -pone la bandera antes de confirmar- para que no cree un segundo proyecto: o sea que confirmar desde la suite dejaba a Operaciones sin enterarse, y nadie lo iba a reportar el primer dia. Ahora comercial/confirmar manda el correo como PASO 8, DESPUES de lo irreversible. Si falla la orden sigue confirmada -deshacer una confirmacion buena por un correo seria cambiar un problema chico por uno grande- y queda constancia en TRES sitios: pasos[8] de la bitacora para contar, el chatter de la orden para que alguien se entere, y la respuesta en rojo para quien acaba de confirmar. Destino real newordersnotification@fts.mx escrito y marcado; EN_PRUEBAS=true lo manda solo a Esteban. || LA COMPUERTA DEJO DE MENTIR. Decia «Todo listo para confirmar» sobre SO11890, que tiene dos renglones sin producto y Odoo se niega a confirmar. Es comprobable desde el servidor, asi que ahora se leen los renglones y se CORRIGE el veredicto, no se comenta al lado. Si no se pueden leer no bloquea, pero lo dice: «no se pudo mirar» y «esta bien» son dos cosas distintas. || MANO DE OBRA Y MATERIALES SE PRECARGAN DEL MACHOTE. Nacian en CERO con el motivo escrito al lado -«inventar un costo es peor que dejarlo en cero»-; el motivo era bueno y la conclusion no, porque PRECARGAR NO ES INVENTAR: el motor ya los calcula separados. Un presupuesto en cero no es prudente, es uno con el que despues no se puede medir si el proyecto gano o perdio. Y un candado DURO exige que cuadren contra el machote, con la tolerancia de un peso del propio motor. Sin la cotizacion en este navegador no bloquea, pero avisa que no comprobo. || LOS ADICIONALES, QUE ERA EL UNICO DE LOS SIETE CANDADOS SIN EMPEZAR. Un adicional es trabajo extra sobre una orden YA CONFIRMADA: no se le agregan renglones a esa orden -el cliente autorizo un importe con su PO-, nace una SO NUEVA ligada al padre. Se DECLARA al duplicar, no se adivina del cliente ni de la fecha. La liga se escribe en Odoo en origin_order_id (many2one nativo, medido: CERO ordenes de toda la base lo usaban) y en origin (char), los dos y con read-back: si el many2one resultara computado, Odoo lo descarta en silencio y el char salva el dato. Un candado DURO impide emitir el adicional sobre la misma orden del padre. || Probado contra Odoo de verdad: SO11911 confirmada con su correo, y SO11912 nacida como adicional y ligada a SO11911. Cuatro pruebas dedicadas nuevas en el navegador."
+    },
     {
       "version": "V1.51",
       "pr": null,

@@ -1426,9 +1426,12 @@
    *      servidor, llamando a los webhooks; el pegamento del navegador —la
    *      sesión, el corte a los 10 s, lo que pinta la pantalla— NO se ejerció.
    *      Dos mitades probadas por separado no son un ciclo probado (§20 #21).
-   *   2. Que al confirmar salga el correo de handoff. Hoy NO sale: lo manda el
-   *      radar, y el paso 5 esconde la orden del radar antes de confirmar, a
-   *      propósito. Confirmar desde la suite deja a Operaciones sin aviso.
+   *   2. ✅ Que al confirmar salga el correo de handoff. YA SALE, como PASO 8
+   *      de `comercial/confirmar` (7-oct-2026, #387). Hoy va SÓLO a Esteban
+   *      mientras se prueba: el destino real —`newordersnotification@fts.mx`—
+   *      está escrito y marcado en el nodo `Code - Armar correo`, y se activa
+   *      poniendo `EN_PRUEBAS` en false. Eso es lo único que hay que cambiar
+   *      ahí el día que esto salga al equipo.
    *   3. La decisión de Esteban, que es de negocio y no de código.
    * Detalle y crudos en el #387. */
   var EMITIR_ENCENDIDO = false;      // ← el interruptor. Una linea.
@@ -1438,9 +1441,9 @@
     error: 'EMISION_APAGADA',
     mensaje: 'Crear la orden en Odoo está apagado a propósito. Lo que lo apagó —que el ' +
              'webhook tardara ~29 minutos y el navegador cortara a los 10 s— ya se ' +
-             'arregló: ahora tarda ~14 s. Sigue apagado porque el ciclo sólo se ha ' +
-             'recorrido desde el servidor, no desde esta pantalla, y porque al confirmar ' +
-             'todavía no sale el correo de handoff a Operaciones. Mientras tanto, las ' +
+             'arregló: ahora tarda ~14 s, y el correo de handoff a Operaciones ya sale ' +
+             'al confirmar. Sigue apagado por una sola cosa: el ciclo sólo se ha ' +
+             'recorrido desde el servidor, no desde esta pantalla. Mientras tanto, las ' +
              'órdenes se crean a mano en Odoo. El detalle está en el issue #387.'
   };
   var CONFIRMACION_APAGADA = {

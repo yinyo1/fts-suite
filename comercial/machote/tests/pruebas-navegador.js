@@ -11623,6 +11623,197 @@ await sembrarMachotes(q);
     } finally { await cerrar146(q); }
   });
 
+  /* ══ V1.52 · EL PRESUPUESTO SALE DEL MACHOTE, Y TIENE QUE CUADRAR ════════
+   * Hasta hoy la mano de obra y los materiales nacían en CERO, con el motivo
+   * escrito al lado: «inventar un costo es peor que dejarlo en cero». El
+   * motivo era bueno y la conclusión no: PRECARGAR NO ES INVENTAR — el motor
+   * ya los calcula. Un presupuesto en cero no es prudente, es un presupuesto
+   * con el que después no se puede medir si el proyecto ganó o perdió.
+   *
+   * Se prueban las DOS mitades, porque una sin la otra no sirve: que se
+   * precargue, y que un candado impida mandarlos distintos. */
+  await paso('V1.52 · la mano de obra y los materiales se PRECARGAN del machote', async () => {
+    const q = await ordPagina146({ total: 3, sync: { odoo_so_id: 12110, odoo_so_name: 'SO11911' } });
+    try {
+      const r = await q.evaluate(() => {
+        const C = window.MachoteConfirmar, A = window.MachoteApp, K = window.MachoteCalc;
+        if (!C || !C.budgetDelMachote) return { error: 'no se exportó budgetDelMachote' };
+        const m = A && A.machotePorUuid ? A.machotePorUuid('uuid-146') : null;
+        if (!m) return { error: 'el machote de prueba no se encontró por uuid' };
+        const calc = K.calcular(m);
+        const b = C.budgetDelMachote({ machote_id: 'uuid-146' });
+        return {
+          hay: !!b,
+          mo: b ? Math.abs(Number(b.manoObra) || 0) : null,
+          mat: b ? Math.abs(Number(b.materiales) || 0) : null,
+          /* La misma fuente, no una copia: si dieran distinto habría dos
+           * cálculos del mismo número (§20 #4). */
+          mismoQueCalc: !!(b && calc && calc.budget &&
+                           b.manoObra === calc.budget.manoObra &&
+                           b.materiales === calc.budget.materiales),
+          /* Y lo que importa: que NO sean cero. Un cero aquí es el defecto. */
+          algunoDistintoDeCero: !!(b && (Math.abs(b.manoObra) > 0 || Math.abs(b.materiales) > 0)),
+          /* Sin machote en este navegador devuelve null, no ceros: son dos
+           * cosas distintas (§20 #11). */
+          ajenoDaNull: C.budgetDelMachote({ machote_id: 'uuid-que-no-existe' }) === null
+        };
+      });
+      if (r.error) throw new Error(r.error);
+      if (!r.hay) throw new Error('no devolvió presupuesto del machote');
+      if (!r.mismoQueCalc) throw new Error('el presupuesto no es el mismo objeto que calcula el motor');
+      if (!r.algunoDistintoDeCero)
+        throw new Error('mano de obra y materiales salieron en CERO: la precarga no está haciendo nada');
+      if (!r.ajenoDaNull)
+        throw new Error('con la cotización fuera de este navegador devolvió ceros en vez de null');
+      console.log('    MO ' + Math.round(r.mo) + ' · materiales ' + Math.round(r.mat) +
+                  ' · del motor, no tecleados · y con machote ajeno devuelve null');
+    } finally { await cerrar146(q); }
+  });
+
+  await paso('V1.52 · si el presupuesto NO cuadra con el machote, no pasa', async () => {
+    const q = await ordPagina146({ total: 3, sync: { odoo_so_id: 12110, odoo_so_name: 'SO11911' } });
+    try {
+      const r = await q.evaluate(() => {
+        const P = window.PuertaConfirmar, A = window.MachoteApp, K = window.MachoteCalc;
+        if (!P) return { error: 'no está cargada la puerta' };
+        const m = A.machotePorUuid('uuid-146');
+        const calc = K.calcular(m);
+        const mo = Math.abs(calc.budget.manoObra), mat = Math.abs(calc.budget.materiales);
+        const srv = (pres) => ({
+          ok: true, se_puede_confirmar: true, moneda: m.moneda || 'MXN',
+          odoo_so_id: 999, odoo_so_name: 'SO-X', estado_orden: 'draft',
+          cuadra: true, moneda_correcta: true, dentro_politica: true,
+          handoff: { completo: true, falta: [], avisos: [], presupuesto: pres }
+        });
+        const ids = (v) => v.duras.map(x => x.id);
+        const cuadrado = P.evaluar({ machote: m, calc: calc, desde: 'confirmar',
+          servidor: srv([{ rubro_id: 1171, monto: 1000, signo: 1 },
+                          { rubro_id: 1177, monto: mo, signo: -1 },
+                          { rubro_id: 1176, monto: mat, signo: -1 }]) });
+        const enCero = P.evaluar({ machote: m, calc: calc, desde: 'confirmar',
+          servidor: srv([{ rubro_id: 1171, monto: 1000, signo: 1 },
+                          { rubro_id: 1177, monto: 0, signo: -1 },
+                          { rubro_id: 1176, monto: 0, signo: -1 }]) });
+        /* Un peso de diferencia es la tolerancia del propio motor: tiene que
+         * pasar, para que el candado no salte por un redondeo de centavos. */
+        const porUnPeso = P.evaluar({ machote: m, calc: calc, desde: 'confirmar',
+          servidor: srv([{ rubro_id: 1171, monto: 1000, signo: 1 },
+                          { rubro_id: 1177, monto: mo + 0.5, signo: -1 },
+                          { rubro_id: 1176, monto: mat, signo: -1 }]) });
+        const sinCalc = P.evaluar({ machote: null, calc: null, desde: 'confirmar',
+          machoteAjeno: true,
+          servidor: srv([{ rubro_id: 1177, monto: 7, signo: -1 }]) });
+        return {
+          mo: mo, mat: mat,
+          cuadradoPasa: ids(cuadrado).indexOf('presupuesto-no-cuadra') < 0,
+          enCeroFrena: ids(enCero).indexOf('presupuesto-no-cuadra') >= 0,
+          porUnPesoPasa: ids(porUnPeso).indexOf('presupuesto-no-cuadra') < 0,
+          textoEnCero: (enCero.duras.filter(x => x.id === 'presupuesto-no-cuadra')[0] || {}).porque || '',
+          /* Sin cotización aquí NO bloquea, pero lo DICE: una abstención
+           * callada se lee como «todo bien» (§20 #11). */
+          ajenoAvisa: sinCalc.blandas.map(x => x.id).indexOf('presupuesto-sin-comprobar') >= 0,
+          ajenoNoBloquea: sinCalc.duras.map(x => x.id).indexOf('presupuesto-no-cuadra') < 0
+        };
+      });
+      if (r.error) throw new Error(r.error);
+      if (!r.cuadradoPasa) throw new Error('con los montos del machote NO pasa, y debería');
+      if (!r.enCeroFrena) throw new Error('con la mano de obra y los materiales en CERO pasó: el candado no frena');
+      if (!r.porUnPesoPasa) throw new Error('medio peso de diferencia hizo saltar el candado; la tolerancia es de un peso');
+      if (!/mano de obra/i.test(r.textoEnCero)) throw new Error('el candado no dice cuál rubro no cuadra');
+      if (!r.ajenoAvisa) throw new Error('con la cotización fuera de este navegador se calla en vez de decir que no comprobó');
+      if (!r.ajenoNoBloquea) throw new Error('bloqueó por no poder comprobar: eso convierte una limitación en avería');
+      console.log('    cuadrado pasa · en cero FRENA · ±0.50 pasa · ajeno avisa y no bloquea');
+    } finally { await cerrar146(q); }
+  });
+
+  /* ══ V1.52 · UN ADICIONAL ES UNA ORDEN NUEVA, NO RENGLONES EN LA DE ANTES ══
+   * La regla de Esteban. Lo que se prueba aquí es el lado del navegador: que
+   * duplicar DECLARE el adicional, y que el candado impida emitirlo sobre la
+   * misma orden del padre. La liga en Odoo (`origin_order_id`) la escribe el
+   * servidor y se probó contra Odoo, no aquí. */
+  await paso('V1.52 · duplicar sobre una orden ya emitida DECLARA el adicional', async () => {
+    const q = await ordPagina146({ total: 3, sync: { odoo_so_id: 12110, odoo_so_name: 'SO11911' } });
+    try {
+      const r = await q.evaluate(async () => {
+        const esperar = (ms) => new Promise(r => setTimeout(r, ms));
+        location.hash = '#/';
+        await esperar(500);
+        const preguntas = [];
+        window.confirm = (t) => { preguntas.push(String(t)); return true; };
+        window.alert = () => {};
+        const antes = (window.MachoteApp.todos() || []).length;
+        const bot = document.querySelector('[data-dup]');
+        if (!bot) return { error: 'no hay botón de duplicar en la lista' };
+        bot.click();
+        await esperar(600);
+        const todos = window.MachoteApp.todos() || [];
+        const copia = todos.filter(x => x.id !== 'M-9146')[0] || null;
+        return {
+          preguntas: preguntas.length,
+          preguntoPorAdicional: preguntas.some(t => /ADICIONAL/i.test(t)),
+          nombraElPadre: preguntas.some(t => /SO11911/.test(t)),
+          creadas: todos.length - antes,
+          tieneAdicional: !!(copia && copia.adicional_de),
+          padreId: copia && copia.adicional_de ? copia.adicional_de.odoo_so_id : null,
+          /* Y sigue naciendo LIBRE: sin folio y sin orden propia. */
+          sinFolio: !!(copia && !copia.folio),
+          sinSO: !!(copia && !copia.so),
+          nombre: copia ? copia.nombre : null
+        };
+      });
+      if (r.error) throw new Error(r.error);
+      if (r.creadas !== 1) throw new Error('duplicar creó ' + r.creadas + ' cotizaciones');
+      if (!r.preguntoPorAdicional)
+        throw new Error('no preguntó si es un adicional, así que nunca se puede declarar uno');
+      if (!r.nombraElPadre) throw new Error('la pregunta no dice DE QUÉ ORDEN sería adicional');
+      if (!r.tieneAdicional) throw new Error('se dijo que sí y la copia nació sin `adicional_de`');
+      if (Number(r.padreId) !== 12110) throw new Error('el padre quedó mal: ' + r.padreId);
+      if (!r.sinFolio || !r.sinSO)
+        throw new Error('la copia heredó folio u orden: un adicional nace libre, ligado pero libre');
+      console.log('    «' + r.nombre + '» · adicional de 12110 · sin folio y sin orden propia');
+    } finally { await cerrar146(q); }
+  });
+
+  await paso('V1.52 · un adicional NO se puede emitir sobre la orden de su padre', async () => {
+    const q = await ordPagina146({ total: 3, sync: { odoo_so_id: 12110, odoo_so_name: 'SO11911' } });
+    try {
+      const r = await q.evaluate(() => {
+        const C = window.Confirmacion, A = window.MachoteApp;
+        if (!C || !C.faltantes) return { error: 'no está cargado Confirmacion' };
+        const base = A.machotePorUuid('uuid-146');
+        const ids = (m) => C.faltantes(m, null, null).map(x => x.id);
+        /* (a) adicional de la MISMA orden a la que está ligado: no pasa. */
+        const mal = JSON.parse(JSON.stringify(base));
+        mal.adicional_de = { odoo_so_id: 12110, odoo_so_name: 'SO11911' };
+        /* (b) adicional de OTRA orden: ése sí, es el caso bueno. */
+        const bien = JSON.parse(JSON.stringify(base));
+        bien.adicional_de = { odoo_so_id: 99999, odoo_so_name: 'SO-OTRA' };
+        /* (c) no es adicional: el candado ni aparece. */
+        const normal = JSON.parse(JSON.stringify(base));
+        delete normal.adicional_de;
+        const dMal = C.faltantes(mal, null, null)
+          .filter(x => x.id === 'adicional-misma-orden')[0] || null;
+        return {
+          malFrena: ids(mal).indexOf('adicional-misma-orden') >= 0,
+          esDura: dMal ? dMal.dureza === 'dura' : null,
+          diceElPadre: dMal ? /SO11911/.test(dMal.porque || '') : false,
+          diceQueHacer: dMal ? /desliga/i.test(dMal.donde || '') : false,
+          bienPasa: ids(bien).indexOf('adicional-misma-orden') < 0,
+          normalPasa: ids(normal).indexOf('adicional-misma-orden') < 0
+        };
+      });
+      if (r.error) throw new Error(r.error);
+      if (!r.malFrena)
+        throw new Error('un adicional ligado a la MISMA orden de su padre pasó: así es como se le acaban agregando renglones');
+      if (r.esDura !== true) throw new Error('el candado salió blando; esto tiene que frenar');
+      if (!r.diceElPadre) throw new Error('el candado no dice de qué orden es adicional');
+      if (!r.diceQueHacer) throw new Error('el candado no dice cómo se arregla');
+      if (!r.bienPasa) throw new Error('un adicional ligado a OTRA orden también frenó, y ése es el caso bueno');
+      if (!r.normalPasa) throw new Error('una cotización que no es adicional también frenó');
+      console.log('    misma orden FRENA (dura, dice el padre y el remedio) · otra orden pasa · normal pasa');
+    } finally { await cerrar146(q); }
+  });
+
   await paso('sin errores de consola propios del prototipo', async () => {
     if (errs.length) throw new Error(errs.slice(0, 4).join(' | '));
     if (delEntorno.length) console.log('   (' + delEntorno.length +
