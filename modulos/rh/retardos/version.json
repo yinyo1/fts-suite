@@ -1,9 +1,15 @@
 {
-  "version": "V1.03",
-  "fecha": "2026-09-28",
+  "version": "V1.04",
+  "fecha": "2026-10-07",
   "modulo": "rh/retardos",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Contador propio de este modulo.",
   "historial": [
+    {
+      "version": "V1.04",
+      "fecha": "2026-10-07",
+      "titulo": "Modo piloto, jefe faltante y PPA aparte (#386)",
+      "nota": "Aviso arriba con el estado del piloto (listo, activo desde, apagado) o del modo real. Cada caso dice si va en pista real (piloto) o en sombra. Bandeja nueva Falta jefe en Odoo: casos de personas sin jefe directo o con jefe sin correo, con la leyenda arriba del detalle y la instruccion de asignarlo en Odoo. El detalle explica que el premio de puntualidad es otra regla (5 minutos, lo calcula Nomina). Configuracion muestra piloto, copias de cada aviso, leyenda y minutos de PPA."
+    },
     {
       "version": "V1.03",
       "fecha": "2026-09-28",

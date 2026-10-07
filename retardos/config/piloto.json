@@ -1,0 +1,7 @@
+{
+  "piloto": true,
+  "issue": "#386",
+  "que_hace": "Mientras este archivo exista en main con piloto=true, retardos/enviar fija en la base el instante de arranque del piloto (retardos.config piloto_inicio) la primera vez que corre. Desde ese instante las personas de piloto_employee_ids reciben avisos reales; el resto sigue en sombra.",
+  "quien_esta_en_el_piloto": "Vive en la base (retardos.config piloto_employee_ids), no en este archivo.",
+  "apagar_el_piloto": "UPDATE retardos.config SET valor='false'::jsonb WHERE clave='piloto_habilitado'. Borrar o cambiar este archivo NO apaga un piloto ya arrancado. Ver docs/retardos/PILOTO.md."
+}

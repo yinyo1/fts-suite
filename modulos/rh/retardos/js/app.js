@@ -32,9 +32,14 @@
     { id: 'rh', t: 'Casos con hoja recibida', q: 'Confírmala en Hojas por confirmar', clase: 'rh', estados: ['FIRMA_RECIBIDA'] },
     { id: 'vencidos', t: 'Vencidos o escalados', q: 'RH no subió la hoja a tiempo', clase: 'urge', estados: ['VENCIDO', 'ESCALADO'] },
     { id: 'resolver', t: 'Por resolver', q: 'Negativa, impugnación o validado', clase: '', estados: ['SE_NEGO_A_FIRMAR', 'IMPUGNADO', 'VALIDADO_RH', 'ACCION_PROGRAMADA'] },
-    { id: 'retenidos', t: 'Suspensión alcanzada, no aplicada', q: 'Modo sin suspensión: cuenta como antecedente', clase: 'ret', estados: ['RETENIDO'] }
+    { id: 'retenidos', t: 'Suspensión alcanzada, no aplicada', q: 'Modo sin suspensión: cuenta como antecedente', clase: 'ret', estados: ['RETENIDO'] },
+    { id: 'sinjefe', t: 'Falta jefe en Odoo', q: 'El aviso salió con copia a Dirección. Asignar jefe en Odoo', clase: 'urge', f: faltaJefe }
   ];
-  var st = { casos: [], salud: null, filtro: 'todos', vista: 'lista', folio: null, editor: false, cerrados: false, hojas: [], reinc: null, jor: null, jSem: null, medidas: [] };
+  function faltaJefe(c) { return c.jefe_estado === 'sin_jefe' || c.jefe_estado === 'jefe_sin_correo'; }
+  function enCubeta(b, c) { return b.f ? b.f(c) : b.estados.indexOf(c.estado) >= 0; }
+  function chipPista(c) { return c.pista === 'real' ? '<span class="chip e-real">' + (c.modo_al_abrir === 'piloto' ? 'real · piloto' : 'real') + '</span>' : ''; }
+  function chipJefe(c) { return faltaJefe(c) ? '<span class="chip e-vencido">' + (c.jefe_estado === 'sin_jefe' ? 'falta jefe en Odoo' : 'jefe sin correo') + '</span>' : ''; }
+  var st = { casos: [], salud: null, filtro: 'todos', vista: 'lista', folio: null, editor: false, cerrados: false, hojas: [], reinc: null, jor: null, jSem: null, medidas: [], piloto: null };
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function chip(estado) { var e = E[estado] || [estado, 'e-otro']; return '<span class="chip ' + e[1] + '">' + esc(e[0]) + '</span>'; }
@@ -111,13 +116,20 @@
     var r;
     try { r = await pedir({ accion: 'listar', incluir_cerrados: st.cerrados }); } catch (e) { return; }
     if (!r || r.ok !== true) { $('#lista').innerHTML = '<div class="vacio">' + mensajeError(r || {}) + '</div>'; return; }
-    st.casos = r.casos || []; st.salud = r.salud || null;
+    st.casos = r.casos || []; st.salud = r.salud || null; st.piloto = r.piloto || null;
     pintarSalud(); pintarResumen(); pintarLista();
   }
   function pintarSalud() {
     var s = st.salud, h = '';
     if (!s) { $('#salud').innerHTML = ''; return; }
-    if (s.modo === 'sombra') h += '<div class="aviso sombra"><div><b>Modo sombra</b>Ningún correo llega a los empleados. Cada correo se desvía a Dirección y RH con la etiqueta [SOMBRA] y el destinatario real en el cuerpo.</div></div>';
+    var pl = st.piloto || {}, nPl = (pl.empleados || []).length;
+    if (s.modo === 'real') h += '<div class="aviso bien"><div><b>Modo real' + (pl.real_inicio ? ' desde ' + esc(fechaCorta(pl.real_inicio)) : '') + '</b>Los avisos nuevos llegan a cada persona, con copia a RH y a su jefe directo. Los casos que se abrieron en sombra siguen en sombra.</div></div>';
+    else {
+      if (pl.habilitado === true && pl.inicio && nPl) h += '<div class="aviso bien"><div><b>Piloto activo desde ' + esc(fechaCorta(pl.inicio)) + '</b>' + nPl + ' personas reciben avisos reales (casos marcados <i>real · piloto</i>). Sólo cuentan los retardos desde esa hora. El resto de la plantilla sigue en sombra.</div></div>';
+      else if (pl.habilitado === true && nPl) h += '<div class="aviso demo"><div><b>Piloto listo, todavía sin arrancar</b>' + nPl + ' personas recibirán avisos reales en cuanto se publique esta versión. Mientras tanto todo sigue en sombra.</div></div>';
+      else if (pl.habilitado === false && pl.inicio) h += '<div class="aviso mal"><div><b>Piloto apagado</b>Se apagó con el interruptor. Nadie recibe avisos reales.</div></div>';
+      h += '<div class="aviso sombra"><div><b>Modo sombra</b>' + (pl.habilitado === true && pl.inicio && nPl ? 'Fuera del piloto, ningún' : 'Ningún') + ' correo llega a los empleados. Cada correo se desvía a Dirección y RH con la etiqueta [SOMBRA] y el destinatario real en el cuerpo.</div></div>';
+    }
     if (s.ok === false) {
       h += '<div class="aviso mal"><div><b>El monitor encontró problemas</b><ul>' + (s.problemas || []).map(function (p) { return '<li>' + esc(p.detalle) + '</li>'; }).join('') + '</ul></div></div>';
     }
@@ -125,16 +137,16 @@
     $('#salud').innerHTML = h;
     $('#pie').textContent = ult + (s.outbox_pendiente ? ' Correos por salir: ' + s.outbox_pendiente + '.' : '');
   }
-  function contar(estados) { return st.casos.filter(function (c) { return estados.indexOf(c.estado) >= 0; }).length; }
+  function contar(b) { return st.casos.filter(function (c) { return enCubeta(b, c); }).length; }
   function pintarResumen() {
     $('#resumen').innerHTML = CUBETAS.map(function (b) {
       return '<button class="cubeta ' + b.clase + '" data-cubeta="' + b.id + '" aria-pressed="' + (st.filtro === b.id) + '">' +
-             '<span class="n">' + contar(b.estados) + '</span><span class="l">' + esc(b.t) + '</span><span class="q">' + esc(b.q) + '</span></button>';
+             '<span class="n">' + contar(b) + '</span><span class="l">' + esc(b.t) + '</span><span class="q">' + esc(b.q) + '</span></button>';
     }).join('');
   }
   function visibles() {
     var b = CUBETAS.filter(function (x) { return x.id === st.filtro; })[0];
-    var cs = b ? st.casos.filter(function (c) { return b.estados.indexOf(c.estado) >= 0; }) : st.casos.slice();
+    var cs = b ? st.casos.filter(function (c) { return enCubeta(b, c); }) : st.casos.slice();
     if (st.filtro === 'recolectar') cs.sort(function (a, c) { return String(a.vence_at || '9') < String(c.vence_at || '9') ? -1 : 1; });
     return cs;
   }
@@ -147,7 +159,7 @@
     $('#lista').innerHTML = '<div class="tabla-wrap"><table><thead><tr><th>Folio</th><th>Persona</th><th>Nivel</th><th class="num">Retardos</th><th>Estado</th><th>Vence</th><th class="num">Días abierto</th>' + (imprimir ? '<th></th>' : '') + '</tr></thead><tbody>' +
       cs.map(function (c) {
         return '<tr class="fila" tabindex="0" data-folio="' + esc(c.folio) + '"><td class="folio">' + esc(c.folio) + '</td>' +
-          '<td class="quien2"><b>' + esc(c.nombre || ('Empleado ' + c.employee_id)) + '</b><span>' + esc(c.periodo) + (c.ruta === 'supervisor' ? ' · entrega por supervisor' : '') + '</span></td>' +
+          '<td class="quien2"><b>' + esc(c.nombre || ('Empleado ' + c.employee_id)) + '</b><span>' + esc(c.periodo) + (c.ruta === 'supervisor' ? ' · entrega por supervisor' : '') + '</span>' + (chipPista(c) || chipJefe(c) ? '<span class="chips2">' + chipPista(c) + ' ' + chipJefe(c) + '</span>' : '') + '</td>' +
           '<td class="nivel"><i>' + c.nivel + '</i>' + esc(NIVEL[c.accion] || c.accion) + '</td>' +
           '<td class="n">' + (esJor(c) ? '<span class="nivel">jornada</span>' : c.retardos_n) + '</td><td>' + chip(c.estado) + '</td>' +
           '<td class="num vence">' + (c.vence_at ? fechaDia(c.vence_at) : '') + '</td><td class="n">' + (c.dias_abierto == null ? '' : c.dias_abierto) + '</td>' +
@@ -200,12 +212,13 @@
       return '<tr><td class="num">' + esc(x.fecha) + '</td><td class="num">' + esc(x.llegada) + '</td><td class="num">' + esc(x.esperada) + '</td><td class="n">' + esc(x.minutos) + '</td></tr>';
     }).join('');
     var h = '<button class="btn volver-lista" id="volver">← Volver a la lista</button>' +
-      '<div class="cab"><div><h1>' + esc(c.nombre) + '</h1><div class="sub"><span class="folio">' + esc(c.folio) + '</span> · ' + esc(c.nombre_nivel) + ' · periodo ' + esc(c.periodo) + '</div></div><span class="sp"></span>' + chip(c.estado) + '</div>' +
+      '<div class="cab"><div><h1>' + esc(c.nombre) + '</h1><div class="sub"><span class="folio">' + esc(c.folio) + '</span> · ' + esc(c.nombre_nivel) + ' · periodo ' + esc(c.periodo) + '</div></div><span class="sp"></span>' + chipPista(c) + ' ' + chip(c.estado) + '</div>' +
+      (c.leyenda_jefe ? '<div class="aviso mal"><div><b>' + esc(c.leyenda_jefe) + '</b>' + (c.jefe_estado === 'sin_jefe' ? 'El aviso salió a la persona con copia a RH y a Dirección, y lleva esta leyenda arriba. Asigna el jefe directo en Odoo (campo Gerente de la ficha) para que los siguientes le lleguen.' : 'El aviso salió con copia a RH y a Dirección. Carga un correo de empresa al jefe en Odoo.') + '</div></div>' : '') +
       '<div class="detalle"><div style="display:grid;gap:14px;min-width:0">' +
       (esJor(c) ? bloqueJornadaCaso(c) :
       '<section class="caja bloque"><h2>' + esc(c.retardos_n) + ' retardos en el periodo</h2>' +
         (c.motivo_apertura === 'reincidencia' ? '<div class="aviso mal" style="margin:0"><div><b>Reincidencia</b>Ya tenía un documento firmado y validado en los últimos días. Por eso sube de nivel.</div></div>' : '') +
-        '<div class="nivel">Hora del centro (CST). Tolerancia de ' + esc(c.tolerancia_min == null ? 15 : c.tolerancia_min) + ' minutos al segundo: llegar a los 15:00 no es retardo, a los 15:01 sí.</div>' +
+        '<div class="nivel">Hora del centro (CST). Tolerancia de ' + esc(c.tolerancia_min == null ? 15 : c.tolerancia_min) + ' minutos al segundo: llegar a los 15:00 no es retardo, a los 15:01 sí. El premio de puntualidad (PPA) es otra regla: se gana checando a más tardar ' + esc(c.ppa_minutos == null ? 5 : c.ppa_minutos) + ' minutos después de la entrada y lo calcula Nómina.</div>' +
         '<div class="tabla-wrap"><table><thead><tr><th>Fecha</th><th>Llegó</th><th>Entrada</th><th class="num">Minutos tarde</th></tr></thead><tbody>' + retardos + '</tbody></table></div></section>') +
       (acts.length ? '<section class="caja bloque"><h2>Qué sigue</h2><div class="acciones">' + acts.map(function (a) {
         return '<button class="btn ' + (a[2] || '') + '" data-accion="' + a[0] + '">' + esc(a[1]) + '</button>'; }).join('') + '</div><div id="form-accion"></div></section>' : '') +
@@ -217,7 +230,8 @@
       '<section class="caja bloque"><h3>Datos</h3><dl class="dl">' +
         '<dt>Puesto</dt><dd>' + esc(c.puesto) + '</dd><dt>Área</dt><dd>' + esc(c.departamento) + '</dd>' +
         '<dt>Correo</dt><dd>' + (c.email_valido ? 'registrado' : '<span class="chip e-vencido">sin correo válido</span>') + '</dd>' +
-        '<dt>Supervisor</dt><dd>' + esc(c.supervisor || 'sin supervisor') + '</dd>' +
+        '<dt>Jefe directo</dt><dd>' + (faltaJefe(c) ? chipJefe(c) : esc(c.supervisor || 'sin jefe')) + '</dd>' +
+        '<dt>Pista</dt><dd>' + (c.pista === 'real' ? 'real' + (c.modo_al_abrir === 'piloto' ? ' (piloto)' : '') : 'sombra') + '</dd>' +
         '<dt>Plazo</dt><dd class="num">' + esc(c.vence || 'no aplica') + '</dd>' +
         (c.accion_desde ? '<dt>Suspensión</dt><dd class="num">' + esc(c.accion_desde) + ' al ' + esc(c.accion_hasta) + '</dd>' : '') +
         '<dt>Testigos</dt><dd>' + (c.requiere_testigos ? 'requiere dos' : 'no requiere') + '</dd></dl></section>' +
@@ -309,7 +323,7 @@
     try { r = await pedir({ accion: 'config' }); } catch (e) { return; }
     if (!r || r.ok !== true) { $('#ajustes').innerHTML = '<div class="caja vacio">' + mensajeError(r || {}) + '</div>'; return; }
     var cfg = r.config || {}, esc2 = r.escalera || [], ex = r.exclusiones || [];
-    var claves = ['modo', 'modo_sanciones', 'tolerancia_min', 'dias_habiles', 'zona_horaria', 'hora_fuente', 'periodo', 'reincidencia_dias', 'contar_desde', 'dias_recoleccion_rh', 'correo_modo', 'dias_validacion_rh', 'hojas_carpeta', 'buzon_receptor', 'real_desde'];
+    var claves = ['modo', 'modo_sanciones', 'tolerancia_min', 'dias_habiles', 'zona_horaria', 'hora_fuente', 'periodo', 'reincidencia_dias', 'contar_desde', 'dias_recoleccion_rh', 'correo_modo', 'dias_validacion_rh', 'hojas_carpeta', 'buzon_receptor', 'real_desde', 'real_inicio', 'piloto_employee_ids', 'piloto_habilitado', 'piloto_inicio', 'aviso_cc_rh', 'aviso_cc_sin_jefe', 'leyenda_sin_jefe', 'ppa_minutos'];
     var clavesJ = ['jornada_umbral_horas', 'jornada_comida_min', 'jornada_comida_fin_de_semana', 'jornada_comida_fds_min_horas', 'jornada_usar_calendario', 'jornada_tolerancia_calendario_h', 'jornada_horas_max_asistencia', 'jornada_ventana_dias', 'jornada_plazo_correccion_dias', 'jornada_desde', 'jornada_envio', 'modo_medidas_jornada', 'jornada_tipo_nomina_descuento'];
     var escJ = r.escalera_jornada || [], fest = r.festivos || [], pls = r.plantillas || [];
     function val(v) { return v == null ? 'sin definir' : (typeof v === 'object' ? JSON.stringify(v) : String(v)); }

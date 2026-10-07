@@ -124,6 +124,11 @@ td.n{text-align:right;white-space:nowrap}
 .e-validado,.e-cerrado,.e-verificada{background:var(--green-l);color:var(--green-d)}
 .e-otro{background:var(--card2);color:var(--muted2);border-color:var(--border)}
 .e-retenido{background:var(--violet-l);color:var(--violet)}
+.e-real{background:var(--blue-l);color:var(--blue)}
+.quien2 .chips2{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.quien2 .chips2 .chip{font-size:11px}
+.quien2 .chips2 .chip.e-real{color:var(--blue)}
+.quien2 .chips2 .chip.e-vencido{color:var(--red)}
 .cubeta.ret .n{color:var(--violet)}
 .nivel{font-size:12px;color:var(--muted2);white-space:nowrap}
 .nivel i{font-style:normal;display:inline-grid;place-items:center;width:18px;height:18px;border-radius:5px;background:var(--card2);border:1px solid var(--border);font-size:11px;font-weight:700;margin-right:5px;color:var(--text)}

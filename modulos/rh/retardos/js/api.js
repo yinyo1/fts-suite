@@ -60,6 +60,14 @@
     correo_modo: { valor: 'preferente', confirmado: false, descripcion: 'preferente: correo de empresa; si no hay, el personal. ambos: a los dos.' },
     hojas_carpeta: { valor: null, confirmado: false, descripcion: 'Carpeta de OneDrive o SharePoint donde RH deja hojas escaneadas. Vacía: sólo se suben desde el panel.' },
     real_desde: { valor: null, confirmado: false, descripcion: 'Fecha del paso a real. Sin ella no se evalúan las alertas globales.' },
+    real_inicio: { valor: null, confirmado: true, descripcion: 'Instante exacto del paso a real. Lo pone la base sola al cambiar modo a real.' },
+    piloto_employee_ids: { valor: [505, 507], confirmado: true, descripcion: 'Empleados del piloto. Reciben avisos reales desde piloto_inicio aunque modo siga en sombra.' },
+    piloto_habilitado: { valor: true, confirmado: true, descripcion: 'Interruptor del piloto. false lo apaga sin tocar código.' },
+    piloto_inicio: { valor: null, confirmado: true, descripcion: 'Arranque del piloto. Lo fija retardos/enviar la primera vez que corre después del merge.' },
+    aviso_cc_rh: { valor: ['rh.uno@ejemplo.mx', 'rh.dos@ejemplo.mx'], confirmado: true, descripcion: 'Copia de todo aviso de retardo o jornada, además del jefe directo según Odoo.' },
+    aviso_cc_sin_jefe: { valor: ['direccion@ejemplo.mx'], confirmado: true, descripcion: 'Copia adicional cuando la persona no tiene jefe directo en Odoo.' },
+    leyenda_sin_jefe: { valor: 'Falta asignarle jefe en Odoo', confirmado: true, descripcion: 'Leyenda visible arriba del correo cuando falta el jefe directo.' },
+    ppa_minutos: { valor: 5, confirmado: true, descripcion: 'Sólo texto: el PPA se gana checando a más tardar estos minutos después de la entrada. Lo calcula Nómina, no Retardos.' },
     tolerancia_min: { valor: 15, confirmado: false, descripcion: 'Minutos de gracia después de la hora de entrada, al segundo: 15:00 no es retardo, 15:01 sí.' },
     dias_habiles: { valor: [1, 2, 3, 4, 5], confirmado: false, descripcion: 'Días en que se cuenta retardo: lunes a viernes. Sábado y domingo nunca son retardo, pero sus horas cuentan para la jornada.' },
     zona_horaria: { valor: 'America/Monterrey', confirmado: false, descripcion: 'Hora del centro (CST, UTC-6 todo el año). Toda fecha y hora se convierte en un solo lugar.' },
@@ -108,7 +116,7 @@
       folio: 'RET-2026-' + ('000' + seq).slice(-4), employee_id: p.employee_id, nombre: p.nombre, puesto: p.puesto, departamento: p.departamento,
       nivel: nivel, accion: e.accion, nombre_nivel: e.nombre, estado: estado, periodo: '2026-09', retardos_n: n,
       abierto_at: iso(dAbierto), vence_at: dVence == null ? null : iso(dVence), vence: dVence == null ? null : fecha(dVence),
-      ruta: 'correo', modo_al_abrir: 'sombra', dias_abierto: -dAbierto, motivo_apertura: 'umbral',
+      ruta: 'correo', modo_al_abrir: 'sombra', pista: 'sombra', jefe_estado: 'ok', leyenda_jefe: null, ppa_minutos: 5, tipo: 'retardo', dias_abierto: -dAbierto, motivo_apertura: 'umbral',
       email_valido: true, supervisor: 'Damián Demo', requiere_testigos: e.requiere_testigos, dias_suspension: e.dias_suspension,
       retardos: retardosDemo(n, seq), evidencias: [], bitacora: [], envios: [], accion_desde: null, accion_hasta: null
     }, extra || {});
@@ -122,17 +130,20 @@
     caso(P[5], 3, 'ESCALADO', 6, -9, -1, { ruta: 'supervisor', email_valido: false }),
     caso(P[6], 2, 'IMPUGNADO', 3, -5, 1),
     caso(P[7], 4, 'ACCION_PROGRAMADA', 7, -12, null, { accion_desde: fecha(3), accion_hasta: fecha(3) }),
-    caso(P[0], 4, 'RETENIDO', 7, 0, null)
+    caso(P[0], 4, 'RETENIDO', 7, 0, null),
+    caso(P[4], 1, 'NOTIFICADO', 1, 0, null, { pista: 'real', modo_al_abrir: 'piloto', periodo: '2026-10' }),
+    caso(P[6], 1, 'NOTIFICADO', 2, 0, null, { pista: 'real', modo_al_abrir: 'piloto', periodo: '2026-10', jefe_estado: 'sin_jefe', supervisor: null, leyenda_jefe: 'Falta asignarle jefe en Odoo' })
   ];
   CASOS.forEach(function (c) {
     c.bitacora = [
       { at: c.abierto_at, evento: 'apertura', de: null, a: 'DETECTADO', actor: 'sistema', motivo: c.retardos_n + ' retardos en ' + c.periodo + ' (nivel ' + c.nivel + ')' },
-      { at: c.abierto_at, evento: 'transicion', de: 'DETECTADO', a: 'NOTIFICADO', actor: 'sistema', motivo: 'Correo enviado [SOMBRA]' }
+      { at: c.abierto_at, evento: 'transicion', de: 'DETECTADO', a: 'NOTIFICADO', actor: 'sistema', motivo: c.pista === 'real' ? 'Correo enviado a la persona (piloto)' : 'Correo enviado [SOMBRA]' }
     ];
     if (c.nivel > 1) c.bitacora.push({ at: c.abierto_at, evento: 'transicion', de: 'NOTIFICADO', a: 'ESPERANDO_FIRMA', actor: 'sistema', motivo: 'Plazo al ' + (c.vence || '') });
     if (c.estado !== 'ESPERANDO_FIRMA' && c.estado !== 'CERRADO' && c.nivel > 1)
       c.bitacora.push({ at: iso(-1), evento: 'transicion', de: 'ESPERANDO_FIRMA', a: c.estado, actor: c.estado === 'FIRMA_RECIBIDA' ? 'correo:empleado' : 'sistema', motivo: 'Ejemplo' });
-    c.envios = [{ tipo: 'notificacion', estado: 'enviado', modo: 'sombra', enviado_at: c.abierto_at, asunto: '[SOMBRA] [' + c.folio + '] ' + (c.nivel > 1 ? 'Recolectar firma: ' : '') + c.nombre_nivel }];
+    var mEnv = c.pista === 'real' ? 'real' : 'sombra';
+    c.envios = [{ tipo: 'notificacion', estado: 'enviado', modo: mEnv, enviado_at: c.abierto_at, asunto: (mEnv === 'real' ? '' : '[SOMBRA] ') + '[' + c.folio + '] ' + (c.nivel > 1 ? 'Recolectar firma: ' : '') + c.nombre_nivel }];
     if (c.nivel > 1) c.envios.push({ tipo: 'aviso_trabajador', estado: 'enviado', modo: 'sombra', enviado_at: c.abierto_at, asunto: '[SOMBRA] [' + c.folio + '] ' + c.nombre_nivel + ': Recursos Humanos te va a citar' });
     if (c.estado === 'RETENIDO') {
       c.bitacora = [c.bitacora[0], { at: c.abierto_at, evento: 'transicion', de: 'DETECTADO', a: 'RETENIDO', actor: 'sistema', motivo: 'Nivel de suspensión alcanzado, no aplicado (modo sin suspensión). Cuenta como antecedente.' }];
@@ -317,7 +328,7 @@
   })();
   function listaFila(c) {
     return { folio: c.folio, employee_id: c.employee_id, nombre: c.nombre, nivel: c.nivel, accion: c.accion, estado: c.estado, periodo: c.periodo,
-             retardos_n: c.retardos_n, abierto_at: c.abierto_at, vence_at: c.vence_at, ruta: c.ruta, modo_al_abrir: c.modo_al_abrir,
+             retardos_n: c.retardos_n, abierto_at: c.abierto_at, vence_at: c.vence_at, ruta: c.ruta, modo_al_abrir: c.modo_al_abrir, tipo: c.tipo, pista: c.pista, jefe_estado: c.jefe_estado,
              dias_abierto: c.dias_abierto, evidencias: c.evidencias.length };
   }
   function datosCaso(c) {
@@ -329,7 +340,7 @@
     var actor = 'rh.demo';
     try {
       if (d.accion === 'listar') {
-        return { ok: true, casos: CASOS.filter(function (c) { return d.incluir_cerrados || (c.estado !== 'CERRADO' && c.estado !== 'CANCELADO_POR_RH'); }).map(listaFila), salud: saludDemo() };
+        return { ok: true, casos: CASOS.filter(function (c) { return d.incluir_cerrados || (c.estado !== 'CERRADO' && c.estado !== 'CANCELADO_POR_RH'); }).map(listaFila), salud: saludDemo(), piloto: { empleados: [505, 507], habilitado: true, inicio: iso(-0.5), modo: 'sombra', real_inicio: null } };
       }
       if (d.accion === 'config') return { ok: true, config: CONFIG, escalera: ESCALERA, escalera_jornada: ESCALERA_J, exclusiones: EXCL.filter(function (x) { return x.activo; }), festivos: FESTIVOS, plantillas: PLANTILLAS };
       if (d.accion === 'jornada') return jornadaDemo(d.semana);

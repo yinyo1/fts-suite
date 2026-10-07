@@ -1448,3 +1448,19 @@ conPg('#386 simular_aviso: corre el código real y no deja rastro', () => {
   } finally { B.fin(); }
 });
 
+
+conPg('#386 retardos_0010: en real, una nota para Odoo sin ejecutor nace omitida y no atora el outbox', () => {
+  const B = base();
+  try {
+    B.q("UPDATE retardos.config SET valor = '\"real\"'::jsonb, actualizado_por = 'prueba' WHERE clave = 'modo'");
+    B.q("SELECT retardos.encolar('PRUEBA:odoo_nota:1', NULL, 'odoo_nota', '[]'::jsonb, '[]'::jsonb, 'Hoja firmada', 'nota')");
+    assert.equal(B.q("SELECT estado FROM retardos.envio WHERE clave_dedupe = 'PRUEBA:odoo_nota:1'"), 'omitido');
+    B.q("UPDATE retardos.envio SET creado_at = now() - interval '10 hours' WHERE clave_dedupe = 'PRUEBA:odoo_nota:1'");
+    const s = B.j('SELECT retardos.salud()');
+    assert.ok(!(s.problemas || []).some((p) => p.codigo === 'OUTBOX_ATORADO'), JSON.stringify(s.problemas));
+    // Con ejecutor, vuelve a quedar pendiente (lo toma ese workflow, no retardos/enviar).
+    B.q("UPDATE retardos.config SET valor = 'true'::jsonb WHERE clave = 'odoo_nota_ejecutor'");
+    B.q("SELECT retardos.encolar('PRUEBA:odoo_nota:2', NULL, 'odoo_nota', '[]'::jsonb, '[]'::jsonb, 'Hoja firmada', 'nota')");
+    assert.equal(B.q("SELECT estado FROM retardos.envio WHERE clave_dedupe = 'PRUEBA:odoo_nota:2'"), 'pendiente');
+  } finally { B.fin(); }
+});

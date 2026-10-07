@@ -2,13 +2,15 @@ import { workflow, node, trigger } from '@n8n/workflow-sdk';
 const PG = { postgres: { id: 'Zu4Y9UuzGwCBN8lH', name: 'fts-suite-db · fts_admin' } };
 const cron = trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.2, config: { name: 'Cron cada 20 min L-V 7 a 20', parameters: { rule: { interval: [ { field: 'cronExpression', expression: '*/20 7-20 * * 1-5' } ] } } } });
 const manual = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Manual' } });
-const porEnviar = node({ type: 'n8n-nodes-base.postgres', version: 2.6, config: { name: 'Postgres - Por enviar', credentials: PG, parameters: { operation: 'executeQuery', query: "SELECT retardos.por_enviar(20) AS lista, retardos.cfg_txt('remitente') AS remitente", options: {} } } });
+const marcaHttp = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { name: 'HTTP - Marca piloto', onError: 'continueRegularOutput', parameters: { method: 'GET', url: 'https://raw.githubusercontent.com/yinyo1/fts-suite/main/retardos/config/piloto.json', options: { response: { response: { fullResponse: true, neverError: true, responseFormat: 'text' } }, timeout: 10000 } } } });
+const marca = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Code - Marca piloto', parameters: { mode: 'runOnceForAllItems', jsCode: __MARCA__ } } });
+const porEnviar = node({ type: 'n8n-nodes-base.postgres', version: 2.6, config: { name: 'Postgres - Por enviar', credentials: PG, parameters: { operation: 'executeQuery', query: "SELECT retardos.por_enviar(20, $1::jsonb) AS lista, retardos.cfg_txt('remitente') AS remitente", options: { queryReplacement: '={{ JSON.stringify($json) }}' } } } });
 const latido = node({ type: 'n8n-nodes-base.postgres', version: 2.6, config: { name: 'Postgres - Latido', credentials: PG, executeOnce: true, parameters: { operation: 'executeQuery', query: 'SELECT retardos.latido($1::jsonb) AS corrida', options: { queryReplacement: "={{ JSON.stringify({ workflow: 'retardos/enviar', ok: true, leidos: ($('Postgres - Por enviar').first().json.lista || []).length }) }}" } } } });
 const preparar = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Code - Preparar', parameters: { mode: 'runOnceForAllItems', jsCode: __PREPARAR__ } } });
 const graph = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { name: 'HTTP - Graph sendMail', credentials: { oAuth2Api: { id: 'Mh5kBNduMzOl3nzT', name: 'Microsoft Graph - sales' } }, parameters: { method: 'POST', url: "={{ 'https://graph.microsoft.com/v1.0/users/' + $json.remitente + '/sendMail' }}", authentication: 'genericCredentialType', genericAuthType: 'oAuth2Api', sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.graph) }}', options: { response: { response: { fullResponse: true, neverError: true } } } } } });
 const resultado = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Code - Resultado', parameters: { mode: 'runOnceForAllItems', jsCode: __RESULTADO__ } } });
 const marcar = node({ type: 'n8n-nodes-base.postgres', version: 2.6, config: { name: 'Postgres - Marcar envio', credentials: PG, parameters: { operation: 'executeQuery', query: 'SELECT retardos.marcar_envio($1::jsonb) AS r', options: { queryReplacement: '={{ JSON.stringify($json) }}' } } } });
 export default workflow('retardos-enviar', 'retardos/enviar')
-  .add(cron).to(porEnviar)
-  .add(manual).to(porEnviar)
-  .add(porEnviar).to(latido).to(preparar).to(graph).to(resultado).to(marcar);
+  .add(cron).to(marcaHttp)
+  .add(manual).to(marcaHttp)
+  .add(marcaHttp).to(marca).to(porEnviar).to(latido).to(preparar).to(graph).to(resultado).to(marcar);
