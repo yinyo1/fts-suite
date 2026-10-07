@@ -22,13 +22,18 @@ variables**: sólo existen las de esta tabla. Una variable que no existe sale va
 
 | Clave | Para qué | Variables |
 |---|---|---|
-| `notificacion_aviso` | Aviso de retardo a la persona (nivel 1) | `nombre`, `periodo`, `detalle`, `tolerancia_min`, `retardos_n`, `umbral_carta`, `folio` |
+| `notificacion_aviso` | Aviso de retardo a la persona (nivel 1) | `nombre`, `periodo`, `detalle`, `tolerancia_min`, `retardos_n`, `umbral_carta`, `ppa_minutos`, `folio` |
+| `aviso_trabajador` | Copia a la persona de una carta o un acta | `nombre`, `periodo`, `retardos_n`, `tolerancia_min`, `detalle`, `nombre_nivel`, `ppa_minutos`, `folio` |
 | `jornada_aviso` | Primer y segundo aviso de jornada | `nombre`, `folio`, `aviso_n`, `semana_desde`, `semana_hasta`, `detalle`, `horas_efectivas`, `umbral_horas`, `faltante_horas`, `plazo_correccion` |
 | `jornada_aviso_3` | Tercer aviso de jornada a la persona | `nombre`, `folio`, `semana_desde`, `semana_hasta`, `detalle`, `horas_efectivas`, `umbral_horas`, `faltante_horas`, `plazo_correccion` |
 | `jornada_rh_recolectar` | Tercer aviso a RH, con la hoja para recolectar | `folio`, `nombre`, `puesto`, `departamento`, `semana_desde`, `semana_hasta`, `detalle`, `horas_efectivas`, `umbral_horas`, `faltante_horas`, `vence_rh`, `correo_trabajador` |
 | `jornada_sin_correo` | Aviso de jornada al jefe cuando la persona no tiene correo | `folio`, `nombre`, `aviso_n`, `semana_desde`, `semana_hasta`, `detalle`, `horas_efectivas`, `umbral_horas`, `faltante_horas`, `plazo_correccion` |
 | `jornada_por_revisar` | A RH: semanas con datos incompletos | `n`, `semana_id`, `semana_desde`, `semana_hasta` |
 | `comunicado_arranque` | Comunicado a la plantilla antes del arranque | `fecha_arranque`, `tolerancia_min`, `umbral_carta`, `umbral_horas` |
+
+**Retardo y PPA van en párrafos separados** (`retardos_0009`, #386). El retardo usa `tolerancia_min` (15) y el premio de puntualidad usa `ppa_minutos` (5). Retardos no calcula el PPA: lo calcula Nómina · Incidencias, y el texto sólo explica que es otra regla. Al reemplazar un texto, conservar los dos párrafos.
+
+**Leyenda de jefe faltante:** no es una variable. Cuando la persona no tiene jefe directo en Odoo, el sistema pone la leyenda de `leyenda_sin_jefe` arriba del cuerpo, sea cual sea el texto.
 
 `[[detalle]]` es la tabla que arma el sistema (retardos con hora al segundo, o el día a día de la
 semana). Se puede mover de lugar, no se puede quitar.

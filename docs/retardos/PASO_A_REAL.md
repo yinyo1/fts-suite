@@ -1,13 +1,10 @@
 # Retardos v2 · Paso a real
 
-Runbook para pasar de **sombra** a **real**. Issue #334. **Nada de esto se ha ejecutado.** Lo corre Esteban, o alguien con acceso de administración a `fts-suite-db`, cuando se cumplan las condiciones de la sección 0.
+Runbook para pasar de **sombra** a **real**. Issues #334 y #386. **El paso a real no se ha ejecutado.** Desde `retardos_0009` (7-oct-2026) es **una sola bandera** (sección 2); el piloto de cinco personas es aparte (`PILOTO.md`). Lo corre Esteban, o alguien con acceso de administración a `fts-suite-db`, cuando se cumplan las condiciones de la sección 0.
 
-Todas las consultas están parametrizadas por dos valores que se escriben **una sola vez** al principio de cada bloque:
+En todas las consultas, `'quien.ejecuta'` es el usuario que queda en la bitácora. Ya no hay fecha de arranque que escribir: la pone la base al cambiar el modo.
 
-- `DATE 'AAAA-MM-DD'`: la **fecha de arranque**. Es el primer día cuyos retardos cuentan. Conviene un lunes.
-- `'quien.ejecuta'`: el usuario que queda en la bitácora.
-
-**Probado en una copia local del esquema** (Postgres 16): con las 5 migraciones y un caso de sombra con su correo pendiente (sesión 2), y otra vez con las 6 migraciones el 28-sep-2026 (bloques 0.a a read-back 2; esta segunda vez sin casos de sombra abiertos). Los bloques corrieron sin error y los read-backs salieron como se describe. No se ha corrido en producción.
+**Probado en una copia local del esquema** (Postgres 16) con las 10 migraciones, el 7-oct-2026: las pruebas de `tests/retardos` cubren el cambio de bandera, la reversa, el piloto y los destinatarios (65 de 65). La bandera no se ha cambiado en producción.
 
 **Suspensiones: aparte.** Pasar a real **no** activa suspensiones. El sistema sigue en `modo_sanciones = sin_suspension`: el nivel 4 queda como "nivel de suspensión alcanzado, no aplicado". Activarlas es otro runbook, con su propio checklist: `MODO_SUSPENSION.md`.
 
@@ -17,7 +14,7 @@ Dónde correrlas: en la consola de consultas de Postgres de Railway (servicio `f
 
 | # | Condición | Cómo se comprueba |
 |---|---|---|
-| 1 | PR #344 mergeado y el panel V1.03 o posterior visible en Pages | Recarga dura del panel |
+| 1 | PR #344 mergeado y el panel V1.04 o posterior visible en Pages | Recarga dura del panel |
 | 2 | Permisos `retardos:read` y `retardos:write` asignados a RH | RH entra al panel |
 | 3 | RH revisó la hora de entrada de cada persona (pestaña Calidad de datos) | Consulta 0.a |
 | 4 | Legal confirmó escalera, textos y Reglamento | Comentario en #334 |
@@ -118,122 +115,76 @@ SELECT (SELECT jsonb_agg(clave ORDER BY clave) FROM retardos.config WHERE NOT co
        (SELECT jsonb_agg(clave ORDER BY clave) FROM retardos.plantilla WHERE estado_texto <> 'validado_rh') AS textos_sin_validar;
 ```
 
-Lo esperado es que `config_sin_confirmar` sólo liste `antecedentes_previos_cuentan`, `contar_desde`, `modo_suspension_desde` y `real_desde`. Las de fecha se escriben en el paso 2; las dos de suspensión se quedan sin confirmar a propósito, porque las escribe `MODO_SUSPENSION.md`. `escalera_sin_confirmar` debe salir `null`. `avisos_jornada_sin_confirmar` se confirma con `UPDATE retardos.escalera_jornada SET confirmado = true WHERE nivel IN (1,2,3);` cuando RH acuerde los tres avisos. `textos_sin_validar` debe salir `null` antes de pasar a real: cada texto se valida con `PLANTILLAS.md`.
+Lo esperado es que `config_sin_confirmar` sólo liste `antecedentes_previos_cuentan`, `contar_desde`, `modo_suspension_desde` y `real_desde`. `real_desde` la escribe sola la base en el paso 2 y `contar_desde` se confirma tal cual (la pista real ya no depende de ella); las dos de suspensión se quedan sin confirmar a propósito, porque las escribe `MODO_SUSPENSION.md`. `escalera_sin_confirmar` debe salir `null`. `avisos_jornada_sin_confirmar` se confirma con `UPDATE retardos.escalera_jornada SET confirmado = true WHERE nivel IN (1,2,3);` cuando RH acuerde los tres avisos. `textos_sin_validar` debe salir `null` antes de pasar a real: cada texto se valida con `PLANTILLAS.md`.
 
-## 2. El cambio: una sola transacción
+## 2. El cambio: UNA bandera (desde `retardos_0009`, #386)
 
-Los pasos van juntos a propósito. **El orden importa**: el outbox resuelve los destinatarios al momento de enviar, así que cualquier correo de un caso de sombra que siga pendiente le llegaría a la persona real en cuanto el modo diga `real`. Por eso primero se anulan esos correos y se cancelan los casos, y hasta el final se cambia el modo. Todo o nada.
+Desde el 7-oct-2026 el paso a real **es una sola sentencia**. Ya no hay que anular correos, cancelar casos ni mover fechas a mano: la base separa cada caso en **pista sombra** y **pista real**, y lo hace sola.
 
 ```sql
-BEGIN;
-
--- 2.1 Anular los correos todavía no enviados de casos de la etapa de sombra.
-WITH p AS (SELECT 'quien.ejecuta'::text AS actor)
-UPDATE retardos.envio e
-   SET estado = 'omitido',
-       error  = 'Caso de la etapa de sombra: se anula al pasar a real (#334)'
-  FROM p
- WHERE e.estado IN ('pendiente','fallido')
-   AND e.caso_id IN (SELECT id FROM retardos.caso WHERE modo_al_abrir = 'sombra');
-
--- 2.2 Cancelar con motivo los casos abiertos de la etapa de sombra (pasa por la máquina de
---     estados: deja bitácora con actor y motivo, y respeta las transiciones válidas).
-WITH p AS (SELECT 'quien.ejecuta'::text AS actor)
-SELECT count(*) AS casos_cancelados
-  FROM retardos.caso c, p,
-       LATERAL (SELECT retardos.transicionar(c.id, 'CANCELADO_POR_RH', p.actor,
-                'Caso de la etapa de sombra: se cancela al pasar a real (#334)')) t
- WHERE c.modo_al_abrir = 'sombra'
-   AND c.estado NOT IN ('CERRADO','CANCELADO_POR_RH','ACCION_VERIFICADA');
-
--- 2.3 Mover contar_desde a la fecha de arranque: nada anterior abre casos.
-WITH p AS (SELECT DATE 'AAAA-MM-DD' AS arranque, 'quien.ejecuta'::text AS actor)
-UPDATE retardos.config c
-   SET valor = to_jsonb(p.arranque::text), confirmado = true, actualizado_por = p.actor, actualizado_at = now()
-  FROM p
- WHERE c.clave = 'contar_desde';
-
--- 2.3b Fecha de paso a real: desde aquí cuentan las semanas de los disparadores globales.
-WITH p AS (SELECT DATE 'AAAA-MM-DD' AS arranque, 'quien.ejecuta'::text AS actor)
-UPDATE retardos.config c
-   SET valor = to_jsonb(p.arranque::text), confirmado = true, actualizado_por = p.actor, actualizado_at = now()
-  FROM p
- WHERE c.clave = 'real_desde';
-
--- 2.4 Cambiar el modo. Desde aquí, lo que se encole le llega a la persona.
 UPDATE retardos.config
    SET valor = '"real"'::jsonb, confirmado = true, actualizado_por = 'quien.ejecuta', actualizado_at = now()
  WHERE clave = 'modo';
-
--- 2.5 Constancia en la bitácora del cambio de modo.
-SELECT retardos.log(NULL, 'paso_a_real', 'quien.ejecuta', 'Cambio de sombra a real (#334)',
-       jsonb_build_object('contar_desde', retardos.cfg('contar_desde'), 'real_desde', retardos.cfg('real_desde'), 'modo_sanciones', retardos.cfg('modo_sanciones')));
-
-COMMIT;
 ```
 
-Si cualquier sentencia truena, la transacción se revierte completa y nada cambió. Por ejemplo, `TRANSICION_INVALIDA` si algún caso quedó en un estado no previsto. En ese caso, copia el error en #334.
+Lo que pasa en ese instante, sin que nadie más haga nada:
 
-**Read-back 2** (tiene que salir exactamente así):
+- Un trigger (`config_modo`) escribe `real_inicio = now()` y `real_desde = hoy` y deja `paso_a_real` en la bitácora.
+- **Retardos:** para toda la plantilla cuentan en la pista real sólo los que ocurren **después de `real_inicio`**. Nadie recibe como primer correo real una carta armada con retardos de la etapa de sombra.
+- **Jornada:** cuentan las semanas FTS que **empiezan** después de `real_inicio`. Si el cambio es el lunes 12-oct, la primera semana real es la del viernes 16 al jueves 22, y su corte es el viernes 23.
+- **Casos de sombra:** se quedan como están, en sombra. Sus correos pendientes **siguen saliendo como sombra**. No se cancelan ni se le mandan a nadie.
+- **Personas del piloto** que ya estaban en pista real: no cambian nada, siguen en real.
+- **Destinatarios** de todo aviso a la persona: Para la persona; CC `aviso_cc_rh` y su jefe directo según Odoo. Si no tiene jefe, CC `aviso_cc_rh` + `aviso_cc_sin_jefe` y la leyenda "Falta asignarle jefe en Odoo" arriba del correo.
+- **Notas en Odoo** (`odoo_nota`): nacen omitidas mientras `odoo_nota_ejecutor = false` (`retardos_0010`), así que no se atora el outbox.
+
+**Read-back 2** (correrlo justo después):
 
 ```sql
 SELECT jsonb_build_object(
-  'modo',                    retardos.cfg_txt('modo'),                                                  -- real
-  'contar_desde',            retardos.cfg_txt('contar_desde'),                                          -- la fecha de arranque
-  'casos_sombra_abiertos',   (SELECT count(*) FROM retardos.caso WHERE modo_al_abrir = 'sombra'
-                               AND estado NOT IN ('CERRADO','CANCELADO_POR_RH','ACCION_VERIFICADA')), -- 0
-  'envios_sombra_vivos',     (SELECT count(*) FROM retardos.envio WHERE estado IN ('pendiente','fallido')
-                               AND caso_id IN (SELECT id FROM retardos.caso WHERE modo_al_abrir = 'sombra')), -- 0
-  'real_desde',              retardos.cfg_txt('real_desde'),                                            -- la fecha de arranque
-  'modo_sanciones',          retardos.cfg_txt('modo_sanciones'),                                        -- sin_suspension
-  'config_sin_confirmar',    (SELECT jsonb_agg(clave ORDER BY clave) FROM retardos.config WHERE NOT confirmado), -- ["antecedentes_previos_cuentan", "modo_suspension_desde"]
-  'bitacora_paso',           (SELECT max(creado_at) FROM retardos.bitacora WHERE evento = 'paso_a_real'));
+  'modo',          retardos.cfg_txt('modo'),                      -- real
+  'real_inicio',   retardos.cfg('real_inicio'),                   -- la hora del UPDATE
+  'real_desde',    retardos.cfg_txt('real_desde'),                -- la fecha de hoy
+  'bitacora_paso', (SELECT max(creado_at) FROM retardos.bitacora WHERE evento = 'paso_a_real'),
+  'modo_sanciones', retardos.cfg_txt('modo_sanciones'),           -- sin_suspension
+  'salud',         retardos.salud());
 ```
 
-## 3. Verificación después del primer `detectar` en real
+**Buena hora:** de 10:00 a 11:30 CST, lejos de `detectar` (12:15 y 19:15).
 
-Después de las 12:15 del día de arranque:
+## 3. Verificación después del primer `detectar` en real
 
 ```sql
 SELECT jsonb_build_object(
   'ultima_corrida',  (SELECT jsonb_build_object('id', id, 'ok', ok, 'leidos', leidos, 'at', iniciada_at) FROM retardos.corrida WHERE workflow = 'retardos/detectar' ORDER BY id DESC LIMIT 1),
-  'casos_reales',    (SELECT jsonb_object_agg(estado, n) FROM (SELECT estado, count(*) AS n FROM retardos.caso WHERE modo_al_abrir = 'real' GROUP BY 1) z),
+  'casos_reales',    (SELECT jsonb_object_agg(estado, n) FROM (SELECT estado, count(*) AS n FROM retardos.caso WHERE pista = 'real' GROUP BY 1) z),
   'envios_reales',   (SELECT jsonb_object_agg(estado, n) FROM (SELECT estado, count(*) AS n FROM retardos.envio WHERE modo_envio = 'real' GROUP BY 1) z),
   'salud',           retardos.salud());
 ```
 
-Lo esperado:
+Lo esperado: la corrida con `ok = true` y `leidos > 0`; casos con `pista = 'real'` sólo por retardos posteriores a `real_inicio`; envíos `modo_envio = 'real'` en `enviado`.
 
-- la corrida con `ok = true` y `leidos > 0`;
-- los casos nuevos con `modo_al_abrir = 'real'`;
-- el nivel 4 en `RETENIDO` ("nivel de suspensión alcanzado, no aplicado") mientras `modo_sanciones = sin_suspension`;
-- por cada carta o acta, un envío `rh_recolectar` a RH con copia al jefe y la hoja en PDF, y un `aviso_trabajador` a la persona si tiene correo;
-- los envíos con `modo_envio = 'real'` y estado `enviado`.
+**Un cero no prueba nada** (CLAUDE.md §9): si nadie llegó tarde ese día, la verificación espera al siguiente.
 
-**Un cero no prueba nada** (CLAUDE.md §9): si no hubo retardos ese día, espera al siguiente antes de dar la verificación por buena.
-
-## 4. Volver a sombra
-
-En cualquier momento, sin perder nada:
+## 4. Revertir: la misma bandera
 
 ```sql
-UPDATE retardos.config SET valor = '"sombra"'::jsonb, actualizado_por = 'quien.ejecuta', actualizado_at = now() WHERE clave = 'modo';
-SELECT retardos.log(NULL, 'vuelta_a_sombra', 'quien.ejecuta', 'Regreso a sombra (#334)');
+UPDATE retardos.config
+   SET valor = '"sombra"'::jsonb, actualizado_por = 'quien.ejecuta', actualizado_at = now()
+ WHERE clave = 'modo';
 SELECT retardos.cfg_txt('modo');   -- read-back: sombra
 ```
 
-- Lo que esté pendiente en el outbox se desvía otra vez a Dirección y RH con `[SOMBRA]`.
-- Los casos ya abiertos siguen en el estado en que estaban.
-- Los correos que ya salieron en real no se pueden recuperar.
-- **Para parar todo de inmediato:** despublicar `retardos/enviar` (`UqhsvXDZjOmatEql`) en la UI de n8n. Nada sale y todo queda en el outbox.
+- El trigger deja `regreso_a_sombra` en la bitácora.
+- **Lo que esté pendiente de la pista real vuelve a salir como sombra** al instante: se desvía a `sombra_destinatarios` con `[SOMBRA]`.
+- Las personas del piloto siguen en real mientras `piloto_habilitado = true` (ver `PILOTO.md` para apagarlo).
+- Los casos ya abiertos siguen en el estado en que estaban. Los correos que ya salieron no se pueden recuperar.
+- `real_inicio` no se borra: si se vuelve a poner `real`, se reescribe con la nueva hora y sólo cuenta lo posterior.
 
-## 5. Pendiente conocido antes del paso a real
+**Para parar todo de inmediato:** despublicar `retardos/enviar` (`UqhsvXDZjOmatEql`) en la UI de n8n. Nada sale y todo queda en el outbox.
 
-- **Notas en Odoo.** Hoy no hay un ejecutor para los envíos de tipo `odoo_nota`. En sombra se marcan `omitido`. En real se quedarían `pendiente` y el latido reportaría `OUTBOX_ATORADO` a las 3 horas. Antes del paso a real hay que hacer una de dos cosas:
-  - construir el ejecutor, que es un workflow que escribe la nota en el chatter del empleado por n8n;
-  - o marcarlas `omitido` también en real.
+## 5. Notas en Odoo
 
-  Está anotado en la deuda de #334.
+Resuelto en `retardos_0010`: sin ejecutor, un `odoo_nota` nace `omitido` en cualquier modo, con el motivo escrito. La hoja y su bitácora quedan en Postgres. El día que exista el workflow que escribe la nota en el chatter del empleado, se pone `odoo_nota_ejecutor = true`.
 
 ## 6. Después del paso a real
 

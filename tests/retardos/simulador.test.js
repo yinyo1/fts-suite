@@ -1464,3 +1464,32 @@ conPg('#386 retardos_0010: en real, una nota para Odoo sin ejecutor nace omitida
     assert.equal(B.q("SELECT estado FROM retardos.envio WHERE clave_dedupe = 'PRUEBA:odoo_nota:2'"), 'pendiente');
   } finally { B.fin(); }
 });
+
+test('#386 Code - Marca piloto: sólo enciende con el archivo en main y piloto=true', () => {
+  const code = fs.readFileSync(path.join(RAIZ, 'retardos', 'n8n', 'code', 'enviar-marca-piloto.js'), 'utf8');
+  const raw = fs.readFileSync(path.join(RAIZ, 'retardos', 'config', 'piloto.json'), 'utf8');
+  const marca = (json) => new Function('$input', code)({ first: () => ({ json }) })[0].json.piloto_marca;
+  assert.equal(marca({ statusCode: 404, body: '404: Not Found' }), false);
+  assert.equal(marca({ statusCode: 200, body: raw }), true);
+  assert.equal(marca({ statusCode: 200, body: JSON.parse(raw) }), true);
+  assert.equal(marca({ statusCode: 200, body: '{"piloto":false}' }), false);
+  assert.equal(marca({ statusCode: 200, body: '<html>' }), false);
+  assert.equal(marca({ error: { message: 'ETIMEDOUT' } }), false);
+  assert.ok(!/@/.test(raw), 'piloto.json no lleva correos');
+});
+
+conPg('#386 retardos_0011: la tabla del aviso dice min:seg, no minutos enteros', () => {
+  const B = base();
+  try {
+    const t = (ll, es, mi) => B.q('SELECT retardos.tiempo_tarde(' + "'" + ll + "','" + es + "','" + mi + "')");
+    assert.equal(t('07:15:16', '07:00', '15'), '15:16');   // pasó la tolerancia por 16 segundos
+    assert.equal(t('07:15:01', '07:00', '15'), '15:01');
+    assert.equal(t('10:22:26', '08:00', '142'), '142:26');
+    assert.equal(t('07:20', '07:00', '20'), '20:00');      // sin segundos
+    assert.equal(t('raro', '07:00', '9'), '9');             // ilegible: el número de antes
+    const html = B.q('SELECT retardos.tabla_retardos(' + lit({ retardos: [{ fecha: '05/10/2026', llegada: '07:15:16', esperada: '07:00', minutos: 15 }] }) + ')');
+    assert.match(html, /Tiempo tarde \(min:seg\)/);
+    assert.match(html, />15:16</);
+    assert.doesNotMatch(html, />15</);
+  } finally { B.fin(); }
+});

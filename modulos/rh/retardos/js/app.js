@@ -35,6 +35,10 @@
     { id: 'retenidos', t: 'Suspensión alcanzada, no aplicada', q: 'Modo sin suspensión: cuenta como antecedente', clase: 'ret', estados: ['RETENIDO'] },
     { id: 'sinjefe', t: 'Falta jefe en Odoo', q: 'El aviso salió con copia a Dirección. Asignar jefe en Odoo', clase: 'urge', f: faltaJefe }
   ];
+  // Igual que retardos.tiempo_tarde (retardos_0011): min:seg desde las mismas horas que muestra la tabla.
+  function segHora(t) { var m = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(String(t || '')); return m ? (+m[1]) * 3600 + (+m[2]) * 60 + (+(m[3] || 0)) : null; }
+  function tardeTxt(x) { var a = segHora(x.llegada), b = segHora(x.esperada), d = a == null || b == null ? null : a - b;
+    return d > 0 ? Math.floor(d / 60) + ':' + ('0' + (d % 60)).slice(-2) : String(x.minutos == null ? '' : x.minutos); }
   function faltaJefe(c) { return c.jefe_estado === 'sin_jefe' || c.jefe_estado === 'jefe_sin_correo'; }
   function enCubeta(b, c) { return b.f ? b.f(c) : b.estados.indexOf(c.estado) >= 0; }
   function chipPista(c) { return c.pista === 'real' ? '<span class="chip e-real">' + (c.modo_al_abrir === 'piloto' ? 'real · piloto' : 'real') + '</span>' : ''; }
@@ -209,7 +213,7 @@
     var c = r.caso || {}, evs = r.evidencias || [], bit = r.bitacora || [], env = r.envios || [];
     var acts = st.editor ? acciones(c, evs) : [];
     var retardos = (c.retardos || []).map(function (x) {
-      return '<tr><td class="num">' + esc(x.fecha) + '</td><td class="num">' + esc(x.llegada) + '</td><td class="num">' + esc(x.esperada) + '</td><td class="n">' + esc(x.minutos) + '</td></tr>';
+      return '<tr><td class="num">' + esc(x.fecha) + '</td><td class="num">' + esc(x.llegada) + '</td><td class="num">' + esc(x.esperada) + '</td><td class="n">' + esc(tardeTxt(x)) + '</td></tr>';
     }).join('');
     var h = '<button class="btn volver-lista" id="volver">← Volver a la lista</button>' +
       '<div class="cab"><div><h1>' + esc(c.nombre) + '</h1><div class="sub"><span class="folio">' + esc(c.folio) + '</span> · ' + esc(c.nombre_nivel) + ' · periodo ' + esc(c.periodo) + '</div></div><span class="sp"></span>' + chipPista(c) + ' ' + chip(c.estado) + '</div>' +
@@ -219,7 +223,7 @@
       '<section class="caja bloque"><h2>' + esc(c.retardos_n) + ' retardos en el periodo</h2>' +
         (c.motivo_apertura === 'reincidencia' ? '<div class="aviso mal" style="margin:0"><div><b>Reincidencia</b>Ya tenía un documento firmado y validado en los últimos días. Por eso sube de nivel.</div></div>' : '') +
         '<div class="nivel">Hora del centro (CST). Tolerancia de ' + esc(c.tolerancia_min == null ? 15 : c.tolerancia_min) + ' minutos al segundo: llegar a los 15:00 no es retardo, a los 15:01 sí. El premio de puntualidad (PPA) es otra regla: se gana checando a más tardar ' + esc(c.ppa_minutos == null ? 5 : c.ppa_minutos) + ' minutos después de la entrada y lo calcula Nómina.</div>' +
-        '<div class="tabla-wrap"><table><thead><tr><th>Fecha</th><th>Llegó</th><th>Entrada</th><th class="num">Minutos tarde</th></tr></thead><tbody>' + retardos + '</tbody></table></div></section>') +
+        '<div class="tabla-wrap"><table><thead><tr><th>Fecha</th><th>Llegó</th><th>Entrada</th><th class="num" title="minutos:segundos">Tarde (m:s)</th></tr></thead><tbody>' + retardos + '</tbody></table></div></section>') +
       (acts.length ? '<section class="caja bloque"><h2>Qué sigue</h2><div class="acciones">' + acts.map(function (a) {
         return '<button class="btn ' + (a[2] || '') + '" data-accion="' + a[0] + '">' + esc(a[1]) + '</button>'; }).join('') + '</div><div id="form-accion"></div></section>' : '') +
       '<section class="caja bloque"><h2>Hojas y constancias</h2>' + (evs.length ? evs.map(function (e) {
