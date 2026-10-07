@@ -129,9 +129,12 @@ UPDATE retardos.config
 
 Lo que pasa en ese instante, sin que nadie más haga nada:
 
-- Un trigger (`config_modo`) escribe `real_inicio = now()` y `real_desde = hoy` y deja `paso_a_real` en la bitácora.
-- **Retardos:** para toda la plantilla cuentan en la pista real sólo los que ocurren **después de `real_inicio`**. Nadie recibe como primer correo real una carta armada con retardos de la etapa de sombra.
-- **Jornada:** cuentan las semanas FTS que **empiezan** después de `real_inicio`. Si el cambio es el lunes 12-oct, la primera semana real es la del viernes 16 al jueves 22, y su corte es el viernes 23.
+- Un trigger (`config_modo`) escribe `real_inicio = now()` (sólo bitácora) y deja `paso_a_real` en la bitácora. **Ya no toca `real_desde`** (`retardos_0012`).
+- **Desde cuándo cuenta: `real_desde`, fecha fija a las 00:00 hora del centro: lunes 12-oct-2026.** El UPDATE sólo habilita. Si se corre a las 10:30 del 12, los retardos de las 7:xx de ese día cuentan; si se corre el 13, los del 12 también.
+- **Retardos:** para toda la plantilla cuentan en la pista real sólo los de llegada desde `real_desde`. Nada anterior suma a retardos del mes, cartas, actas, reincidencia ni jornada. Nadie recibe como primer correo real una carta armada con retardos de la etapa de sombra.
+- **Jornada:** cuentan las semanas FTS que **empiezan** desde `real_desde`: la primera es la del viernes 16 al jueves 22 (S43), y su corte es el viernes 23.
+- **Acta administrativa:** se habilita en este momento (`acta_solo_en_real`).
+- **Casos de sombra:** no vencen, no escalan ni generan recordatorios (`verificar` sólo mira la pista real).
 - **Casos de sombra:** se quedan como están, en sombra. Sus correos pendientes **siguen saliendo como sombra**. No se cancelan ni se le mandan a nadie.
 - **Personas del piloto** que ya estaban en pista real: no cambian nada, siguen en real.
 - **Destinatarios** de todo aviso a la persona: Para la persona; CC `aviso_cc_rh` y su jefe directo según Odoo. Si no tiene jefe, CC `aviso_cc_rh` + `aviso_cc_sin_jefe` y la leyenda "Falta asignarle jefe en Odoo" arriba del correo.
@@ -143,7 +146,8 @@ Lo que pasa en ese instante, sin que nadie más haga nada:
 SELECT jsonb_build_object(
   'modo',          retardos.cfg_txt('modo'),                      -- real
   'real_inicio',   retardos.cfg('real_inicio'),                   -- la hora del UPDATE
-  'real_desde',    retardos.cfg_txt('real_desde'),                -- la fecha de hoy
+  'real_desde',    retardos.cfg_txt('real_desde'),                -- 2026-10-12: el UPDATE no la mueve
+  'acta',          retardos.nivel_habilitado(3::smallint),        -- true
   'bitacora_paso', (SELECT max(creado_at) FROM retardos.bitacora WHERE evento = 'paso_a_real'),
   'modo_sanciones', retardos.cfg_txt('modo_sanciones'),           -- sin_suspension
   'salud',         retardos.salud());
@@ -161,7 +165,7 @@ SELECT jsonb_build_object(
   'salud',           retardos.salud());
 ```
 
-Lo esperado: la corrida con `ok = true` y `leidos > 0`; casos con `pista = 'real'` sólo por retardos posteriores a `real_inicio`; envíos `modo_envio = 'real'` en `enviado`.
+Lo esperado: la corrida con `ok = true` y `leidos > 0`; casos con `pista = 'real'` sólo por retardos desde `real_desde`; envíos `modo_envio = 'real'` en `enviado`.
 
 **Un cero no prueba nada** (CLAUDE.md §9): si nadie llegó tarde ese día, la verificación espera al siguiente.
 
@@ -178,7 +182,7 @@ SELECT retardos.cfg_txt('modo');   -- read-back: sombra
 - **Lo que esté pendiente de la pista real vuelve a salir como sombra** al instante: se desvía a `sombra_destinatarios` con `[SOMBRA]`.
 - Las personas del piloto siguen en real mientras `piloto_habilitado = true` (ver `PILOTO.md` para apagarlo).
 - Los casos ya abiertos siguen en el estado en que estaban. Los correos que ya salieron no se pueden recuperar.
-- `real_inicio` no se borra: si se vuelve a poner `real`, se reescribe con la nueva hora y sólo cuenta lo posterior.
+- `real_desde` no se mueve al revertir: si se vuelve a poner `real`, vuelve a contar desde esa misma fecha. Para empezar de cero otra vez hay que mover `real_desde` a mano. El acta vuelve a quedar retenida.
 
 **Para parar todo de inmediato:** despublicar `retardos/enviar` (`UqhsvXDZjOmatEql`) en la UI de n8n. Nada sale y todo queda en el outbox.
 
