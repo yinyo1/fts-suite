@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-112-2026-10-08T23-47-08-821Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 112,
+      "empleado_nombre": "Felipe Pérez Guzmán",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": null,
+      "supervisor_name": null,
+      "supervisor_email": "felipe@fts.mx",
+      "supervisor_phone": null,
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": true,
+      "sin_supervisor": false,
+      "attendance_id": 15945,
+      "fecha_creacion": "2026-10-08T23:47:08.822Z",
+      "check_in_original_utc": "2026-10-08 13:19:17",
+      "check_out_propuesto_utc": "2026-10-08 17:00:00",
+      "check_out_propuesto_cst": "2026-10-08 11:00:00",
+      "geolocation": {
+        "lat": 25.5595762,
+        "lng": -100.0057055,
+        "accuracy": 22.600000381469727,
+        "captured_at": "2026-10-08T23:47:06.215Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-10-08T23:47:08.822Z",
+          "hora_propuesta_cst": "11:00",
+          "comentario": "Sali de planta toppchico a atender jn tema personal"
+        }
+      ],
+      "status": "pendiente_rh",
+      "hora_final_aplicada_utc": "2026-10-08 17:00:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20261008-kiosk-zona-usa"
+    },
+    {
       "id_interno": "INC-AUTO-CIERRE-108-2026-10-05T14-24-38-698Z",
       "tipo": "auto_cierre_pendiente",
       "status": "aprobada_tal_cual",
