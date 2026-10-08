@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Viajes y días MX/USA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: una barra de pestañas (4 pantallas) sobre una columna de 1120px; cada pantalla es su propia maqueta. */
+:root{
+  --bg:#f4f6f9; --surface:#ffffff; --ink:#18212f; --muted:#5b6678; --line:#d9dee7;
+  --accent:#1f4f9a; --accent-soft:#e3ebf8;
+  --mx:#17704a; --mx-soft:#e1f2e9;
+  --usa:#3b3fa8; --usa-soft:#e6e7fa;
+  --viaje:#9a5b00; --viaje-soft:#fdf0d9;
+  --bad:#b3261e; --bad-soft:#fbe4e2;
+  --ok:#17704a;
+  --f-display:"Archivo", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Archivo", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#10151d; --surface:#18202b; --ink:#e7ecf3; --muted:#9aa6b8; --line:#2c3746;
+  --accent:#7fa7e8; --accent-soft:#1d2b42;
+  --mx:#5cc893; --mx-soft:#163327; --usa:#9da1f2; --usa-soft:#23254a;
+  --viaje:#f0b45a; --viaje-soft:#3a2a10; --bad:#f08a82; --bad-soft:#3c1a18; --ok:#5cc893;
+  color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --bg:#10151d; --surface:#18202b; --ink:#e7ecf3; --muted:#9aa6b8; --line:#2c3746;
+  --accent:#7fa7e8; --accent-soft:#1d2b42;
+  --mx:#5cc893; --mx-soft:#163327; --usa:#9da1f2; --usa-soft:#23254a;
+  --viaje:#f0b45a; --viaje-soft:#3a2a10; --bad:#f08a82; --bad-soft:#3c1a18; --ok:#5cc893;
+  color-scheme:dark; }
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body)}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:16px;padding-block:20px 48px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0}
+h1{font-size:1.5rem;font-weight:700;letter-spacing:-.01em}
+h2{font-size:1.15rem;font-weight:700}
+h3{font-size:.95rem;font-weight:600}
+p{margin:0}
+.muted{color:var(--muted)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:.86em}
+.demo-banner{border:1px dashed var(--viaje);background:var(--viaje-soft);color:var(--ink);padding:10px 14px;border-radius:8px;font-size:.88rem}
+header.top{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+nav.tabs{display:flex;flex-wrap:wrap;gap:6px;border-bottom:1px solid var(--line);margin-bottom:18px}
+nav.tabs button{font:600 .9rem var(--f-body);color:var(--muted);background:none;border:0;border-bottom:3px solid transparent;padding:10px 12px;cursor:pointer}
+nav.tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+nav.tabs button:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+.stack{display:flex;flex-direction:column;gap:14px}
+.row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.chip{display:inline-flex;align-items:center;gap:4px;font:600 .72rem var(--f-body);letter-spacing:.03em;text-transform:uppercase;padding:2px 7px;border-radius:999px;white-space:nowrap}
+.c-mx{background:var(--mx-soft);color:var(--mx)}
+.c-usa{background:var(--usa-soft);color:var(--usa)}
+.c-viaje{background:var(--viaje-soft);color:var(--viaje)}
+.c-bad{background:var(--bad-soft);color:var(--bad)}
+.c-neutral{background:var(--accent-soft);color:var(--accent)}
+.btn{font:600 .85rem var(--f-body);border:1px solid var(--accent);background:var(--accent);color:var(--surface);border-radius:7px;padding:7px 12px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+#ch-table td:first-child{min-width:130px}
+#ch-table select{max-width:190px}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;white-space:nowrap}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.label{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+select,input[type=text],textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:5px 7px}
+.note{font-size:.82rem;color:var(--muted);border-left:3px solid var(--line);padding-left:10px}
+.diff{background:var(--accent-soft);border-radius:4px;padding:0 4px}
+/* Planeación */
+.plan-card{border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--surface);min-width:0}
+.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.day{border:1px solid var(--line);border-radius:6px;padding:5px;font-size:.74rem;text-align:center;min-height:50px;display:flex;flex-direction:column;gap:3px;justify-content:center}
+.day b{font-size:.72rem;color:var(--muted);font-weight:600}
+.day.viaje{background:var(--viaje-soft);border-color:var(--viaje)}
+.day.trabajo{background:var(--accent-soft);border-color:var(--accent)}
+.day.off{opacity:.45}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:3px 10px;font-size:.84rem}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+/* Kiosko */
+.phones{display:flex;flex-wrap:wrap;gap:18px;justify-content:flex-start}
+.phone{width:290px;max-width:100%;border:10px solid var(--ink);border-radius:30px;background:var(--surface);padding:14px 12px 18px;display:flex;flex-direction:column;gap:10px}
+.phone .cap{font-size:.78rem;color:var(--muted);text-align:center}
+.phone .who{font-weight:700;font-size:1rem}
+.banner{border-radius:8px;padding:9px 10px;font-size:.82rem}
+.banner.plan{background:var(--accent-soft)}
+.banner.viaje{background:var(--viaje-soft)}
+.banner.bad{background:var(--bad-soft)}
+.banner.okb{background:var(--mx-soft)}
+.bigbtn{display:block;width:100%;text-align:center;padding:11px;border-radius:9px;font:700 .95rem var(--f-body);border:0;background:var(--accent);color:var(--surface)}
+.bigbtn.alt{background:transparent;border:1px solid var(--line);color:var(--ink)}
+.phone-label{font:600 .8rem var(--f-body);color:var(--muted);margin-bottom:6px}
+/* Reporte */
+.cell{display:inline-block;min-width:44px;text-align:center;padding:3px 4px;border-radius:5px;font:600 .72rem var(--f-body)}
+.cell.mx{background:var(--mx-soft);color:var(--mx)}
+.cell.usa{background:var(--usa-soft);color:var(--usa)}
+.cell.pend{background:var(--bad-soft);color:var(--bad);outline:1px solid var(--bad)}
+.cell.none{color:var(--muted)}
+.why-row td{border-bottom:2px solid var(--line);padding-top:0}
+#rep-table tr:not(.why-row) td{border-bottom:0}
+.so-item .chip{align-self:flex-start}
+.why{font-size:.8rem;color:var(--muted);line-height:1.35}
+.why b{color:var(--ink);font-weight:600}
+.totals td{white-space:normal}
+.tot-num{font:700 1.05rem var(--f-mono);font-variant-numeric:tabular-nums}
+.tot-num.mx{color:var(--mx)} .tot-num.usa{color:var(--usa)} .tot-num.bad{color:var(--bad)}
+.modal{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:12px;max-width:420px;box-shadow:0 8px 28px rgba(0,0,0,.12)}
+.so-item{display:flex;justify-content:space-between;gap:8px;padding:6px 4px;border-bottom:1px solid var(--line);font-size:.84rem}
+.so-item span:first-child{min-width:0;overflow-wrap:anywhere}
+.sub{font-size:.8rem;color:var(--muted)}
+@media (max-width:640px){ .days{grid-template-columns:repeat(4,minmax(0,1fr))} }
+@media (prefers-reduced-motion: reduce){ *{transition:none!important;animation:none!important} }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <h1>Viajes y días México / USA</h1>
+  <p class="muted">Prototipo navegable del frente «Kiosko · viajes, tipos de día y días México/USA para nómina». Cuatro pantallas, todas con datos de ejemplo.</p>
+  <p class="demo-banner"><b>Maqueta con datos inventados.</b> Las SO, plantas, horas y montos son de ejemplo (prefijo 9xxx). Nada de aquí lee ni escribe en Odoo ni en n8n. Los nombres de campos y webhooks que aparecen son la <b>propuesta</b> del diseño, no lo que existe hoy.</p>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Pantallas">
+  <button role="tab" id="t-plan" aria-controls="p-plan" aria-selected="true">1 · Planeación (Felipe)</button>
+  <button role="tab" id="t-kiosk" aria-controls="p-kiosk" aria-selected="false">2 · Kiosko</button>
+  <button role="tab" id="t-ch" aria-controls="p-ch" aria-selected="false">3 · Confirmar Horas</button>
+  <button role="tab" id="t-rh" aria-controls="p-rh" aria-selected="false">4 · RH: validación y reporte</button>
+</nav>
+
+<!-- 1 · PLANEACIÓN -->
+<section id="p-plan" role="tabpanel" aria-labelledby="t-plan" class="stack">
+  <div class="row" style="justify-content:space-between;align-items:center">
+    <div>
+      <h2>Viajes planeados</h2>
+      <p class="sub">Felipe captura el viaje cuando Comercial o el líder del proyecto le avisan. Cada día lleva su modalidad: <span class="chip c-viaje">viaje</span> o <span class="chip c-neutral">trabajo</span>.</p>
+    </div>
+    <div class="row" style="gap:8px;align-items:center">
+      <label class="label" for="sem-plan">Semana FTS</label>
+      <select id="sem-plan"></select>
+    </div>
+  </div>
+  <div id="plan-list" class="grid2"></div>
+  <div class="panel stack">
+    <h3>Formulario «Nuevo viaje»</h3>
+    <div class="grid2">
+      <dl class="kv">
+        <dt>Personas</dt><dd>selector múltiple (de <span class="mono">kiosk/empleados</span>, sin filtro de empresa)</dd>
+        <dt>Fechas</dt><dd>del · al (se generan los días; cada día se marca viaje / trabajo / libre)</dd>
+        <dt>Destino</dt><dd>planta del catálogo de geocercas, con su liga de Google Maps; o ciudad (sin geocerca)</dd>
+        <dt>Cargo</dt><dd>SO de México <span class="chip c-mx">MX</span> o de USA <span class="chip c-usa">USA</span>, <b>o</b> centro de costos (Ventas, Admin. de Operaciones…)</dd>
+      </dl>
+      <div class="note">Guarda un renglón de <span class="mono">planning.slot</span> por persona y día (como hoy) y <b>agrega</b> la llave del viaje, la modalidad del día, la geocerca destino y la empresa de la SO. La lista de SO trae las dos empresas con su etiqueta, igual que la salida del kiosko en USA.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 2 · KIOSKO -->
+<section id="p-kiosk" role="tabpanel" aria-labelledby="t-kiosk" class="stack" hidden>
+  <div>
+    <h2>Lo que ve el empleado en el kiosko</h2>
+    <p class="sub">El kiosko lee el plan del día <b>al entrar</b> (hoy solo lo lee al salir) y aplica la regla según modalidad y perfil.</p>
+  </div>
+  <div class="panel scroll">
+    <table>
+      <thead><tr><th>Situación</th><th>Técnico (Operaciones)</th><th>Comercial</th><th>Salida: SO</th></tr></thead>
+      <tbody>
+        <tr><td><span class="chip c-viaje">Día de viaje</span></td><td>Entrada y salida donde sea</td><td>Entrada y salida donde sea</td><td>Precargada del plan</td></tr>
+        <tr><td><span class="chip c-neutral">Día de trabajo</span> en México</td><td>Solo dentro de la geocerca de la planta del plan</td><td>Libre</td><td>Precargada del plan</td></tr>
+        <tr><td>Cualquier día en USA</td><td colspan="2">Libre en todo USA continental (como ya está en producción)</td><td>Precargada del plan; sin plan, lista MX + USA obligatoria</td></tr>
+        <tr><td>Sin plan</td><td colspan="2">Como hoy: sitio autorizado, o fuera de zona con motivo</td><td>La persona elige SO o centro de costos</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="phones" id="phones"></div>
+  <p class="note">«Fuera de zona con motivo» deja de nacer confirmado: la entrada se crea con <span class="mono">x_studio_manager_approval = false</span>, guarda el motivo y queda para Felipe. La salida nunca se bloquea (invariante I4 de #282).</p>
+</section>
+
+<!-- 3 · CONFIRMAR HORAS -->
+<section id="p-ch" role="tabpanel" aria-labelledby="t-ch" class="stack" hidden>
+  <div class="row" style="justify-content:space-between;align-items:flex-end">
+    <div>
+      <h2>Confirmar Horas · la pantalla de siempre, con lo nuevo marcado</h2>
+      <p class="sub">Lo nuevo va <span class="diff">resaltado</span>. Rango demo: jue 15 – jue 22 oct.</p>
+    </div>
+    <div class="row" style="gap:12px;align-items:center">
+      <label class="row" style="gap:6px;align-items:center"><input type="checkbox" id="f-usa"> <span class="diff">Solo USA / viaje</span></label>
+      <label class="row" style="gap:6px;align-items:center"><span class="label diff">Depto</span>
+        <select id="f-depto"><option value="">Todos</option><option>Operaciones</option><option>Comercial</option><option>Recursos Humanos</option></select></label>
+    </div>
+  </div>
+  <div class="panel scroll">
+    <table id="ch-table">
+      <thead><tr><th>Empleado</th><th>Depto</th><th>Entrada → Salida (hora local del evento)</th><th class="num">Horas</th><th class="diff">Zona</th><th class="diff">Tipo de día</th><th>Proyecto / centro de costos</th><th>Estado</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div class="grid2">
+    <div class="modal" aria-label="Modal Corregir SO">
+      <h3>Corregir SO <span class="sub">(modal de hoy + empresa)</span></h3>
+      <input type="text" id="so-q" placeholder="Buscar SO, cliente o planta" style="width:100%;margin-block:8px">
+      <div id="so-list"></div>
+    </div>
+    <div class="note stack" style="gap:6px">
+      <b style="color:var(--ink)">Cómo propone el sistema el tipo de día</b>
+      <span>Con la zona de la primera checada (entrada) y la de la última (salida):</span>
+      <span>MX → MX = <span class="chip c-mx">México</span> · USA → USA = <span class="chip c-usa">Proyecto USA</span></span>
+      <span>MX → USA = <span class="chip c-usa">Viaje a USA</span> · USA → MX = <span class="chip c-mx">Viaje a México</span></span>
+      <span>Si falta la zona de un evento (checada vieja o fuera de zona) se usa el plan; si tampoco hay plan, queda <span class="chip c-bad">sin tipo</span> y no se puede confirmar.</span>
+      <span>Felipe lo cambia con el selector; el cambio queda en el chatter con el valor propuesto y el elegido.</span>
+      <span><b style="color:var(--ink)">Candado nuevo:</b> un día de viaje (modalidad viaje en el plan, o tipo Viaje a USA / Viaje a México) no se confirma sin SO o centro de costos.</span>
+    </div>
+  </div>
+</section>
+
+<!-- 4 · RH -->
+<section id="p-rh" role="tabpanel" aria-labelledby="t-rh" class="stack" hidden>
+  <div class="panel stack">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <div><h2>Validación de viajes</h2><p class="sub">RH ve lo que planeó Felipe. Valida u observa; no edita el plan.</p></div>
+    </div>
+    <div class="scroll"><table id="val-table"><thead><tr><th>Viaje</th><th>Personas</th><th>Fechas</th><th>Destino</th><th>Cargo</th><th>Estado</th><th>Acción</th></tr></thead><tbody></tbody></table></div>
+  </div>
+
+  <div class="panel stack">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <div><h2>Días México / USA</h2><p class="sub">Por persona y semana FTS (viernes a jueves). Solo cuentan los días <b>confirmados por Felipe</b>. Pendientes en rojo.</p></div>
+      <div class="row" style="gap:8px;align-items:center">
+        <label class="label" for="sem-rep">Semana</label><select id="sem-rep"></select>
+        <button class="btn" id="btn-xls" type="button">Exportar a Excel</button>
+      </div>
+    </div>
+    <p id="xls-msg" class="sub" hidden></p>
+    <div class="scroll"><table id="rep-table"><thead></thead><tbody></tbody></table></div>
+    <div class="row" style="gap:10px;font-size:.8rem">
+      <span><span class="cell mx">MX</span> México / Viaje a México → nómina México</span>
+      <span><span class="cell usa">USA</span> Proyecto USA → paga FTS USA</span>
+      <span><span class="cell usa">V→USA</span> Viaje a USA → paga FTS USA, tarifa fija</span>
+      <span><span class="cell pend">!</span> con checadas, sin confirmar o sin tipo</span>
+    </div>
+    <div class="note">De dónde sale cada columna: <b>checadas</b> de <span class="mono">hr.attendance</span>; <b>confirmado</b> = <span class="mono">x_studio_manager_approval</span>; <b>tipo</b> = <span class="mono">x_studio_tipo_dia</span> (campo nuevo, lo fija Felipe al confirmar); <b>zona</b> = <span class="mono">x_studio_zona_in/out</span> (campos nuevos, los escribe el kiosko). Un día con dos asistencias cuenta una vez, con el tipo de la primera entrada del día CST.</div>
+  </div>
+</section>
+</div>
+
+<script>
+(function(){
+'use strict';
+// ---------- datos demo ----------
+var SEMANAS = [
+  { id:'S41', label:'vie 9 – jue 15 oct 2026', dias:['2026-10-09','2026-10-10','2026-10-11','2026-10-12','2026-10-13','2026-10-14','2026-10-15'] },
+  { id:'S42', label:'vie 16 – jue 22 oct 2026', dias:['2026-10-16','2026-10-17','2026-10-18','2026-10-19','2026-10-20','2026-10-21','2026-10-22'] }
+];
+var DOW = ['dom','lun','mar','mié','jue','vie','sáb'];
+function dname(iso){ var d=new Date(iso+'T12:00:00Z'); return DOW[d.getUTCDay()]+' '+d.getUTCDate(); }
+var SO = [
+  { id:9101, nombre:'SO 9101 · Mantenimiento planta Juárez (demo)', cliente:'Cliente Juárez', cia:1 },
+  { id:9102, nombre:'SO 9102 · Tablero Apodaca (demo)', cliente:'Cliente Apodaca', cia:1 },
+  { id:9201, nombre:'SO 9201 · Assessment California (demo)', cliente:'Cliente CA', cia:6 },
+  { id:9202, nombre:'SO 9202 · Chiller planta Irving (demo)', cliente:'Cliente Irving TX', cia:6 },
+  { id:-608, nombre:'Centro de costos · VENTAS', cliente:'bolsa 608', cia:0 },
+  { id:-3096, nombre:'Centro de costos · ADMIN DE OPERACIONES', cliente:'bolsa 3096', cia:0 }
+];
+function soById(id){ for(var i=0;i<SO.length;i++){ if(SO[i].id===id) return SO[i]; } return null; }
+function ciaChip(s){ if(!s) return ''; return s.cia===6 ? '<span class="chip c-usa">USA</span>' : s.cia===1 ? '<span class="chip c-mx">MX</span>' : '<span class="chip c-neutral">CC</span>'; }
+
+var PLANES = [
+  { id:'V-101', sem:'S41', personas:['Francisco M. (Comercial)'], destino:'Tijuana, BC (ciudad, sin geocerca)', maps:'https://www.google.com/maps/search/?api=1&query=Tijuana%2C+Baja+California', cargo:-608, perfil:'comercial',
+    dias:{'2026-10-12':'viaje','2026-10-13':'trabajo','2026-10-14':'viaje'}, nota:'Pase de viaje: comercial, entrada y salida libres los tres días.', rh:'validado' },
+  { id:'V-102', sem:'S41', personas:['Mateo S. (Operaciones)','Técnico 1 (demo)','Técnico 2 (demo)'], destino:'Planta Juárez (demo) · geocerca 150 m', maps:'https://www.google.com/maps/search/?api=1&query=Ciudad+Ju%C3%A1rez%2C+Chihuahua', cargo:9101, perfil:'tecnico',
+    dias:{'2026-10-12':'viaje','2026-10-13':'trabajo','2026-10-14':'trabajo','2026-10-15':'viaje'}, nota:'Mar y mié solo checan dentro de la planta; nunca en el hotel.', rh:'validado' },
+  { id:'V-103', sem:'S41', personas:['Ricardo H. (Comercial)'], destino:'California (región USA)', maps:'https://www.google.com/maps/search/?api=1&query=California', cargo:9201, perfil:'comercial',
+    dias:{'2026-10-09':'trabajo','2026-10-12':'trabajo','2026-10-13':'trabajo','2026-10-14':'trabajo','2026-10-15':'trabajo'}, nota:'Todo Proyecto USA. Libre en todo USA.', rh:'observado', obs:'Confirmar con Ricardo si el jue 15 trabajó: no aparece confirmado.' },
+  { id:'V-104', sem:'S42', personas:['Mateo S. (Operaciones)'], destino:'Planta Irving TX (demo) · región USA', maps:'https://www.google.com/maps/search/?api=1&query=Irving%2C+Texas', cargo:9202, perfil:'tecnico',
+    dias:{'2026-10-19':'viaje','2026-10-20':'trabajo','2026-10-21':'trabajo','2026-10-22':'viaje'}, nota:'Lun: Viaje a USA. Mar–mié: Proyecto USA. Jue: Viaje a México.', rh:'pendiente' },
+  { id:'V-105', sem:'S42', personas:['Ricardo H. (Comercial)'], destino:'California (región USA)', maps:'https://www.google.com/maps/search/?api=1&query=California', cargo:9201, perfil:'comercial',
+    dias:{'2026-10-16':'trabajo','2026-10-19':'trabajo','2026-10-20':'trabajo','2026-10-21':'trabajo','2026-10-22':'trabajo'}, nota:'Todo Proyecto USA.', rh:'pendiente' }
+];
+
+// Días (asistencias) por persona. zin/zout: mx|usa. tipo: mx|usa|vusa|vmx|null. conf: confirmado por Felipe.
+// hin/hout: hora local del evento; tz: zona del evento. att: id demo de hr.attendance.
+function D(p,f,zin,zout,hin,hout,tzin,tzout,h,tipo,conf,so,depto,extra){ return {p:p,f:f,zin:zin,zout:zout,hin:hin,hout:hout,tzin:tzin,tzout:tzout,h:h,tipo:tipo,conf:conf,so:so,depto:depto,extra:extra||{}}; }
+var DIAS = [
+  // S41
+  D('Francisco M.','2026-10-09','mx','mx','08:02','18:10','CST','CST',10.1,'mx',true,-608,'Comercial'),
+  D('Francisco M.','2026-10-12','mx','mx','05:40','16:20','CST','PDT',11.67,'mx',true,-608,'Comercial',{viaje:true}),
+  D('Francisco M.','2026-10-13','mx','mx','08:30','18:00','PDT','PDT',9.5,'mx',true,-608,'Comercial',{viaje:false}),
+  D('Francisco M.','2026-10-14','mx','mx','09:00','19:30','PDT','CST',9.5,'mx',true,-608,'Comercial',{viaje:true}),
+  D('Francisco M.','2026-10-15','mx','mx','08:05','18:05','CST','CST',10.0,'mx',true,-608,'Comercial'),
+  D('Mateo S.','2026-10-09','mx','mx','07:25','17:40','CST','CST',10.25,'mx',true,9102,'Operaciones'),
+  D('Mateo S.','2026-10-12','mx','mx','05:10','15:30','CST','MDT',10.33,'mx',true,9101,'Operaciones',{viaje:true}),
+  D('Mateo S.','2026-10-13','mx','mx','07:30','17:35','MDT','MDT',10.08,'mx',true,9101,'Operaciones'),
+  D('Mateo S.','2026-10-14','mx','mx','07:28','17:40','MDT','MDT',10.2,'mx',true,9101,'Operaciones'),
+  D('Mateo S.','2026-10-15','mx','mx','08:00','16:50','MDT','CST',8.83,'mx',true,9101,'Operaciones',{viaje:true}),
+  D('Técnico 1','2026-10-09','mx','mx','07:30','17:30','CST','CST',10.0,'mx',true,9102,'Operaciones'),
+  D('Técnico 1','2026-10-12','mx','mx','05:12','15:30','CST','MDT',10.3,'mx',true,9101,'Operaciones',{viaje:true}),
+  D('Técnico 1','2026-10-13','mx','mx','07:31','17:35','MDT','MDT',10.1,'mx',true,9101,'Operaciones'),
+  D('Técnico 1','2026-10-14','mx','mx','07:29','17:40','MDT','MDT',10.2,'mx',true,9101,'Operaciones'),
+  D('Técnico 1','2026-10-15','mx','mx','08:00','16:50','MDT','CST',8.83,'mx',true,9101,'Operaciones',{viaje:true}),
+  D('Técnico 2','2026-10-09','mx','mx','07:33','17:30','CST','CST',9.95,'mx',true,9102,'Operaciones'),
+  D('Técnico 2','2026-10-12','mx','mx','05:15','15:30','CST','MDT',10.25,'mx',true,9101,'Operaciones',{viaje:true}),
+  D('Técnico 2','2026-10-13','mx','mx','07:32','17:35','MDT','MDT',10.05,'mx',true,9101,'Operaciones'),
+  D('Técnico 2','2026-10-14','mx','mx','07:30','17:40','MDT','MDT',10.15,'mx',true,9101,'Operaciones'),
+  D('Técnico 2','2026-10-15','mx','mx','08:00','16:55','MDT','CST',8.92,null,false,null,'Operaciones',{viaje:true}),
+  D('Ricardo H.','2026-10-09','usa','usa','07:30','17:10','PDT','PDT',9.7,'usa',true,9201,'Comercial'),
+  D('Ricardo H.','2026-10-12','usa','usa','07:35','17:00','PDT','PDT',9.4,'usa',true,9201,'Comercial'),
+  D('Ricardo H.','2026-10-13','usa','usa','07:28','17:20','PDT','PDT',9.9,'usa',true,9201,'Comercial'),
+  D('Ricardo H.','2026-10-14','usa','usa','07:40','17:05','PDT','PDT',9.4,'usa',true,9201,'Comercial'),
+  D('Ricardo H.','2026-10-15','usa','usa','07:31','16:50','PDT','PDT',9.3,'usa',false,9201,'Comercial'),
+  // S42
+  D('Francisco M.','2026-10-16','mx','mx','08:00','18:00','CST','CST',10.0,'mx',true,-608,'Comercial'),
+  D('Francisco M.','2026-10-19','mx','mx','08:10','18:05','CST','CST',9.9,'mx',true,-608,'Comercial'),
+  D('Francisco M.','2026-10-20','mx','mx','08:00','18:10','CST','CST',10.2,'mx',true,-608,'Comercial'),
+  D('Francisco M.','2026-10-21','mx','mx','08:03','18:00','CST','CST',9.95,'mx',true,-608,'Comercial'),
+  D('Francisco M.','2026-10-22','mx','mx','08:01','18:00','CST','CST',10.0,'mx',true,-608,'Comercial'),
+  D('Mateo S.','2026-10-16','mx','mx','07:25','17:35','CST','CST',10.2,'mx',true,9102,'Operaciones'),
+  D('Mateo S.','2026-10-19','mx','usa','05:10','18:40','CST','CDT',12.5,'vusa',true,9202,'Operaciones',{viaje:true}),
+  D('Mateo S.','2026-10-20','usa','usa','07:00','17:30','CDT','CDT',10.5,'usa',true,9202,'Operaciones'),
+  D('Mateo S.','2026-10-21','usa','usa','07:05','17:20','CDT','CDT',10.25,'usa',true,9202,'Operaciones'),
+  D('Mateo S.','2026-10-22','usa','mx','06:00','15:30','CDT','CST',10.5,'vmx',false,null,'Operaciones',{viaje:true}),
+  D('Ricardo H.','2026-10-16','usa','usa','07:30','17:00','PDT','PDT',9.5,'usa',true,9201,'Comercial'),
+  D('Ricardo H.','2026-10-19','usa','usa','07:30','17:00','PDT','PDT',9.5,'usa',true,9201,'Comercial'),
+  D('Ricardo H.','2026-10-20','usa','usa','07:30','17:00','PDT','PDT',9.5,'usa',true,9201,'Comercial'),
+  D('Ricardo H.','2026-10-21','usa','usa','07:30','17:00','PDT','PDT',9.5,'usa',true,9201,'Comercial'),
+  D('Ricardo H.','2026-10-22','usa','usa','07:30','17:00','PDT','PDT',9.5,'usa',true,9201,'Comercial'),
+  D('Magaly P.','2026-10-22','mx','mx','08:00','18:00','CST','CST',10.0,'mx',false,null,'Recursos Humanos')
+];
+DIAS.forEach(function(d,i){ d.att = 'att 9' + String(1000+i); });
+
+var TIPO = { mx:{t:'México',c:'c-mx',cell:'mx',corto:'MX',paga:'mx'}, vmx:{t:'Viaje a México',c:'c-mx',cell:'mx',corto:'V→MX',paga:'mx'},
+             usa:{t:'Proyecto USA',c:'c-usa',cell:'usa',corto:'USA',paga:'usa'}, vusa:{t:'Viaje a USA',c:'c-usa',cell:'usa',corto:'V→USA',paga:'usa'} };
+function propuesto(d){ if(d.zin==='mx'&&d.zout==='mx') return 'mx'; if(d.zin==='usa'&&d.zout==='usa') return 'usa'; if(d.zin==='mx'&&d.zout==='usa') return 'vusa'; if(d.zin==='usa'&&d.zout==='mx') return 'vmx'; return null; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+// ---------- pestañas ----------
+var tabs = document.querySelectorAll('nav.tabs button');
+function abrir(id){
+  tabs.forEach(function(b){ var on = b.getAttribute('aria-controls')===id; b.setAttribute('aria-selected', on?'true':'false'); document.getElementById(b.getAttribute('aria-controls')).hidden = !on; });
+  try{ localStorage.setItem('proto_viajes_tab', id); }catch(e){}
+}
+tabs.forEach(function(b){ b.addEventListener('click', function(){ abrir(b.getAttribute('aria-controls')); }); });
+try{ var t0 = localStorage.getItem('proto_viajes_tab'); if(t0 && document.getElementById(t0)) abrir(t0); }catch(e){}
+
+function fillSem(sel, def){ sel.innerHTML = SEMANAS.map(function(s){ return '<option value="'+s.id+'">'+s.id+' · '+s.label+'</option>'; }).join(''); sel.value = def; }
+
+// ---------- 1 · planeación ----------
+var semPlan = document.getElementById('sem-plan'); fillSem(semPlan,'S41');
+function renderPlan(){
+  var sem = SEMANAS.filter(function(s){return s.id===semPlan.value;})[0];
+  var html = PLANES.filter(function(p){ return p.sem===sem.id; }).map(function(p){
+    var s = soById(p.cargo);
+    var days = sem.dias.map(function(f){ var m=p.dias[f]; var cls = m==='viaje'?'viaje':m==='trabajo'?'trabajo':'off';
+      var regla = !m ? '—' : m==='viaje' ? 'libre' : (p.destino.indexOf('USA')>=0 ? 'libre USA' : (p.perfil==='tecnico' ? 'geocerca' : 'libre'));
+      return '<div class="day '+cls+'"><b>'+dname(f)+'</b><span>'+(m||'—')+'</span><span class="sub">'+regla+'</span></div>'; }).join('');
+    return '<article class="plan-card"><div class="row" style="justify-content:space-between"><h3>'+p.id+' · '+esc(p.destino.split(' (')[0].split(' ·')[0])+'</h3>'+ciaChip(s)+'</div>'+
+      '<dl class="kv"><dt>Personas</dt><dd>'+p.personas.map(esc).join(', ')+'</dd><dt>Destino</dt><dd>'+esc(p.destino)+' · <a href="'+p.maps+'" target="_blank" rel="noopener">Google Maps</a></dd>'+
+      '<dt>Cargo</dt><dd>'+esc(s?s.nombre:'—')+'</dd></dl><div class="days">'+days+'</div><p class="sub">'+esc(p.nota)+' Fila de abajo: lo que hará el kiosko ese día.</p></article>';
+  }).join('');
+  document.getElementById('plan-list').innerHTML = html || '<p class="muted">Sin viajes esta semana.</p>';
+}
+semPlan.addEventListener('change', renderPlan); renderPlan();
+
+// ---------- 2 · kiosko ----------
+var PHONES = [
+  { t:'Francisco · lun 12 · día de viaje', who:'Francisco M. · Comercial', ban:['viaje','✈️ <b>Pase de viaje</b> · Tijuana · lun 12<br>Hoy puedes checar donde estés (casa, aeropuerto, hotel).'],
+    geo:['okb','📍 Aeropuerto MTY · fuera de sitios, <b>autorizado por pase de viaje</b>'], btn:'Registrar ENTRADA', foot:'Payload: geo_zona = "mx" · geo_regla = "pase_viaje" · plan_id = V-101' },
+  { t:'Mateo · mar 13 · trabajo en planta (dentro)', who:'Mateo S. · Operaciones', ban:['plan','📋 <b>Tu plan de hoy</b>: Planta Juárez (demo) · SO 9101<br>Solo puedes checar dentro de la planta.'],
+    geo:['okb','📍 Planta Juárez (demo) · a 40 m · <b>dentro de la geocerca del plan</b>'], btn:'Registrar ENTRADA', foot:'Payload: geo_zona = "sitio:Planta Juárez" · geo_regla = "plan_planta" · plan_id = V-102' },
+  { t:'Mateo · mar 13 · intenta desde el hotel', who:'Mateo S. · Operaciones', ban:['plan','📋 <b>Tu plan de hoy</b>: Planta Juárez (demo)'],
+    geo:['bad','🚫 Estás a 3.2 km de la planta. Hoy es día de trabajo en planta: la entrada se registra dentro de la geocerca.'], btn:'Reintentar ubicación', alt:'Enviar con motivo a Felipe (queda pendiente, no confirmada)', foot:'Decisión D-6: ¿bloqueo duro o «con motivo, pendiente»? La salida nunca se bloquea.' },
+  { t:'Mateo · mié 21 · Irving TX, salida', who:'Mateo S. · Operaciones', ban:['plan','📋 <b>Tu plan de hoy</b>: Planta Irving TX (demo) · SO 9202 <span class="chip c-usa">USA</span>'],
+    geo:['okb','📍 USA (región) · autorizado · zona horaria America/Chicago'], btn:'Confirmar SO 9202 y registrar SALIDA', alt:'¿Trabajaste en otro proyecto? (lista MX + USA)', foot:'Payload: so_id 9202 · so_company_id 6 · tz_evento America/Chicago' }
+];
+document.getElementById('phones').innerHTML = PHONES.map(function(p){
+  return '<div><div class="phone-label">'+esc(p.t)+'</div><div class="phone"><div class="cap">FTS · Kiosko</div><div class="who">'+esc(p.who)+'</div>'+
+    '<div class="banner '+p.ban[0]+'">'+p.ban[1]+'</div><div class="banner '+p.geo[0]+'">'+p.geo[1]+'</div>'+
+    '<button class="bigbtn" type="button">'+esc(p.btn)+'</button>'+(p.alt?'<button class="bigbtn alt" type="button">'+esc(p.alt)+'</button>':'')+
+    '<p class="sub mono" style="font-size:.7rem">'+esc(p.foot)+'</p></div></div>';
+}).join('');
+
+// ---------- 3 · confirmar horas ----------
+var CH_ROWS = DIAS.filter(function(d){ return d.f>='2026-10-15'; });
+CH_ROWS.forEach(function(d){ d._tipoSel = d.tipo || propuesto(d); });
+function chRender(){
+  var soloUsa = document.getElementById('f-usa').checked, dep = document.getElementById('f-depto').value;
+  var tb = document.querySelector('#ch-table tbody');
+  tb.innerHTML = CH_ROWS.filter(function(d){
+    var esUsa = d.zin==='usa'||d.zout==='usa'||d.extra.viaje; return (!soloUsa||esUsa) && (!dep||d.depto===dep);
+  }).map(function(d, i){
+    var prop = propuesto(d), sel = d._tipoSel, s = soById(d.so);
+    var esViaje = !!d.extra.viaje || sel==='vusa' || sel==='vmx';
+    var zona = (d.zin==='usa'||d.zout==='usa') ? '<span class="chip c-usa">'+d.zin.toUpperCase()+'→'+d.zout.toUpperCase()+'</span>' : '<span class="chip c-mx">MX</span>';
+    if(esViaje) zona += ' <span class="chip c-viaje">viaje</span>';
+    var opts = ['mx','vmx','usa','vusa'].map(function(k){ return '<option value="'+k+'"'+(k===sel?' selected':'')+'>'+TIPO[k].t+(k===prop?' (propuesto)':'')+'</option>'; }).join('');
+    var tipoCell = '<select data-i="'+CH_ROWS.indexOf(d)+'" aria-label="Tipo de día">'+(sel?'':'<option value="">— sin tipo —</option>')+opts+'</select>'+(sel&&prop&&sel!==prop?'<div class="sub">cambiado por Felipe</div>':'');
+    var bloqueo = esViaje && !s ? '<span class="chip c-bad">Falta SO o centro de costos</span>' : '';
+    var estado = d.conf ? '<span class="chip c-mx">Confirmada</span>' : (bloqueo || (!sel ? '<span class="chip c-bad">Sin tipo</span>' : '<span class="chip c-neutral">Pendiente</span>'));
+    var hora = d.hin+' '+d.tzin+' → '+d.hout+' '+d.tzout;
+    return '<tr><td>'+esc(d.p)+'<div class="sub mono">'+d.att+' · '+dname(d.f)+'</div></td><td>'+esc(d.depto)+'</td><td class="mono">'+hora+'</td><td class="num mono">'+d.h.toFixed(2)+'</td><td>'+zona+'</td><td>'+tipoCell+'</td><td>'+(s?ciaChip(s)+' '+esc(s.nombre):'<span class="muted">—</span>')+' <button class="btn ghost" type="button" style="padding:2px 7px">✎</button></td><td>'+estado+'</td></tr>';
+  }).join('');
+  tb.querySelectorAll('select').forEach(function(el){ el.addEventListener('change', function(){ CH_ROWS[+el.dataset.i]._tipoSel = el.value||null; chRender(); }); });
+}
+document.getElementById('f-usa').addEventListener('change', chRender);
+document.getElementById('f-depto').addEventListener('change', chRender);
+chRender();
+function soRender(){
+  var q = document.getElementById('so-q').value.toLowerCase();
+  document.getElementById('so-list').innerHTML = SO.filter(function(s){ return !q || (s.nombre+' '+s.cliente).toLowerCase().indexOf(q)>=0; })
+    .map(function(s){ return '<div class="so-item"><span>'+esc(s.nombre)+'<br><span class="sub">'+esc(s.cliente)+'</span></span>'+ciaChip(s)+'</div>'; }).join('');
+}
+document.getElementById('so-q').addEventListener('input', soRender); soRender();
+
+// ---------- 4 · RH ----------
+var EST = { validado:'<span class="chip c-mx">Validado</span>', observado:'<span class="chip c-viaje">Observado</span>', pendiente:'<span class="chip c-neutral">Por validar</span>' };
+function valRender(){
+  document.querySelector('#val-table tbody').innerHTML = PLANES.map(function(p, i){
+    var fs = Object.keys(p.dias).sort(); var s = soById(p.cargo);
+    return '<tr><td class="mono">'+p.id+'</td><td>'+p.personas.map(esc).join('<br>')+'</td><td>'+dname(fs[0])+' – '+dname(fs[fs.length-1])+'<div class="sub">'+fs.length+' días · '+fs.filter(function(f){return p.dias[f]==='viaje';}).length+' de viaje</div></td><td>'+esc(p.destino)+'</td><td>'+ciaChip(s)+' '+esc(s?s.nombre:'')+'</td><td>'+EST[p.rh]+(p.obs?'<div class="sub">'+esc(p.obs)+'</div>':'')+'</td>'+
+      '<td><div class="row" style="gap:6px"><button class="btn" type="button" data-v="'+i+'">Validar</button><button class="btn ghost" type="button" data-o="'+i+'">Observar</button></div></td></tr>';
+  }).join('');
+  document.querySelectorAll('[data-v]').forEach(function(b){ b.addEventListener('click', function(){ PLANES[+b.dataset.v].rh='validado'; PLANES[+b.dataset.v].obs=''; valRender(); }); });
+  document.querySelectorAll('[data-o]').forEach(function(b){ b.addEventListener('click', function(){ var p=PLANES[+b.dataset.o]; p.rh='observado'; p.obs = p.obs || 'Observación de RH (demo): revisar fechas con el líder.'; valRender(); }); });
+}
+valRender();
+
+var semRep = document.getElementById('sem-rep'); fillSem(semRep,'S42');
+function resumen(persona, sem){
+  var dias = DIAS.filter(function(d){ return d.p===persona && sem.dias.indexOf(d.f)>=0; });
+  var mx=[], usa=[], vusa=[], pend=[], h={mx:0,usa:0};
+  dias.forEach(function(d){
+    var tipoOk = d.conf && d.tipo; var viajeSinSO = (d.extra.viaje||d.tipo==='vusa'||d.tipo==='vmx') && !d.so;
+    if(!tipoOk || viajeSinSO){ pend.push(d); return; }
+    var T = TIPO[d.tipo]; if(T.paga==='mx'){ mx.push(d); h.mx+=d.h; } else { (d.tipo==='vusa'?vusa:usa).push(d); h.usa+=d.h; }
+  });
+  return { dias:dias, mx:mx, usa:usa, vusa:vusa, pend:pend, h:h };
+}
+function lista(arr){ return arr.map(function(d){ return dname(d.f)+' ('+TIPO[d.tipo].t+')'; }).join(', '); }
+function repRender(){
+  var sem = SEMANAS.filter(function(s){return s.id===semRep.value;})[0];
+  var personas = []; DIAS.forEach(function(d){ if(sem.dias.indexOf(d.f)>=0 && personas.indexOf(d.p)<0) personas.push(d.p); });
+  document.querySelector('#rep-table thead').innerHTML = '<tr><th>Persona</th>'+sem.dias.map(function(f){return '<th>'+dname(f)+'</th>';}).join('')+'<th class="num">Paga México</th><th class="num">Paga FTS USA</th><th class="num">Pendientes</th></tr>';
+  document.querySelector('#rep-table tbody').innerHTML = personas.map(function(p){
+    var r = resumen(p, sem);
+    var cells = sem.dias.map(function(f){
+      var d = r.dias.filter(function(x){return x.f===f;})[0];
+      if(!d) return '<td><span class="cell none">—</span></td>';
+      if(r.pend.indexOf(d)>=0) return '<td><span class="cell pend" title="'+esc(d.att)+'">! '+(d.tipo?TIPO[d.tipo].corto:'?')+'</span></td>';
+      return '<td><span class="cell '+TIPO[d.tipo].cell+'" title="'+esc(d.att)+' · '+d.h+' h">'+TIPO[d.tipo].corto+'</span></td>';
+    }).join('');
+    var nUsa = r.usa.length + r.vusa.length;
+    var why = '<div class="why"><b>México '+r.mx.length+'</b> = '+(r.mx.length?lista(r.mx):'ningún día')+'.<br>'+
+      '<b>FTS USA '+nUsa+'</b> = '+(nUsa?lista(r.vusa.concat(r.usa)):'ningún día')+(r.vusa.length?' · el Viaje a USA se paga con tarifa fija (monto: decisión D-3)':'')+'.<br>'+
+      (r.pend.length?'<b style="color:var(--bad)">Pendiente '+r.pend.length+'</b> = '+r.pend.map(function(d){ return dname(d.f)+(d.conf?'':' sin confirmar')+(!d.tipo?' sin tipo':'')+((d.extra.viaje||d.tipo==='vmx'||d.tipo==='vusa')&&!d.so?' · viaje sin SO':''); }).join(', ')+'. No entra a ninguna columna hasta que Felipe lo confirme.<br>':'')+
+      'Insumos: '+r.dias.length+(r.dias.length===1?' asistencia':' asistencias')+' de <span class="mono">hr.attendance</span>; horas (métrica, no costo): MX '+r.h.mx.toFixed(1)+' h · USA '+r.h.usa.toFixed(1)+' h.</div>';
+    return '<tr><td><b>'+esc(p)+'</b></td>'+cells+'<td class="num"><span class="tot-num mx">'+r.mx.length+'</span></td><td class="num"><span class="tot-num usa">'+nUsa+'</span></td><td class="num"><span class="tot-num '+(r.pend.length?'bad':'')+'">'+r.pend.length+'</span></td></tr><tr class="why-row"><td></td><td colspan="'+(sem.dias.length+3)+'"><span class="label">Cómo salió</span>'+why+'</td></tr>';
+  }).join('');
+}
+semRep.addEventListener('change', repRender); repRender();
+
+// Exportar: genera una hoja de cálculo (SpreadsheetML) del reporte visible.
+document.getElementById('btn-xls').addEventListener('click', function(){
+  var sem = SEMANAS.filter(function(s){return s.id===semRep.value;})[0];
+  var personas = []; DIAS.forEach(function(d){ if(sem.dias.indexOf(d.f)>=0 && personas.indexOf(d.p)<0) personas.push(d.p); });
+  function c(v,n){ return '<Cell><Data ss:Type="'+(n?'Number':'String')+'">'+esc(v)+'</Data></Cell>'; }
+  var rows = '<Row>'+c('Persona')+sem.dias.map(function(f){return c(dname(f));}).join('')+c('Paga México')+c('Paga FTS USA')+c('Pendientes')+'</Row>';
+  personas.forEach(function(p){ var r = resumen(p, sem);
+    rows += '<Row>'+c(p)+sem.dias.map(function(f){ var d=r.dias.filter(function(x){return x.f===f;})[0]; return c(!d?'':(r.pend.indexOf(d)>=0?'PENDIENTE':TIPO[d.tipo].t)); }).join('')+c(r.mx.length,1)+c(r.usa.length+r.vusa.length,1)+c(r.pend.length,1)+'</Row>'; });
+  var xml = '<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="'+sem.id+'"><Table>'+rows+'</Table></Worksheet></Workbook>';
+  var msg = document.getElementById('xls-msg'); msg.hidden = false;
+  try{
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([xml],{type:'application/vnd.ms-excel'}));
+    a.download = 'dias-mx-usa-'+sem.id+'-demo.xls'; document.body.appendChild(a); a.click(); a.remove();
+    msg.textContent = 'Archivo de ejemplo generado: dias-mx-usa-'+sem.id+'-demo.xls. La versión real usará el generador .xlsx de Nómina (NomExcel). Si tu navegador bloquea descargas en esta vista, abre el archivo del repo.';
+  }catch(e){ msg.textContent = 'Esta vista no permite descargas. Abre docs/kiosko/viajes/prototipo.html desde el repo.'; }
+});
+})();
+</script>
+</body>
+</html>
