@@ -119,7 +119,7 @@ Lo esperado es que `config_sin_confirmar` sólo liste `antecedentes_previos_cuen
 
 ## 2. El cambio: UNA bandera (desde `retardos_0009`, #386)
 
-Desde el 7-oct-2026 el paso a real **es una sola sentencia**. Ya no hay que anular correos, cancelar casos ni mover fechas a mano: la base separa cada caso en **pista sombra** y **pista real**, y lo hace sola.
+Desde el 7-oct-2026 el paso a real **es una sola sentencia**. Ya no hay que anular correos ni mover fechas a mano: la base separa cada caso en **pista sombra** y **pista real**, y lo hace sola. Lo único aparte es limpiar los casos de sombra que queden abiertos (§2b), con el "va" de Esteban.
 
 ```sql
 UPDATE retardos.config
@@ -135,7 +135,7 @@ Lo que pasa en ese instante, sin que nadie más haga nada:
 - **Jornada:** cuentan las semanas FTS que **empiezan** desde `real_desde`: la primera es la del viernes 16 al jueves 22 (S43), y su corte es el viernes 23.
 - **Acta administrativa:** se habilita en este momento (`acta_solo_en_real`).
 - **Casos de sombra:** no vencen, no escalan ni generan recordatorios (`verificar` sólo mira la pista real).
-- **Casos de sombra:** se quedan como están, en sombra. Sus correos pendientes **siguen saliendo como sombra**. No se cancelan ni se le mandan a nadie.
+- **Casos de sombra:** el UPDATE no los toca: se quedan en sombra y sus correos pendientes **siguen saliendo como sombra**, nunca a la persona. Los abiertos se cancelan aparte, en el §2b, sólo con el "va" de Esteban.
 - **Personas del piloto** que ya estaban en pista real: no cambian nada, siguen en real.
 - **Destinatarios** de todo aviso a la persona: Para la persona; CC `aviso_cc_rh` y su jefe directo según Odoo. Si no tiene jefe, CC `aviso_cc_rh` + `aviso_cc_sin_jefe` y la leyenda "Falta asignarle jefe en Odoo" arriba del correo.
 - **Notas en Odoo** (`odoo_nota`): nacen omitidas mientras `odoo_nota_ejecutor = false` (`retardos_0010`), así que no se atora el outbox.
@@ -154,6 +154,47 @@ SELECT jsonb_build_object(
 ```
 
 **Buena hora:** de 10:00 a 11:30 CST, lejos de `detectar` (12:15 y 19:15).
+
+## 2b. Lunes 12: cancelar los casos abiertos de sombra (SÓLO con el "va" de Esteban ese día)
+
+Decisión del 7-oct-2026 (#386). La sombra fue ensayo: sus casos abiertos se cancelan con motivo para que el panel arranque limpio. **No se corre sin el "va" de Esteban del mismo lunes 12**, aunque todo lo demás esté listo.
+
+**Va DESPUÉS del UPDATE del §2, nunca antes.** `abrir_caso` no abre casos de sombra para quien ya está en pista real (`retardos_0012`, `IF p_pista IS NULL AND retardos.pista_de(p_emp) = 'real' THEN RETURN NULL`). Con `modo = real` toda la plantilla está en pista real, así que lo cancelado ya no se vuelve a abrir. Si se corre antes, la siguiente `detectar` puede reabrir casos de sombra, como pasó el 7-oct a las 12:15 CST.
+
+**1. Vista previa (sólo lectura).** Revisar el conteo y la lista antes de tocar nada:
+
+```sql
+SELECT count(*) AS a_cancelar, jsonb_agg(jsonb_build_object('folio', folio, 'estado', estado, 'periodo', periodo) ORDER BY folio) AS casos,
+       (SELECT count(*) FROM retardos.caso WHERE pista = 'real' AND estado NOT IN ('CERRADO','CANCELADO_POR_RH','ACCION_VERIFICADA')) AS reales_abiertos_no_se_tocan
+  FROM retardos.caso
+ WHERE pista = 'sombra' AND estado NOT IN ('CERRADO','CANCELADO_POR_RH','ACCION_VERIFICADA');
+```
+
+**2. La cancelación.** Sólo pista sombra y sólo abiertos; actor `sistema` y el motivo en la bitácora. Cancelar es terminal: no hay reversa.
+
+```sql
+SELECT count(*) AS cancelados, jsonb_agg(folio ORDER BY folio) AS folios
+  FROM retardos.caso c,
+       LATERAL (SELECT retardos.transicionar(c.id, 'CANCELADO_POR_RH', 'sistema',
+                  'Inicio de go-live, la sombra fue ensayo',
+                  jsonb_build_object('decision', 'Dirección 7-oct-2026', 'issue', 386))) x
+ WHERE c.pista = 'sombra' AND c.estado NOT IN ('CERRADO','CANCELADO_POR_RH','ACCION_VERIFICADA');
+```
+
+Lo esperado: `cancelados` igual a `a_cancelar` de la vista previa. Si difiere, parar y reportar.
+
+**3. Read-back:**
+
+```sql
+SELECT jsonb_build_object(
+  'sombra_abiertos', (SELECT count(*) FROM retardos.caso WHERE pista = 'sombra' AND estado NOT IN ('CERRADO','CANCELADO_POR_RH','ACCION_VERIFICADA')),  -- 0
+  'real_abiertos',   (SELECT count(*) FROM retardos.caso WHERE pista = 'real'   AND estado NOT IN ('CERRADO','CANCELADO_POR_RH','ACCION_VERIFICADA')),  -- igual que antes
+  'envios_reales_nuevos', (SELECT count(*) FROM retardos.envio WHERE modo_envio = 'real' AND creado_at >= now() - interval '10 minutes'),       -- 0: cancelar no manda correos
+  'outbox_pendiente', (SELECT count(*) FROM retardos.envio WHERE estado IN ('pendiente','fallido')),
+  'salud', retardos.salud());
+```
+
+Y repetir `sombra_abiertos` después de la `detectar` de las 12:15 CST: tiene que seguir en 0.
 
 ## 3. Verificación después del primer `detectar` en real
 

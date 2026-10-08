@@ -9,7 +9,10 @@ var r = $input.first().json || {};
 var marca = false;
 try {
   if (Number(r.statusCode) === 200) {
-    var d = typeof r.body === 'string' ? JSON.parse(r.body) : r.body;
+    // Con responseFormat 'text' + fullResponse, el nodo HTTP de n8n entrega el cuerpo en `data`,
+    // no en `body` (medido en la ejecución 132602 del 7-oct: statusCode 200, data con el JSON).
+    var cuerpo = r.data !== undefined ? r.data : r.body;
+    var d = typeof cuerpo === 'string' ? JSON.parse(cuerpo) : cuerpo;
     marca = !!(d && d.piloto === true);
   }
 } catch (e) { marca = false; }
