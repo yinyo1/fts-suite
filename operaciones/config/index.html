@@ -321,6 +321,18 @@
     </div>
 
     <div class="cfg-card" style="margin-top:16px">
+      <h3>🇺🇸 Zona región USA</h3>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+        <label class="cfg-toggle">
+          <input type="checkbox" id="ops_kiosk_zona_usa">
+          <span class="cfg-toggle-slider"></span>
+        </label>
+        <span style="font-size:14px">Permitir checada en todo USA</span>
+      </div>
+      <p style="font-size:12px;color:#999;margin:0">Con esto prendido, cualquier empleado puede checar entrada o salida en cualquier punto de Estados Unidos continental sin ir a aprobación. En esa zona la salida exige elegir una SO de México o de USA. Al guardar se publica para todos los kioskos (se aplica cuando recargan).</p>
+    </div>
+
+    <div class="cfg-card" style="margin-top:16px">
       <h3>🔬 Verificación Facial</h3>
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
         <label class="cfg-toggle">
@@ -659,6 +671,11 @@ function loadKioskConfig(){
 
   renderGeoLista();
 
+  // Zona región USA: default ON (solo '0' la apaga)
+  var zonaUsaEl = document.getElementById('ops_kiosk_zona_usa');
+  if(zonaUsaEl) zonaUsaEl.checked = localStorage.getItem('ops_kiosk_zona_usa') !== '0';
+  _leerZonaUsaPublicada();
+
   // Face required checkbox
   var faceReq = document.getElementById('ops_kiosk_face_required');
   if(faceReq) faceReq.checked = localStorage.getItem('ops_kiosk_face_required') === '1';
@@ -682,10 +699,33 @@ function saveKioskConfig(){
   // Face required
   var faceReq = document.getElementById('ops_kiosk_face_required');
   if(faceReq) localStorage.setItem('ops_kiosk_face_required', faceReq.checked ? '1' : '0');
+  var zonaUsaEl = document.getElementById('ops_kiosk_zona_usa');
+  if(zonaUsaEl) localStorage.setItem('ops_kiosk_zona_usa', zonaUsaEl.checked ? '1' : '0');
   // Las geolocalizaciones ya se persisten en vivo con update/add/remove
 
   // Auto-sync public-config.json con geolocations actualizadas
   autoSyncGeolocations();
+}
+
+// La fuente de verdad del interruptor es public-config.json, no este navegador:
+// si otro equipo lo apagó, aquí se ve apagado antes de que alguien lo vuelva a
+// publicar encendido con un valor viejo.
+async function _leerZonaUsaPublicada(){
+  try{
+    var res = await fetch(
+      'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/public-config.json?ref=main&t=' + Date.now(),
+      { cache:'no-store', headers: { 'Accept': 'application/vnd.github.v3.raw' } }
+    );
+    if(!res.ok) return;
+    var cfg = await res.json();
+    var usa = cfg && cfg.zonas_region && cfg.zonas_region.usa;
+    var activo = !(usa && usa.activo === false);
+    localStorage.setItem('ops_kiosk_zona_usa', activo ? '1' : '0');
+    var el = document.getElementById('ops_kiosk_zona_usa');
+    if(el) el.checked = activo;
+  } catch(e){
+    console.warn('[Config] No se pudo leer zona USA publicada:', e.message);
+  }
 }
 
 // ─ Geolocalizaciones ─
@@ -897,8 +937,12 @@ async function autoSyncGeolocations(){
     if(!cfgActual.odoo_url) cfgActual.odoo_url = localStorage.getItem('odoo_url') || 'https://serviciosfts.odoo.com';
     if(cfgActual.demo_mode === undefined) cfgActual.demo_mode = false;
 
-    // Actualizar solo geolocations + updated
+    // Actualizar solo geolocations + zona región USA + updated
     cfgActual.geolocations = geolocations;
+    cfgActual.zonas_region = cfgActual.zonas_region || {};
+    cfgActual.zonas_region.usa = Object.assign({}, cfgActual.zonas_region.usa || {}, {
+      activo: localStorage.getItem('ops_kiosk_zona_usa') !== '0'
+    });
     cfgActual.updated = new Date().toISOString().split('T')[0];
 
     var content = JSON.stringify(cfgActual, null, 2);
@@ -992,6 +1036,9 @@ function _refreshGeoFromGitHub(){
         if(cfg.n8n_url) localStorage.setItem('n8n_url', cfg.n8n_url);
         if(cfg.odoo_url) localStorage.setItem('odoo_url', cfg.odoo_url);
         if(cfg.demo_mode !== undefined) localStorage.setItem('demo_mode', String(cfg.demo_mode));
+      }
+      if(cfg.zonas_region && cfg.zonas_region.usa && typeof cfg.zonas_region.usa.activo === 'boolean'){
+        localStorage.setItem('ops_kiosk_zona_usa', cfg.zonas_region.usa.activo ? '1' : '0');
       }
     } catch(e){
       console.warn('Auto-refresh falló:', e);

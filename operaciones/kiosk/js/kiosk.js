@@ -1,7 +1,7 @@
 // ═══ FTS Kiosk — Lógica principal ═══
 // Script clásico, estado global compartido
 
-const KIOSK_BUILD = '20260710-kiosk-versioncheck';
+const KIOSK_BUILD = '20261008-kiosk-zona-usa';
 console.log('[kiosk] build:', KIOSK_BUILD);
 window.KIOSK_BUILD = KIOSK_BUILD;
 // PR-7: auto version-check — si el navegador sirve un bundle viejo cacheado
@@ -48,6 +48,9 @@ function loadKioskConfig(){
     faceEnabled:   localStorage.getItem('ops_kiosk_face_enabled') === '1',
     faceThreshold: parseFloat(localStorage.getItem('ops_kiosk_face_threshold') || '0.5'),
     geolocations:  JSON.parse(localStorage.getItem('ops_kiosk_geolocations') || '[]'),
+    // Zona región USA (default ON). La fuente es public-config.json → zonas_region.usa.activo;
+    // aquí se guarda el último valor leído por si GitHub no responde.
+    zonaUsa:       localStorage.getItem('ops_kiosk_zona_usa') !== '0',
     stages:        JSON.parse(localStorage.getItem('ops_kiosk_stages') || '["To Do","In Progress","Hold"]'),
     fields: {
       pin:             localStorage.getItem('ops_kiosk_field_pin')              || 'pin',
@@ -88,7 +91,7 @@ function calcularDistancia(lat1, lng1, lat2, lng2){
 function validarGeolocacion(lat, lng){
   var geos = K.config.geolocations;
   if(!geos || !geos.length){
-    return { autorizado: true, sitio: 'Sin restricción geo' };
+    return { autorizado: true, sitio: 'Sin restricción geo', sinRestriccion: true };
   }
   if(lat == null || lng == null) return {
     autorizado: false,
@@ -104,7 +107,7 @@ function validarGeolocacion(lat, lng){
       parseFloat(sitio.lat), parseFloat(sitio.lng)
     );
     if(dist <= parseFloat(sitio.radio || getRadioPermitido())){
-      return { autorizado: true, sitio: sitio.nombre, dist };
+      return { autorizado: true, sitio: sitio.nombre, dist, pais: sitio.pais || null };
     }
     if(dist < minDist){ minDist = dist; sitioMasCercano = sitio; }
   }
@@ -113,6 +116,33 @@ function validarGeolocacion(lat, lng){
     sitioMasCercano: sitioMasCercano.nombre,
     distancia: Math.round(minDist)
   };
+}
+
+// ═══ Zona región USA ═══
+// Primero los sitios (síncrono, como siempre). Solo si NO cayó en un sitio y el
+// interruptor está prendido se descarga el contorno de EE.UU. (~500 KB, una vez por
+// página) y se pregunta si el punto está dentro. Si el contorno no carga, la checada
+// sigue el camino de hoy (fuera de zona → motivo → aprobación): nunca se autoriza por
+// no haber podido revisar.
+async function validarGeoConRegion(lat, lng){
+  var sitio = validarGeolocacion(lat, lng);
+  var activo = !!(K.config && K.config.zonaUsa);
+  var usa = null;
+  if(!sitio.autorizado && activo && lat != null && lng != null && window.ZonaUSA){
+    usa = await window.ZonaUSA.evaluar(lat, lng);
+    if(usa.usa == null) console.warn('[ZONA-USA] no se pudo evaluar:', usa.error);
+  }
+  return window.ZonaUSA ? window.ZonaUSA.resolverZona(sitio, usa, activo)
+                        : Object.assign({}, sitio, { zona: sitio.autorizado ? 'sitio' : 'fuera', pais: sitio.pais || null });
+}
+
+function guardarZonaEnEstado(geoResult){
+  K.geoAutorizada = geoResult.autorizado;
+  K.geoSitio      = geoResult.sitio || geoResult.sitioMasCercano;
+  K.geoDistancia  = geoResult.distancia || 0;
+  K.geoZona       = geoResult.zona || null;
+  K.geoPais       = geoResult.pais || null;
+  K.geoRegionError= geoResult.region_error || null;
 }
 
 // ═══ Candado hora mínima check-in por geocerca (F1.5 Issue 1) ═══
@@ -240,13 +270,11 @@ async function reintentarGeo(){
   const geo = await window.getGeolocacion();
   K.geo = geo;
 
-  const geoResult = validarGeolocacion(
+  const geoResult = await validarGeoConRegion(
     geo && geo.lat != null ? geo.lat : null,
     geo && geo.lng != null ? geo.lng : null
   );
-  K.geoAutorizada = geoResult.autorizado;
-  K.geoSitio      = geoResult.sitio || geoResult.sitioMasCercano;
-  K.geoDistancia  = geoResult.distancia || 0;
+  guardarZonaEnEstado(geoResult);
 
   if(geoResult.autorizado){
     // Cerrar modal y continuar el flujo normalmente
@@ -353,6 +381,7 @@ function goHome(){
   clearOlvidoEntradaFlag('goHome');
   K.seleccionado = null;
   K.soSeleccionada = null;
+  K.usaSalida = false; K.sosUsa = null; K.soObligatoria = false;
   K.tipo = null;
   K.pin = '';
   updatePinDots();
@@ -396,6 +425,8 @@ function terminarYHome(){
   K.geoMotivo = null;
   K.geoSitio = null;
   K.geoDistancia = 0;
+  K.geoZona = null; K.geoPais = null; K.geoRegionError = null;
+  K.usaSalida = false; K.sosUsa = null; K.soObligatoria = false;
   K.pin = '';
   updatePinDots();
   if(typeof updateOkButton === 'function') updateOkButton();
@@ -780,13 +811,11 @@ async function afterVerifyContinue(){
   K.geoMotivo = null;
   const geo = await window.getGeolocacion();
   K.geo = geo;
-  const geoResult = validarGeolocacion(
+  const geoResult = await validarGeoConRegion(
     geo && geo.lat != null ? geo.lat : null,
     geo && geo.lng != null ? geo.lng : null
   );
-  K.geoAutorizada = geoResult.autorizado;
-  K.geoSitio = geoResult.sitio || geoResult.sitioMasCercano;
-  K.geoDistancia = geoResult.distancia || 0;
+  guardarZonaEnEstado(geoResult);
 
   // Liberar bloqueo antes de avanzar a siguiente pantalla
   if(verifyEl) verifyEl.classList.remove('ks-verify-busy');
@@ -807,12 +836,19 @@ async function afterVerifyContinue(){
 }
 
 // ═══ SOs ═══
+// En salida desde zona USA la lista es México + USA (K.sosUsa); fuera de USA, la de siempre.
+function listaSOsActiva(){
+  return (K.usaSalida && Array.isArray(K.sosUsa)) ? K.sosUsa : K.sos;
+}
+
 function searchSOs(q){
   const nq = normalize(q);
-  const filtered = !nq ? K.sos : K.sos.filter(s =>
+  const base = listaSOsActiva();
+  const filtered = !nq ? base : base.filter(s =>
     normalize(s.name || s.nombre || '').includes(nq) ||
     normalize(s.cliente || '').includes(nq) ||
-    normalize(s.num || '').includes(nq)
+    normalize(s.num || '').includes(nq) ||
+    normalize(s._empresa || '').includes(nq)
   );
   renderSOs(filtered);
 }
@@ -827,8 +863,11 @@ function renderSOs(list){
   el.innerHTML = list.map(s => {
     var nombre  = s.name || s.nombre || '—';
     var cliente = s.cliente || '';
+    var empresa = (K.usaSalida && s._empresa)
+      ? '<span class="kiosk-so-empresa emp-'+ (s._company_id === 6 ? 'us' : 'mx') +'">'+ s._empresa +'</span>'
+      : '';
     return '<div class="kiosk-so-card" onclick="selectSO('+s.id+')">'+
-      '<div class="kiosk-so-name">'+nombre+'</div>'+
+      '<div class="kiosk-so-name">'+empresa+nombre+'</div>'+
       (cliente ? '<div class="kiosk-so-cliente">'+cliente+'</div>' : '')+
     '</div>';
   }).join('');
@@ -838,7 +877,7 @@ function selectSO(id){
   var now = Date.now();
   if(now - _lastTap < 300) return;
   _lastTap = now;
-  const so = K.sos.find(s => s.id === id);
+  const so = listaSOsActiva().find(s => s.id === id);
   if(!so) return;
   K.soSeleccionada = so;
   K.bolsaSeleccionada = null;   // PR-2: elegir proyecto gana sobre la bolsa
@@ -881,8 +920,36 @@ function parseBolsaDefault(emp){
   return null;
 }
 
+// Zona USA: lista México + USA. La de México ya está en K.sos; la de USA se pide aquí
+// con tope de 12 s. Si no llega, la SO deja de ser obligatoria y se avisa: obligar a
+// elegir de una lista incompleta es obligar a mentir.
+async function cargarCatalogoUsa(){
+  K.sosUsa = null; K.soObligatoria = false; K.sosUsaMotivo = null;
+  var companyMx = parseInt(localStorage.getItem('ops_kiosk_company_id') || '1', 10);
+  var listaUs = null, error = null;
+  try{
+    listaUs = await Promise.race([
+      window.OdooKiosk.getSOsCompania(6),
+      new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('TIMEOUT_12S')); }, 12000); })
+    ]);
+  } catch(e){ error = (e && e.message) || String(e); }
+  // OJO: no inyectar company_id en la lista MX — combinarCatalogos necesita saber si el
+  // SERVIDOR trae la empresa para detectar que ignora el company_id.
+  var mx = K.sos || [];
+  if(error){
+    var soloMx = window.ZonaUSA.combinarCatalogos(mx, [], companyMx);
+    K.sosUsa = soloMx.lista; K.soObligatoria = false; K.sosUsaMotivo = 'CATALOGO_USA_ERROR: ' + error;
+  } else {
+    var r = window.ZonaUSA.combinarCatalogos(mx, listaUs, companyMx);
+    K.sosUsa = r.lista; K.soObligatoria = r.obligatoria; K.sosUsaMotivo = r.motivo;
+  }
+  if(K.sosUsaMotivo) console.warn('[ZONA-USA] SO no obligatoria:', K.sosUsaMotivo);
+}
+
 async function iniciarSalida(){
   var emp = K.seleccionado || {};
+  K.usaSalida = !!(window.ZonaUSA && window.ZonaUSA.esZonaUsa({ zona: K.geoZona, pais: K.geoPais }));
+  K.sosUsa = null; K.soObligatoria = false; K.sosUsaMotivo = null;
   K.perfilSalida = perfilEmpleado(emp);
   K.bolsaDefault = parseBolsaDefault(emp);   // PR-2: bolsa default del empleado (o null = técnico)
   K.bolsaSeleccionada = null;
@@ -904,10 +971,13 @@ async function iniciarSalida(){
     if(settled) return;
     settled = true;
     console.warn('[kiosk] getPlanDia timeout 6s → sin plan');
-    K.planLoading = false;
     K.planSO = null;
-    resolverSalidaSinPlan();
+    Promise.resolve(catalogoUsa).catch(function(){}).then(function(){
+      K.planLoading = false;
+      resolverSalidaSinPlan();
+    });
   }, 6000);
+  var catalogoUsa = K.usaSalida ? cargarCatalogoUsa() : null;
   try{
     var r = await window.OdooKiosk.getPlanDia(emp.id);
     if(settled) return;   // el timeout ya resolvió; ignorar respuesta tardía
@@ -923,6 +993,7 @@ async function iniciarSalida(){
     clearTimeout(timer);
     /* sin plan / error → resolver por perfil, no bloquea */
   }
+  if(catalogoUsa){ try{ await catalogoUsa; } catch(e){} }
   K.planLoading = false;
   if(K.planSO){
     renderProjectScreen();    // Estado 2 CON PLAN — banner confirmar/cambiar (todos los perfiles)
@@ -939,6 +1010,20 @@ async function iniciarSalida(){
 // Fallback de rollout: si el empleado aún NO trae el campo default (bolsaDefault
 // null y no es técnico), se usa el perfil de PR-1 (admin registra "—").
 function resolverSalidaSinPlan(){
+  // Zona USA con catálogo completo: la SO es obligatoria → directo a la lista,
+  // sin bolsa ni "sin proyecto", para cualquier perfil (incluido admin).
+  if(K.usaSalida && K.soObligatoria){
+    K.bolsaExpandido = true;
+    renderProjectScreen();
+    var inputUsa = document.getElementById('ksSoSearch');
+    if(inputUsa){ inputUsa.value = ''; searchSOs(''); }
+    return;
+  }
+  if(K.usaSalida){
+    // Catálogo USA no disponible: se conserva el flujo de hoy, con la lista que sí hay.
+    var inputUsa2 = document.getElementById('ksSoSearch');
+    if(inputUsa2){ inputUsa2.value = ''; }
+  }
   if(K.bolsaDefault){
     renderProjectScreen();    // Estado CON BOLSA (banner) — no infiere por depto
     return;
@@ -987,7 +1072,7 @@ function renderProjectScreen(){
 
   // Estado 2b: CON BOLSA (sin plan, empleado con bolsa default) — banner bolsa +
   // opción de elegir proyecto si ese día trabajó en uno.
-  if(K.bolsaDefault && !K.bolsaExpandido){
+  if(K.bolsaDefault && !K.bolsaExpandido && !(K.usaSalida && K.soObligatoria)){
     planEl.style.display = '';
     listEl.style.display = 'none';
     planEl.innerHTML =
@@ -1003,6 +1088,7 @@ function renderProjectScreen(){
   // Estado 3: SIN PLAN / lista expandida — buscador + lista + escape (bolsa o "sin proyecto")
   planEl.style.display = 'none';
   listEl.style.display = '';
+  searchSOs((document.getElementById('ksSoSearch') || {}).value || '');
   renderNoSOButton();
 }
 
@@ -1012,6 +1098,12 @@ function renderNoSOButton(){
   var el = document.getElementById('ksProjectNoSO');
   if(!el) return;
   var html = '';
+  if(K.usaSalida){
+    html += K.soObligatoria
+      ? '<div class="ksp-usa-aviso">🇺🇸 Estás checando en USA: elige la SO (de México o de USA) en la que trabajaste.</div>'
+      : '<div class="ksp-usa-aviso warn">🇺🇸 Estás en USA, pero la lista de SO de USA no cargó. Elige una SO si la ves; si no, regístralo como siempre y avisa a tu supervisor.</div>';
+    if(K.soObligatoria){ el.innerHTML = html; return; }
+  }
   if(K.bolsaDefault){
     html += '<button onclick="confirmarBolsa()" class="ksp-sinso-btn">← Registrar en mi bolsa: '+ (K.bolsaDefault.nombre || '') +'</button>';
   } else if(K.perfilSalida === 'operativo' || K.perfilSalida === 'comercial'){
@@ -1049,12 +1141,14 @@ function expandirListaBolsa(){
 // PR-2: confirmar la bolsa (default del empleado). Escribe cuenta indirecta, no proyecto.
 function confirmarBolsa(){
   if(!K.bolsaDefault) return;
+  if(K.usaSalida && K.soObligatoria) return;   // en zona USA la SO es obligatoria
   K.bolsaSeleccionada = { id: K.bolsaDefault.id, nombre: K.bolsaDefault.nombre };
   K.soSeleccionada = null;
   registrarAsistencia();
 }
 
 function registrarSinSO(){
+  if(K.usaSalida && K.soObligatoria) return;   // en zona USA la SO es obligatoria
   // Candado BLANDO: se permite salir sin SO (con aviso para operativos)
   K.soSeleccionada = null;
   K.bolsaSeleccionada = null;
@@ -1101,6 +1195,8 @@ async function registrarAsistencia(){
     olvidoFlag: K.olvidoEntradaData
   });
 
+  const tzEvento = window.ZonaUSA ? window.ZonaUSA.zonaHorariaLocal(now) : { tz: null, utc_offset_min: -now.getTimezoneOffset() };
+
   // Construir payload completo
   const payload = {
     empleado_id:        (K.seleccionado && K.seleccionado.id) || null,
@@ -1119,6 +1215,15 @@ async function registrarAsistencia(){
     geo_distancia:      K.geoDistancia || 0,
     geo_motivo:         K.geoMotivo || null,
     geo_status:         K.geoAutorizada !== false ? 'autorizado' : 'pendiente_aprobacion',
+    // Zona región USA (2026-10-08). El servidor hoy los ignora (mitad tolerante del
+    // contrato); ver issue del kiosko USA para el cambio del workflow que los guarda.
+    geo_zona:           K.geoZona || null,          // 'sitio' | 'usa' | 'fuera' | 'sin_restriccion'
+    geo_pais:           K.geoPais || null,          // 'US' | 'NO_US' | pais del sitio | null
+    geo_region_error:   K.geoRegionError || null,
+    tz_evento:          tzEvento.tz,                // zona IANA del dispositivo
+    utc_offset_min:     tzEvento.utc_offset_min,    // desfase del dispositivo en el evento
+    so_company_id:      (K.soSeleccionada && (K.soSeleccionada._company_id || null)) || null,
+    so_empresa:         (K.soSeleccionada && (K.soSeleccionada._empresa || null)) || null,
     supervisor_id:      (K.seleccionado && K.seleccionado.manager_id)   || null,
     supervisor_nombre:  (K.seleccionado && K.seleccionado.manager_name) || null,
   };
@@ -1161,7 +1266,9 @@ async function registrarAsistencia(){
   if(confirmNombre) confirmNombre.textContent = payload.empleado_nombre || '—';
   // PR-2 fix: si el checkout fue por BOLSA (cuenta indirecta) y no por proyecto,
   // mostrar la bolsa en vez de "—" (payload.so_nombre viene vacío en ese caso).
-  if(confirmSO)     confirmSO.textContent     = payload.so_nombre || (payload.cuenta_nombre ? '🗂️ Bolsa: ' + payload.cuenta_nombre : '—');
+  if(confirmSO)     confirmSO.textContent     = payload.so_nombre
+    ? (payload.so_empresa ? payload.so_empresa + ' · ' : '') + payload.so_nombre
+    : (payload.cuenta_nombre ? '🗂️ Bolsa: ' + payload.cuenta_nombre : '—');
   if(confirmHora)   confirmHora.textContent   = now.toLocaleTimeString('es-MX');
   if(confirmGeo){
     confirmGeo.innerHTML = payload.geo_autorizada
@@ -1604,6 +1711,9 @@ async function initKiosk(){
       localStorage.setItem('ops_geo_sync_timestamp', new Date().toISOString());
       console.log('[GEO] Sincronizado:', pub.geolocations.length, 'sitios');
     }
+    // Zona región USA: public-config manda. Ausente = encendido (default ON).
+    var zu = pub.zonas_region && pub.zonas_region.usa;
+    localStorage.setItem('ops_kiosk_zona_usa', (zu && zu.activo === false) ? '0' : '1');
   } catch(e){
     console.error('[GEO] Error sync:', e.message);
   }
