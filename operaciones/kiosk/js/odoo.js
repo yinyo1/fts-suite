@@ -51,6 +51,15 @@ async function getSOs(){
   return (data && data.sos) || [];
 }
 
+// Zona USA: el catálogo de una empresa concreta (1 = FTS MX, 6 = FTS USA LLC).
+// OJO: que el servidor respete company_id NO está verificado (kiosk/sos no está
+// habilitado para MCP). ZonaUSA.combinarCatalogos detecta si lo ignora.
+async function getSOsCompania(companyId){
+  const data = await n8nFetch('/webhook/kiosk/sos', { company_id: companyId });
+  const r = Array.isArray(data) ? data[0] : data;
+  return (r && r.sos) || [];
+}
+
 // B3: plan del día del empleado (pre-llenado de SO en salida)
 async function getPlanDia(empleadoId){
   return n8nFetch('/webhook/planeacion/dia', { empleado_id: empleadoId });
@@ -84,6 +93,7 @@ async function testConnection(){
 window.OdooKiosk = {
   getEmpleados,
   getSOs,
+  getSOsCompania,
   getPlanDia,
   registrarCheckin,
   getAsistenciaHoy,

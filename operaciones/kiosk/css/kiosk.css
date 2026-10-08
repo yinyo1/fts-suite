@@ -468,3 +468,10 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
   .kiosk-pin-btn{min-height:48px;padding:10px;font-size:20px}
   .kiosk-pin-ok-btn{padding:12px;font-size:16px;margin-top:6px}
 }
+
+/* Zona región USA (2026-10-08): empresa visible en cada SO y aviso de obligatoriedad */
+.kiosk-so-empresa{ display:inline-block;font-size:11px;font-weight:800;letter-spacing:.5px;padding:2px 8px;border-radius:999px;margin-right:8px;vertical-align:middle; }
+.kiosk-so-empresa.emp-mx{ background:#E8F5E9;color:#107C10;border:1px solid #107C10; }
+.kiosk-so-empresa.emp-us{ background:#E3F0FB;color:#0B5CAD;border:1px solid #0B5CAD; }
+.ksp-usa-aviso{ font-size:13px;color:#0B5CAD;background:#E3F0FB;border-radius:8px;padding:10px 12px;margin-top:10px;text-align:center; }
+.ksp-usa-aviso.warn{ color:#8A5300;background:#FFF4E0; }
