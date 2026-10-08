@@ -1,6 +1,6 @@
 # Kiosko · zona región USA y selección de SO MX+USA
 
-Issue: ver el issue "Kiosko: check-in/out en todo USA y selección de SO MX+USA" (enlazado a #282 y #334).
+Issue: #394 (enlazado a #282 y #334).
 Build: `20261008-kiosk-zona-usa`.
 
 ## Qué hace
