@@ -477,7 +477,7 @@ document.getElementById('btn-xls').addEventListener('click', function(){
   try{
     var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([xml],{type:'application/vnd.ms-excel'}));
     a.download = 'dias-mx-usa-'+sem.id+'-demo.xls'; document.body.appendChild(a); a.click(); a.remove();
-    msg.textContent = 'Archivo de ejemplo generado: dias-mx-usa-'+sem.id+'-demo.xls. La versión real usará el generador .xlsx de Nómina (NomExcel). Si tu navegador bloquea descargas en esta vista, abre el archivo del repo.';
+    msg.textContent = 'Se pidió la descarga de dias-mx-usa-'+sem.id+'-demo.xls. Si no aparece, esta vista bloquea descargas: abre docs/kiosko/viajes/prototipo.html desde el repo. La versión real usará el generador .xlsx de Nómina (NomExcel).';
   }catch(e){ msg.textContent = 'Esta vista no permite descargas. Abre docs/kiosko/viajes/prototipo.html desde el repo.'; }
 });
 })();
