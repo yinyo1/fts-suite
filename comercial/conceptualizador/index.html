@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>FTS Suite · Conceptualizador</title>
+<link rel="stylesheet" href="../../shared/fts-styles.css" />
+<script src="../../shared/auth-jwt.js"></script>
+<script>if (!window.SuiteAuth.requerir('conceptualizador:usar', '../../shared/login.html')) { throw new Error('sin sesion'); }</script>
+<style>
+  body{background:var(--dark)}
+  .wrap{max-width:720px;margin:0 auto;padding:0 0 90px}
+  .motor{margin:10px 16px 0;padding:8px 12px;border-radius:20px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:var(--d2)}
+  .motor .pt{width:8px;height:8px;border-radius:50%;background:#bbb;flex-shrink:0}
+  .motor.verde{color:var(--green);border-color:#bfe3bf;background:#f2faf2}.motor.verde .pt{background:var(--green)}
+  .motor.ambar{color:#9a5b00;border-color:#f1d29a;background:#fff8ea}.motor.ambar .pt{background:#e39b00}
+  .tabs{display:flex;margin:10px 16px 0;border-bottom:1px solid var(--border)}
+  .tab{flex:1;padding:11px 4px;font-size:13px;font-weight:600;color:var(--muted2);border:none;background:none;border-bottom:2px solid transparent;font-family:inherit;cursor:pointer;min-height:44px}
+  .tab.on{color:var(--o);border-bottom-color:var(--o)}
+  #vista{padding:12px 16px;display:flex;flex-direction:column;gap:12px}
+  .sec{background:var(--d2);border:1px solid var(--border);border-radius:12px;padding:12px}
+  .sec-t{font-size:11px;font-weight:800;letter-spacing:.5px;color:var(--muted2);text-transform:uppercase;margin-bottom:8px}
+  .costo{color:var(--o);letter-spacing:0}
+  input,select,textarea{width:100%;font:inherit;font-size:15px;padding:10px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text)}
+  textarea{resize:vertical}
+  .nuevo{display:flex;flex-direction:column;gap:8px}
+  .fila{display:flex;gap:8px;align-items:center}.fila select{width:auto;flex-shrink:0}
+  .caso{width:100%;text-align:left;background:none;border:none;border-top:1px solid var(--d4);padding:10px 2px;font:inherit;cursor:pointer;min-height:44px}
+  .caso:first-of-type{border-top:none}
+  .ct{font-weight:600;font-size:14px}.cm{font-size:12px;color:var(--muted2);margin-top:2px}
+  .cola{color:var(--o)}
+  .chip{font-size:9px;font-weight:800;padding:1px 6px;border-radius:10px;background:var(--d3);border:1px solid var(--border);color:var(--muted2);vertical-align:middle}
+  .vacio{color:var(--muted2);font-size:13px;padding:6px 2px}
+  .cab{display:flex;flex-direction:column;gap:2px}.cab span{font-size:12px;color:var(--muted2)}.cab code{font-size:11px}
+  .chat{display:flex;flex-direction:column;gap:8px;max-height:52vh;overflow-y:auto;padding:2px}
+  .msg{max-width:88%;padding:9px 12px;border-radius:12px;font-size:14px;white-space:pre-wrap;word-wrap:break-word}
+  .msg.yo{align-self:flex-end;background:#fff3ee;border:1px solid #f3c4b0}
+  .msg.el{align-self:flex-start;background:var(--d2);border:1px solid var(--border)}
+  .mm{font-size:11px;color:var(--muted);margin-top:4px}.adj{font-size:12px;color:var(--muted2);margin-top:4px}
+  .st{font-weight:700;font-size:10px;padding:1px 7px;border-radius:10px;border:1px solid}
+  .st.cola{color:#9a5b00;border-color:#f1d29a;background:#fff8ea}.st.proc{color:var(--blue);border-color:#b5d6f2;background:#eef6fd}
+  .st.ok{color:var(--green);border-color:#bfe3bf;background:#f2faf2}.st.err{color:var(--red);border-color:#f0c0c1;background:#fdf0f0}
+  .ev{font-size:12px;color:var(--muted2);align-self:center;text-align:center}.ev span{color:var(--muted)}
+  .con{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;border-top:1px solid var(--d4);padding:9px 0;font-size:14px}
+  .con:first-of-type{border-top:none}
+  .org{font-size:11px;color:var(--muted2);margin-top:2px}
+  .bt{display:flex;gap:6px;flex-shrink:0}
+  .bt button{font:inherit;font-size:12px;font-weight:700;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:#fff;cursor:pointer;min-height:36px}
+  .bt .si{color:var(--green)}.bt .no{color:var(--red)}
+  .bom{border-top:1px solid var(--d4);padding:8px 0;font-size:13px}.bom:first-of-type{border-top:none}
+  .bd{font-weight:600}.bn{color:var(--text)}.bf{font-size:11px;color:var(--muted2);word-break:break-word}
+  .bf a{color:var(--blue)}
+  .bom.mo .bd{color:var(--muted2)}
+  .tot{margin-top:8px;padding-top:8px;border-top:2px solid var(--border);font-size:14px;text-align:right}
+  .preg{padding-left:20px;font-size:14px}
+  .comp{display:flex;flex-direction:column;gap:6px}
+  .adjb{font-size:20px;cursor:pointer;padding:6px;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:8px;background:#fff}
+  .env{width:auto;margin-left:auto;padding:12px 22px}
+  .pst{display:flex;gap:6px;flex-wrap:wrap}
+  .pf{font:inherit;font-size:12px;padding:7px 11px;border-radius:16px;border:1px solid var(--border);background:#fff;cursor:pointer;min-height:36px}
+  .pf.on{border-color:var(--o);color:var(--o);font-weight:700}
+  .nota{margin:0}
+  .lec{background:var(--d2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px}
+  .disp{font-size:12px;color:var(--red);margin-top:4px}
+  .pie{font-size:11px;color:var(--muted);text-align:center;margin-top:8px}
+  @media (min-width:900px){ .wrap{padding-bottom:40px} .chat{max-height:60vh} }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <button class="tb-back" onclick="location.href='../index.html'" aria-label="Volver">&#8249;</button>
+  <div class="tb-logo" role="img" aria-label="FTS"></div>
+  <div class="tb-info"><strong>Conceptualizador</strong><span>Comercial · FTS Suite</span></div>
+  <div class="tb-badge">MVP</div>
+</div>
+<div class="wrap">
+  <div id="motor" class="motor gris"><span class="pt"></span>Motor: consultando…</div>
+  <div class="tabs">
+    <button class="tab on" data-v="casos">Casos</button>
+    <button class="tab" data-v="conversacion">Conversación</button>
+    <button class="tab" data-v="aprendio">Lo que aprendió</button>
+  </div>
+  <div id="vista"></div>
+  <p class="pie">Conceptualizador <span id="ver"></span> · Todo importe es COSTO de FTS; el margen lo pone el machote.</p>
+</div>
+<script src="js/cz-cliente.js?v=V1.00"></script>
+<script src="js/cz-app.js?v=V1.00"></script>
+<script>window.CzApp.arrancar();</script>
+</body>
+</html>
