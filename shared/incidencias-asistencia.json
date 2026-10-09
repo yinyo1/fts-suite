@@ -92,12 +92,22 @@
           "fecha": "2026-10-08T23:47:08.822Z",
           "hora_propuesta_cst": "11:00",
           "comentario": "Sali de planta toppchico a atender jn tema personal"
+        },
+        {
+          "paso": 2,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-10-09T15:52:38.852Z",
+          "hora_propuesta_cst": "17:00",
+          "comentario": "Incidencia ajustada",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_rh",
-      "hora_final_aplicada_utc": "2026-10-08 17:00:00",
+      "status": "aprobada_con_ajuste",
+      "hora_final_aplicada_utc": "2026-10-08 23:00:00",
       "aplicado_en_odoo": true,
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "creada_por_modulo": "kiosk",
       "creada_por_build": "20261008-kiosk-zona-usa"
     },
