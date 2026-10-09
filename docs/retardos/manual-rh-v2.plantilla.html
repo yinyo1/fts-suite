@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Manual RH Retardos</title>
+<!-- Generado por docs/retardos/armar-manual-rh-v2.js. No editar a mano: se edita el guion o esta plantilla. -->
+<style>
+  :root { --bg:#f4f5f2; --card:#fff; --txt:#1d2320; --sub:#59625d; --line:#dde2db; --acc:#127a1e; --acc2:#e8f3e9;
+          --info:#e9f1fc; --infob:#2a6fc4; --warn:#fff4d6; --warnb:#b98100; --mal:#fdecea; --malb:#c0392b; --marca:#e0245e; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#131615; --card:#1d211f; --txt:#e8ece9; --sub:#a3aca6; --line:#323935; --acc:#5fc46b; --acc2:#1f3322;
+          --info:#1b2a3d; --infob:#7fb2f0; --warn:#33290f; --warnb:#e0b23a; --mal:#3a1c1a; --malb:#f08a7e; --marca:#ff5c8a; } }
+  :root[data-theme="dark"] { --bg:#131615; --card:#1d211f; --txt:#e8ece9; --sub:#a3aca6; --line:#323935; --acc:#5fc46b; --acc2:#1f3322;
+          --info:#1b2a3d; --infob:#7fb2f0; --warn:#33290f; --warnb:#e0b23a; --mal:#3a1c1a; --malb:#f08a7e; --marca:#ff5c8a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  main { max-width:960px; margin:0 auto; padding:20px 16px 64px; }
+  h1 { font-size:27px; margin:0 0 4px; } h2 { font-size:21px; margin:34px 0 10px; } h3 { font-size:17px; margin:0 0 6px; }
+  .sub { color:var(--sub); margin:0 0 16px; }
+  .aviso { border-left:4px solid var(--warnb); background:var(--warn); padding:12px 14px; border-radius:10px; margin:14px 0; }
+  .aviso.info { border-color:var(--infob); background:var(--info); } .aviso.mal { border-color:var(--malb); background:var(--mal); }
+  .fechas { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px; margin:10px 0; }
+  .fecha { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; }
+  .fecha b { display:block; font-size:20px; } .fecha span { color:var(--sub); font-size:14px; }
+  .indice { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:10px; }
+  .esc { text-align:left; background:var(--card); color:var(--txt); border:1px solid var(--line); border-radius:12px; padding:12px 14px; cursor:pointer; font:inherit; }
+  .esc b { display:block; } .esc span { color:var(--sub); font-size:14px; }
+  .esc[aria-pressed="true"] { border-color:var(--acc); background:var(--acc2); box-shadow:0 0 0 1px var(--acc) inset; }
+  .visor { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-top:14px; }
+  .visor h3 { font-size:19px; } .paso-n { color:var(--sub); font-size:14px; margin-bottom:8px; }
+  .lienzo { position:relative; margin:10px 0; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#fff; }
+  .lienzo img { display:block; width:100%; height:auto; }
+  .lienzo svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  .texto { font-size:16px; } .nav { display:flex; gap:10px; justify-content:space-between; align-items:center; margin-top:12px; }
+  .nav button { font:inherit; font-weight:600; padding:9px 16px; border-radius:9px; border:1px solid var(--line); background:var(--card); color:var(--txt); cursor:pointer; }
+  .nav button.pri { background:var(--acc); border-color:var(--acc); color:#fff; } .nav button:disabled { opacity:.4; cursor:default; }
+  .puntos { display:flex; gap:6px; } .puntos i { width:9px; height:9px; border-radius:50%; background:var(--line); display:block; } .puntos i.on { background:var(--acc); }
+  .tabla { overflow-x:auto; } table { border-collapse:collapse; width:100%; font-size:15px; background:var(--card); border-radius:10px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; } th { color:var(--sub); font-weight:600; }
+  footer { color:var(--sub); font-size:13px; margin-top:40px; }
+</style>
+</head>
+<body>
+<main>
+<h1>Retardos: manual de RH</h1>
+<p class="sub">Panel <b>RH · Retardos</b>. Las capturas son del modo de ejemplo: los nombres son inventados. Los botones y pestañas se llaman igual que en pantalla.</p>
+
+<div class="aviso mal"><b>Piloto, del jueves 8 al domingo 11 de octubre: reporta TODO lo que veas raro.</b><br>Si algo no cuadra, aunque parezca menor, toma captura con el folio y mándasela a Esteban. Para eso es el piloto.</div>
+
+<h2>Fechas de arranque</h2>
+<div class="fechas">
+  <div class="fecha"><b>Jueves 8 de octubre</b><span>Arranca el piloto (5 personas). Sus retardos cuentan desde este día, desde cero.</span></div>
+  <div class="fecha"><b>Lunes 12 de octubre</b><span>Arranca para toda la plantilla. Los retardos cuentan desde este día, desde cero. El acta deja de estar retenida.</span></div>
+  <div class="fecha"><b>Nada anterior cuenta</b><span>Lo de septiembre y la primera semana de octubre fue ensayo (sombra).</span></div>
+</div>
+
+<h2 id="que-paso">¿Qué pasó?</h2>
+<p class="sub">Elige la situación. Cada una es un recorrido paso a paso.</p>
+<div class="indice" id="indice"></div>
+<div class="visor" id="visor" hidden>
+  <h3 id="v-titulo"></h3>
+  <div class="paso-n" id="v-n"></div>
+  <div class="lienzo" id="v-lienzo" hidden><img id="v-img" alt=""><svg id="v-svg" preserveAspectRatio="none"></svg></div>
+  <div class="texto" id="v-texto"></div>
+  <div class="nav"><button id="v-ant">Anterior</button><div class="puntos" id="v-puntos"></div><button id="v-sig" class="pri">Siguiente</button></div>
+</div>
+
+<h2>Reglas</h2>
+<div class="tabla"><table>
+<tr><th>Regla</th><th>Cómo es</th></tr>
+<tr><td>Tolerancia</td><td>15 minutos, al segundo: llegar 15:00 minutos después de la hora de entrada no es retardo; 15:01 sí.</td></tr>
+<tr><td>Días</td><td>Lunes a viernes. Sábados, domingos y días feriados no cuentan.</td></tr>
+<tr><td>Hora</td><td>Hora del centro (CST). La hora de entrada de cada persona es la de su ficha en Odoo.</td></tr>
+<tr><td>Periodo</td><td>Mes calendario.</td></tr>
+<tr><td>1er retardo</td><td>Aviso. Informativo, sin firma.</td></tr>
+<tr><td>3er retardo</td><td>Carta compromiso. Se firma (persona, RH y jefe). RH tiene 3 días hábiles para recolectarla.</td></tr>
+<tr><td>5º retardo</td><td>Acta administrativa, con dos testigos. <b>Retenida hasta el lunes 12 de octubre</b>.</td></tr>
+<tr><td>Suspensiones</td><td><b>No hay.</b> El sistema no suspende a nadie.</td></tr>
+<tr><td>Jornada semanal</td><td>48 horas efectivas de viernes a jueves, descontando 30 minutos de comida por día trabajado.</td></tr>
+<tr><td>Premio de puntualidad (PPA)</td><td>Lo ve <b>Nómina · Incidencias</b> con su regla de 5 minutos. Retardos no lo calcula.</td></tr>
+</table></div>
+
+<h2>Quién recibe cada aviso</h2>
+<div class="tabla"><table>
+<tr><th>Caso</th><th>Para</th><th>Con copia</th></tr>
+<tr><td>Persona con jefe directo en Odoo</td><td>La persona</td><td>RH (Ana y Magaly) y su jefe directo</td></tr>
+<tr><td>Persona sin jefe en Odoo</td><td>La persona</td><td>RH y Dirección. El correo dice arriba "Falta asignarle jefe en Odoo"</td></tr>
+<tr><td>Su jefe no tiene correo</td><td>La persona</td><td>RH y Dirección</td></tr>
+<tr><td>Casos de Ana o Magaly</td><td>La persona</td><td>RH (la otra), su jefe y Dirección. Los atiende Magaly, y cada decisión deja copia a Dirección</td></tr>
+<tr><td>Casos de sombra</td><td>Nadie de la plantilla</td><td>Sólo RH y Dirección, con la etiqueta [SOMBRA]</td></tr>
+</table></div>
+<p class="sub">Nadie recibe copia de su propio aviso. Si la persona no tiene correo utilizable, el aviso va sólo a RH y al jefe, y RH le entrega la hoja en persona.</p>
+
+<h2>Casos retenidos y casos de sombra</h2>
+<div class="aviso info">
+<b>Retenidos</b> (cubeta "Suspensión alcanzada, no aplicada"): casos de pista real que llegaron a un nivel que hoy no se aplica, como el acta antes del lunes 12. No se mandan ni se imprimen. Se pueden cerrar si ya se atendieron en persona, y <b>sí cuentan como antecedente</b>.<br><br>
+<b>Sombra</b> (casos sin la marca "real"): son ensayo. <b>No cuentan como antecedente</b>, no suman retardos, no vencen y no generan correos a nadie de la plantilla. El lunes 12 Dirección los cancela todos.
+</div>
+
+<footer>Retardos v2 · issue #386 · generado desde el panel V1.05.</footer>
+</main>
+<script>
+(function () {
+  var E = /*__ESCENARIOS__*/[];
+  var NS = 'http://www.w3.org/2000/svg';
+  var actual = null, i = 0;
+  var $ = function (id) { return document.getElementById(id); };
+  var ind = $('indice');
+  E.forEach(function (e) {
+    var b = document.createElement('button');
+    b.className = 'esc'; b.setAttribute('aria-pressed', 'false'); b.dataset.id = e.id;
+    b.innerHTML = '<b></b><span></span>'; b.firstChild.textContent = e.titulo; b.lastChild.textContent = e.resumen;
+    b.onclick = function () { abrir(e.id); };
+    ind.appendChild(b);
+  });
+  function el(t, a) { var x = document.createElementNS(NS, t); for (var k in a) x.setAttribute(k, a[k]); return x; }
+  function marcar(svg, p) {
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    svg.setAttribute('viewBox', '0 0 ' + p.w + ' ' + p.h);
+    var col = getComputedStyle(document.documentElement).getPropertyValue('--marca').trim() || '#e0245e';
+    var defs = el('defs', {}), m = el('marker', { id: 'pt', viewBox: '0 0 10 10', refX: '9', refY: '5', markerWidth: '7', markerHeight: '7', orient: 'auto-start-reverse' });
+    m.appendChild(el('path', { d: 'M0,0 L10,5 L0,10 z', fill: col })); defs.appendChild(m); svg.appendChild(defs);
+    (p.marcas || []).forEach(function (k) {
+      svg.appendChild(el('rect', { x: k.x - 4, y: k.y - 4, width: k.w + 8, height: k.h + 8, rx: 7, fill: 'none', stroke: col, 'stroke-width': 3 }));
+      // Número arriba a la izquierda del recuadro, con una flecha corta hacia él.
+      var cx = Math.max(16, k.x - 20), cy = Math.max(16, k.y - 18);
+      if (k.x - 20 >= 16 && k.y - 18 >= 16) svg.appendChild(el('line', { x1: cx + 8, y1: cy + 8, x2: k.x - 4, y2: k.y - 4, stroke: col, 'stroke-width': 2.5, 'marker-end': 'url(#pt)' }));
+      svg.appendChild(el('circle', { cx: cx, cy: cy, r: 13, fill: col }));
+      var t = el('text', { x: cx, y: cy + 5, 'text-anchor': 'middle', 'font-size': 15, 'font-weight': 700, fill: '#fff', 'font-family': 'system-ui,sans-serif' });
+      t.textContent = String(k.n); svg.appendChild(t);
+    });
+  }
+  function pintar() {
+    var e = E.filter(function (x) { return x.id === actual; })[0]; if (!e) return;
+    var p = e.pasos[i];
+    $('v-titulo').textContent = e.titulo;
+    $('v-n').textContent = 'Paso ' + (i + 1) + ' de ' + e.pasos.length;
+    $('v-texto').innerHTML = p.texto;
+    if (p.img) { $('v-lienzo').hidden = false; $('v-img').src = p.img; $('v-img').alt = e.titulo + ', paso ' + (i + 1); marcar($('v-svg'), p); }
+    else $('v-lienzo').hidden = true;
+    $('v-ant').disabled = i === 0;
+    $('v-sig').textContent = i === e.pasos.length - 1 ? 'Volver al índice' : 'Siguiente';
+    var pu = $('v-puntos'); pu.innerHTML = '';
+    e.pasos.forEach(function (_, k) { var d = document.createElement('i'); if (k === i) d.className = 'on'; pu.appendChild(d); });
+  }
+  function abrir(id) {
+    actual = id; i = 0;
+    Array.prototype.forEach.call(ind.children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.id === id)); });
+    $('visor').hidden = false; pintar(); $('visor').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  $('v-ant').onclick = function () { if (i > 0) { i--; pintar(); } };
+  $('v-sig').onclick = function () {
+    var e = E.filter(function (x) { return x.id === actual; })[0];
+    if (i < e.pasos.length - 1) { i++; pintar(); } else { $('que-paso').scrollIntoView({ behavior: 'smooth' }); }
+  };
+})();
+</script>
+</body>
+</html>
