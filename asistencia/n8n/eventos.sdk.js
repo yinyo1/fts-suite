@@ -1,0 +1,14 @@
+import { workflow, node, trigger, ifElse } from '@n8n/workflow-sdk';
+const PG = { postgres: { id: 'Zu4Y9UuzGwCBN8lH', name: 'fts-suite-db · fts_admin' } };
+const ODOO = { odooApi: { id: 'Wansi69xesEqEiY1', name: 'Odoo FTS' } };
+const wh = trigger({ type: 'n8n-nodes-base.webhook', version: 2.1, config: { name: 'Webhook', parameters: { httpMethod: 'POST', path: 'asistencia/eventos', responseMode: 'responseNode', options: { allowedOrigins: 'https://yinyo1.github.io' } } } });
+const validar = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Code - Validar', parameters: { mode: 'runOnceForAllItems', jsCode: __VALIDAR__ } } });
+const siError = ifElse({ version: 2.2, config: { name: 'IF - Error?', parameters: { conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'loose' }, conditions: [ { leftValue: '={{ $json._error }}', operator: { type: 'boolean', operation: 'true', singleValue: true } } ], combinator: 'and' }, looseTypeValidation: true } } });
+const resErr = node({ type: 'n8n-nodes-base.respondToWebhook', version: 1.5, config: { name: 'Respond Error', parameters: { respondWith: 'json', responseBody: '={{ JSON.stringify({ success: false, codigo: $json.codigo, mensaje: $json.mensaje }) }}', options: { responseCode: 400 } } } });
+const proy = node({ type: 'n8n-nodes-base.odoo', version: 1, config: { name: 'Odoo - proyectos', credentials: ODOO, alwaysOutputData: true, parameters: { resource: 'custom', customResource: 'project.project', operation: 'getAll', returnAll: true, options: { fieldsList: ['id', 'company_id'] }, filterRequest: { filter: [ { fieldName: 'id', operator: 'in', value: '={{ $json.proj_ids }}' }, { fieldName: 'active', operator: 'in', value: '={{ [true, false] }}' } ] } } } });
+const payload = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Code - Payload', executeOnce: true, parameters: { mode: 'runOnceForAllItems', jsCode: __PAYLOAD__ } } });
+const leer = node({ type: 'n8n-nodes-base.postgres', version: 2.6, config: { name: 'Postgres - Leer', credentials: PG, onError: 'continueRegularOutput', parameters: { operation: 'executeQuery', query: 'SELECT asistencia.leer($1::jsonb) AS filas', options: { queryReplacement: '={{ JSON.stringify($json.payload) }}' } } } });
+const resp = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Code - Respuesta', parameters: { mode: 'runOnceForAllItems', jsCode: __RESPUESTA__ } } });
+const res = node({ type: 'n8n-nodes-base.respondToWebhook', version: 1.5, config: { name: 'Respond', parameters: { respondWith: 'json', responseBody: '={{ JSON.stringify($json) }}', options: {} } } });
+export default workflow('asistencia-eventos', 'asistencia/eventos')
+  .add(wh).to(validar).to(siError.onTrue(resErr).onFalse(proy.to(payload.to(leer.to(resp.to(res))))));
