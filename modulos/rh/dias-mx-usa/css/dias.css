@@ -1,0 +1,143 @@
+/* ═══ RH · Días México / USA · hoja de estilo (#396 fase a) ═══
+   Tokens y piezas base copiados de retardos.css (misma paleta de RH, modo oscuro por tokens).
+   Regla heredada: NADA desborda la página. */
+
+:root{
+  --green:#107C10; --green-d:#0b5d0b; --green-l:#e8f4e8; --on-green:#ffffff;
+  --red:#c42b1c;   --red-l:#fdeceb;
+  --amber:#9a6700; --amber-l:#fff4ce;
+  --blue:#0f6cbd;  --blue-l:#eaf2fb;
+  --violet:#6b3fa0; --violet-l:#f1ebf8;
+  --bg:#f4f6f4; --card:#ffffff; --card2:#fafbfa; --border:#dfe3df;
+  --text:#1a1d1a; --muted:#8a918a; --muted2:#566056;
+  --sombra:0 1px 2px rgba(16,40,16,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --green:#4caf50; --green-d:#6cc070; --green-l:#1b2e1c; --on-green:#0d170d;
+    --red:#f1707a; --red-l:#3a1d1f; --amber:#e3b341; --amber-l:#352a10;
+    --blue:#6cb0f0; --blue-l:#15283d; --violet:#b79be0; --violet-l:#2a2138;
+    --bg:#121512; --card:#1b1f1b; --card2:#171a17; --border:#2f352f;
+    --text:#e6ebe6; --muted:#7f887f; --muted2:#a9b2a9; --sombra:none;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --green:#4caf50; --green-d:#6cc070; --green-l:#1b2e1c; --on-green:#0d170d;
+  --red:#f1707a; --red-l:#3a1d1f; --amber:#e3b341; --amber-l:#352a10;
+  --blue:#6cb0f0; --blue-l:#15283d; --violet:#b79be0; --violet-l:#2a2138;
+  --bg:#121512; --card:#1b1f1b; --card2:#171a17; --border:#2f352f;
+  --text:#e6ebe6; --muted:#7f887f; --muted2:#a9b2a9; --sombra:none;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.45}
+.num,td.n,.folio{font-variant-numeric:tabular-nums}
+.hid{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+
+/* ── Barra superior ── */
+.rh-topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--green);color:var(--on-green);
+  padding:10px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.rh-topbar a{color:var(--on-green);text-decoration:none;font-size:13px;opacity:.9;white-space:nowrap}
+.rh-topbar a:hover{opacity:1;text-decoration:underline}
+.rh-topbar .t{font-weight:700;font-size:16px}
+.rh-topbar .badge{font-size:11px;background:rgba(255,255,255,.2);padding:2px 8px;border-radius:99px;white-space:nowrap}
+.rh-topbar .sp{flex:1 1 auto;min-width:8px}
+.rh-topbar .quien{font-size:12px;opacity:.92}
+.rh-topbar button{background:rgba(255,255,255,.16);border:0;color:var(--on-green);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer}
+
+.wrap{max-width:1180px;margin:0 auto;padding-block:16px 40px;padding-inline:16px;min-width:0}
+
+/* ── Puerta ── */
+.login{max-width:380px;margin:48px auto;padding-inline:16px;display:grid;gap:10px}
+.login h1{margin:0;font-size:22px}
+.login .sub{color:var(--muted2);font-size:14px}
+.login label{font-size:13px;color:var(--muted2)}
+.login input{padding:10px 12px;border:1px solid var(--border);border-radius:9px;background:var(--card)}
+.err{color:var(--red);font-size:13px}
+.enlace{background:none;border:0;padding:0;color:var(--blue);cursor:pointer;text-decoration:underline;font-size:13px;justify-self:start}
+
+/* ── Botones ── */
+.btn{border:1px solid var(--border);background:var(--card);border-radius:9px;padding:8px 13px;font-size:14px;cursor:pointer}
+.btn:hover{border-color:var(--green)}
+.btn.pri{background:var(--green);border-color:var(--green);color:var(--on-green)}
+.btn.pri:hover{background:var(--green-d)}
+.btn.peligro{color:var(--red);border-color:var(--red-l)}
+.btn.peligro:hover{border-color:var(--red)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* ── Avisos ── */
+.aviso{border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start;border:1px solid;margin-bottom:12px;flex-wrap:wrap}
+.aviso b{display:block;margin-bottom:2px}
+.aviso.sombra{background:var(--violet-l);border-color:var(--violet);color:var(--text)}
+.aviso.mal{background:var(--red-l);border-color:var(--red)}
+.aviso.bien{background:var(--green-l);border-color:var(--green)}
+.aviso.demo{background:var(--amber-l);border-color:var(--amber)}
+.aviso.info{background:var(--blue-l);border-color:var(--blue)}
+.aviso ul{margin:4px 0 0;padding-left:18px}
+
+/* ── Resumen por estado ── */
+.cab{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.cab h1{margin:0;font-size:21px;text-wrap:balance}
+.cab .sub{color:var(--muted2);font-size:13px}
+.cab .sp{flex:1 1 auto}
+.resumen{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.cubeta{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 14px;text-align:left;cursor:pointer;
+  display:grid;gap:2px;box-shadow:var(--sombra)}
+.cubeta .n{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}
+.cubeta .l{font-size:13px;color:var(--muted2)}
+.cubeta .q{font-size:12px;color:var(--muted)}
+.cubeta[aria-pressed="true"]{border-color:var(--green);background:var(--green-l)}
+.cubeta.urge .n{color:var(--red)}
+
+/* ── Controles de la semana ── */
+.ctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.ctl select{padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--card);max-width:100%}
+.ctl .sp{flex:1 1 auto}
+.ctl .gen{font-size:12px;color:var(--muted)}
+
+/* ── Tarjeta por persona ── */
+.per{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--sombra);padding:12px 14px;margin-bottom:10px;min-width:0}
+.per.con-pend{border-left:4px solid var(--red)}
+.per-cab{display:flex;gap:8px 12px;align-items:baseline;flex-wrap:wrap;margin-bottom:8px}
+.per-cab .nom{font-weight:700;font-size:15px;min-width:0;overflow-wrap:anywhere}
+.per-cab .sp{flex:1 1 auto}
+.tot{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:12px;border-radius:99px;padding:2px 9px;border:1px solid;white-space:nowrap;font-variant-numeric:tabular-nums}
+.chip.mx{color:var(--green-d);background:var(--green-l);border-color:var(--green)}
+.chip.usa{color:var(--blue);background:var(--blue-l);border-color:var(--blue)}
+.chip.pend{color:var(--red);background:var(--red-l);border-color:var(--red)}
+.chip.cero{opacity:.55}
+
+.dias{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-bottom:8px}
+.dia{border:1px solid var(--border);border-radius:8px;padding:5px 4px;text-align:center;min-width:0;background:var(--card2)}
+.dia .d{font-size:11px;color:var(--muted);white-space:nowrap}
+.dia .t{font-size:12px;font-weight:600;line-height:1.2}
+.dia .t .c{display:none}
+.dia .h{font-size:11px;color:var(--muted2);font-variant-numeric:tabular-nums}
+.dia.mx{background:var(--green-l);border-color:var(--green)}
+.dia.mx .t{color:var(--green-d)}
+.dia.usa{background:var(--blue-l);border-color:var(--blue)}
+.dia.usa .t{color:var(--blue)}
+.dia.pendiente{background:var(--red-l);border-color:var(--red)}
+.dia.pendiente .t{color:var(--red)}
+.dia.sin_checadas .t{color:var(--muted);font-weight:400}
+
+.como{font-size:12.5px;color:var(--muted2);display:grid;gap:3px;overflow-wrap:anywhere}
+.como .k{font-weight:700;color:var(--text)}
+.como .rojo{color:var(--red)}
+.prop{margin-top:8px;font-size:12.5px;border:1px dashed var(--blue);border-radius:9px;padding:7px 10px;background:var(--blue-l);overflow-wrap:anywhere}
+.vacio{padding:24px;text-align:center;color:var(--muted2)}
+.pie{margin-top:14px;font-size:12px;color:var(--muted)}
+
+@media (max-width:520px){
+  .dia{padding:4px 2px}
+  .dia .t{font-size:11px;white-space:nowrap}
+  .dia .t .l{display:none}
+  .dia .t .c{display:inline}
+  .dia .h{display:none}
+}
