@@ -26,11 +26,21 @@
           "hora_propuesta_cst": "2026-10-08 07:15:00",
           "comentario": "El sistema me saco",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "rh",
+          "user_id": 63,
+          "usuario": "Magaly Estefanía Pérez García",
+          "timestamp": "2026-10-09T15:50:06.631Z",
+          "hora_propuesta_cst": "17:01",
+          "comentario": "Registro salida fuera de fts.",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_rh",
-      "hora_final_aplicada_utc": null,
-      "aplicado_en_odoo": false,
+      "status": "aprobada_con_ajuste",
+      "hora_final_aplicada_utc": "2026-10-08 23:01:00",
+      "aplicado_en_odoo": true,
       "department_id": 3,
       "department_name": "Operaciones",
       "sin_departamento": false,
@@ -43,7 +53,7 @@
       "rh_directo_ceo": false,
       "directo_ceo": true,
       "sin_supervisor": false,
-      "tag_disputa_activo": true
+      "tag_disputa_activo": false
     },
     {
       "id_interno": "INC-OLV-CHK-112-2026-10-08T23-47-08-821Z",
