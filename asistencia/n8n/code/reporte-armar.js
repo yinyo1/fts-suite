@@ -4,6 +4,11 @@
 var module = { exports: {} };
 /*__DIAS__*/
 var D = module.exports;
+// Autoprueba de la librería copiada al nodo: si algo se corrompió al pegarla, se dice con nombre.
+var prueba = D.armarReporte({ semana: 'S43/2026', asistencias: [{ attendance_id: 1, employee_id: 1, check_in: '2026-10-19 11:10:00', check_out: '2026-10-19 23:40:00', worked_hours: 12.5, confirmado: true, so_id: 9, so_company_id: 6, evento: { tipo_dia: 'viaje_usa' } }] });
+if (D.tipoPorZonas('sitio:x', 'usa') !== 'viaje_usa' || prueba.personas[0].paga_usa !== 1 || prueba.desde !== '2026-10-16') {
+  return [{ json: { success: false, codigo: 'AUTOPRUEBA_LIB', mensaje: 'La lógica del reporte no pasó su autoprueba en n8n.' } }];
+}
 function m2o(v) { if (!v) return { id: null, nombre: null }; if (Array.isArray(v)) return { id: v[0] || null, nombre: v[1] || null }; if (typeof v === 'object') return { id: v.id || null, nombre: v.name || null }; return { id: Number(v) || null, nombre: null }; }
 var pg = $input.first().json || {};
 if (pg.error || !Array.isArray(pg.filas)) {

@@ -9,9 +9,10 @@ const R = path.join(__dirname, '..', '..');
 const LIBS = { '/*__DIAS__*/': 'asistencia/lib/dias-mx-usa.js', '/*__JWT__*/': 'docs/n8n-workflows/fase0/jwt-verify.js' };
 const J = require(path.join(R, 'docs/n8n-workflows/fase0/jwt-verify.js'));
 
-function correr(archivo, nodos, entrada) {
+function correr(archivo, nodos, entrada, mutar) {
   let js = fs.readFileSync(path.join(R, 'asistencia/n8n/code', archivo), 'utf8');
   for (const [mk, lib] of Object.entries(LIBS)) if (js.includes(mk)) js = js.split(mk).join(fs.readFileSync(path.join(R, lib), 'utf8'));
+  if (mutar) js = mutar(js);
   const item = (j) => ({ json: j });
   const $ = (n) => {
     if (!(n in nodos)) throw new Error('nodo no simulado: ' + n);
@@ -127,4 +128,29 @@ test('vigía: descuadre o cero asistencias dejan la ejecución en error con nomb
   assert.equal(correr('vigia-resultado.js', {}, { r: { ok: true, odoo: 30, n_sin_evento: 0, n_sin_odoo: 0 } })[0].ok, true);
   const [p] = correr('vigia-payload.js', { 'Code - Ventana': { desde: '2026-10-01', hasta: '2026-10-07' }, 'Odoo - asistencias': [{ id: 9, check_in: '2026-10-02 05:00:00' }] }, {});
   assert.deepEqual(p.payload.odoo, [{ id: 9, fecha: '2026-10-01' }]);
+});
+
+test('reporte: si la copia del SHA-256 se corrompe, la puerta lo dice (no lo confunde con token malo)', () => {
+  const roto = (js) => { assert.ok(js.includes('0x428a2f98')); return js.replace('0x428a2f98', '0x428a2f99'); };
+  const o = correr('reporte-puerta.js', { Webhook: { body: { token: token(['rh:dias-mx-usa']) } } }, { secreto: 'secreto-de-prueba' }, roto)[0];
+  assert.deepEqual(o, { ok: false, error: 'AUTOPRUEBA_CRIPTO' });
+});
+
+test('reporte: la semana de la puerta coincide con la de la librería (sin semana = la que ya cerró)', () => {
+  const L = require('../../asistencia/lib/dias-mx-usa.js');
+  for (const id of ['S30/2026', 'S41/2026', 'S42/2026', 'S43/2026', 'S52/2026', 'S53/2026', 'S60/2026']) {
+    const o = correr('reporte-puerta.js', { Webhook: { body: { token: token(['rh:dias-mx-usa']), semana: id } } }, { secreto: 'secreto-de-prueba' })[0];
+    const s = L.semanaPorId(id);
+    assert.equal(o.semana, s.id, id);
+    assert.equal(o.desde_utc, s.desde + ' 06:00:00', id);
+  }
+  // sin semana: la que cerró (si hoy es viernes 9-oct CST, la cerrada es S41 = vie 2 – jue 8)
+  const real = Date.now;
+  try {
+    for (const [ahora, esperada] of [['2026-10-09T18:00:00Z', 'S41/2026'], ['2026-10-08T23:00:00Z', 'S40/2026'], ['2026-10-09T05:00:00Z', 'S40/2026'], ['2026-10-15T20:00:00Z', 'S41/2026']]) {
+      Date.now = () => Date.parse(ahora);
+      const o = correr('reporte-puerta.js', { Webhook: { body: { token: token(['rh:dias-mx-usa'], Math.floor(Date.parse(ahora) / 1000) + 3600) } } }, { secreto: 'secreto-de-prueba' })[0];
+      assert.equal(o.semana, esperada, ahora);
+    }
+  } finally { Date.now = real; }
 });
