@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-112-2026-10-12T23-40-55-530Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 112,
+      "empleado_nombre": "Felipe Pérez Guzmán",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": null,
+      "supervisor_name": null,
+      "supervisor_email": "felipe@fts.mx",
+      "supervisor_phone": "8118956256",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": true,
+      "sin_supervisor": false,
+      "attendance_id": 15995,
+      "fecha_creacion": "2026-10-12T23:40:55.530Z",
+      "check_in_original_utc": "2026-10-12 13:01:44",
+      "check_out_propuesto_utc": "2026-10-12 23:10:00",
+      "check_out_propuesto_cst": "2026-10-12 17:10:00",
+      "geolocation": {
+        "lat": 25.6848154,
+        "lng": -100.1300669,
+        "accuracy": 60.099998474121094,
+        "captured_at": "2026-10-12T23:40:53.215Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-10-12T23:40:55.530Z",
+          "hora_propuesta_cst": "17:10",
+          "comentario": "Se me  olvido checar al salir"
+        }
+      ],
+      "status": "pendiente_rh",
+      "hora_final_aplicada_utc": "2026-10-12 23:10:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20261008-kiosk-zona-usa"
+    },
+    {
       "id_interno": "INC-OLV-112-2026-10-08T23-49-28-464Z",
       "odoo_incidencia_id": null,
       "tipo": "olvido_entrada",
