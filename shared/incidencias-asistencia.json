@@ -38,9 +38,19 @@
           "fecha": "2026-10-13T13:21:20.295Z",
           "hora_propuesta_cst": "05:32",
           "comentario": "Si cheque salida, pero el sistema no la registro"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-10-13T15:02:22.861Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobada salida",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": "2026-10-13 11:32:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
