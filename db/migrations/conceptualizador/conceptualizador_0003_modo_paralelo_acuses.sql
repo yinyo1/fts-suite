@@ -40,7 +40,8 @@ ON CONFLICT (clave) DO NOTHING;
 -- ── El disparador: lo mismo escribirlo que tocar el botón fijo ─────────────
 CREATE OR REPLACE FUNCTION conceptualizador.es_disparador(p text) RETURNS boolean
 LANGUAGE sql IMMUTABLE AS $dis$
-  SELECT coalesce(lower(btrim(p)) ~ '^(ya\s+es\s+todo|es\s+todo|ya\s+termin|cotiza)', false)
+  -- \y = límite de palabra: «cotiza» dispara, «cotización de prueba…» no (recorrido Fase 11).
+  SELECT coalesce(lower(btrim(p)) ~ '^(ya\s+es\s+todo|es\s+todo|ya\s+termin|cotiza\y)', false)
 $dis$;
 
 -- ── Acuse al instante: lo que no necesita al modelo ────────────────────────
