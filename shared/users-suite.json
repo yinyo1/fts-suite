@@ -54,6 +54,16 @@
         "odoo": {
           "acceso": false,
           "submodulos": {}
+        },
+        "marketing": {
+          "acceso": false,
+          "submodulos": {
+            "prospectador": false,
+            "lead": false,
+            "bandeja": false,
+            "seguimiento": false,
+            "radar": false
+          }
         }
       }
     },
@@ -104,6 +114,16 @@
         "odoo": {
           "acceso": false,
           "submodulos": {}
+        },
+        "marketing": {
+          "acceso": false,
+          "submodulos": {
+            "prospectador": false,
+            "lead": false,
+            "bandeja": false,
+            "seguimiento": false,
+            "radar": false
+          }
         }
       }
     },
@@ -151,6 +171,16 @@
         "odoo": {
           "acceso": false,
           "submodulos": {}
+        },
+        "marketing": {
+          "acceso": false,
+          "submodulos": {
+            "prospectador": false,
+            "lead": false,
+            "bandeja": false,
+            "seguimiento": false,
+            "radar": false
+          }
         }
       }
     },
@@ -198,6 +228,16 @@
         "odoo": {
           "acceso": false,
           "submodulos": {}
+        },
+        "marketing": {
+          "acceso": false,
+          "submodulos": {
+            "prospectador": false,
+            "lead": false,
+            "bandeja": false,
+            "seguimiento": false,
+            "radar": false
+          }
         }
       }
     },
@@ -245,6 +285,16 @@
         "odoo": {
           "acceso": false,
           "submodulos": {}
+        },
+        "marketing": {
+          "acceso": false,
+          "submodulos": {
+            "prospectador": false,
+            "lead": false,
+            "bandeja": false,
+            "seguimiento": false,
+            "radar": false
+          }
         }
       }
     }
