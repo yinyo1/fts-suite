@@ -1,6 +1,10 @@
 {
-  "version": "V1.20",
+  "version": "V1.21",
   "historial": [
+    {
+      "version": "V1.21",
+      "nota": "Crear machote y crear borrador esperan a que se contesten las suposiciones pendientes; una propuesta reemplazada se marca como tal (recorrido Mattel)."
+    },
     {
       "version": "V1.20",
       "nota": "Botones que escriben, siempre con tu clic: alta de contacto o empresa en Odoo (busca antes de crear), crear el machote a tu nombre ligado a la oportunidad, y el borrador en Odoo detrás del mismo interruptor que el machote (#387). Vista del PDF al cliente con una línea por sección, sin costos, imprimible, y correo para copiar."

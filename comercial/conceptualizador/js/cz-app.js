@@ -13,7 +13,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.20';
+  var VERSION = 'V1.21';
   var C = G.CzCliente, Q = G.CzCola, Me = G.CzMedios;
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
@@ -300,12 +300,16 @@
       });
       h += (pend ? '<p class="nota">Cuando contestes todas, sigo con los conceptos.</p>' : '') + '</div>';
     }
+    // Un machote o un borrador con suposiciones sin contestar saldría con números viejos.
+    var pendientes = ((ST.hilo && ST.hilo.acciones) || []).some(function (x) { return x.tipo === 'conjetura' && x.estado === 'propuesta'; });
     otras.forEach(function (a) {
       var d = a.datos || {}, r = a.resultado || {}, manejador = G.CzAcciones && G.CzAcciones[a.tipo];
+      var espera = pendientes && (a.tipo === 'crear_machote' || a.tipo === 'crear_borrador');
       h += '<div class="carta"><h4>' + ({ alta_contacto: '👤', crear_machote: '📐', crear_borrador: '🧾', enviada: '📨', cerrar: '🔒' }[a.tipo] || '•') + ' ' + esc(a.titulo) + '</h4>' +
         (d.detalle ? '<div class="odoo">' + md(d.detalle) + '</div>' : '') +
         (a.estado === 'hecha' ? '<span class="hecho">✓ ' + esc(r.texto || 'Hecho') + '</span>' :
-         a.estado === 'descartada' ? '<span class="hecho gris">Descartado</span>' :
+         a.estado === 'descartada' ? '<span class="hecho gris">' + ((r.reemplazada_por_trabajo) ? 'Reemplazado por una propuesta más nueva' : 'Descartado') + '</span>' :
+         espera ? '<p class="nota">Contesta primero las suposiciones pendientes: el machote se arma con lo que confirmes.</p>' :
          (a.tipo === 'enviada' || a.tipo === 'cerrar' || manejador) ?
            '<div class="acc"><button class="si" data-hacer="' + a.id + '">' + esc(d.boton || ETIQ[a.tipo] || 'Hacer') + '</button><button data-descartar="' + a.id + '">' + (a.tipo === 'cerrar' ? 'Todavía no' : 'No') + '</button></div>' :
            '<p class="nota">Este botón se enciende cuando se active la escritura a Odoo correspondiente.</p>') + '</div>';
