@@ -1,6 +1,10 @@
 {
-  "version": "V1.34",
+  "version": "V1.35",
   "historial": [
+    {
+      "version": "V1.35",
+      "nota": "«Hay versión nueva · Actualizar» (#4 de fts-conceptualizador, pendiente 6177746433 punto 1): la pantalla compara su versión con este version.json al abrir, cada 5 min, al volver a la pestaña y al volver la red. «Actualizar» recarga con ?v=<versión> (sin el HTML viejo del caché) y no pierde nada: lo que falta por enviar vive en IndexedDB y la cola lo retoma sola; con una grabación en curso pide terminarla; si el teléfono no guarda la cola (modo privado) y hay pendientes, pregunta antes; el texto escrito y las cajitas de «Corregir» se reponen después de recargar."
+    },
     {
       "version": "V1.34",
       "nota": "Ciudad del proyecto (D89, migración 0007): el menú de «Nueva cotización» trae un selector con buscador (las ciudades donde trabaja FTS en MX y USA, más «Otra» en texto libre), prellenado por la ubicación del teléfono con permiso (ciudad más cercana de la lista en 30 km; las coordenadas no salen del teléfono) o por la zona horaria, y dice que es prellenada. La ciudad del proyecto y la de la persona se guardan aparte. Encabezado «empresa · moneda · ciudad» (o «ciudad por confirmar»), «Ciudad del proyecto» en ⋮ y una franja «¿El proyecto es en X? Sí · Cambiar» mientras no esté confirmada. Conjeturas y conceptos sin ✕: «✓ Va» y «✎ Corregir» (texto o voz, por la misma cajita); la corrección de un concepto viaja en el lote como «va» con su razón y marcada como corregida. «¿Qué me falta?» en acompañamiento (junto a «Cotiza» desde 600 px; en el teléfono, dentro de ⋮). Con un servidor sin la 0007 los modos nuevos dicen «Esto se activa cuando se actualice el servidor» y la pantalla sigue."

@@ -1,5 +1,7 @@
 /* ═══ Conceptualizador · pantalla tipo WhatsApp ═══
  *
+ * V1.35 · «Hay versión nueva · Actualizar» (cz-version.js): compara VERSION con version.json y recarga sin
+ *   perder lo pendiente (la cola vive en IndexedDB). Nada más cambia en este archivo.
  * V1.34 · ciudad del proyecto (D89, migración 0007; cz-ciudad.js): selector con buscador en el menú de la
  * sesión nueva, prellenado por ubicación (en el teléfono, sin mandar coordenadas) o zona horaria; proyecto
  * y persona aparte; encabezado «empresa · moneda · ciudad», «Ciudad del proyecto» en ⋮ y la franja
@@ -34,7 +36,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.34';
+  var VERSION = 'V1.35';
   /* V1.32 (0006) · empresa y moneda de la sesión: la base acepta estas tres claves. */
   var EMPRESAS = { mx_mxn: { n: 'FTS México · MXN', s: 'Empresa 1 · pesos', id: 1, m: 'MXN', pais: 'mx' },
                    mx_usd: { n: 'FTS México · USD', s: 'Empresa 1 · dólares', id: 1, m: 'USD', pais: 'mx' },
