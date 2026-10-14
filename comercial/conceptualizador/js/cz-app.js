@@ -1,5 +1,13 @@
 /* ═══ Conceptualizador · pantalla tipo WhatsApp ═══
  *
+ * V1.32 · lo del prototipo aprobado (fts-conceptualizador prototipos/chat-v3.html, #4, puntos 3 a 9
+ * y el ajuste del visto bueno): palomeada en lote con «Listo, sigue», botones que dicen «enviando…»
+ * hasta que el servidor contesta, corregir y rechazar debajo del renglón y con voz, el registro de
+ * pasos del motor, ir hasta abajo sin arrastrar, empresa y moneda, «Es una prueba», crear machote y
+ * el editor de siempre en ventana, la ficha, la vista en página con versiones; la grabadora igual a
+ * WhatsApp (cz-grabadora.js), lo que se manda sin señal dice «pendiente de enviar», el visor de
+ * fotos, «Archivos, enlaces y docs.», bajar todo y exportar el chat (cz-archivos.js).
+ *
  * V1.31 · el look del prototipo aprobado (fts-conceptualizador prototipos/
  * chat-v2.html, issue #4): encabezado delgado con la versión, nota de voz con
  * onda que avanza, salto y velocidad, «escribiendo…» solo cuando el motor va a
@@ -19,7 +27,13 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.31';
+  var VERSION = 'V1.32';
+  /* V1.32 (0006) · empresa y moneda de la sesión: la base acepta estas tres claves. */
+  var EMPRESAS = { mx_mxn: { n: 'FTS México · MXN', s: 'Empresa 1 · pesos', id: 1, m: 'MXN', pais: 'mx' },
+                   mx_usd: { n: 'FTS México · USD', s: 'Empresa 1 · dólares', id: 1, m: 'USD', pais: 'mx' },
+                   usa_usd: { n: 'FTS USA · USD', s: 'Empresa 6 · dólares', id: 6, m: 'USD', pais: 'usa' } };
+  function claveEmpresa(c) { if (!c) return null; var m = c.moneda || 'MXN';
+    return Number(c.empresa_id) === 6 ? 'usa_usd' : m === 'USD' ? 'mx_usd' : (c.empresa_id || c.moneda || c.pais === 'mx' ? 'mx_mxn' : null); }
   /* V1.30 · los dos modos de una sesión nueva (Fase 9). El botón fijo manda
    * EXACTAMENTE la frase que se escribiría: el disparador es el mismo. */
   var MODOS = {
@@ -30,7 +44,7 @@
   };
   // Igual que es_disparador() de la base: «cotiza» sí, «cotización…» no.
   var DISPARO = /^\s*(ya\s+es\s+todo|es\s+todo|ya\s+termin|cotiza(?![a-záéíóúñ]))/i;
-  var C = G.CzCliente, Q = G.CzCola, Me = G.CzMedios;
+  var C = G.CzCliente, Q = G.CzCola, Me = G.CzMedios, GR = G.CzGrabadora, AR = G.CzArchivos;
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -38,7 +52,10 @@
   var ST = { sel: null, casos: [], locales: [], salida: [], hilo: null, motor: null, filtro: 'vivas', aprendio: null,
              urls: {}, cargando: {}, bandeja: [], rec: null, sondeo: null, vistos: null, decidiendo: {},
              // V1.31
-             usuario: 'todos', archivadas: false, busca: null, player: null, rate: 1 };
+             usuario: 'todos', archivadas: false, busca: null, player: null, rate: 1,
+             // V1.32
+             empresa: 'mx_mxn', borr: {}, env: {}, errBt: {}, listo: false, pasos: {}, abiertoReg: null, abajoN: 0,
+             nMotor: null, panel: null };
   try { var g = JSON.parse(sessionStorage.getItem('cz_sel') || 'null'); if (g && (g.id || g.local)) ST.sel = g; } catch (e) {}
 
   // ── iconos de línea (genéricos, los del prototipo) ─────────────────────
@@ -67,8 +84,19 @@
     libro: '<path d="M5 4.5h9a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h9"/>',
     candado: '<rect x="5" y="10.5" width="14" height="9.5" rx="1.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/>',
     disparo: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
-    abajo: '<path d="M7 10l5 5 5-5"/>'
+    abajo: '<path d="M7 10l5 5 5-5"/>',
+    abajo2: '<path d="M7 6l5 5 5-5"/><path d="M7 12l5 5 5-5"/>',
+    ficha: '<rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
+    empresa: '<path d="M4 20V6l8-3 8 3v14"/><path d="M9 20v-5h6v5"/><path d="M8 9h1M15 9h1M8 12h1M15 12h1"/>',
+    prueba: '<path d="M9 3h6"/><path d="M10 3v6L5 18a2 2 0 0 0 1.8 3h10.4A2 2 0 0 0 19 18l-5-9V3"/>',
+    pagina: '<path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/>',
+    docs: '<path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/><path d="M8.5 13h7M8.5 16.5h5"/>',
+    bajar: '<path d="M12 4v11"/><path d="M7 10.5l5 5 5-5"/><path d="M5 19.5h14"/>',
+    exportar: '<path d="M12 15V4"/><path d="M7 8.5l5-5 5 5"/><path d="M5 13v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6"/>',
+    ext: '<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+    flecha: '<path d="M7 10l5 5 5-5"/>'
   };
+  var GIRO = '<span class="giro" aria-hidden="true"></span>';
   function ico(n, c) { return '<svg class="ico ' + (c || '') + '" viewBox="0 0 24 24" aria-hidden="true">' + P[n] + '</svg>'; }
   function palomita(doble) { return '<svg viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (doble ? P.check2 : P.check) + '</svg>'; }
 
@@ -200,7 +228,7 @@
         '<div class="u">' + pre + '<span class="p">' + (u && u.rol === 'sistema' ? '⚙ ' : '') + esc(prev) + '</span><span class="meta">' +
         (c.estado === 'enviada' ? '<span class="est enviada">enviada</span>' : c.estado === 'cerrado' ? '<span class="est cerrada">cerrada</span>' :
          c.estado === 'local' ? '<span class="est local">sin enviar</span>' : '') +
-        (c.demo ? '<span class="est archivada">demo</span>' : '') +
+        (c.demo ? '<span class="chip-prueba">PRUEBA</span>' : '') +
         (ST.usuario === 'todos' && c.autor ? '<span class="quien-ses">' + esc(nombreCorto(c.autor, c.autor_nombre)) + '</span>' : '') +
         (c.fijado ? '<span title="Fijada arriba (solo en tu lista)" aria-label="Fijada">' + ico('fijar', 'xs') + '</span>' : '') +
         (nAcc ? '<span class="badge" title="Botones esperando tu decisión">' + nAcc + '</span>' : '') + '</span></div></div>' +
@@ -349,20 +377,24 @@
   function pintarMenu() {
     pintarCabecera(); $('#senal').style.display = 'none'; $('#fijo').style.display = 'none';
     $('#msgs').innerHTML = '<div class="fila el sig"><div class="b el"><div class="quien">Conceptualizador</div><div class="txt">¿Qué vamos a hacer?</div>' +
+      '<p class="nota">Primero, ¿a nombre de qué empresa y en qué moneda?</p><div class="emp-sel">' + selEmpresa(ST.empresa) + '</div>' +
       '<div class="opciones">' +
       '<button class="opc" data-modo="acompanamiento"><b>1 · Voy a hacer un levantamiento</b><small>Te acompaño en planta: te pido fotos, la ruta, medidas y acceso según el trabajo.</small></button>' +
       '<button class="opc" data-modo="levantamiento"><b>2 · Ya tengo el levantamiento</b><small>Me mandas todo (fotos, audios, PDFs, notas) y al final tocas «Ya es todo».</small></button>' +
       '<button class="opc" data-modo="seguir"><b>3 · Seguir una cotización</b><small>Abre la lista de sesiones.</small></button></div>' +
-      '<div class="pais">País: ' + [['mx', 'México · MXN'], ['usa', 'USA · USD']].map(function (p) {
-        return '<button data-pais="' + p[0] + '" class="' + (ST.pais === p[0] ? 'on' : '') + '">' + p[1] + '</button>'; }).join('') + '</div></div></div>';
-    $$('#msgs [data-pais]').forEach(function (b) { b.onclick = function () { ST.pais = b.dataset.pais; pintarMenu(); }; });
+      '<p class="nota">La empresa se puede cambiar desde ⋮ mientras no haya machote.</p></div></div>';
+    $$('#msgs [data-emp]').forEach(function (b) { b.onclick = function () { ST.empresa = b.dataset.emp; pintarMenu(); }; });
     $$('#msgs [data-modo]').forEach(function (b) { b.onclick = async function () {
       var m = b.dataset.modo;
       if (m === 'seguir') { ST.filtro = 'vivas'; ST.archivadas = false; volverALista(); pintarChat(); return; }
       b.disabled = true;
-      var c = await Q.nuevaSesion({ titulo: MODOS[m].titulo, pais: ST.pais || 'mx', modo: m });
+      var c = await Q.nuevaSesion({ titulo: MODOS[m].titulo, pais: EMPRESAS[ST.empresa].pais, modo: m, empresa: ST.empresa });
       ST.locales = await Q.casosLocales(); $('#app').classList.remove('en-menu'); abrir({ local: c.local_id });
     }; });
+  }
+  function selEmpresa(sel) {
+    return Object.keys(EMPRESAS).map(function (k) { return '<button type="button" data-emp="' + k + '" class="' + (sel === k ? 'on' : '') + '"><span class="rad"></span><span>' +
+      esc(EMPRESAS[k].n) + '<small>' + esc(EMPRESAS[k].s) + '</small></span></button>'; }).join('');
   }
   function modoActual() {
     var c = (ST.hilo && ST.hilo.caso) || casoActual() || {};
@@ -377,11 +409,27 @@
   }
   function pintarFijo() {
     var m = modoActual(), c = (ST.hilo && ST.hilo.caso) || casoActual() || {}, el = $('#fijo');
-    var ver = m && !(ST.sel || {}).menu && ['abierto', 'local', undefined].indexOf(c.estado) >= 0 && !yaDisparo();
-    el.style.display = ver ? 'flex' : 'none';
-    if (!ver) return;
-    $('#bFijo').innerHTML = ico('disparo', 's') + esc(MODOS[m].boton);
-    $('#bFijo').onclick = function () { this.disabled = true; var t = MODOS[m].boton; mandar(t).then(function () { $('#bFijo').disabled = false; pintarFijo(); }); };
+    var hayMachote = ((ST.hilo && ST.hilo.acciones) || []).some(function (x) { return x.tipo === 'crear_machote'; });
+    var ver = m && !(ST.sel || {}).menu && ['abierto', 'local', undefined].indexOf(c.estado) >= 0 && !yaDisparo() && !hayMachote;
+    if (ver) {
+      el.style.display = 'flex';
+      el.innerHTML = '<button id="bFijo" type="button">' + ico('disparo', 's') + esc(MODOS[m].boton) + '</button>';
+      $('#bFijo').onclick = function () { this.disabled = true; var t = MODOS[m].boton; mandar(t).then(function () { var b = $('#bFijo'); if (b) b.disabled = false; pintarFijo(); }); };
+      return;
+    }
+    // V1.32 (9a · 9b · 9c): con el BOM listo, «Todo listo, crear machote»; con el machote, abrirlo en el editor de
+    // siempre y pedir la cotización (el motor relee el machote como quedó).
+    var A = (ST.hilo && ST.hilo.acciones) || [], pendC = A.some(function (x) { return x.tipo === 'conjetura' && x.estado === 'propuesta'; });
+    var cm = A.filter(function (x) { return x.tipo === 'crear_machote'; }), prop = cm.filter(function (x) { return x.estado === 'propuesta'; }).pop();
+    var hecho = cm.filter(function (x) { return x.estado === 'hecha'; }).pop();
+    var abierta = ['abierto', 'enviada'].indexOf(c.estado) >= 0, h = '';
+    if (abierta && prop && !pendC && !hecho) h = '<button id="bFijo" type="button" data-fijo="crear">' + ico('disparo', 's') + 'Todo listo, crear machote</button>';
+    else if (abierta && hecho) h = '<button type="button" data-fijo="abrir">' + ico('ext', 's') + 'Abrir ' + esc((hecho.resultado || {}).folio || c.machote_folio || 'machote') + '</button>' +
+      '<button type="button" data-fijo="cotiza">' + ico('pagina', 's') + 'Haz la cotización</button>';
+    el.style.display = h ? 'flex' : 'none'; el.innerHTML = h;
+    var b1 = $('[data-fijo="crear"]', el); if (b1) b1.onclick = function () { b1.disabled = true; b1.innerHTML = GIRO + 'creando…'; hacer(prop.id, b1).then(function () { pintarFijo(); }); };
+    var b2 = $('[data-fijo="abrir"]', el); if (b2) b2.onclick = function () { abrirEditor(hecho); };
+    var b3 = $('[data-fijo="cotiza"]', el); if (b3) b3.onclick = function () { b3.disabled = true; mandar('Haz la cotización').then(function () { b3.disabled = false; }); };
   }
 
   // ── chat ───────────────────────────────────────────────────────────────
@@ -416,8 +464,9 @@
   }
   function pintarCabecera() {
     var c = casoActual() || { titulo: '…' }, m = ST.motor, H = ST.hilo, vivo = false;
-    var sub = !navigator.onLine ? 'sin señal · lo que escribas se guarda' :
-      !m ? 'conectando…' : m.modo === 'rapido' ? 'motor rápido · en línea' : 'respaldo · contesta en minutos';
+    var ke = claveEmpresa((H && H.caso) || c), emp = ke ? EMPRESAS[ke].n + ' · ' : '';
+    var sub = !navigator.onLine ? 'sin señal · lo que mandes se guarda en el teléfono' :
+      emp + (!m ? 'conectando…' : m.modo === 'rapido' ? 'motor rápido · en línea' : 'respaldo · contesta en minutos');
     var t = trabajoQueContesta();
     if (t && navigator.onLine) { sub = 'escribiendo…' + (t.estado === 'tomado' && t.avance ? ' · ' + t.avance : ''); vivo = true; }
     else if (H && H.caso && H.caso.modo === 'levantamiento' && !H.caso.disparado_at && navigator.onLine) {
@@ -427,7 +476,8 @@
     if (c.id && archivada(c)) sub = 'archivada · ' + sub;
     $('#ch').innerHTML = '<button class="btn-ic vuelve" id="bVuelve" aria-label="Volver">' + ico('atras') + '</button>' +
       '<div class="av" style="background:' + color(c.titulo) + '">' + esc(iniciales(c.cliente || c.titulo)) + '</div>' +
-      '<div class="tx"><b><span>' + esc(c.titulo) + '</span><span class="ver" title="Build del módulo">' + VERSION + '</span></b><small class="' + (vivo ? 'vivo' : '') + '">' + esc(sub) + '</small></div>' +
+      '<div class="tx"><b><span>' + esc(c.titulo) + '</span>' + (((H && H.caso) || c).demo ? '<span class="chip-prueba" title="No enseña">PRUEBA</span>' : '') +
+      '<span class="ver" title="Build del módulo">' + VERSION + '</span></b><small class="' + (vivo ? 'vivo' : '') + '">' + esc(sub) + '</small></div>' +
       '<button class="btn-ic" id="bMenu" aria-label="Opciones">' + ico('mas') + '</button>';
     $('#bVuelve').onclick = volverALista;
     $('#bMenu').onclick = function (e) { menuChat(e.currentTarget); };
@@ -436,7 +486,17 @@
   function menuChat(btn) {
     var c = sesionDe(ST.sel) || casoActual() || {};
     var A = accionesDe(c), abierta = c.estado === 'abierto' || c.estado === 'enviada';
-    var h = A.map(function (a) { return '<button data-a="' + a.k + '"' + (a.ok ? '' : ' disabled') + '>' + ico(a.ic, 's') + '<span>' + a.t + a.sub + '</span></button>'; }).join('') +
+    var H = ST.hilo, cs = (H && H.caso) || {}, hayM = !!(cs.machote_id || cs.machote_folio), mia = c.puede_editar === true;
+    var V = c.id && !(ST.sel || {}).menu ? (
+      '<button data-a="ficha">' + ico('ficha', 's') + '<span>Ficha de la sesión<small>CRM · machote · orden · carpeta</small></span></button>' +
+      '<button data-a="empresa"' + (hayM || !mia ? ' disabled' : '') + '>' + ico('empresa', 's') + '<span>Empresa: ' + esc((EMPRESAS[claveEmpresa(cs)] || EMPRESAS.mx_mxn).n) +
+        '<small>' + (hayM ? 'Ya hay machote: no se cambia aquí' : !mia ? 'Solo quien la abrió o Esteban' : 'Cambiar mientras no haya machote') + '</small></span></button>' +
+      '<button data-a="prueba"' + (mia ? '' : ' disabled') + '>' + ico('prueba', 's') + '<span>' + (cs.demo ? 'Ya no es prueba (sí enseña)' : 'Es una prueba (no enseña)') + '<small>Solo quien la abrió o Esteban</small></span></button>' +
+      '<button data-a="pagina">' + ico('pagina', 's') + '<span>Ver en página<small>Lo considerado y el machote, con versiones</small></span></button><hr>' +
+      '<button data-a="archivos">' + ico('docs', 's') + '<span>Archivos, enlaces y docs.</span></button>' +
+      '<button data-a="multimedia">' + ico('bajar', 's') + '<span>Descargar todo lo multimedia<small>Fotos, audios y PDFs en un ZIP</small></span></button>' +
+      '<button data-a="exportar">' + ico('exportar', 's') + '<span>Exportar chat<small>JSON o TXT, con o sin multimedia</small></span></button><hr>') : '';
+    var h = V + A.map(function (a) { return '<button data-a="' + a.k + '"' + (a.ok ? '' : ' disabled') + '>' + ico(a.ic, 's') + '<span>' + a.t + a.sub + '</span></button>'; }).join('') +
       (A.length ? '<hr>' : '') +
       ((ST.sel || {}).menu ? '' : '<button data-a="detalles">' + ico('info', 's') + '<span>Detalles y línea de tiempo</span></button>') +
       (abierta && c.id ? '<button data-a="cierre">' + ico('candado', 's') + '<span>Cerrar con /cierre</span></button>' : '') +
@@ -446,6 +506,13 @@
       cerrarVelo(); var a = b.dataset.a;
       if (a === 'detalles') return menuSesion();
       if (a === 'aprendio') return verAprendio();
+      if (a === 'ficha') return hojaFicha();
+      if (a === 'empresa') return dlgEmpresa();
+      if (a === 'prueba') return marcarPrueba();
+      if (a === 'pagina') return abrirPagina('considerado');
+      if (a === 'archivos') return abrirArchivos();
+      if (a === 'multimedia') return bajarMultimedia();
+      if (a === 'exportar') return dlgExportar();
       if (a === 'cierre') { $('#in').value = '/cierre '; autoAlto(); pintarComposer(); return $('#in').focus(); }
       hacerSesion(a, c);
     }; });
@@ -470,16 +537,18 @@
   function pintarChat() {
     if ((ST.sel || {}).menu) return pintarMenu();
     $('#app').classList.remove('en-menu');
-    var M = $('#msgs'), abajo = M.scrollHeight - M.scrollTop - M.clientHeight < 80, H = ST.hilo;
+    var M = $('#msgs'), abajo = M.scrollHeight - M.scrollTop - M.clientHeight < 80, H = ST.hilo, arriba0 = M.scrollTop;
+    // Lo escrito en una cajita abierta y su cursor sobreviven al repintado (sondeo de 2.5 s).
+    var fe = document.activeElement, foco = fe && fe.dataset && fe.dataset.borr ? { k: fe.dataset.borr, a: fe.selectionStart, b: fe.selectionEnd } : null;
     pintarCabecera(); pintarSenal(); pintarFijo();
     var modo = modoActual();
     var h = '', ultimoDia = '', prev = null;
     var dia = function (t) { var d = separador(t); if (d && d !== ultimoDia) { ultimoDia = d; h += '<div class="dia"><span>' + esc(d) + '</span></div>'; prev = null; } };
     var aparte = function (html) { h += html; prev = null; };
     // Una burbuja; la primera de cada racha lleva la colita y, si es del motor, quién habla.
-    var burbuja = function (lado, cls, quien, cuerpo) {
+    var burbuja = function (lado, cls, quien, cuerpo, id) {
       var sig = prev !== lado; prev = lado;
-      h += '<div class="fila ' + lado + (sig ? ' sig' : '') + '"><div class="b ' + lado + (cls ? ' ' + cls : '') + '">' +
+      h += '<div class="fila ' + lado + (sig ? ' sig' : '') + '"' + (id ? ' data-msg="' + esc(id) + '"' : '') + '><div class="b ' + lado + (cls ? ' ' + cls : '') + '">' +
         (lado === 'el' && sig && quien ? '<div class="quien">' + esc(quien) + '</div>' : '') + cuerpo + '</div></div>';
     };
     var meta = adjuntosPorId();
@@ -498,7 +567,7 @@
         adjuntosHtml((m.adjuntos || []).map(function (a) { return Object.assign({}, a, meta[a.id] || {}); }), false) +
         (m.texto ? '<div class="txt">' + (mio ? esc(m.texto) : md(m.texto)) + '</div>' : '') +
         '<span class="hora">' + (m.escrito_at && Math.abs(new Date(m.created_at) - new Date(m.escrito_at)) > 120000 ? '<i title="Escrito sin señal; llegó ' + esc(hora(m.created_at)) + '">⟲</i> ' : '') +
-        esc(hora(t)) + tk + '</span><div style="clear:both"></div>');
+        esc(hora(t)) + tk + '</span><div style="clear:both"></div>', m.id);
       if (mio && tr && tr.estado === 'error') aparte('<div class="sis"><span class="mal">El motor no pudo con este mensaje: ' + esc(tr.error || '') + '. Escríbelo de otra forma o vuelve a intentar.</span></div>');
       if (!mio && m.trabajo_id) {
         // Primero lo que hay que confirmar, luego conceptos y machote (el orden del método).
@@ -516,7 +585,8 @@
       var reloj = '<svg class="ico xs" viewBox="0 0 24 24" aria-hidden="true" style="width:13px;height:13px">' + P.reloj + '</svg>';
       var est = x.estado === 'error' ? '<span class="mal">⚠ no se mandó</span>' :
         x.estado === 'subiendo' && total ? '<span class="cola">' + reloj + 'subiendo ' + (subidos + (actual ? 1 : 0)) + '/' + total + (actual ? ' · ' + Math.round(Q.progreso(actual.local) * 100) + '%' : '') + '</span>' :
-        x.estado === 'enviando' ? '<span class="cola">' + reloj + 'enviando</span>' : '<span class="cola">' + reloj + 'en cola</span>';
+        x.estado === 'enviando' ? '<span class="pend-env">' + reloj + 'enviando…</span>' :
+        '<span class="pend-env" title="Guardado en el teléfono con su hora real; se manda solo al volver la señal">' + reloj + 'pendiente de enviar</span>';
       burbuja('yo', 'pend', '', adjuntosHtml(x.archivos.map(function (a) { return { local: a.local, blob: a.blob, nombre: a.nombre, clase: a.clase, bytes: a.bytes, duracion_s: a.duracion_s, subido: !!a.adjunto_id }; }), true) +
         (x.texto ? '<div class="txt">' + esc(x.texto) + '</div>' : '') +
         (total && x.estado === 'subiendo' ? '<div class="barra"><i style="width:' + Math.round(100 * (subidos + (actual ? Q.progreso(actual.local) : 0)) / total) + '%"></i></div>' : '') +
@@ -524,11 +594,48 @@
         (x.estado === 'error' ? '<div class="corr"><span class="err">' + esc(x.error) + '</span><button class="boton" data-reint="' + esc(x.cliente_id) + '">Reintentar</button><button class="boton" data-desc="' + esc(x.cliente_id) + '">Descartar</button></div>' : ''));
     });
     var tq = trabajoQueContesta();
-    if (tq) h += '<div class="fila el sig"><div class="escribe" aria-label="El conceptualizador está escribiendo"><i></i><i></i><i></i>' +
-      (tq.estado === 'tomado' && tq.avance ? '<em>' + esc(tq.avance) + '</em>' : '') + '</div></div>';
+    if (tq) h += escribeHtml(tq);
+    // ¿Llegaron respuestas del motor desde el último pintado? Si la persona está leyendo arriba, se cuentan
+    // en el botón ⇊ y NO se le arrastra hacia abajo (6b).
+    var nMotor = ((H && H.mensajes) || []).filter(function (m) { return m.rol !== 'usuario'; }).length;
+    var nuevas = ST.nMotor !== null && ST.nMotorCaso === (ST.sel || {}).id ? Math.max(0, nMotor - ST.nMotor) : 0;
+    ST.nMotor = nMotor; ST.nMotorCaso = (ST.sel || {}).id;
     M.innerHTML = h;
     enlazarChat(M);
-    if (abajo || ST.irAbajo) { M.scrollTop = M.scrollHeight; ST.irAbajo = false; }
+    if (foco) { var t = $('[data-borr="' + foco.k + '"]'); if (t) { t.focus(); try { t.setSelectionRange(foco.a, foco.b); } catch (e) {} } }
+    if (abajo || ST.irAbajo) { M.scrollTop = M.scrollHeight; ST.irAbajo = false; ST.abajoN = 0; }
+    else { M.scrollTop = arriba0; ST.abajoN += nuevas; }
+    actualizarAbajo();
+  }
+  /** «escribiendo…» que se despliega con los pasos de ESE trabajo (6a). Los pasos los junta la
+   *  pantalla de lo que el motor va publicando (`trabajo.avance`), con sus segundos. */
+  function escribeHtml(tq) {
+    var P_ = ST.pasos[tq.id] || [], abierto = ST.abiertoReg === tq.id;
+    var lista = P_.map(function (x, i) {
+      var cur = i === P_.length - 1;
+      return '<span class="paso' + (cur ? '' : ' ya') + '"><span class="m">' + (cur ? GIRO : '✓') + '</span><span class="pt-tx">' + esc(x.t) + '</span><span class="t">' + x.s + ' s</span></span>';
+    }).join('') || '<span class="paso"><span class="m">' + GIRO + '</span><span class="pt-tx">' + (tq.estado === 'tomado' ? 'empezando' : 'en la cola del motor') + '</span></span>';
+    return '<div class="fila el sig"><button type="button" class="escribe-b' + (abierto ? ' abierto' : '') + '" id="bEscribe" aria-expanded="' + abierto + '" aria-label="Ver los pasos del conceptualizador">' +
+      '<span class="top"><span class="pts"><i></i><i></i><i></i></span><em>' + esc(tq.estado === 'tomado' && tq.avance ? tq.avance : 'escribiendo…') + '</em><span class="flecha">' + ico('flecha', 's') + '</span></span>' +
+      '<span class="pasos">' + lista + '</span></button></div>';
+  }
+  function registrarPasos(H) {
+    ((H && H.trabajos) || []).forEach(function (t) {
+      if (t.estado !== 'tomado' || !t.avance) return;
+      var L = ST.pasos[t.id] = ST.pasos[t.id] || [], ult = L[L.length - 1];
+      if (ult && ult.t === t.avance) return;
+      var t0 = new Date(t.tomado_at || t.created_at).getTime(), ta = new Date(t.avance_at || Date.now()).getTime();
+      L.push({ t: t.avance, s: Math.max(0, Math.round((ta - t0) / 1000)) });
+    });
+  }
+  function actualizarAbajo() {
+    var M = $('#msgs'), b = $('#bAbajo'); if (!M || !b) return;
+    var arriba = M.scrollHeight - M.scrollTop - M.clientHeight > 80;
+    if (!arriba) ST.abajoN = 0;
+    b.classList.toggle('on', arriba);
+    var c = $('.compose'), f = $('#fijo'), bj = $('#bandeja');
+    b.style.bottom = ((c ? c.offsetHeight : 56) + (f && f.style.display !== 'none' ? f.offsetHeight : 0) + (bj && bj.style.display !== 'none' ? bj.offsetHeight : 0) + 10) + 'px';
+    var n = $('#nAbajo'); n.style.display = ST.abajoN ? 'flex' : 'none'; n.textContent = ST.abajoN;
   }
   function tick(tr) {
     if (!tr) return '<span class="tk" title="Recibido en el servidor">' + palomita(false) + '</span>';
@@ -680,16 +787,30 @@
     var H = ST.hilo, h = '';
     var decididos = {}; (H.eventos || []).forEach(function (e) { if (e.concepto && (e.tipo === 'aceptar' || e.tipo === 'rechazar')) decididos[e.concepto] = e; });
     if ((U.conceptos || []).length) {
-      var faltan = U.conceptos.filter(function (k) { return !decididos[k.id]; }).length;
-      h += '<div class="carta"><h4>🧩 Conceptos propuestos' + (faltan ? ' · <span class="gris">' + faltan + ' por decidir</span>' : '') + '</h4>';
+      // V1.32 (3) · palomeada en lote: cada clic se guarda, y las decisiones viajan JUNTAS al motor cuando
+      // se decide el último o con «Listo, sigue». (4) el botón dice «enviando…» hasta que el servidor contesta;
+      // (5) el cuadro de la razón va DEBAJO del renglón, a todo lo ancho, y se puede dictar.
+      var faltan = U.conceptos.filter(function (k) { return !decididos[k.id]; }).length, dec = U.conceptos.length - faltan;
+      var lotes = (H.eventos || []).filter(function (e) { return e.tipo === 'palomeada' && e.datos && Number(e.datos.propuesta_trabajo_id) === Number(U.trabajo_id); });
+      var enLote = lotes.reduce(function (n, e) { return n + ((e.datos.decisiones || []).length); }, 0);
+      h += '<div class="carta conceptos"><h4>🧩 Conceptos propuestos' + (faltan ? ' · <span class="gris">' + faltan + ' por decidir</span>' : '') + '</h4>';
       U.conceptos.forEach(function (k) {
-        var d = decididos[k.id];
-        h += '<div class="con"><span class="n">' + esc(k.id) + '</span><div class="d">' + esc(k.concepto) + '<small>origen: ' + esc(k.origen || '') + '</small>' +
-          (d && d.razon ? '<small class="mal">' + esc(d.razon) + '</small>' : '') + '<div class="corr-slot" data-slot="' + esc(k.id) + '"></div></div>' +
+        var d = decididos[k.id], kk = 'c:' + k.id, e = ST.env[kk], b = ST.borr[kk] || {};
+        h += '<div class="cn" data-con="' + esc(k.id) + '"><div class="fil"><span class="n">' + esc(k.id) + '</span><div class="d">' + esc(k.concepto) + '<small>origen: ' + esc(k.origen || '') + '</small>' +
+          (d && d.razon ? '<small class="mal">' + esc(d.razon) + '</small>' : '') + '</div>' +
           (d ? '<span class="hecho' + (d.tipo === 'rechazar' ? ' mal' : '') + '">' + (d.tipo === 'aceptar' ? 'aceptado' : 'rechazado') + '</span>'
-             : '<div class="acc"><button class="si" data-k="' + esc(k.id) + '" data-v="1" aria-label="Aceptar">✓</button><button class="no" data-k="' + esc(k.id) + '" data-v="0" aria-label="Rechazar">✕</button></div>') + '</div>';
+             : b.abierto ? '' : '<div class="decide">' +
+               (e === 'aceptar' ? '<button class="si enviando" disabled aria-label="Enviando">' + GIRO + '</button>' : '<button class="si" data-acepta="' + esc(k.id) + '" aria-label="Aceptar">✓</button>') +
+               '<button class="no" data-rechaza="' + esc(k.id) + '" aria-label="Rechazar"' + (e ? ' disabled' : '') + '>✕</button></div>') + '</div>' +
+          (ST.errBt[kk] && !b.abierto ? '<span class="err-bt">' + esc(ST.errBt[kk]) + '</span>' : '') +
+          (b.abierto && !d ? cajaRazon(kk, '¿Por qué no va? (obligatorio)', 'Rechazar', true) : '') + '</div>';
       });
-      h += '<p class="nota">Rechazar pide la razón: así aprendo para la siguiente.</p></div>';
+      if (enLote && !faltan) h += '<div class="pie-lote"><span class="txt-lote">✓ Mandé tus ' + enLote + ' decisiones juntas: armo el BOM.</span></div>';
+      else h += '<div class="pie-lote"><span class="txt-lote">' + (enLote ? '✓ Ya mandé ' + enLote + '. ' : '') + (dec ? 'Llevas ' + dec + ' de ' + U.conceptos.length + '. Se mandan juntas cuando decidas el último' : 'Palomea cada uno; las decisiones se mandan juntas al final') + '.</span>' +
+        (ST.listo ? '<button class="bt si enviando" id="bListo" disabled aria-busy="true">' + GIRO + 'Enviando…</button>' :
+         '<button class="bt si" id="bListo"' + (dec > enLote && faltan ? '' : ' disabled') + '>Listo, sigue' + (faltan && dec ? ' (' + faltan + ' sin decidir)' : '') + '</button>') + '</div>';
+      if (ST.errBt.listo) h += '<span class="err-bt">' + esc(ST.errBt.listo) + '</span>';
+      h += '</div>';
     }
     var Mq = U.machote;
     if (Mq && (Mq.secciones || []).length) {
@@ -712,8 +833,11 @@
     if (mat.length || mo.length) {
       h += '<details class="carta"><summary><b>BOM a costo</b> · ' + mat.length + ' renglones + ' + mo.length + ' de mano de obra</summary>';
       mat.forEach(function (r) {
-        h += '<div class="bom"><div><b>' + esc(r.descripcion) + '</b></div><div>' + esc(r.qty) + ' ' + esc(r.unidad) + ' · ' + esc(r.tipo) + ' · <b>' + dinero(r.importe, r.moneda) + '</b></div>' +
-          '<div class="org">' + esc(r.formula || '') + ' · ' + (r.liga && /^https?:/.test(r.liga) ? '<a href="' + esc(r.liga) + '" target="_blank" rel="noopener">' + esc(r.fuente) + '</a>' : esc(r.fuente || 'sin fuente')) + '</div></div>';
+        var te = r.tienda_existencia || r.tienda || '', sin = /sin existencia|solo (hay )?en|otra ciudad/i.test(te);
+        h += '<div class="bom"><div><b>' + esc(r.descripcion) + '</b>' + (r.sku ? ' <span class="sku">' + esc(r.sku) + '</span>' : '') + '</div><div>' + esc(r.qty) + ' ' + esc(r.unidad) + ' · ' + esc(r.tipo) + ' · <b>' + dinero(r.importe, r.moneda) + '</b></div>' +
+          '<div class="org">' + [r.formula ? esc(r.formula) : '', r.liga && /^https?:/.test(r.liga) ? '<a href="' + esc(r.liga) + '" target="_blank" rel="noopener">' + esc(r.fuente) + '</a>' :
+            /pendiente/i.test(r.fuente || '') ? '<b class="mal">' + esc(r.fuente) + '</b>' : esc(r.fuente || 'sin fuente')].filter(Boolean).join(' · ') + '</div>' +
+          (te ? '<span class="tienda' + (sin ? ' sin' : '') + '">' + esc(te) + '</span>' : '') + '</div>';
       });
       mo.forEach(function (r) {
         h += '<div class="bom"><div><b>MO · ' + esc(r.rol) + '</b></div><div>' + esc(r.personas) + ' pers × ' + esc(r.dias) + ' d × ' + esc(r.horas_dia) + ' h · <b>' + dinero(r.importe, r.moneda) + '</b></div><div class="org">' + esc(r.origen || '') + '</div></div>';
@@ -733,10 +857,12 @@
       var pend = conj.filter(function (a) { return a.estado === 'propuesta'; }).length;
       h += '<div class="carta"><h4>❓ Lo que supongo · confírmalo o corrígelo' + (pend ? ' · <span class="gris">faltan ' + pend + '</span>' : '') + '</h4>';
       conj.forEach(function (a) {
-        var d = a.datos || {}, r = a.resultado || {};
+        var d = a.datos || {}, r = a.resultado || {}, kk = 'j:' + a.id, e = ST.env[kk], b = ST.borr[kk] || {};
         h += '<div class="preg"><p>' + esc(d.pregunta || a.titulo) + '</p>' + (d.conjetura ? '<div class="conj">Supongo: ' + esc(d.conjetura) + (d.porque ? '<small> · ' + esc(d.porque) + '</small>' : '') + '</div>' : '') +
           (a.estado === 'hecha' ? '<span class="hecho">✓ Confirmado</span>' : a.estado === 'descartada' ? '<span class="hecho mal">✎ Corregido: ' + esc(r.correccion || '') + '</span>' :
-           '<div class="acc" data-acc="' + a.id + '"><button class="si" data-conf="' + a.id + '">Confirmo</button><button data-corr="' + a.id + '">Corrijo</button></div>') + '</div>';
+           b.abierto ? cajaRazon(kk, '¿Qué es lo correcto?', 'Mandar', false) :
+           '<div class="acc" data-acc="' + a.id + '">' + (e === 'confirma' ? '<button class="si enviando" disabled>' + GIRO + 'enviando…</button>' : '<button class="si" data-conf="' + a.id + '">Confirmo</button>') +
+           '<button data-corr="' + a.id + '"' + (e ? ' disabled' : '') + '>Corrijo</button></div>' + (ST.errBt[kk] ? '<span class="err-bt">' + esc(ST.errBt[kk]) + '</span>' : '')) + '</div>';
       });
       h += (pend ? '<p class="nota">Cuando contestes todas, sigo con los conceptos.</p>' : '') + '</div>';
     }
@@ -767,13 +893,94 @@
     $$('[data-doc]', M).forEach(function (d) { d.onclick = function () { bajar(d.dataset.doc); }; });
     $$('[data-reint]', M).forEach(function (b) { b.onclick = function () { Q.reintentar(b.dataset.reint); }; });
     $$('[data-desc]', M).forEach(function (b) { b.onclick = function () { if (confirm('¿Descartar este mensaje? No se manda.')) Q.descartar(b.dataset.desc); }; });
-    $$('[data-k]', M).forEach(function (b) { b.onclick = function () { decidirConcepto(b.dataset.k, b.dataset.v === '1', b); }; });
-    $$('[data-conf]', M).forEach(function (b) { b.onclick = function () { resolver(b.dataset.conf, 'hecha', { confirma: true }, b); }; });
-    $$('[data-corr]', M).forEach(function (b) { b.onclick = function () { pedirTexto(b.closest('.acc'), '¿Qué es lo correcto?', 'Mandar', function (v) { return resolver(b.dataset.corr, 'descartada', { correccion: v }, b); }); }; });
+    $$('[data-acepta]', M).forEach(function (b) { b.onclick = function () { decidirConcepto(b.dataset.acepta, 'aceptar'); }; });
+    $$('[data-rechaza]', M).forEach(function (b) { b.onclick = function () { abrirCaja('c:' + b.dataset.rechaza); }; });
+    $$('[data-conf]', M).forEach(function (b) { b.onclick = function () { responder('j:' + b.dataset.conf, b.dataset.conf, 'hecha', { confirma: true }, 'confirma'); }; });
+    $$('[data-corr]', M).forEach(function (b) { b.onclick = function () { abrirCaja('j:' + b.dataset.corr); }; });
+    $$('[data-borr]', M).forEach(function (t) { t.oninput = function () { (ST.borr[t.dataset.borr] = ST.borr[t.dataset.borr] || { abierto: true }).texto = t.value; }; });
+    $$('[data-cancela]', M).forEach(function (b) { b.onclick = function () { var k = b.dataset.cancela; if (GR.activa('d-' + k)) GR.basura('d-' + k); delete ST.borr[k]; delete ST.errBt[k]; pintarChat(); }; });
+    $$('[data-manda]', M).forEach(function (b) { b.onclick = function () { mandarCaja(b.dataset.manda); }; });
+    $$('[data-dicta]', M).forEach(function (b) { b.onclick = function () { dictar(b.dataset.dicta); }; });
+    GR.enlazar(M);
+    var bl = $('#bListo', M); if (bl) bl.onclick = listoSigue;
+    var be = $('#bEscribe', M); if (be) be.onclick = function () { var tq = trabajoQueContesta(); ST.abiertoReg = ST.abiertoReg === (tq && tq.id) ? null : (tq && tq.id); pintarChat(); };
     $$('[data-hacer]', M).forEach(function (b) { b.onclick = function () { hacer(b.dataset.hacer, b); }; });
     $$('[data-pdf]', M).forEach(function (b) { b.onclick = verPdf; });
     $$('[data-copia]', M).forEach(function (b) { b.onclick = function () { copiar(b.closest('.carta').querySelector('textarea.copia').value, b); }; });
     $$('[data-descartar]', M).forEach(function (b) { b.onclick = function () { resolver(b.dataset.descartar, 'descartada', {}, b); }; });
+  }
+  // ── V1.32 · cajita de corregir / rechazar: debajo del renglón, con su borrador en el estado ──
+  function cajaRazon(k, etiqueta, boton, rechazo) {
+    var b = ST.borr[k] || {}, g = GR.activa('d-' + k), e = ST.env[k];
+    var est = b.transcribiendo ? GIRO + 'subiendo y transcribiendo tu nota…' :
+      b.guardada ? '🕓 Sin señal: tu nota quedó guardada en el teléfono. Se transcribe y llena el campo sola cuando vuelva la señal.' :
+      b.err ? '<span class="mal">' + esc(b.err) + '</span>' : '';
+    return '<div class="caja-razon" data-caja="' + esc(k) + '"><label for="t-' + esc(k) + '">' + esc(etiqueta) + '</label><div class="lin">' +
+      (g ? GR.html('d-' + k) :
+       '<textarea id="t-' + esc(k) + '" rows="2" data-borr="' + esc(k) + '" placeholder="Escribe o dicta">' + esc(b.texto || '') + '</textarea>' +
+       '<button type="button" class="mic-dict" data-dicta="' + esc(k) + '" aria-label="Dictar">' + ico('mic', 's') + '</button>') + '</div>' +
+      '<div class="estado">' + est + '</div><div class="acc-r"><button type="button" class="bt" data-cancela="' + esc(k) + '">Cancelar</button>' +
+      '<button type="button" class="bt ' + (rechazo ? 'no' : 'si') + (e ? ' enviando' : '') + '" data-manda="' + esc(k) + '"' + (e || g ? ' disabled' : '') + '>' + (e ? GIRO + 'enviando…' : esc(boton)) + '</button></div>' +
+      (ST.errBt[k] ? '<span class="err-bt">' + esc(ST.errBt[k]) + '</span>' : '') + '</div>';
+  }
+  function abrirCaja(k) { ST.borr[k] = ST.borr[k] || { abierto: true, texto: '' }; ST.borr[k].abierto = true; delete ST.errBt[k]; pintarChat(); var t = $('[data-borr="' + k + '"]'); if (t) t.focus(); }
+  function sinSenal(r) { return r && r.clase === 'red' ? 'Sin señal: no se mandó. Toca otra vez.' : (r && (r.mensaje || r.error)) || 'No se pudo.'; }
+  function mandarCaja(k) {
+    var b = ST.borr[k] || {}, txt = String(b.texto || '').trim();
+    if (txt.length < 3) { b.err = 'Escribe o dicta ' + (k.indexOf('c:') === 0 ? 'la razón' : 'lo correcto') + ' (3 letras mínimo).'; return pintarChat(); }
+    if (k.indexOf('c:') === 0) return decidirConcepto(k.slice(2), 'rechazar', txt);
+    return responder(k, k.slice(2), 'descartada', { correccion: txt }, 'corrige');
+  }
+  /** Confirmar o corregir una conjetura: el botón dice «enviando…» hasta que el servidor contesta. */
+  async function responder(k, id, decision, resultado, que) {
+    ST.env[k] = que; delete ST.errBt[k]; pintarChat();
+    var r = await C.accion({ accion_id: String(id), decision: decision, resultado: resultado });
+    delete ST.env[k];
+    if (!r.ok) { ST.errBt[k] = sinSenal(r); pintarChat(); return false; }
+    delete ST.borr[k]; await cargarHilo(); return true;
+  }
+  async function listoSigue() {
+    ST.listo = true; delete ST.errBt.listo; pintarChat();
+    var r = await C.palomeadaLista(ST.hilo.caso.id);
+    ST.listo = false;
+    if (!r.ok) { ST.errBt.listo = sinSenal(r); pintarChat(); return; }
+    ST.irAbajo = true; await cargarHilo();
+  }
+  // Dictar: la misma grabadora que la caja principal, en chiquito. Se sube como nota del caso; el motor
+  // la transcribe (whisper, en cuanto llega) y el texto llena el campo. Sin señal se queda en el teléfono.
+  function dictar(k) {
+    var b = ST.borr[k] = ST.borr[k] || { abierto: true, texto: '' }; b.err = null;
+    if (!GR.puede()) { b.err = 'Este navegador no deja grabar: escríbelo.'; return pintarChat(); }
+    GR.iniciar('d-' + k, { chico: true, etiquetaEnviar: 'Terminar y transcribir', alCambiar: function () { pintarChat(); },
+      alTerminar: function (nota) {
+        if (!nota || nota.duracion_s < 1) { b.err = 'Muy corta: mantén grabando al menos un segundo.'; return pintarChat(); }
+        return subirDictado(k, nota);
+      } }).catch(function (e) { b.err = e && e.name === 'NotAllowedError' ? 'Da permiso al micrófono para dictar.' : 'No se pudo grabar: ' + (e.message || e); pintarChat(); });
+  }
+  async function subirDictado(k, nota) {
+    var b = ST.borr[k] = ST.borr[k] || { abierto: true, texto: '' }, caso = ST.hilo && ST.hilo.caso && ST.hilo.caso.id;
+    var guardar = async function () { await Q.guardarDictado({ k: k, caso_id: caso, nota: nota }); b.guardada = true; b.transcribiendo = false; pintarChat(); };
+    if (!navigator.onLine || !caso) return guardar();
+    b.guardada = false; b.transcribiendo = true; pintarChat();
+    var r = await C.subir({ caso_id: caso, archivo: nota.nombre, mime: nota.mime, clase: 'audio', sha256: await Me.sha256(nota.blob),
+      duracion_s: nota.duracion_s, escrito_at: String(nota.escrito_at || Date.now()), b64: await Me.base64(nota.blob) });
+    if (!r.ok) { if (r.clase === 'red') return guardar(); b.transcribiendo = false; b.err = sinSenal(r); return pintarChat(); }
+    await Q.quitarDictado(k);
+    b.adjunto = r.adjunto_id; b.desde = Date.now(); pintarChat(); sondear(true);
+  }
+  /** En cada lectura del hilo: ¿ya llegó la transcripción de un dictado? ¿hay dictados guardados sin señal? */
+  function revisarDictados() {
+    var meta = adjuntosPorId();
+    Object.keys(ST.borr).forEach(function (k) {
+      var b = ST.borr[k]; if (!b.adjunto) return;
+      var a = meta[b.adjunto];
+      if (a && a.transcripcion) { b.texto = (b.texto ? b.texto.replace(/\s+$/, '') + ' ' : '') + a.transcripcion.trim(); b.transcribiendo = false; delete b.adjunto; }
+      else if (Date.now() - b.desde > 120000 && !b.tarda) { b.tarda = true; b.err = 'La transcripción está tardando: puedes escribirlo mientras.'; }
+    });
+    if (!navigator.onLine || !ST.hilo) return;
+    Q.dictados().then(function (L) { L.filter(function (d) { return d.caso_id === ST.hilo.caso.id && !ST.subiendoDictado; }).forEach(function (d) {
+      ST.subiendoDictado = true; ST.borr[d.k] = ST.borr[d.k] || { abierto: true, texto: '' };
+      subirDictado(d.k, d.nota).then(function () { ST.subiendoDictado = false; }); }); });
   }
   function pedirTexto(lugar, ph, boton, fn) {
     var d = document.createElement('div'); d.className = 'corr';
@@ -783,16 +990,16 @@
       var ok = await fn(v); if (!ok) d.querySelector('button').disabled = false; };
     d.querySelector('button').onclick = ir; i.onkeydown = function (e) { if (e.key === 'Enter') ir(); };
   }
-  async function decidirConcepto(id, acepta, b) {
+  async function decidirConcepto(id, tipo, razon) {
     var U = ST.hilo && (ST.hilo.propuesta || ST.hilo.ultima), k = U && (U.conceptos || []).filter(function (x) { return x.id === id; })[0]; if (!k) return;
-    var mandar = async function (razon) {
-      var r = await C.evento({ caso_id: ST.hilo.caso.id, tipo: acepta ? 'aceptar' : 'rechazar', concepto: k.id, razon: razon || '',
-        datos: { concepto: k.concepto, origen: k.origen } });
-      if (!r.ok) { aviso(r); return false; }
-      await cargarHilo(); return true;
-    };
-    if (acepta) { b.disabled = true; if (!(await mandar(''))) b.disabled = false; return; }
-    pedirTexto(b.closest('.acc'), '¿Por qué no va? (obligatorio)', 'Rechazar', mandar);
+    var kk = 'c:' + id;
+    ST.env[kk] = tipo; delete ST.errBt[kk]; pintarChat();
+    var r = await C.evento({ caso_id: ST.hilo.caso.id, tipo: tipo, concepto: k.id, razon: razon || '', datos: { concepto: k.concepto, origen: k.origen } });
+    delete ST.env[kk];
+    if (!r.ok) { ST.errBt[kk] = sinSenal(r); pintarChat(); return false; }
+    delete ST.borr[kk];
+    if (r.trabajo_id) ST.irAbajo = true;     // el último decidió el lote: el motor arma el BOM
+    await cargarHilo(); return true;
   }
   async function resolver(id, decision, resultado, b) {
     if (b) b.disabled = true;
@@ -816,7 +1023,7 @@
   }
 
   async function verPdf() {
-    var H = ST.hilo, U = H && (H.propuesta || H.ultima), E = U && U.machote && U.machote.entrega; if (!E) return;
+    var H = ST.hilo, U = respConBom(H), E = U && U.machote && U.machote.entrega; if (!E) return;
     modal('<p class="sub">Preparando…</p>');
     var cuerpo = await G.CzAcciones._pdfCliente(E, H.caso);
     modal('<div class="no-imp"><h3>Vista del PDF al cliente</h3><p class="sub">Lo que ve el cliente: una línea por sección, sin costos ni subcontratistas.</p></div>' + cuerpo +
@@ -847,18 +1054,26 @@
     })();
     return ST.cargando[k];
   }
+  /** V1.32 (4) · el ORIGINAL de un adjunto como Blob (lo que está en la base, no una miniatura). */
+  async function blobDe(k) {
+    var u = await cargarUrl(k); if (!u) return null;
+    try { return await (await fetch(u)).blob(); } catch (e) { return null; }
+  }
+  function nombreDe(k) {
+    if (ST.nombres && ST.nombres[k]) return ST.nombres[k];
+    var a = adjuntosPorId()[k]; if (a && a.nombre) return a.nombre;
+    if (String(k).indexOf('l:') === 0) { var loc = k.slice(2), x = ST.salida.reduce(function (acc, y) { return acc || y.archivos.filter(function (z) { return z.local === loc; })[0]; }, null); if (x) return x.nombre; }
+    return 'archivo';
+  }
+  /** Visor a pantalla completa (WhatsApp): barras oscuras, Descargar el original, Compartir, deslizar, zoom. */
   function verFotos(grupo, k) {
-    var i = Math.max(0, grupo.indexOf(k));
-    var pinta = async function () {
-      modal('<div class="visor"><img alt=""><div class="vbar"><button class="boton" data-p="-1">‹</button><span>' + (i + 1) + ' / ' + grupo.length + '</span><button class="boton" data-p="1">›</button><button class="boton" data-cierra>Cerrar</button></div></div>', true);
-      var u = await cargarUrl(grupo[i]); var img = $('.visor img'); if (img && u) img.src = u;
-      $$('.visor [data-p]').forEach(function (b) { b.onclick = function () { i = (i + Number(b.dataset.p) + grupo.length) % grupo.length; pinta(); }; });
-    };
-    pinta();
+    var meta = adjuntosPorId();
+    var fotos = grupo.map(function (id) { var a = meta[id] || {}; return { id: id, nombre: nombreDe(id), cuando: a.created_at, de: a.autor ? nombreCorto(a.autor) : '' }; });
+    AR.visor(fotos, Math.max(0, grupo.indexOf(k)), { obtener: function (f) { return blobDe(f.id); }, aviso: toast });
   }
   async function bajar(k) {
-    var u = await cargarUrl(k); if (!u) return toast('No se pudo bajar el archivo.');
-    var a = document.createElement('a'); a.href = u; a.download = (ST.nombres && ST.nombres[k]) || 'archivo'; a.target = '_blank'; document.body.appendChild(a); a.click(); a.remove();
+    var b = await blobDe(k); if (!b) return toast('No se pudo bajar el archivo.');
+    AR.descargar(b, nombreDe(k));
   }
 
   // ── redactar: texto, archivos, voz ─────────────────────────────────────
@@ -909,22 +1124,194 @@
       '<div class="acc der"><button class="boton" data-cierra>Todavía no</button><button class="boton si" id="okCierre">Sí, ciérrala</button></div>');
     $('#okCierre').onclick = async function () { this.disabled = true; await fn(); cerrarModal(); };
   }
+  /** V1.32 (1a) · grabar igual que WhatsApp: basura · ● reloj · onda en vivo · pausa · enviar; en pausa se
+   *  escucha antes de mandar. La nota entra a la cola con la hora en que se EMPEZÓ a grabar (1b). */
   async function grabar() {
-    if (!Me.puedeGrabar()) return toast('Este navegador no deja grabar. Usa el 📎 para mandar un audio grabado.');
-    if (ST.rec) return;
-    try { ST.rec = await Me.grabar(); } catch (e) { ST.rec = null; return toast(e && e.name === 'NotAllowedError' ? 'Da permiso al micrófono para grabar.' : 'No se pudo grabar: ' + (e.message || e)); }
-    $('#grab').style.display = 'flex'; $('.compose').classList.add('grabando');
-    var reloj = setInterval(function () { if (!ST.rec) return clearInterval(reloj); $('#gT').textContent = dur((Date.now() - ST.rec.inicio) / 1000);
-      if (Date.now() - ST.rec.inicio > 10 * 60 * 1000) $('#gOk').click(); }, 250);
-    $('#gNo').onclick = function () { ST.rec.cancelar(); ST.rec = null; clearInterval(reloj); $('#grab').style.display = 'none'; $('.compose').classList.remove('grabando'); };
-    $('#gOk').onclick = async function () {
-      var r = await ST.rec.detener(); ST.rec = null; clearInterval(reloj); $('#grab').style.display = 'none'; $('.compose').classList.remove('grabando');
-      if (!r || r.duracion_s < 1) return toast('Muy corta: mantén grabando al menos un segundo.');
-      if (r.bytes > Me.TOPE) return toast('La nota pasa de 10 MB: grábala en partes.');
-      await Q.encolar(destino(), '', [r]); ST.irAbajo = true; await refrescarSalida();
-    };
+    if (!GR.puede()) return toast('Este navegador no deja grabar. Usa el 📎 para mandar un audio grabado.');
+    if (GR.activa('principal')) return;
+    try {
+      await GR.iniciar('principal', { alCambiar: pintarGrab, alTerminar: async function (r) {
+        if (!r || r.duracion_s < 1) return toast('Muy corta: mantén grabando al menos un segundo.');
+        if (r.bytes > Me.TOPE) return toast('La nota pasa de 10 MB: grábala en partes.');
+        await Q.encolar(destino(), '', [r], r.escrito_at); ST.irAbajo = true; await refrescarSalida();
+      } });
+    } catch (e) { pintarGrab(); return toast(e && e.name === 'NotAllowedError' ? 'Da permiso al micrófono para grabar.' : 'No se pudo grabar: ' + (e.message || e)); }
+  }
+  function pintarGrab() {
+    var c = $('.compose'), g = $('#grab'), on = GR.activa('principal');
+    c.classList.toggle('grabando', on);
+    var clave = on ? GR.fase('principal') : '';
+    if (g.dataset.k !== clave) { g.dataset.k = clave; g.innerHTML = on ? GR.html('principal') : ''; GR.enlazar(g); }
+    g.style.display = on ? 'flex' : 'none';
+    actualizarAbajo();
   }
   function autoAlto() { var i = $('#in'); i.style.height = 'auto'; i.style.height = Math.min(i.scrollHeight, 140) + 'px'; }
+
+  // ── V1.32 · ficha, empresa, prueba, editor de machote, vista en página ─
+  function hojaFicha() {
+    var c = (ST.hilo && ST.hilo.caso) || {}, e = EMPRESAS[claveEmpresa(c)] || EMPRESAS.mx_mxn;
+    var hecho = ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'hecha'; }).pop();
+    var fl = function (k, v) { return '<div class="fl"><span>' + esc(k) + '</span><div>' + v + '</div></div>'; };
+    modal('<h3>Ficha de la sesión</h3><p class="sub">Los mismos ids quedan en la carpeta del caso.</p><div class="ficha">' +
+      fl('Empresa', esc(e.n) + ' · company ' + e.id) +
+      fl('CRM', c.oportunidad_id ? '<a href="https://serviciosfts.odoo.com/odoo/crm/' + encodeURIComponent(c.oportunidad_id) + '" target="_blank" rel="noopener">Oportunidad ' + esc(c.oportunidad_id) + '</a>' : '— todavía sin oportunidad') +
+      fl('Machote', c.machote_folio || hecho ? '<a href="#" id="fMach">' + esc(c.machote_folio || (hecho.resultado || {}).folio || 'abrir') + (c.demo ? ' · PRUEBA' : '') + '</a>' : '— todavía no') +
+      fl('Orden (SO)', c.orden_nombre || c.orden_id ? esc(c.orden_nombre || c.orden_id) : '— (la emisión a Odoo sigue apagada, #387)') +
+      fl('Carpeta', esc(c.carpeta || '—')) +
+      fl('Nota en Odoo', '«Conceptualizada en la sesión ' + esc(c.titulo || '') + '»: se escribe cuando la emisión esté encendida.') +
+      '</div><div class="acc der"><button class="boton si" data-cierra>Listo</button></div>');
+    var fm = $('#fMach'); if (fm) fm.onclick = function (ev) { ev.preventDefault(); cerrarModal(); abrirEditor(hecho); };
+  }
+  function dlgEmpresa() {
+    var c = ST.hilo && ST.hilo.caso; if (!c) return;
+    var sel = claveEmpresa(c);
+    var v = velo('<div class="dlg" role="dialog" aria-label="Empresa y moneda"><h3>Empresa y moneda</h3><p>Define la moneda del machote y la empresa del borrador en Odoo. El motor dice qué tipo de cambio usó y de dónde salió.</p>' +
+      '<div class="emp-sel">' + selEmpresa(sel) + '</div><div class="acciones"><button id="dNo">Cancelar</button><button id="dSi">Cambiar</button></div></div>', true);
+    $$('[data-emp]', v).forEach(function (b) { b.onclick = function () { sel = b.dataset.emp; $$('[data-emp]', v).forEach(function (x) { x.classList.toggle('on', x === b); }); }; });
+    $('#dNo', v).onclick = cerrarVelo;
+    $('#dSi', v).onclick = async function () {
+      if (sel === claveEmpresa(c)) return cerrarVelo();
+      this.disabled = true; this.innerHTML = GIRO + 'cambiando…';
+      var r = await C.empresa(c.id, sel); cerrarVelo();
+      if (!r.ok) return aviso(r);
+      await refrescarSesiones();
+    };
+  }
+  async function marcarPrueba() {
+    var c = ST.hilo && ST.hilo.caso; if (!c) return;
+    var r = await C.prueba(c.id, !c.demo);
+    if (!r.ok) return aviso(r);
+    await refrescarSesiones();
+    toast(r.demo ? 'Es una prueba: no enseña. El motor marca lo ya escrito.' : 'Ya no es prueba: sí enseña.', 'Deshacer', function () { marcarPrueba(); });
+  }
+  /** 9b · el editor de machotes que YA existe (comercial/machote), en ventana, con la misma sesión. */
+  function abrirEditor(hecho) {
+    var c = (ST.hilo && ST.hilo.caso) || {}, r = (hecho && hecho.resultado) || {};
+    var id = r.id_local || c.machote_id || r.machote_id;
+    var p = $('#panel'); p.className = 'panel on';
+    p.innerHTML = '<div class="marco" role="dialog" aria-label="Editor de machotes"><div class="cabp"><button type="button" class="volver" id="pVolver">' + ico('atras', 's') + 'Volver al chat</button><b>' +
+      esc((r.folio || c.machote_folio || 'Machote') + (c.demo ? ' · PRUEBA' : '')) + ' · editor de machotes</b></div>' +
+      '<div class="cuerpo"><iframe title="Editor de machotes" src="../machote/index.html' + (id ? '#/m/' + encodeURIComponent(id) : '') + '"></iframe></div></div>';
+    $('#pVolver').onclick = function () { p.className = 'panel'; p.innerHTML = ''; toast('De regreso en el chat. Toca «Haz la cotización» y releo el machote como quedó.'); };
+  }
+  /** 9g · vista en página, solo a pedido: Lo considerado y Machote. Cada versión que se ve se guarda EN ESTE
+   *  TELÉFONO (localStorage) y se compara con la anterior. Las versiones del servidor piden la 0007. */
+  function versiones(caso, U) {
+    var k = 'cz_pag_' + caso, L = []; try { L = JSON.parse(localStorage.getItem(k) || '[]'); } catch (e) {}
+    if (U && U.trabajo_id && (!L.length || L[L.length - 1].trabajo_id !== U.trabajo_id)) {
+      // Una respuesta que solo trae BOM conserva los conceptos de la versión anterior.
+      var cs = (U.conceptos || []).length ? U.conceptos : (L.length ? L[L.length - 1].conceptos : ((ST.hilo && ST.hilo.propuesta && ST.hilo.propuesta.conceptos) || []));
+      L.push({ trabajo_id: U.trabajo_id, at: U.created_at || new Date().toISOString(), bom: U.bom || {}, machote: U.machote || null, conceptos: cs });
+      L = L.slice(-12); try { localStorage.setItem(k, JSON.stringify(L)); } catch (e) {}
+    }
+    return L;
+  }
+  function abrirPagina(que, comparar) {
+    var H = ST.hilo; if (!H) return;
+    var U = respConBom(H); if (!U.trabajo_id) U = H.propuesta || H.ultima;
+    var L = versiones(H.caso.id, U), v = L[L.length - 1] || { bom: {}, conceptos: [] }, a = L.length > 1 ? L[L.length - 2] : null, comp = comparar && a;
+    var dec = {}; (H.eventos || []).forEach(function (e) { if (e.concepto && (e.tipo === 'aceptar' || e.tipo === 'rechazar')) dec[e.concepto] = e; });
+    var cambio = function (x, y) { return comp && String(x) !== String(y) ? '<del>' + esc(y == null ? '—' : y) + '</del> <ins>' + esc(x == null ? '—' : x) + '</ins>' : esc(x == null ? '—' : x); };
+    var ant = function (lista, campo, val) { return comp ? ((lista || []).filter(function (z) { return z[campo] === val; })[0] || {}) : {}; };
+    var mat = (v.bom && v.bom.materiales) || [], mo = (v.bom && v.bom.mano_obra) || [];
+    var cons = !(v.conceptos || []).length ? '' : '<h3>Conceptos</h3><div class="scroll-x"><table class="tabla"><tr><th>#</th><th>Concepto</th><th>Origen</th><th>Estado</th></tr>' +
+      (v.conceptos || []).map(function (k) { var d = dec[k.id]; return '<tr><td>' + esc(k.id) + '</td><td>' + esc(k.concepto) + '</td><td>' + esc(k.origen || '') + '</td><td>' + (d ? (d.tipo === 'aceptar' ? 'aceptado' : 'rechazado · ' + esc(d.razon || '')) : 'sin decidir') + '</td></tr>'; }).join('') + '</table></div>';
+    cons += '<h3>BOM a costo</h3><div class="scroll-x"><table class="tabla"><tr><th>Descripción</th><th class="r">Qty</th><th class="r">P. unit.</th><th>Fuente</th><th>Tienda · existencia</th></tr>' +
+      mat.map(function (r) { var o = ant(a && a.bom && a.bom.materiales, 'descripcion', r.descripcion); var nuevo = comp && !o.descripcion;
+        return '<tr' + (comp && (nuevo || String(o.qty) !== String(r.qty) || String(o.pu) !== String(r.pu)) ? ' class="cambio"' : '') + '><td>' + (nuevo ? '<ins>' + esc(r.descripcion) + '</ins>' : esc(r.descripcion)) + (r.sku ? ' <span class="sku">' + esc(r.sku) + '</span>' : '') + '</td><td class="r">' + (nuevo ? esc(r.qty) : cambio(r.qty, o.qty)) +
+          '</td><td class="r">' + (r.pu == null ? '—' : nuevo ? esc(dinero(r.pu)) : cambio(dinero(r.pu), o.pu == null ? null : dinero(o.pu))) + '</td><td>' +
+          (r.liga && /^https?:/.test(r.liga) ? '<a href="' + esc(r.liga) + '" target="_blank" rel="noopener">' + esc(r.fuente || r.liga) + '</a>' : esc(r.fuente || '')) + '</td><td>' + esc(r.tienda_existencia || r.tienda || '') + '</td></tr>'; }).join('') + '</table></div>' +
+      '<h3>Mano de obra</h3><div class="scroll-x"><table class="tabla"><tr><th>Rol</th><th class="r">Pers.</th><th class="r">Días</th><th class="r">H/día</th><th>Origen de los insumos</th></tr>' +
+      mo.map(function (r) { var o = ant(a && a.bom && a.bom.mano_obra, 'rol', r.rol);
+        return '<tr><td>' + esc(r.rol) + '</td><td class="r">' + cambio(r.personas, o.personas) + '</td><td class="r">' + cambio(r.dias, o.dias) + '</td><td class="r">' + cambio(r.horas_dia, o.horas_dia) + '</td><td>' + esc(r.origen || '') + '</td></tr>'; }).join('') + '</table></div>';
+    var Mq = v.machote || {}, Ma = (a && a.machote) || {};
+    var mach = (Mq.secciones || []).length ? '<h3>Machote al ' + Math.round((Mq.margen_objetivo || 0.4) * 100) + ' % · ' + esc(Mq.moneda || (H.caso.moneda || '')) + '</h3><div class="scroll-x"><table class="tabla"><tr><th>Sección</th><th class="r">Costo</th><th class="r">Precio</th><th class="r">Margen</th></tr>' +
+      Mq.secciones.map(function (s2) { var o = ant(Ma.secciones, 'nombre', s2.nombre);
+        return '<tr><td>' + esc(s2.nombre) + '</td><td class="r">' + cambio(dinero(s2.costo), o.nombre ? dinero(o.costo) : null) + '</td><td class="r">' + cambio(dinero(s2.precio), o.nombre ? dinero(o.precio) : null) + '</td><td class="r">' + ((s2.margen || 0) * 100).toFixed(1) + ' %</td></tr>'; }).join('') +
+      '<tr class="tot"><td>Total</td><td class="r">' + cambio(dinero(Mq.costo), Ma.costo == null || !comp ? null : dinero(Ma.costo)) + '</td><td class="r">' + cambio(dinero(Mq.precio), Ma.precio == null || !comp ? null : dinero(Ma.precio)) + '</td><td class="r">' + ((Mq.margen || 0) * 100).toFixed(1) + ' %</td></tr></table></div>' +
+      ((Mq.opciones || []).length ? '<p class="nota">Aparte (el cliente escoge una): ' + Mq.opciones.map(function (o) { return esc(o.nombre) + ' ' + dinero(o.precio); }).join(' · ') + '</p>' : '')
+      : '<p class="vacio">Todavía no hay machote en esta sesión.</p>';
+    var p = $('#panel'); p.className = 'panel on';
+    p.innerHTML = '<div class="marco" role="dialog" aria-label="Vista en página"><div class="cabp"><button type="button" class="volver" id="pVolver">' + ico('atras', 's') + 'Volver al chat</button><b>Vista en página · v' + L.length + '</b></div>' +
+      '<div class="cuerpo"><div class="pagina"><h2>' + esc(H.caso.titulo) + '</h2><div class="sub">Generada a pedido · v' + L.length + (v.at ? ' del ' + esc(diaDe(v.at) + ' ' + hora(v.at)) : '') + (H.caso.demo ? ' · PRUEBA' : '') + '</div>' +
+      '<div class="tabs"><button class="' + (que === 'considerado' ? 'on' : '') + '" data-tab="considerado">Lo considerado</button><button class="' + (que === 'machote' ? 'on' : '') + '" data-tab="machote">Machote</button>' +
+      (a ? '<button data-comp="1" class="' + (comp ? 'on' : '') + '">' + (comp ? 'Comparando con v' + (L.length - 1) : 'Comparar con v' + (L.length - 1)) + '</button>' : '') +
+      '<button data-imp="1">Descargar PDF</button></div>' + (que === 'machote' ? mach : cons) + '</div></div></div>';
+    $('#pVolver').onclick = function () { p.className = 'panel'; p.innerHTML = ''; };
+    $$('[data-tab]', p).forEach(function (b) { b.onclick = function () { abrirPagina(b.dataset.tab, comparar); }; });
+    $$('[data-comp]', p).forEach(function (b) { b.onclick = function () { abrirPagina(que, !comparar); }; });
+    $$('[data-imp]', p).forEach(function (b) { b.onclick = function () { document.body.classList.add('imprimiendo-pag'); G.print(); setTimeout(function () { document.body.classList.remove('imprimiendo-pag'); }, 500); }; });
+  }
+
+  // ── V1.32 (4) · «Archivos, enlaces y docs.», bajar todo y exportar ─────
+  /** La respuesta más reciente con BOM o machote (la última del hilo puede ser solo una aclaración). */
+  function respConBom(H) {
+    return [H && H.ultima, H && H.propuesta].filter(function (x) { return x && ((x.bom && Object.keys(x.bom).length) || x.machote); })[0] || {};
+  }
+  function ligasDelChat() {
+    var H = ST.hilo || {}, L = [], vistas = {};
+    var agrega = function (url, titulo, texto, cuando, msg) { url = String(url).replace(/[).,;»]+$/, ''); if (vistas[url]) return; vistas[url] = 1; L.push({ url: url, titulo: titulo, texto: texto, cuando: cuando, msg: msg }); };
+    (H.mensajes || []).forEach(function (m) { (String(m.texto || '').match(/https?:\/\/[^\s<>"'`|]+/g) || []).forEach(function (u) { agrega(u, '', String(m.texto).replace(/\s+/g, ' ').slice(0, 140), m.created_at, m.id); }); });
+    var U = respConBom(H), mm = (H.mensajes || []).filter(function (m) { return m.trabajo_id === U.trabajo_id && m.rol !== 'usuario'; })[0];
+    (((U.bom || {}).materiales) || []).forEach(function (r, i) { if (r.liga && /^https?:/.test(r.liga)) agrega(r.liga, r.descripcion + (r.sku ? ' · ' + r.sku : ''),
+      'BOM renglón ' + (i + 1) + ' · ' + (r.fuente || '') + (r.tienda_existencia ? ' · ' + r.tienda_existencia : ''), U.created_at, mm && mm.id); });
+    return L;
+  }
+  function datosArchivos() {
+    var H = ST.hilo || {}, A = H.adjuntos || [], U = respConBom(H), Mq = U.machote || {};
+    var docs = A.filter(function (a) { return a.clase !== 'foto'; }).map(function (a) { return { id: a.id, nombre: a.nombre, cuando: a.created_at, bytes: a.bytes, tipo: (String(a.nombre).split('.').pop() || '') }; });
+    if (Mq.entrega) docs.push({ id: 'g-pdf', nombre: 'PDF al cliente · ' + (H.caso.titulo || '') + '.pdf', tipo: 'pdf', cuando: U.created_at, generado: true, abrir: verPdf });
+    if (U.bom && Object.keys(U.bom).length) docs.push({ id: 'g-pag', nombre: 'Vista en página · ' + (H.caso.titulo || '') + '.html', tipo: 'html', cuando: U.created_at, generado: true, abrir: function () { abrirPagina('considerado'); } });
+    return { titulo: 'Archivos, enlaces y docs.', zipNombre: slugDe(H.caso && H.caso.titulo),
+      fotos: A.filter(function (a) { return a.clase === 'foto'; }).map(function (a) { return { id: a.id, nombre: a.nombre, cuando: a.created_at, bytes: a.bytes, de: nombreCorto(a.autor) }; }),
+      docs: docs, enlaces: ligasDelChat() };
+  }
+  function slugDe(t) { return sinAcento(t || 'chat').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50) || 'chat'; }
+  function opArchivos() {
+    return { obtener: function (x) { return blobDe(x.id); }, aviso: toast,
+      miniatura: function (x) { return cargarUrl(x.id); },
+      irAMensaje: function (id) { var e = $('#msgs [data-msg="' + id + '"]'); if (e) { e.scrollIntoView({ block: 'center' }); e.classList.add('brilla'); } } };
+  }
+  function abrirArchivos() { if (ST.hilo) AR.pantalla(datosArchivos(), opArchivos()); }
+  async function todoMultimedia(prefijo) {
+    var A = (ST.hilo && ST.hilo.adjuntos) || [], L = [];
+    for (var i = 0; i < A.length; i++) { var b = await blobDe(A[i].id); if (b) L.push({ nombre: (prefijo || '') + A[i].nombre, blob: b }); }
+    return { L: L, total: A.length };
+  }
+  async function bajarMultimedia() {
+    if (!ST.hilo) return;
+    toast('Preparando el ZIP con todo lo multimedia…');
+    var r = await todoMultimedia('');
+    if (!r.L.length) return toast(r.total ? 'No se pudo bajar ningún archivo.' : 'Esta sesión no tiene fotos, audios ni archivos.');
+    AR.descargar(await AR.zip(r.L), slugDe(ST.hilo.caso.titulo) + '-multimedia.zip');
+    toast('Listo: ' + r.L.length + ' de ' + r.total + ' archivos en el ZIP');
+  }
+  function chatParaExportar() {
+    var H = ST.hilo, meta = adjuntosPorId();
+    return { titulo: H.caso.titulo, empresa: (EMPRESAS[claveEmpresa(H.caso)] || {}).n, exportado_por: yo(),
+      mensajes: (H.mensajes || []).map(function (m) {
+        var adj = (m.adjuntos || []).map(function (a) { return Object.assign({}, a, meta[a.id] || meta[a] || {}); });
+        return { cuando: m.escrito_at || m.created_at, quien: m.rol === 'usuario' ? nombreCorto(m.autor) : m.rol === 'sistema' ? 'Sistema' : 'Conceptualizador',
+          texto: m.texto || '', transcripciones: adj.map(function (a) { return a.transcripcion; }).filter(Boolean),
+          adjuntos: adj.map(function (a) { return { nombre: a.nombre, clase: a.clase, bytes: a.bytes }; }) }; }) };
+  }
+  function dlgExportar() {
+    if (!ST.hilo) return;
+    var v = velo('<div class="dlg" role="dialog" aria-label="Exportar chat"><h3>Exportar chat</h3><p>Historial con fecha y hora, quién escribió, el texto, las transcripciones y la lista de adjuntos. Nunca lleva llaves ni datos internos del motor.</p>' +
+      '<div class="emp-sel"><button type="button" data-f="txt" class="on"><span class="rad"></span><span>TXT<small>Para leer o pegar</small></span></button><button type="button" data-f="json"><span class="rad"></span><span>JSON<small>Para otra herramienta</small></span></button></div>' +
+      '<label class="chk"><input type="checkbox" id="xMedia"> Con todo lo multimedia (ZIP)</label><div class="acciones"><button id="xNo">Cancelar</button><button id="xSi">Exportar</button></div></div>', true);
+    var f = 'txt';
+    $$('[data-f]', v).forEach(function (b) { b.onclick = function () { f = b.dataset.f; $$('[data-f]', v).forEach(function (x) { x.classList.toggle('on', x === b); }); }; });
+    $('#xNo', v).onclick = cerrarVelo;
+    $('#xSi', v).onclick = async function () {
+      var con = $('#xMedia', v).checked, blob = AR.exportar(chatParaExportar(), f), base = 'chat-' + slugDe(ST.hilo.caso.titulo);
+      this.disabled = true; this.innerHTML = GIRO + 'exportando…';
+      if (!con) { cerrarVelo(); AR.descargar(blob, base + '.' + f); return toast('Exporté el chat en ' + f.toUpperCase()); }
+      var r = await todoMultimedia('multimedia/'); cerrarVelo();
+      AR.descargar(await AR.zip([{ nombre: base + '.' + f, blob: blob }].concat(r.L)), base + '.zip');
+      toast('Exporté el chat y ' + r.L.length + ' archivos en un ZIP');
+    };
+  }
 
   // ── menú, aprendió, modal ──────────────────────────────────────────────
   function menuSesion() {
@@ -997,7 +1384,7 @@
     var n = (r.hilo.mensajes || []).filter(function (m) { return m.rol !== 'usuario' && m.autor !== 'acuse'; }).length;
     if (ST.vistos && ST.vistos.id === s.id && n > ST.vistos.n) avisarLlegada();
     ST.vistos = { id: s.id, n: n };
-    ST.hilo = r.hilo; pintarChat();
+    ST.hilo = r.hilo; registrarPasos(r.hilo); revisarDictados(); pintarChat();
     // Recién mandado: si el motor ya tiene trabajo, la siguiente consulta no espera los 20 s.
     if (enCurso() && ST.sondeoMs > 2500) sondear();
   }
@@ -1017,7 +1404,8 @@
     try { if (navigator.vibrate) navigator.vibrate(120); } catch (e) {}
     try { if (document.hidden && G.Notification && Notification.permission === 'granted') new Notification('Conceptualizador', { body: 'Llegó la respuesta.' }); } catch (e) {}
   }
-  function enCurso() { return ST.hilo && (ST.hilo.trabajos || []).some(function (t) { return t.estado === 'pendiente' || t.estado === 'tomado'; }); }
+  function enCurso() { return (ST.hilo && (ST.hilo.trabajos || []).some(function (t) { return t.estado === 'pendiente' || t.estado === 'tomado'; })) ||
+    Object.keys(ST.borr).some(function (k) { return ST.borr[k].adjunto; }); }
   /** Consulta sola: cada 2.5 s mientras el motor trabaja (se ve el paso), cada 20 s si no. */
   function sondear(ya) {
     clearTimeout(ST.sondeo);
@@ -1046,8 +1434,11 @@
     $('#bEnviar').onclick = enviar;
     $('#fArch').onchange = function () { agregarArchivos(this.files); this.value = ''; };
     $('#fCam').onchange = function () { agregarArchivos(this.files); this.value = ''; };
-    G.addEventListener('online', function () { pintarSenal(); pintarCabecera(); });
+    G.addEventListener('online', function () { pintarSenal(); pintarCabecera(); revisarDictados(); });
     G.addEventListener('offline', function () { pintarSenal(); pintarCabecera(); });
+    $('#bAbajo').insertAdjacentHTML('afterbegin', ico('abajo2'));
+    $('#bAbajo').onclick = function () { var M = $('#msgs'); M.scrollTo({ top: M.scrollHeight, behavior: 'smooth' }); ST.abajoN = 0; };
+    $('#msgs').addEventListener('scroll', actualizarAbajo, { passive: true });
     document.addEventListener('visibilitychange', function () { if (!document.hidden) sondear(true); });
     Q.oir(function (e) { refrescarSalida(); if (e && e.enviado) cargarHilo(); });
     await Q.iniciar();

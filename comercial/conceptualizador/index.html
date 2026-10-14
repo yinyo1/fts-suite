@@ -250,6 +250,192 @@
     body.imprimiendo .no-imp{display:none!important}
     html,body{height:auto;overflow:visible}
   }
+  /* ↓ prototipos/comun/cz-v132.css de fts-conceptualizador, sin cambios (fuente única) */
+  /*@@CZ-V132-INICIO@@*/
+/* ═══ V1.32 · grabadora tipo WhatsApp, visor, «Archivos, enlaces y docs.» (fuente única: prototipos/comun/cz-v132.css) ═══ */
+/* grabando: basura · ● reloj · onda en vivo · pausa · enviar */
+.grab{display:flex;align-items:center;gap:6px;flex:1;min-width:0;background:var(--sup);border-radius:24px;box-shadow:0 1px 1px rgba(11,20,26,.08);padding:4px 4px 4px 6px;min-height:48px}
+.grab .g-bt{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#54656f;flex-shrink:0;background:transparent;border:0}
+.grab .g-bt .ico{width:22px;height:22px}
+.grab .g-basura{color:#8696a0}
+.grab .g-pausa,.grab .g-reanuda{color:var(--rojo)}
+.grab .g-reanuda{border:2px solid #f3c2c2}
+.grab .g-enviar{background:var(--acento);color:#fff;width:44px;height:44px}
+.grab .g-enviar .ico{stroke:#fff;stroke-width:2}
+.grab .g-enviar:disabled{opacity:.6}
+.grab .g-rec{display:flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums;font-size:15px;color:#3b4a54;flex-shrink:0}
+.grab .g-punto{width:10px;height:10px;border-radius:50%;background:var(--rojo);animation:g-late 1s infinite}
+@keyframes g-late{50%{opacity:.25}}
+.grab .g-onda{flex:1;min-width:0;height:28px;display:flex;align-items:center;justify-content:flex-end;gap:2px;overflow:hidden}
+.grab .g-onda i{flex:1;min-width:2px;max-width:3px;border-radius:2px;background:#8696a0}
+.grab.pausa .g-onda{justify-content:space-between}
+.grab.pausa .g-onda i{background:#b7c3bb}.grab.pausa .g-onda i.ya{background:var(--acento-osc)}
+.grab .g-dur{font-size:13px;color:var(--sec);font-variant-numeric:tabular-nums;font-weight:500;flex-shrink:0}
+.grab .g-oir{color:#54656f}
+/* en chiquito: la cajita de corregir o rechazar */
+.grab.chico{min-height:40px;padding:2px 2px 2px 4px;gap:3px;box-shadow:none;border:1px solid #ccd;background:#fff}
+.grab.chico .g-bt{width:32px;height:32px}.grab.chico .g-bt .ico{width:18px;height:18px}
+.grab.chico .g-enviar{width:36px;height:36px}
+.grab.chico .g-rec{font-size:13px;gap:4px}.grab.chico .g-punto{width:8px;height:8px}
+.grab.chico .g-onda{height:22px}
+/* lo que está en el teléfono y todavía no llega al servidor */
+.pend-env{display:inline-flex;align-items:center;gap:3px;font-size:11px;color:#8a5300;background:#fff1d6;border-radius:8px;padding:0 6px;line-height:16px;margin-left:4px;vertical-align:1px}
+.pend-env svg{width:11px;height:11px}
+/* «Listo, sigue»: el spinner circular chico DENTRO del botón (antes la regla del pie lo estiraba a una barra) */
+.pie-lote > .txt-lote{flex:1;min-width:150px;font-size:12.5px;color:var(--sec)}
+.bt .giro,.bt-envia .giro{width:14px!important;height:14px!important;min-width:0!important;flex:0 0 14px!important}
+/* visor a pantalla completa: barras oscuras arriba y abajo que salen con un toque */
+.czv{position:fixed;inset:0;z-index:200;background:#000;color:#fff;touch-action:none;user-select:none;-webkit-user-select:none}
+.czv-pista{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.czv-pista img{max-width:100%;max-height:100%;object-fit:contain;transform-origin:center;will-change:transform;pointer-events:none}
+.czv-cargando{color:#aebac1;font-size:14px}
+.czv-arriba,.czv-abajo{position:absolute;left:0;right:0;display:flex;align-items:center;gap:10px;background:rgba(17,27,33,.92);transition:transform .18s,opacity .18s;padding:0 8px}
+.czv-arriba{top:0;height:56px;padding-top:env(safe-area-inset-top)}
+.czv-abajo{bottom:0;justify-content:center;gap:12px;padding:10px 12px calc(10px + env(safe-area-inset-bottom))}
+.czv:not(.barras) .czv-arriba{transform:translateY(-100%);opacity:0}
+.czv:not(.barras) .czv-abajo{transform:translateY(100%);opacity:0}
+.czv-bt{min-width:44px;height:44px;border-radius:22px;display:flex;align-items:center;justify-content:center;gap:6px;color:#e9edef;background:transparent;border:0;font:inherit;font-size:14px}
+.czv-bt .ico{width:24px;height:24px;stroke:#e9edef}
+.czv-bt.grande{padding:0 14px;border:1px solid #3b4a54}
+.czv-tit{flex:1;min-width:0}.czv-tit b{display:block;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.czv-tit small{display:block;font-size:12px;color:#aebac1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.czv-n{font-size:13px;color:#aebac1;flex-shrink:0;padding-right:6px}
+.czv-descargar{height:48px;border-radius:24px;padding:0 22px;display:flex;align-items:center;gap:8px;background:#25d366;color:#0b141a;font:inherit;font-size:16px;font-weight:700;border:0}
+.czv-descargar .ico{width:22px;height:22px;stroke:#0b141a;stroke-width:2.2}
+.czv-lado{position:absolute;top:50%;margin-top:-24px;width:44px;height:48px;border-radius:24px;background:rgba(17,27,33,.55);color:#fff;font-size:30px;line-height:44px;border:0;display:none}
+@media(min-width:900px){.czv.barras .czv-lado{display:block}}
+.czv-lado.izq{left:10px}.czv-lado.der{right:10px}
+/* «Archivos, enlaces y docs.» */
+.cza{position:fixed;inset:0;z-index:150;background:var(--sup,#fff);display:flex;flex-direction:column}
+@media(min-width:900px){.cza{left:auto;width:min(480px,100vw);box-shadow:-6px 0 24px rgba(11,20,26,.18)}}
+.cza-cab{height:56px;display:flex;align-items:center;gap:8px;padding:0 6px;border-bottom:1px solid var(--linea,#e9edef);flex-shrink:0}
+.cza-cab b{flex:1;min-width:0;font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cza-bt{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#54656f;background:transparent;border:0;flex-shrink:0}
+.cza-bt .ico{width:22px;height:22px}
+.cza-in{flex:1;min-width:0;border:0;outline:0;font:inherit;font-size:16px;background:transparent;padding:8px 4px}
+.cza-tabs{display:flex;border-bottom:1px solid var(--linea,#e9edef);flex-shrink:0}
+.cza-tabs button{flex:1;height:44px;font:inherit;font-size:14px;font-weight:600;color:var(--sec,#667781);background:transparent;border:0;border-bottom:3px solid transparent}
+.cza-tabs button.on{color:var(--acento-osc,#008069);border-bottom-color:var(--acento-osc,#008069)}
+.cza-cuerpo{flex:1;overflow:auto;padding-bottom:16px}
+.cza-g{font-size:13px;font-weight:600;color:var(--sec,#667781);padding:12px 14px 6px;margin:0}
+.cza-rej{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:0 2px}
+.cza-mini{aspect-ratio:1/1;background:#dfe5e7 center/cover no-repeat;border:0;position:relative;padding:0}
+.cza-mini.sel{outline:3px solid var(--acento-osc,#008069);outline-offset:-3px}
+.cza-ok{position:absolute;right:6px;top:6px;width:22px;height:22px;border-radius:50%;background:var(--acento-osc,#008069);display:flex;align-items:center;justify-content:center}
+.cza-ok .ico{width:14px;height:14px;stroke:#fff;stroke-width:3}
+.cza-doc{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 14px;background:transparent;border:0;border-bottom:1px solid #f0f2f5;position:relative;font:inherit}
+.cza-doc.sel{background:#e7f6ee}
+.cza-doc .cza-ok{position:static;flex-shrink:0}
+.cza-ext{width:40px;height:46px;border-radius:6px;background:#8696a0;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;flex-shrink:0}
+.cza-ext.t-pdf{background:#e2584f}.cza-ext.t-html{background:#f08c1e}.cza-ext.t-json,.cza-ext.t-txt{background:#5c6bc0}.cza-ext.t-webm,.cza-ext.t-m4a,.cza-ext.t-ogg{background:#00897b}
+.cza-dtx{flex:1;min-width:0}.cza-dtx b{display:block;font-size:14.5px;font-weight:500;overflow-wrap:anywhere}
+.cza-dtx small{display:block;font-size:12px;color:var(--sec,#667781);margin-top:2px}
+.cza-liga{padding:8px 14px;border-bottom:1px solid #f0f2f5}
+.cza-tarjeta{display:flex;gap:10px;align-items:flex-start;text-decoration:none;color:inherit;background:var(--sup2,#f0f2f5);border-radius:10px;padding:8px}
+.cza-lic{width:40px;height:40px;border-radius:8px;background:#dfe5e7;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cza-lic .ico{width:20px;height:20px}
+.cza-tarjeta b{display:block;font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.cza-tarjeta small{display:block;font-size:12px;color:var(--sec,#667781)}
+.cza-tarjeta small.u{color:#027eb5;overflow-wrap:anywhere}
+.cza-de{display:block;width:100%;text-align:left;font:inherit;font-size:13px;color:#3b4a54;background:transparent;border:0;padding:6px 2px 0;overflow-wrap:anywhere}
+.cza-vacio{text-align:center;color:var(--sec,#667781);font-size:14px;padding:40px 16px}
+/* precio web: tienda o sucursal, existencia y SKU */
+.tienda{display:inline-block;font-size:11.5px;color:#3b4a54;background:#eef3f1;border-radius:6px;padding:0 6px;margin:2px 4px 0 0;line-height:18px}
+.tienda.sin{color:#8a5300;background:#fff1d6}
+a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
+.sku{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--sec)}
+/* documento en una burbuja (igual que la suite) y mensaje al que lleva un enlace */
+.b .doc{display:flex;gap:10px;align-items:center;background:rgba(11,20,26,.05);border-radius:10px;padding:9px;min-width:210px;max-width:100%;cursor:pointer;margin:2px 0}
+.b .doc .ic{width:34px;height:42px;background:#e53935;color:#fff;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0}
+.b .doc b{font-size:13.5px;display:block;word-break:break-all}.b .doc small{font-size:11.5px;color:var(--sec)}
+.brilla{animation:brilla 1.6s}
+@keyframes brilla{0%,60%{background:rgba(255,235,59,.35)}100%{background:transparent}}
+  /*@@CZ-V132-FIN@@*/
+
+  /* ═══ V1.32 · piezas de la pantalla (prototipo aprobado chat-v3, puntos 3 a 9) ═══ */
+  .chip-prueba{font-size:10.5px;font-weight:700;color:#8a5300;background:#fff1d6;border-radius:6px;padding:0 6px;line-height:17px;flex-shrink:0}
+  #grab{display:none;flex:1;min-width:0}
+  .compose.grabando .caja,.compose.grabando #bEnviar{display:none}
+  /* conceptos: el renglón NUNCA se angosta; el cuadro de la razón va DEBAJO, a todo lo ancho */
+  .cn{border-top:1px solid #eee;padding:8px 0}.cn:first-of-type{border-top:0}
+  .cn .fil{display:flex;gap:8px;align-items:flex-start}
+  .cn .n{font-size:11px;font-weight:800;color:var(--muted2);min-width:26px;padding-top:2px}
+  .cn .d{flex:1;min-width:0;font-size:13.5px}.cn small{display:block;color:#667781;font-size:11.5px}
+  .cn small.mal{color:var(--red)}
+  .decide{display:flex;gap:6px;flex-shrink:0}
+  .decide button,.bt{height:36px;min-width:44px;border-radius:18px;border:1px solid var(--acento-osc);color:var(--acento-osc);background:#fff;font-weight:600;font-size:13.5px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+  .decide button.no,.bt.no{border-color:#e0a1a1;color:var(--red)}
+  .decide button.si,.bt.si{background:var(--acento-osc);color:#fff}
+  .bt:disabled,.decide button:disabled{opacity:.6;cursor:default}
+  .bt.enviando,.decide button.enviando,.acc button.enviando{opacity:1;background:#e7f6ee;color:var(--acento-osc);border-color:#bfe3cf}
+  .err-bt{display:block;font-size:12px;color:var(--red);margin:4px 0 0 34px}
+  .preg .err-bt{margin-left:0}
+  .caja-razon{margin:8px 0 2px 34px;background:var(--sup2);border-radius:12px;padding:8px}
+  .preg .caja-razon{margin-left:0}
+  .caja-razon label{display:block;font-size:12px;font-weight:600;color:var(--sec);margin-bottom:4px}
+  .caja-razon .lin{display:flex;gap:6px;align-items:flex-end}
+  .caja-razon textarea{flex:1;min-width:0;border:1px solid #ccd;border-radius:12px;padding:8px 10px;font:inherit;font-size:16px;resize:none;min-height:44px;background:#fff}
+  .mic-dict{width:44px;height:44px;border-radius:50%;background:#fff;border:1px solid #ccd;color:#54656f;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .caja-razon .estado{font-size:12px;color:var(--sec);margin-top:4px;min-height:16px;display:flex;align-items:center;gap:6px}
+  .caja-razon .acc-r{display:flex;justify-content:flex-end;gap:6px;margin-top:6px}
+  .pie-lote{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--linea)}
+  /* «escribiendo…» que se despliega con los pasos de ese trabajo (6a) */
+  .escribe-b{display:inline-flex;flex-direction:column;align-items:stretch;border-radius:var(--radio);border-top-left-radius:6px;background:var(--entra);box-shadow:var(--sombra);max-width:min(88%,460px);text-align:left}
+  .escribe-b .top{display:flex;align-items:center;gap:8px;padding:10px 12px}
+  .escribe-b .pts{display:inline-flex;gap:4px}
+  .escribe-b .pts i{width:7px;height:7px;border-radius:50%;background:#8696a0;animation:pt 1.3s infinite}
+  .escribe-b .pts i:nth-child(2){animation-delay:.18s}.escribe-b .pts i:nth-child(3){animation-delay:.36s}
+  .escribe-b em{font-style:normal;font-size:13px;color:var(--sec);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .escribe-b .flecha{color:var(--ter);transition:transform .15s}.escribe-b.abierto .flecha{transform:rotate(180deg)}
+  .escribe-b .pasos{display:none;border-top:1px solid var(--linea);padding:6px 12px 10px;font-size:13px}
+  .escribe-b.abierto .pasos{display:block}
+  .paso{display:flex;gap:8px;align-items:flex-start;padding:3px 0;color:#3b4a54}
+  .paso .m{width:16px;flex-shrink:0;padding-top:1px;color:var(--acento-osc);display:flex;justify-content:center}
+  .paso.ya{color:var(--sec)}.paso .pt-tx{flex:1;min-width:0}
+  .paso .t{margin-left:auto;font-size:11px;color:var(--ter);font-variant-numeric:tabular-nums;flex-shrink:0}
+  /* ir hasta abajo (como WhatsApp): arriba del micrófono, sin tapar la barra; no arrastra (6b) */
+  .abajo{position:absolute;right:12px;width:44px;height:44px;border-radius:50%;background:var(--sup);color:#54656f;box-shadow:0 2px 6px rgba(11,20,26,.22);display:none;align-items:center;justify-content:center;z-index:5}
+  .abajo.on{display:flex}.abajo .badge{position:absolute;top:-6px;right:-4px}
+  /* botones fijos: el del modo, o crear / abrir el machote y pedir la cotización */
+  #fijo{gap:8px;flex-wrap:wrap}
+  /* el editor de machotes de siempre en ventana, y la vista en página */
+  .panel{position:fixed;inset:0;z-index:120;display:none;background:rgba(11,20,26,.42)}
+  .panel.on{display:block}
+  .panel .marco{position:absolute;inset:0;background:var(--sup);display:flex;flex-direction:column}
+  @media(min-width:900px){.panel .marco{inset:28px 4%;border-radius:16px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.3)}}
+  .panel .cabp{height:52px;display:flex;align-items:center;gap:6px;padding:0 6px;border-bottom:1px solid var(--linea);flex-shrink:0}
+  .panel .cabp b{flex:1;min-width:0;font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .panel .volver{height:36px;border-radius:18px;padding:0 14px 0 8px;display:flex;align-items:center;gap:4px;color:var(--acento-osc);font-weight:600;font-size:14px}
+  .panel .cuerpo{flex:1;overflow:auto;background:#f4f5f7}
+  .panel iframe{width:100%;height:100%;border:0;display:block;background:#fff}
+  .pagina{padding:16px;max-width:900px;margin:0 auto;font-size:14px;background:#fff;min-height:100%}
+  .pagina h2{font-size:20px;margin-bottom:2px}.pagina h3{font-size:15px;margin:16px 0 6px;color:var(--wa-osc)}
+  .pagina .sub{color:var(--sec);font-size:12.5px;margin-bottom:10px}
+  .pagina ins{background:#d9fdd3;text-decoration:none;padding:0 2px;border-radius:3px}
+  .pagina del{background:#fde7e7;color:#9b2c2c;padding:0 2px;border-radius:3px}
+  .pagina .tabs{display:flex;gap:6px;margin:8px 0;flex-wrap:wrap}
+  .pagina .tabs button{height:32px;border-radius:16px;padding:0 12px;background:var(--sup2);font-size:13px;font-weight:600}
+  .pagina .tabs button.on{background:#d9fdd3;color:#0a5c3c}
+  .pagina .scroll-x{overflow-x:auto}.pagina table{min-width:560px}
+  .pagina a{color:var(--acento-osc);font-weight:600;text-decoration:none}
+  .tabla tr.cambio td{background:#fff3c4}
+  /* empresa y moneda (menú inicial y ⋮), exportar, ficha */
+  .emp-sel{display:flex;flex-direction:column;gap:6px;margin:8px 0 4px}
+  .emp-sel button{display:flex;align-items:center;gap:10px;border:1px solid var(--linea);border-radius:12px;padding:10px 12px;background:#fff;text-align:left;font-size:14.5px}
+  .emp-sel button.on{border-color:var(--acento-osc);background:#f0faf4}
+  .emp-sel button .rad{width:18px;height:18px;border-radius:50%;border:2px solid #9aa7ae;flex-shrink:0}
+  .emp-sel button.on .rad{border:5px solid var(--acento-osc)}
+  .emp-sel button small{display:block;font-size:11.5px;color:var(--sec)}
+  .chk{display:flex;gap:8px;align-items:center;font-size:14px;margin-top:10px}.chk input{width:auto}
+  .ficha .fl{display:flex;gap:10px;padding:9px 0;font-size:14.5px;align-items:baseline;border-top:1px solid #f0f0f0}
+  .ficha .fl span{color:var(--sec);min-width:96px;font-size:13px}
+  .ficha .fl div{flex:1;min-width:0;overflow-wrap:anywhere}.ficha a{color:var(--acento-osc);font-weight:600;text-decoration:none}
+  @media print{
+    body.imprimiendo-pag>*:not(#panel){display:none!important}
+    body.imprimiendo-pag .panel{position:static;background:#fff}
+    body.imprimiendo-pag .panel .marco{position:static;box-shadow:none}
+    body.imprimiendo-pag .cabp,body.imprimiendo-pag .tabs{display:none!important}
+  }
   @media(min-width:900px){
     #lista{width:380px;flex-shrink:0;display:flex!important;border-right:1px solid var(--linea)}
     .chat{display:flex}
@@ -267,6 +453,7 @@
     <header class="cab" id="ch"></header>
     <div id="senal"></div>
     <div id="msgs"></div>
+    <button class="abajo" id="bAbajo" type="button" aria-label="Ir al último mensaje"><span class="badge" id="nAbajo" style="display:none"></span></button>
     <div id="bandeja"></div>
     <div id="prep"></div>
     <div id="fijo"><button id="bFijo" type="button"></button></div>
@@ -277,7 +464,7 @@
         <textarea id="in" rows="1" placeholder="Mensaje" maxlength="20000" aria-label="Mensaje"></textarea>
         <label class="btn-ic" title="Tomar foto" aria-label="Cámara" id="lCam"><input type="file" id="fCam" accept="image/*" capture="environment" multiple hidden></label>
       </div>
-      <div id="grab"><span class="pt"></span><span id="gT">0:00</span><button class="boton" id="gNo">Cancelar</button><button class="boton si" id="gOk">Enviar</button></div>
+      <div id="grab"></div>
       <button class="redondo" id="bEnviar" aria-label="Grabar nota de voz"></button>
     </div>
   </section>
@@ -285,11 +472,14 @@
 <div class="velo" id="velo"></div>
 <div class="cz-toast" id="toast" role="status" aria-live="polite"></div>
 <div class="modal" id="modal"></div>
-<script src="js/cz-cliente.js?v=V1.31"></script>
-<script src="js/cz-medios.js?v=V1.31"></script>
-<script src="js/cz-cola.js?v=V1.31"></script>
-<script src="js/cz-acciones.js?v=V1.31"></script>
-<script src="js/cz-app.js?v=V1.31"></script>
+<div class="panel" id="panel"></div>
+<script src="js/cz-cliente.js?v=V1.32"></script>
+<script src="js/cz-medios.js?v=V1.32"></script>
+<script src="js/cz-grabadora.js?v=V1.32"></script>
+<script src="js/cz-archivos.js?v=V1.32"></script>
+<script src="js/cz-cola.js?v=V1.32"></script>
+<script src="js/cz-acciones.js?v=V1.32"></script>
+<script src="js/cz-app.js?v=V1.32"></script>
 <script>window.CzApp.arrancar();</script>
 </body>
 </html>
