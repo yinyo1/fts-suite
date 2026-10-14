@@ -1,6 +1,7 @@
 {
-  "version": "V1.00",
+  "version": "V1.10",
   "historial": [
+    { "version": "V1.10", "nota": "Chat tipo WhatsApp: una sesión por cotización con estado, notas de voz, fotos reducidas a 1600 px y PDFs subidos uno por uno con avance, cola sin señal en el teléfono con la hora real, botones del motor (confirmar suposición, ya la mandé, cerrar) y /cierre." },
     { "version": "V1.00", "nota": "MVP: chat con el motor, conceptos con razón obligatoria, BOM a costo con fuente y fórmula, Lo que aprendió (Sesión 1 del conceptualizador)." }
   ]
 }

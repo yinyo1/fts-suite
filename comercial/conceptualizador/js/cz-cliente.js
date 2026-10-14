@@ -8,13 +8,16 @@
  * un secreto aquí sería decoración—: amarra el pedido a su token, a su
  * momento y a su nonce. La protección real la da el servidor: firma del JWT,
  * ventana de 5 min y nonce único guardado en Postgres (anti-replay).
- * Misma cadena que n8n/codigo/suite-verificar.js en fts-conceptualizador.
+ *
+ * Firma v2: además firma el sha256 del adjunto (la base comprueba que el
+ * contenido cuadre con él), la acción y su resultado. Misma cadena que
+ * n8n/codigo/suite-verificar.js en fts-conceptualizador.
  */
 (function (G) {
   'use strict';
   var N8N_DEFAULT = 'https://primary-production-5c3c.up.railway.app';
   var RUTA = '/webhook/conceptualizador/suite';
-  var TIMEOUT_MS = 20000;
+  var TIMEOUT_MS = 20000, TIMEOUT_SUBIR_MS = 180000;
   var ERR_SESION = ['TOKEN_EXPIRADO', 'TOKEN_MALFORMADO', 'TOKEN_AUSENTE', 'PAYLOAD_ILEGIBLE',
                     'SCOPE_INSUFICIENTE', 'TOKEN_SIN_SUJETO', 'SIN_SESION'];
 
@@ -33,6 +36,13 @@
     var k = await crypto.subtle.importKey('raw', enc.encode(token), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
     return b64url(await crypto.subtle.sign('HMAC', k, enc.encode(canon)));
   }
+  function S(x) { return x === undefined || x === null ? '' : '' + x; }
+  function canonica(c) {
+    return [c.ts, c.nonce, c.modo, S(c.caso_id), S(c.texto), S(c.tipo), S(c.concepto), S(c.razon), S(c.sha256), S(c.accion_id),
+      S(c.decision), S(c.cliente_id), S(c.adjunto_id), S(c.escrito_at),
+      Array.isArray(c.adjuntos) ? c.adjuntos.filter(function (a) { return typeof a === 'string'; }).join(',') : '',
+      JSON.stringify(c.resultado === undefined ? null : c.resultado), JSON.stringify(c.datos === undefined ? null : c.datos)].join('\n');
+  }
 
   /** Clasifica en un solo lugar (fts-suite CLAUDE.md §20 #12b):
    *  sesion → volver a entrar · red → esperar · servidor → avisar. */
@@ -43,40 +53,59 @@
     return 'servidor';
   }
 
-  async function pedir(modo, campos) {
-    var S = G.SuiteAuth, token = S && S.getToken();
+  /** Un solo camino de salida. `progreso(0..1)` solo aplica al subir (XHR da avance de carga; fetch no). */
+  async function pedir(modo, campos, opc) {
+    opc = opc || {};
+    var A = G.SuiteAuth, token = A && A.getToken();
     if (!token) return { ok: false, error: 'SIN_SESION', clase: 'sesion' };
     var c = Object.assign({ token: token, modo: modo, ts: Date.now(), nonce: nonce() }, campos || {});
-    var canon = [c.ts, c.nonce, modo, c.caso_id || '', c.texto || '', c.tipo || '', c.concepto || '', c.razon || ''].join('\n');
-    try { c.firma = await firmar(token, canon); }
+    try { c.firma = await firmar(token, canonica(c)); }
     catch (e) { return { ok: false, error: 'SIN_CRIPTO', clase: 'servidor', mensaje: 'Este navegador no puede firmar el pedido.' }; }
-    var ctl = new AbortController(), reloj = setTimeout(function () { ctl.abort(); }, TIMEOUT_MS), r;
-    try {
-      var res = await fetch(base() + RUTA, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(c), signal: ctl.signal });
-      try { r = await res.json(); }
-      catch (e) { r = { ok: false, error: 'RESPUESTA_INVALIDA', mensaje: 'El servidor respondió algo que no se entiende (HTTP ' + res.status + ').' }; }
-      if (r && r.code === 404 && r.ok === undefined) r = { ok: false, error: 'NO_PUBLICADO', mensaje: 'El servicio del conceptualizador todavía no está encendido en n8n.' };
-    } catch (e) {
-      r = { ok: false, error: 'SIN_RED', mensaje: 'No se pudo contactar al servidor. Revisa tu conexión.' };
-    } finally { clearTimeout(reloj); }
+    var r = await transportar(JSON.stringify(c), opc.timeout || TIMEOUT_MS, opc.progreso);
     r = r || { ok: false, error: 'RESPUESTA_VACIA' };
+    if (r.code === 404 && r.ok === undefined) r = { ok: false, error: 'NO_PUBLICADO', mensaje: 'El servicio del conceptualizador todavía no está encendido en n8n.' };
     r.clase = clase(r);
     if (r.clase === 'sesion') {
-      // Se borra SOLO la llave de sesión y se manda al login.
-      try { S.logout(); sessionStorage.setItem('fts_suite_destino', location.href); } catch (e) {}
+      // Se borra SOLO la llave de sesión y se manda al login. La cola sin
+      // señal vive en IndexedDB y sobrevive: al volver a entrar se manda sola.
+      try { A.logout(); sessionStorage.setItem('fts_suite_destino', location.href); } catch (e) {}
       location.replace('../../shared/login.html' + (r.error === 'SCOPE_INSUFICIENTE' ? '?falta=conceptualizador:usar' : ''));
     }
     return r;
   }
 
+  function transportar(cuerpo, timeout, progreso) {
+    return new Promise(function (listo) {
+      var x = new XMLHttpRequest(), hecho = false;
+      var fin = function (r) { if (!hecho) { hecho = true; listo(r); } };
+      x.open('POST', base() + RUTA, true);
+      x.setRequestHeader('Content-Type', 'application/json');
+      x.timeout = timeout;
+      if (progreso && x.upload) x.upload.onprogress = function (e) { if (e.lengthComputable) progreso(e.loaded / e.total); };
+      x.onload = function () {
+        var r; try { r = JSON.parse(x.responseText); }
+        catch (e) { r = { ok: false, error: x.status === 413 ? 'ADJUNTO_GRANDE' : 'RESPUESTA_INVALIDA',
+          mensaje: x.status === 413 ? 'El servidor no aceptó un archivo tan grande.' : 'El servidor respondió algo que no se entiende (HTTP ' + x.status + ').' }; }
+        fin(r);
+      };
+      // Un 502 del proxy llega aquí sin CORS: se ve igual que «sin red» (§20 #15). Se reintenta.
+      x.onerror = function () { fin({ ok: false, error: 'SIN_RED', mensaje: 'No se pudo contactar al servidor. Revisa tu conexión.' }); };
+      x.ontimeout = function () { fin({ ok: false, error: 'SIN_RED', mensaje: 'El servidor tardó demasiado. Se reintenta solo.' }); };
+      try { x.send(cuerpo); } catch (e) { fin({ ok: false, error: 'SIN_RED' }); }
+    });
+  }
+
   G.CzCliente = {
+    nueva: function (campos) { return pedir('nueva', campos); },
+    subir: function (campos, progreso) { return pedir('subir', campos, { timeout: TIMEOUT_SUBIR_MS, progreso: progreso }); },
     enviar: function (campos) { return pedir('enviar', campos); },
     evento: function (campos) { return pedir('evento', campos); },
+    accion: function (campos) { return pedir('accion', campos); },
+    verAdjunto: function (id) { return pedir('ver_adjunto', { adjunto_id: id }, { timeout: TIMEOUT_SUBIR_MS }); },
     hilo: function (casoId) { return pedir('hilo', { caso_id: casoId }); },
     casos: function () { return pedir('casos'); },
     aprendio: function () { return pedir('aprendio'); },
     estado: function () { return pedir('estado'); },
-    _canonica: function (c) { return [c.ts, c.nonce, c.modo, c.caso_id || '', c.texto || '', c.tipo || '', c.concepto || '', c.razon || ''].join('\n'); }
+    _canonica: canonica
   };
 })(window);
