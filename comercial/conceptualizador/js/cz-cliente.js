@@ -137,6 +137,10 @@
     desarchivar: function (casoId) { return pedir('desarchivar', { caso_id: casoId }); },
     fijar: function (casoId) { return pedir('fijar', { caso_id: casoId }); },
     desfijar: function (casoId) { return pedir('desfijar', { caso_id: casoId }); },
+    // V1.32 (0006): «Listo, sigue» de la palomeada, «Es una prueba» (si/no) y la empresa de la sesión.
+    palomeadaLista: function (casoId) { return pedir('palomeada_lista', { caso_id: casoId }); },
+    prueba: function (casoId, si) { return pedir('prueba', { caso_id: casoId, texto: si ? 'si' : 'no' }); },
+    empresa: function (casoId, clave) { return pedir('empresa', { caso_id: casoId, texto: clave }); },
     _canonica: canonica
   };
 })(window);

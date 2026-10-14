@@ -13,11 +13,16 @@
  *   · sesión nueva sin señal: se crea local y se da de alta al volver la red.
  *   · si IndexedDB no está (modo privado, sitio bloqueado), la cola vive en
  *     memoria y la pantalla avisa que no se cierre la pestaña.
+ *   · V1.32: la sesión nueva lleva su empresa y moneda; una nota de voz guarda
+ *     la hora en que se EMPEZÓ a grabar; y lo que se dicta en una cajita de
+ *     corregir o rechazar sin señal se guarda aquí (almacén `dictados`) y se
+ *     sube solo al volver la red.
  */
 (function (G) {
   'use strict';
   var C = G.CzCliente, Me = G.CzMedios;
-  var DB = null, MEMORIA = { salida: {}, casos: {} }, persistente = false;
+  var DB = null, MEMORIA = { salida: {}, casos: {}, dictados: {} }, persistente = false;
+  var LLAVE = { salida: 'cliente_id', casos: 'local_id', dictados: 'k' };
   var oyentes = [], corriendo = false, espera = null, progreso = {};
 
   function actor() { try { var s = G.SuiteAuth.getSession(); return s && s.actor; } catch (e) { return null; } }
@@ -26,11 +31,12 @@
   function abrir() {
     return new Promise(function (ok) {
       try {
-        var q = indexedDB.open('fts-conceptualizador', 1);
+        var q = indexedDB.open('fts-conceptualizador', 2);
         q.onupgradeneeded = function () {
           var d = q.result;
           if (!d.objectStoreNames.contains('salida')) d.createObjectStore('salida', { keyPath: 'cliente_id' });
           if (!d.objectStoreNames.contains('casos')) d.createObjectStore('casos', { keyPath: 'local_id' });
+          if (!d.objectStoreNames.contains('dictados')) d.createObjectStore('dictados', { keyPath: 'k' });
         };
         q.onsuccess = function () { DB = q.result; persistente = true; ok(); };
         q.onerror = function () { ok(); };
@@ -49,7 +55,7 @@
     });
   }
   async function poner(almacen, obj) {
-    MEMORIA[almacen][almacen === 'salida' ? obj.cliente_id : obj.local_id] = obj;
+    MEMORIA[almacen][obj[LLAVE[almacen]]] = obj;
     if (DB) await tx(almacen, 'readwrite', function (s) { return s.put(obj); });
   }
   async function quitar(almacen, llave) {
@@ -66,15 +72,15 @@
   /** Nueva sesión. Con red se da de alta de inmediato; sin red queda local. */
   async function nuevaSesion(datos) {
     var c = { local_id: id('caso'), actor: actor(), titulo: datos.titulo || 'Cotización nueva', cliente: datos.cliente || '',
-              pais: datos.pais || 'mx', modo: datos.modo || 'libre', caso_id: null, creado: Date.now() };
+              pais: datos.pais || 'mx', modo: datos.modo || 'libre', empresa: datos.empresa || null, caso_id: null, creado: Date.now() };
     await poner('casos', c); avisar(); correr();
     return c;
   }
 
   /** Encola un mensaje con texto y/o archivos ya preparados por CzMedios. */
-  async function encolar(destino, texto, archivos) {
+  async function encolar(destino, texto, archivos, escritoAt) {
     var it = { cliente_id: id('msg'), actor: actor(), caso_id: destino.caso_id || null, caso_local: destino.local_id || null,
-               texto: texto || '', escrito_at: Date.now(), estado: 'pendiente', error: null, intentos: 0,
+               texto: texto || '', escrito_at: escritoAt || Date.now(), estado: 'pendiente', error: null, intentos: 0,
                archivos: (archivos || []).map(function (a) { return { local: id('adj'), nombre: a.nombre, mime: a.mime, clase: a.clase,
                  bytes: a.bytes, duracion_s: a.duracion_s || null, blob: a.blob, sha256: null, adjunto_id: null }; }) };
     await poner('salida', it); avisar(); correr();
@@ -97,7 +103,7 @@
       var casos = await todos('casos');
       for (var i = 0; i < casos.length; i++) {
         var c = casos[i]; if (c.caso_id) continue;
-        var r = await C.nueva({ titulo: c.titulo, cliente: c.cliente, pais: c.pais, modo_sesion: c.modo || 'libre' });
+        var r = await C.nueva({ titulo: c.titulo, cliente: c.cliente, pais: c.pais, modo_sesion: c.modo || 'libre', empresa: c.empresa || undefined });
         if (r.ok) { c.caso_id = r.caso_id; await poner('casos', c); avisar(); }
         else if (r.clase === 'red') { red = true; break; }
       }
@@ -143,6 +149,10 @@
     if (quedan) programar(red ? 15000 : (ya ? 500 : 3000));
   }
 
+  /* V1.32 · dictados de las cajitas sin señal: { k, caso_id, nota:{blob,mime,duracion_s,nombre,escrito_at} } */
+  async function guardarDictado(d) { d.actor = actor(); await poner('dictados', d); avisar(); }
+  async function quitarDictado(k) { await quitar('dictados', k); avisar(); }
+
   G.addEventListener('online', function () { correr(true); });
 
   G.CzCola = {
@@ -150,6 +160,7 @@
     persistente: function () { return persistente; },
     nuevaSesion: nuevaSesion, encolar: encolar, reintentar: reintentar, descartar: descartar, correr: correr,
     salida: function () { return todos('salida'); }, casosLocales: function () { return todos('casos'); },
+    dictados: function () { return todos('dictados'); }, guardarDictado: guardarDictado, quitarDictado: quitarDictado,
     progreso: function (local) { return progreso[local]; },
     oir: function (f) { oyentes.push(f); },
     casoDeLocal: async function (local) { return (await todos('casos')).filter(function (x) { return x.local_id === local; })[0] || null; }

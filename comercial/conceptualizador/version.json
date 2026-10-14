@@ -1,6 +1,10 @@
 {
-  "version": "V1.31",
+  "version": "V1.32",
   "historial": [
+    {
+      "version": "V1.32",
+      "nota": "Lo del prototipo aprobado (#4, puntos 3 a 9): palomeada en lote con «Listo, sigue» (las decisiones viajan juntas, un solo trabajo), los botones dicen «enviando…» con su spinner hasta que el servidor contesta y regresan con «Sin señal: no se mandó» si falla, corregir y rechazar debajo del renglón y con voz (el borrador sobrevive al refresco), «escribiendo…» se despliega con los pasos del motor, botón ⇊ con contador sin arrastrar, empresa y moneda (FTS México · MXN / USD, FTS USA · USD) al abrir y desde ⋮, «Es una prueba» con chip PRUEBA, «Todo listo, crear machote», el editor de machotes de siempre en ventana, «Haz la cotización», ficha de la sesión, vista en página con versiones. Ajustes del visto bueno: la grabación es igual a WhatsApp (basura · ● reloj · onda en vivo · pausa · enviar; en pausa se escucha) en la caja y en chiquito en las cajitas; sin señal todo dice «pendiente de enviar» y sale solo con su hora real (también lo dictado); el spinner de «Listo, sigue» es el circular chico. Pendientes del #4: visor de foto a pantalla completa con Descargar el original, Compartir, deslizar y zoom; ⋮ «Archivos, enlaces y docs.»; descargar todo lo multimedia; exportar el chat en JSON o TXT (con o sin multimedia); cada precio web con tienda, existencia y SKU."
+    },
     {
       "version": "V1.31",
       "nota": "Look del prototipo aprobado (#4): encabezado delgado de 52 px con la versión visible en la lista, en Archivadas y en el chat; la barra de la suite ya no va dentro del módulo (la ← de la lista regresa a la suite). Nota de voz con ▶/❚❚, onda que avanza, tocar o arrastrar para saltar, 1×/1.5×/2× y la transcripción en la burbuja; el audio ya no se reinicia cuando el chat se refresca. «Escribiendo…» y los puntitos solo cuando el motor va a contestar. Renombrar, archivar (nunca borra, con Deshacer) y desarchivar, solo el autor o un admin; fijar arriba por persona; Archivadas como fila arriba de la lista; filtro por usuario y búsqueda. Mantener presionada una tarjeta abre sus opciones."
