@@ -3,7 +3,7 @@
   "historial": [
     {
       "version": "V1.30",
-      "nota": "Sesión nueva con menú de tres opciones (voy a hacer un levantamiento · ya tengo el levantamiento · seguir una cotización) y país. Cada modo trae su botón fijo («Ya terminé, cotiza» o «Ya es todo») que manda lo mismo que escribirlo. El motor dice qué está haciendo («escuchando el audio», «viendo 12 fotos») y la pantalla consulta cada 2.5 s mientras trabaja. Acuses al instante del servidor."
+      "nota": "Sesión nueva con menú de tres opciones (voy a hacer un levantamiento · ya tengo el levantamiento · seguir una cotización) y país. Cada modo trae su botón fijo («Ya terminé, cotiza» o «Ya es todo») que manda lo mismo que escribirlo. El motor dice qué está haciendo («escuchando el audio», «viendo 12 fotos») y la pantalla consulta cada 2.5 s mientras trabaja. Acuses al instante del servidor. El disparador escrito exige la palabra completa: «cotiza» dispara, «cotización de…» no."
     },
     {
       "version": "V1.21",

@@ -22,7 +22,8 @@
     levantamiento: { titulo: 'Cotización nueva', boton: 'Ya es todo',
       intro: 'Mándame todo (fotos, audios, PDFs, notas) y cuando acabes toca «Ya es todo».' }
   };
-  var DISPARO = /^\s*(ya\s+es\s+todo|es\s+todo|ya\s+termin|cotiza)/i;
+  // Igual que es_disparador() de la base: «cotiza» sí, «cotización…» no.
+  var DISPARO = /^\s*(ya\s+es\s+todo|es\s+todo|ya\s+termin|cotiza(?![a-záéíóúñ]))/i;
   var C = G.CzCliente, Q = G.CzCola, Me = G.CzMedios;
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
