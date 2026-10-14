@@ -61,7 +61,7 @@
     var c = Object.assign({ token: token, modo: modo, ts: Date.now(), nonce: nonce() }, campos || {});
     try { c.firma = await firmar(token, canonica(c)); }
     catch (e) { return { ok: false, error: 'SIN_CRIPTO', clase: 'servidor', mensaje: 'Este navegador no puede firmar el pedido.' }; }
-    var r = await transportar(JSON.stringify(c), opc.timeout || TIMEOUT_MS, opc.progreso);
+    var r = await transportar(RUTA, JSON.stringify(c), opc.timeout || TIMEOUT_MS, opc.progreso);
     r = r || { ok: false, error: 'RESPUESTA_VACIA' };
     if (r.code === 404 && r.ok === undefined) r = { ok: false, error: 'NO_PUBLICADO', mensaje: 'El servicio del conceptualizador todavía no está encendido en n8n.' };
     r.clase = clase(r);
@@ -74,11 +74,11 @@
     return r;
   }
 
-  function transportar(cuerpo, timeout, progreso) {
+  function transportar(ruta, cuerpo, timeout, progreso) {
     return new Promise(function (listo) {
       var x = new XMLHttpRequest(), hecho = false;
       var fin = function (r) { if (!hecho) { hecho = true; listo(r); } };
-      x.open('POST', base() + RUTA, true);
+      x.open('POST', base() + ruta, true);
       x.setRequestHeader('Content-Type', 'application/json');
       x.timeout = timeout;
       if (progreso && x.upload) x.upload.onprogress = function (e) { if (e.lengthComputable) progreso(e.loaded / e.total); };
@@ -95,7 +95,31 @@
     });
   }
 
+  /** Otros webhooks de la suite (machote-guardar, oportunidades, orden-crear-v2):
+   *  el token va en el cuerpo, como en el resto de la suite. */
+  async function conToken(ruta, cuerpo, timeout) {
+    var A = G.SuiteAuth, token = A && A.getToken();
+    if (!token) return { ok: false, error: 'SIN_SESION', clase: 'sesion' };
+    return cerrar(await transportar(ruta, JSON.stringify(Object.assign({ token: token }, cuerpo || {})), timeout || 30000));
+  }
+  function cerrar(r) {
+    r = r || { ok: false, error: 'RESPUESTA_VACIA' };
+    if (r.code === 404 && r.ok === undefined) r = { ok: false, error: 'NO_PUBLICADO', mensaje: 'Ese servicio todavía no está encendido en n8n.' };
+    r.clase = clase(r); return r;
+  }
+
+  /** Alta en Odoo (conceptualizador/odoo-alta): firmado con el token como el chat. */
+  async function alta(campos) {
+    var A = G.SuiteAuth, token = A && A.getToken();
+    if (!token) return { ok: false, error: 'SIN_SESION', clase: 'sesion' };
+    var c = Object.assign({ token: token, ts: Date.now(), nonce: nonce() }, campos);
+    c.firma = await firmar(token, [c.ts, c.nonce, 'alta', S(c.tipo), S(c.empresa_id), S(c.nombre), S(c.puesto), S(c.email), S(c.telefono)].join('\n'));
+    return cerrar(await transportar('/webhook/conceptualizador/odoo-alta', JSON.stringify(c), 30000));
+  }
+
   G.CzCliente = {
+    alta: alta,
+    suite: conToken,
     nueva: function (campos) { return pedir('nueva', campos); },
     subir: function (campos, progreso) { return pedir('subir', campos, { timeout: TIMEOUT_SUBIR_MS, progreso: progreso }); },
     enviar: function (campos) { return pedir('enviar', campos); },

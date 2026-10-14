@@ -1,7 +1,17 @@
 {
-  "version": "V1.10",
+  "version": "V1.20",
   "historial": [
-    { "version": "V1.10", "nota": "Chat tipo WhatsApp: una sesión por cotización con estado, notas de voz, fotos reducidas a 1600 px y PDFs subidos uno por uno con avance, cola sin señal en el teléfono con la hora real, botones del motor (confirmar suposición, ya la mandé, cerrar) y /cierre." },
-    { "version": "V1.00", "nota": "MVP: chat con el motor, conceptos con razón obligatoria, BOM a costo con fuente y fórmula, Lo que aprendió (Sesión 1 del conceptualizador)." }
+    {
+      "version": "V1.20",
+      "nota": "Botones que escriben, siempre con tu clic: alta de contacto o empresa en Odoo (busca antes de crear), crear el machote a tu nombre ligado a la oportunidad, y el borrador en Odoo detrás del mismo interruptor que el machote (#387). Vista del PDF al cliente con una línea por sección, sin costos, imprimible, y correo para copiar."
+    },
+    {
+      "version": "V1.10",
+      "nota": "Chat tipo WhatsApp: una sesión por cotización con estado, notas de voz, fotos reducidas a 1600 px y PDFs subidos uno por uno con avance, cola sin señal en el teléfono con la hora real, botones del motor (confirmar suposición, ya la mandé, cerrar) y /cierre."
+    },
+    {
+      "version": "V1.00",
+      "nota": "MVP: chat con el motor, conceptos con razón obligatoria, BOM a costo con fuente y fórmula, Lo que aprendió (Sesión 1 del conceptualizador)."
+    }
   ]
 }

@@ -13,7 +13,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.10';
+  var VERSION = 'V1.20';
   var C = G.CzCliente, Q = G.CzCola, Me = G.CzMedios;
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
@@ -261,6 +261,13 @@
         ((Mq.opciones || []).length ? '<p class="nota">Aparte (el cliente escoge una): ' + Mq.opciones.map(function (o) { return esc(o.nombre) + ' ' + dinero(o.precio); }).join(' · ') + '</p>' : '') +
         '<p class="nota">Calculado con el motor del machote de la suite (calc.js ' + esc((Mq.calc && Mq.calc.version) || '') + '). Para cambiar secciones, márgenes o la mano de obra, dímelo aquí.</p></div>';
     }
+    if (Mq && Mq.entrega) {
+      h += '<div class="carta"><h4>📄 Para el cliente</h4><p class="nota">Una línea por sección, sin costos internos ni subcontratistas. Revísalo antes de mandarlo.</p>' +
+        '<div class="acc"><button class="si" data-pdf="1">Ver PDF al cliente</button></div>' +
+        '<h4 style="margin-top:10px">✉️ Correo para copiar · no se envía nada desde aquí</h4>' +
+        '<textarea class="copia" readonly>' + esc(Mq.entrega.correo) + '</textarea>' +
+        '<div class="acc"><button class="si" data-copia="1">Copiar correo</button></div></div>';
+    }
     var B = U.bom || {}, mat = B.materiales || [], mo = B.mano_obra || [];
     if (mat.length || mo.length) {
       h += '<details class="carta"><summary><b>BOM a costo</b> · ' + mat.length + ' renglones + ' + mo.length + ' de mano de obra</summary>';
@@ -320,6 +327,8 @@
     $$('[data-conf]', M).forEach(function (b) { b.onclick = function () { resolver(b.dataset.conf, 'hecha', { confirma: true }, b); }; });
     $$('[data-corr]', M).forEach(function (b) { b.onclick = function () { pedirTexto(b.closest('.acc'), '¿Qué es lo correcto?', 'Mandar', function (v) { return resolver(b.dataset.corr, 'descartada', { correccion: v }, b); }); }; });
     $$('[data-hacer]', M).forEach(function (b) { b.onclick = function () { hacer(b.dataset.hacer, b); }; });
+    $$('[data-pdf]', M).forEach(function (b) { b.onclick = verPdf; });
+    $$('[data-copia]', M).forEach(function (b) { b.onclick = function () { copiar(b.closest('.carta').querySelector('textarea.copia').value, b); }; });
     $$('[data-descartar]', M).forEach(function (b) { b.onclick = function () { resolver(b.dataset.descartar, 'descartada', {}, b); }; });
   }
   function pedirTexto(lugar, ph, boton, fn) {
@@ -360,6 +369,20 @@
       if (!r || !r.ok) { if (r && r.mensaje) toast(r.mensaje); b.disabled = false; return; }
       await resolver(id, 'hecha', r.resultado || {}, null);
     } catch (e) { toast('No se pudo: ' + (e && e.message || e)); b.disabled = false; }
+  }
+
+  async function verPdf() {
+    var H = ST.hilo, U = H && (H.propuesta || H.ultima), E = U && U.machote && U.machote.entrega; if (!E) return;
+    modal('<p class="sub">Preparando…</p>');
+    var cuerpo = await G.CzAcciones._pdfCliente(E, H.caso);
+    modal('<div class="no-imp"><h3>Vista del PDF al cliente</h3><p class="sub">Lo que ve el cliente: una línea por sección, sin costos ni subcontratistas.</p></div>' + cuerpo +
+      '<div class="acc der no-imp"><button class="boton" data-cierra>Cerrar</button><button class="boton si" id="bImp">Imprimir o guardar PDF</button></div>');
+    $('#bImp').onclick = function () { document.body.classList.add('imprimiendo'); G.print(); setTimeout(function () { document.body.classList.remove('imprimiendo'); }, 500); };
+  }
+  function copiar(t, b) {
+    var hecho = function () { b.textContent = '✓ Copiado'; setTimeout(function () { b.textContent = 'Copiar correo'; }, 2500); };
+    try { navigator.clipboard.writeText(t).then(hecho, function () { viejo(); }); } catch (e) { viejo(); }
+    function viejo() { var ta = b.closest('.carta').querySelector('textarea.copia'); ta.removeAttribute('readonly'); ta.select(); try { document.execCommand('copy'); hecho(); } catch (e) { toast('Selecciona el texto y cópialo.'); } ta.setAttribute('readonly', ''); }
   }
 
   // ── adjuntos: ver, tocar, bajar ────────────────────────────────────────
