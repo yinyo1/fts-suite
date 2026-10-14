@@ -223,7 +223,8 @@ BEGIN
              jsonb_build_object('antes', concat_ws(', ', v_c.proyecto_ciudad, v_c.proyecto_estado), 'despues', concat_ws(', ', v_ciu, v_est)), v_actor);
     v_ev := (v_r->>'evento_id')::bigint; v_trab := nullif(v_r->>'trabajo_id','')::bigint;
   END IF;
-  v_acuse := 'Proyecto en ' || concat_ws(', ', v_ciu, v_est) || '. ' ||
+  -- Sin doble punto cuando el estado ya termina en punto («Saltillo, Coah.»).
+  v_acuse := 'Proyecto en ' || rtrim(concat_ws(', ', v_ciu, v_est), '.') || '. ' ||
              CASE WHEN v_trab IS NOT NULL THEN 'Reviso tiendas, fletes y viáticos con esa ciudad.' ELSE 'Busco precios y tiendas de ahí.' END;
   INSERT INTO conceptualizador.mensaje (caso_id, rol, autor, texto) VALUES (v_c.id, 'motor', 'acuse', v_acuse);
   RETURN jsonb_build_object('ok', true, 'caso_id', v_c.id, 'proyecto', jsonb_build_object('ciudad', v_ciu, 'estado', v_est, 'pais', v_pais),

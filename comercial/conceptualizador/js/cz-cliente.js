@@ -141,6 +141,11 @@
     palomeadaLista: function (casoId) { return pedir('palomeada_lista', { caso_id: casoId }); },
     prueba: function (casoId, si) { return pedir('prueba', { caso_id: casoId, texto: si ? 'si' : 'no' }); },
     empresa: function (casoId, clave) { return pedir('empresa', { caso_id: casoId, texto: clave }); },
+    // V1.34 (0007): ciudad del proyecto (en `datos`, firmado; nunca coordenadas) y «¿Qué me falta?».
+    // Con un servidor viejo regresan MODO_DESCONOCIDO y la pantalla lo dice en una línea.
+    ciudad: function (casoId, proyecto) { return pedir('ciudad', { caso_id: casoId, datos: { proyecto: proyecto } }); },
+    confirmarCiudad: function (casoId) { return pedir('ciudad', { caso_id: casoId, datos: { confirmar: true } }); },
+    queFalta: function (casoId) { return pedir('que_falta', { caso_id: casoId }); },
     _canonica: canonica
   };
 })(window);
