@@ -130,6 +130,13 @@
     casos: function () { return pedir('casos'); },
     aprendio: function () { return pedir('aprendio'); },
     estado: function () { return pedir('estado'); },
+    /* V1.31 (db 0005): la sesión a mano. El nombre nuevo viaja en `texto`, que ya
+     * va en la firma. Quién puede qué lo decide la base con el actor del token. */
+    renombrar: function (casoId, nombre) { return pedir('renombrar', { caso_id: casoId, texto: nombre }); },
+    archivar: function (casoId) { return pedir('archivar', { caso_id: casoId }); },
+    desarchivar: function (casoId) { return pedir('desarchivar', { caso_id: casoId }); },
+    fijar: function (casoId) { return pedir('fijar', { caso_id: casoId }); },
+    desfijar: function (casoId) { return pedir('desfijar', { caso_id: casoId }); },
     _canonica: canonica
   };
 })(window);

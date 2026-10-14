@@ -1,6 +1,10 @@
 {
-  "version": "V1.30",
+  "version": "V1.31",
   "historial": [
+    {
+      "version": "V1.31",
+      "nota": "Look del prototipo aprobado (#4): encabezado delgado de 52 px con la versión visible en la lista, en Archivadas y en el chat; la barra de la suite ya no va dentro del módulo (la ← de la lista regresa a la suite). Nota de voz con ▶/❚❚, onda que avanza, tocar o arrastrar para saltar, 1×/1.5×/2× y la transcripción en la burbuja; el audio ya no se reinicia cuando el chat se refresca. «Escribiendo…» y los puntitos solo cuando el motor va a contestar. Renombrar, archivar (nunca borra, con Deshacer) y desarchivar, solo el autor o un admin; fijar arriba por persona; Archivadas como fila arriba de la lista; filtro por usuario y búsqueda. Mantener presionada una tarjeta abre sus opciones."
+    },
     {
       "version": "V1.30",
       "nota": "Sesión nueva con menú de tres opciones (voy a hacer un levantamiento · ya tengo el levantamiento · seguir una cotización) y país. Cada modo trae su botón fijo («Ya terminé, cotiza» o «Ya es todo») que manda lo mismo que escribirlo. El motor dice qué está haciendo («escuchando el audio», «viendo 12 fotos») y la pantalla consulta cada 2.5 s mientras trabaja. Acuses al instante del servidor. El disparador escrito exige la palabra completa: «cotiza» dispara, «cotización de…» no."

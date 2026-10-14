@@ -1,5 +1,11 @@
 /* ═══ Conceptualizador · pantalla tipo WhatsApp ═══
  *
+ * V1.31 · el look del prototipo aprobado (fts-conceptualizador prototipos/
+ * chat-v2.html, issue #4): encabezado delgado con la versión, nota de voz con
+ * onda que avanza, salto y velocidad, «escribiendo…» solo cuando el motor va a
+ * contestar, y la sesión a mano: renombrar, archivar, desarchivar y fijar
+ * (fijar es de cada quien). Filtro por usuario. Lo demás es V1.30.
+ *
  * Una sesión por cotización. Lista de sesiones con su estado (abierta ·
  * enviada · cerrada · archivada) y el chat con el motor: texto, notas de voz,
  * fotos (muchas) y PDFs. Lo que el motor propone como botón (confirmar una
@@ -13,7 +19,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.30';
+  var VERSION = 'V1.31';
   /* V1.30 · los dos modos de una sesión nueva (Fase 9). El botón fijo manda
    * EXACTAMENTE la frase que se escribiría: el disparador es el mismo. */
   var MODOS = {
@@ -30,17 +36,60 @@
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var ST = { sel: null, casos: [], locales: [], salida: [], hilo: null, motor: null, filtro: 'vivas', aprendio: null,
-             urls: {}, cargando: {}, bandeja: [], rec: null, sondeo: null, vistos: null, decidiendo: {} };
+             urls: {}, cargando: {}, bandeja: [], rec: null, sondeo: null, vistos: null, decidiendo: {},
+             // V1.31
+             usuario: 'todos', archivadas: false, busca: null, player: null, rate: 1 };
   try { var g = JSON.parse(sessionStorage.getItem('cz_sel') || 'null'); if (g && (g.id || g.local)) ST.sel = g; } catch (e) {}
 
+  // ── iconos de línea (genéricos, los del prototipo) ─────────────────────
+  var P = {
+    atras: '<path d="M19 12H5"/><path d="M11 18l-6-6 6-6"/>',
+    mas: '<circle cx="12" cy="5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="19" r="1.2" fill="currentColor"/>',
+    clip: '<path d="M20.5 11.5l-8.1 8.1a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8"/>',
+    camara: '<path d="M4 8h3l2-2.5h6L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.6"/>',
+    mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21"/>',
+    enviar: '<path d="M4 12l16-8-6 16-2.5-6.5z"/><path d="M11.5 13.5L20 4"/>',
+    buscar: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>',
+    cerrar: '<path d="M6 6l12 12"/><path d="M18 6L6 18"/>',
+    fijar: '<path d="M9 4h6l-1 5 3 3v2H7v-2l3-3z"/><path d="M12 14v6"/>',
+    desfijar: '<path d="M9 4h6l-1 5 3 3v2H7v-2l3-3z"/><path d="M12 14v6"/><path d="M4 4l16 16"/>',
+    archivar: '<rect x="3.5" y="4" width="17" height="4.5" rx="1"/><path d="M5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5"/><path d="M10 12.5h4"/>',
+    desarchivar: '<rect x="3.5" y="4" width="17" height="4.5" rx="1"/><path d="M5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5"/><path d="M12 17v-5.5"/><path d="M9.5 14L12 11.5 14.5 14"/>',
+    lapiz: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+    play: '<path d="M8 5.5v13l11-6.5z"/>',
+    pausa: '<rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/>',
+    nuevo: '<path d="M12 5v14"/><path d="M5 12h14"/>',
+    check: '<path d="M1.5 6.2L5 9.5 11 2"/>',
+    check2: '<path d="M1 6.2L4.5 9.5 10.5 2"/><path d="M6.7 8.2l1.3 1.3L14 2"/>',
+    reloj: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2"/>',
+    usuario: '<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+    info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 7.6v.1"/>',
+    libro: '<path d="M5 4.5h9a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h9"/>',
+    candado: '<rect x="5" y="10.5" width="14" height="9.5" rx="1.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/>',
+    disparo: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    abajo: '<path d="M7 10l5 5 5-5"/>'
+  };
+  function ico(n, c) { return '<svg class="ico ' + (c || '') + '" viewBox="0 0 24 24" aria-hidden="true">' + P[n] + '</svg>'; }
+  function palomita(doble) { return '<svg viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (doble ? P.check2 : P.check) + '</svg>'; }
+
   // ── utilidades ─────────────────────────────────────────────────────────
-  function toast(t) { var d = document.createElement('div'); d.className = 'toast'; d.textContent = t;
-    document.body.appendChild(d); setTimeout(function () { d.remove(); }, 3400); }
-  function aviso(r) { if (!r || r.ok) return; toast(r.clase === 'red' ? 'Sin conexión. Se reintenta solo.' : (r.mensaje || ('No se pudo: ' + (r.error || 'error')))); }
+  /** Aviso abajo; con `accion` lleva un botón (p. ej. «Deshacer») que dura 5 s. */
+  var tt = null;
+  function toast(t, accion, fn) {
+    var e = $('#toast'); e.innerHTML = esc(t) + (accion ? '<button type="button">' + esc(accion) + '</button>' : ''); e.classList.add('on');
+    if (accion) $('button', e).onclick = function () { e.classList.remove('on'); fn(); };
+    clearTimeout(tt); tt = setTimeout(function () { e.classList.remove('on'); }, accion ? 5000 : 3400);
+  }
+  function aviso(r) { if (!r || r.ok) return; toast(r.clase === 'red' ? 'Sin conexión. Se reintenta solo.' :
+    // V1.31: si la pantalla sale antes que el verificador nuevo de n8n, lo dice en vez de un código.
+    r.error === 'MODO_DESCONOCIDO' ? 'Esa opción todavía no está encendida en el servidor.' : (r.mensaje || ('No se pudo: ' + (r.error || 'error')))); }
   var MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
   function fecha(t) { return t ? new Date(t) : null; }
   function hora(t) { var d = fecha(t); return d ? d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : ''; }
   function diaDe(t) { var d = fecha(t); return d ? d.getDate() + ' de ' + MES[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : '') : ''; }
+  /** Separador del chat: «Hoy», «Ayer» o la fecha (como el prototipo). */
+  function separador(t) { var d = fecha(t); if (!d) return ''; var h = new Date(); if (d.toDateString() === h.toDateString()) return 'Hoy';
+    if (d.toDateString() === new Date(h - 864e5).toDateString()) return 'Ayer'; return diaDe(t); }
   function corto(t) { var d = fecha(t); if (!d) return ''; var h = new Date(); if (d.toDateString() === h.toDateString()) return hora(t);
     var ay = new Date(h - 864e5); if (d.toDateString() === ay.toDateString()) return 'ayer'; return d.getDate() + ' ' + MES[d.getMonth()]; }
   function peso(b) { return b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
@@ -72,40 +121,224 @@
   function chip(est) { var e = ESTADOS[est] || [est, 'abierta']; return '<span class="est ' + e[1] + '">' + e[0] + '</span>'; }
 
   // ── lista de sesiones ──────────────────────────────────────────────────
-  function sesionesVisibles() {
+  // V1.31 · la persona que entró (sale del token firmado; la base vuelve a decidir con él).
+  function yo() { try { var s = G.SuiteAuth.getSession(); return (s && (s.actor || s.username)) || ''; } catch (e) { return ''; } }
+  /** Nombre corto para chips y tarjetas: del usuario de la suite, no de una lista escrita aquí
+   *  («esteban.delacruz» → Esteban, «montalvo» → Montalvo). */
+  function nombreCorto(actor, nombre) {
+    var a = String(actor || '').split(/[.@_]/)[0];
+    if (a) return a.charAt(0).toUpperCase() + a.slice(1);
+    return String(nombre || '?').split(/\s+/)[0];
+  }
+  function archivada(c) { return !!(c.archivada || c.estado === 'archivado'); }
+  function sinAcento(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+  function deSesion(c) { return ST.usuario === 'todos' || c.autor === ST.usuario; }
+  var F_ESTADO = { vivas: ['local', 'abierto', 'enviada'], cerradas: ['cerrado'], todas: null };
+  function todasLasSesiones() {
     var loc = ST.locales.filter(function (l) { return !l.caso_id; }).map(function (l) {
-      return { local: l.local_id, titulo: l.titulo, cliente: l.cliente, modo: l.modo, estado: 'local', ultima_actividad_at: new Date(l.creado).toISOString(), ultimo: null }; });
-    var srv = ST.casos.map(function (c) { return Object.assign({ id: c.id }, c); });
-    var F = { vivas: ['local', 'abierto', 'enviada'], cerradas: ['cerrado'], archivadas: ['archivado'], todas: null }[ST.filtro];
-    return loc.concat(srv).filter(function (c) { return !F || F.indexOf(c.estado) >= 0; });
+      return { local: l.local_id, titulo: l.titulo, cliente: l.cliente, modo: l.modo, estado: 'local', autor: yo(), puede_editar: false,
+               ultima_actividad_at: new Date(l.creado).toISOString(), ultimo: null }; });
+    return loc.concat(ST.casos.map(function (c) { return Object.assign({ id: c.id }, c); }));
+  }
+  function sesionesVisibles() {
+    var b = ST.busca ? sinAcento(ST.busca) : '';
+    var L = todasLasSesiones().filter(function (c) {
+      if (ST.archivadas !== archivada(c)) return false;
+      if (!deSesion(c)) return false;
+      if (b && sinAcento((c.titulo || '') + ' ' + (c.cliente || '')).indexOf(b) < 0) return false;
+      if (ST.archivadas) return true;
+      var F = F_ESTADO[ST.filtro]; return !F || F.indexOf(c.estado) >= 0;
+    });
+    // Las fijadas (de ESTA persona) arriba; la base ya las ordena, aquí solo se respeta.
+    return L.map(function (c, i) { return [c, i]; }).sort(function (x, y) { return (y[0].fijado ? 1 : 0) - (x[0].fijado ? 1 : 0) || x[1] - y[1]; })
+      .map(function (x) { return x[0]; });
+  }
+  function personas() {
+    var o = {}, y = yo(); if (y) o[y] = nombreCorto(y);
+    ST.casos.forEach(function (c) { if (c.autor) o[c.autor] = nombreCorto(c.autor, c.autor_nombre); });
+    return Object.keys(o).sort(function (a, b) { return o[a].localeCompare(o[b]); }).map(function (k) { return { actor: k, n: o[k] }; });
   }
   function pintarLista() {
-    var L = sesionesVisibles(), sel = ST.sel || {};
-    var cuenta = function (f) { return ST.casos.filter(function (c) { return f.indexOf(c.estado) >= 0; }).length; };
-    var h = '<button class="nueva" id="bNueva">＋ Nueva cotización</button>' +
-      '<div class="filtros">' + [['vivas', 'En curso', cuenta(['abierto', 'enviada']) + ST.locales.filter(function (l) { return !l.caso_id; }).length],
-        ['cerradas', 'Cerradas', cuenta(['cerrado'])], ['archivadas', 'Archivadas', cuenta(['archivado'])], ['todas', 'Todas', null]].map(function (f) {
-        return '<button data-f="' + f[0] + '" class="' + (ST.filtro === f[0] ? 'on' : '') + '">' + f[1] + (f[2] !== null ? ' <b>' + f[2] + '</b>' : '') + '</button>'; }).join('') + '</div>';
-    if (!L.length) h += '<p class="vacio">' + (ST.filtro === 'vivas' ? 'No hay cotizaciones en curso. Abre una con «Nueva cotización» y platícale el trabajo.' : 'Nada aquí.') + '</p>';
+    var L = sesionesVisibles(), sel = ST.sel || {}, todas = todasLasSesiones();
+    var nArch = todas.filter(function (c) { return archivada(c) && deSesion(c); }).length;
+    var cuenta = function (f) { var F = F_ESTADO[f]; return todas.filter(function (c) { return !archivada(c) && deSesion(c) && (!F || F.indexOf(c.estado) >= 0); }).length; };
+    var foco = document.activeElement && document.activeElement.id === 'bBusca' ? document.activeElement.selectionStart : null;
+    var h = '<div class="cab">';
+    if (ST.archivadas) {
+      h += '<button class="btn-ic" id="bSalArch" aria-label="Volver a la lista">' + ico('atras') + '</button><div class="tit"><b>Archivadas</b><span class="ver">' + VERSION + '</span></div>';
+    } else if (ST.busca !== null) {
+      h += '<button class="btn-ic" id="bSalBusca" aria-label="Cerrar la búsqueda">' + ico('atras') + '</button><div class="tit"><input id="bBusca" placeholder="Buscar por nombre o cliente" value="' + esc(ST.busca) + '" aria-label="Buscar"></div>' +
+        '<button class="btn-ic" id="bLimpia" aria-label="Borrar">' + ico('cerrar', 's') + '</button>';
+    } else {
+      // La barra de la suite no va dentro del módulo (decisión de Esteban, #4): esta ← regresa a la suite.
+      h += '<button class="btn-ic" id="bSuite" aria-label="Volver a la suite">' + ico('atras') + '</button><div class="tit"><b>Conceptualizador</b><span class="ver" title="Build del módulo">' + VERSION + '</span></div>' +
+        '<button class="btn-ic" id="bBuscar" aria-label="Buscar">' + ico('buscar') + '</button><button class="btn-ic" id="bMasLista" aria-label="Opciones">' + ico('mas') + '</button>';
+    }
+    h += '</div>';
+    // 1.7 · el filtro por usuario va PRIMERO y como desplegable (a 380 px una fila de chips se salía).
+    var gu = ST.usuario !== 'todos' ? { n: nombreCorto(ST.usuario), c: color(ST.usuario) } : null;
+    h += '<div class="chips filtros" aria-label="Filtros"><button class="chip' + (gu ? ' on' : '') + '" id="bUsr" aria-haspopup="menu">' +
+      (gu ? '<span class="ini" style="background:' + gu.c + '">' + esc(gu.n[0]) + '</span>' + esc(gu.n) : ico('usuario', 'xs') + 'Todos') + ico('abajo', 'xs') + '</button><span class="sep"></span>';
+    if (!ST.archivadas) h += [['vivas', 'En curso'], ['cerradas', 'Cerradas'], ['todas', 'Todas']].map(function (f) {
+      return '<button class="chip' + (ST.filtro === f[0] ? ' on' : '') + '" data-f="' + f[0] + '">' + f[1] + ' <b>' + cuenta(f[0]) + '</b></button>'; }).join('');
+    h += '</div><div class="scroll">';
+    if (ST.archivadas) h += '<div class="nota-arch">Archivar no borra: la sesión sigue en la base y, si tiene machote, sigue enseñando. Desarchívala con ⋮ o manteniéndola presionada.</div>';
+    else if (nArch && ST.busca === null) h += '<button class="fila-arch" id="bArch">' + ico('archivar') + 'Archivadas<span class="n">' + nArch + '</span></button>';
+    if (!L.length) h += '<p class="vacio">' + (ST.archivadas ? 'No hay sesiones archivadas' + (gu ? ' de ' + esc(gu.n) : '') + '.' :
+      ST.busca ? 'Nada con «' + esc(ST.busca) + '».' :
+      ST.filtro === 'vivas' && !gu ? 'No hay cotizaciones en curso. Abre una con «Nueva cotización» y platícale el trabajo.' : 'Nada aquí con estos filtros.') + '</p>';
     L.forEach(function (c) {
-      var u = c.ultimo, prev = c.estado === 'local' ? 'Se da de alta al volver la señal' :
-        u ? (u.rol === 'motor' ? '' : u.rol === 'sistema' ? '⚙ ' : '✓ ') + (u.texto ? u.texto : (u.adjuntos ? '📎 ' + u.adjuntos + ' adjunto' + (u.adjuntos > 1 ? 's' : '') : '')) : 'Sin mensajes';
-      var on = (c.id && sel.id === c.id) || (c.local && sel.local === c.local);
-      h += '<div class="ses' + (on ? ' on' : '') + '" data-id="' + esc(c.id || '') + '" data-local="' + esc(c.local || '') + '">' +
-        '<div class="av" style="background:' + color(c.titulo) + '">' + esc(iniciales(c.cliente || c.titulo)) + '</div><div class="tx">' +
-        '<div class="t"><span>' + esc(c.titulo) + '</span><span class="h">' + esc(corto((u && u.created_at) || c.ultima_actividad_at)) + '</span></div>' +
-        '<div class="u">' + chip(c.estado) + (c.demo ? ' <span class="est archivada">demo</span>' : '') + ' ' + esc(prev) + '</div></div>' +
-        (Number(c.acciones) ? '<span class="badge" title="Botones esperando tu decisión">' + c.acciones + '</span>' : '') + '</div>';
+      var u = c.ultimo, on = (c.id && sel.id === c.id) || (c.local && sel.local === c.local);
+      var prev = c.estado === 'local' ? 'Se da de alta al volver la señal' : !u ? 'Sin mensajes' :
+        (u.texto ? u.texto : (u.adjuntos ? u.adjuntos + ' adjunto' + (u.adjuntos > 1 ? 's' : '') : ''));
+      var pre = !u ? '' : (u.rol === 'usuario' ? '<span class="tk" title="En el servidor">' + palomita(false) + '</span>' : '') +
+        (u.adjuntos && !u.texto ? ico('clip', 'xs') : '');
+      var nAcc = Number(c.acciones) || 0;
+      h += '<div class="ses' + (on ? ' on' : '') + '" data-id="' + esc(c.id || '') + '" data-local="' + esc(c.local || '') + '" role="button" tabindex="0">' +
+        '<div class="av" style="background:' + color(c.titulo) + '">' + esc(iniciales(c.cliente || c.titulo)) + '</div>' +
+        '<div class="tx"><div class="t"><span class="n">' + esc(c.titulo) + '</span><span class="h' + (nAcc ? ' nuevo' : '') + '">' + esc(corto((u && u.created_at) || c.ultima_actividad_at)) + '</span></div>' +
+        '<div class="u">' + pre + '<span class="p">' + (u && u.rol === 'sistema' ? '⚙ ' : '') + esc(prev) + '</span><span class="meta">' +
+        (c.estado === 'enviada' ? '<span class="est enviada">enviada</span>' : c.estado === 'cerrado' ? '<span class="est cerrada">cerrada</span>' :
+         c.estado === 'local' ? '<span class="est local">sin enviar</span>' : '') +
+        (c.demo ? '<span class="est archivada">demo</span>' : '') +
+        (ST.usuario === 'todos' && c.autor ? '<span class="quien-ses">' + esc(nombreCorto(c.autor, c.autor_nombre)) + '</span>' : '') +
+        (c.fijado ? '<span title="Fijada arriba (solo en tu lista)" aria-label="Fijada">' + ico('fijar', 'xs') + '</span>' : '') +
+        (nAcc ? '<span class="badge" title="Botones esperando tu decisión">' + nAcc + '</span>' : '') + '</span></div></div>' +
+        '<button class="mas" data-mas="1" aria-label="Opciones de la sesión">' + ico('mas', 's') + '</button></div>';
     });
-    h += '<p class="pie">Una sesión por cotización · <a href="#" id="bAprendio">Lo que aprendió</a> · ' + VERSION + '</p>';
+    h += '<p class="pie">Una sesión por cotización · <a href="#" id="bAprendio">Lo que aprendió</a> · ' + VERSION + '</p></div>';
+    if (!ST.archivadas) h += '<button class="fab nueva" id="bNueva">' + ico('nuevo') + 'Nueva cotización</button>';
     $('#lista').innerHTML = h;
-    $('#bNueva').onclick = nuevaCotizacion;
-    $('#bAprendio').onclick = function (e) { e.preventDefault(); verAprendio(); };
-    $$('#lista .filtros button').forEach(function (b) { b.onclick = function () { ST.filtro = b.dataset.f; pintarLista(); }; });
-    $$('#lista .ses').forEach(function (s) { s.onclick = function () { abrir({ id: s.dataset.id || null, local: s.dataset.local || null }); }; });
+    var on = function (id, fn) { var e = $('#' + id); if (e) e.onclick = fn; };
+    on('bNueva', nuevaCotizacion);
+    on('bAprendio', function (e) { e.preventDefault(); verAprendio(); });
+    on('bSuite', function () { location.href = '../index.html'; });
+    on('bArch', function () { ST.archivadas = true; pintarLista(); });
+    on('bSalArch', function () { ST.archivadas = false; pintarLista(); });
+    on('bBuscar', function () { ST.busca = ''; pintarLista(); $('#bBusca').focus(); });
+    on('bSalBusca', function () { ST.busca = null; pintarLista(); });
+    on('bLimpia', function () { ST.busca = ''; pintarLista(); $('#bBusca').focus(); });
+    on('bMasLista', function (e) { menuLista(e.currentTarget); });
+    on('bUsr', function (e) { menuUsuario(e.currentTarget); });
+    var bi = $('#bBusca');
+    if (bi) {
+      bi.oninput = function () { ST.busca = bi.value; var p = bi.selectionStart; pintarLista(); var n = $('#bBusca'); n.focus(); n.setSelectionRange(p, p); };
+      if (foco !== null) { bi.focus(); bi.setSelectionRange(foco, foco); }
+    }
+    $$('#lista [data-f]').forEach(function (b) { b.onclick = function () { ST.filtro = b.dataset.f; pintarLista(); }; });
+    $$('#lista .ses').forEach(enlazarTarjeta);
   }
-  var PALETA = ['#128c7e', '#075e54', '#5d4037', '#455a64', '#6d4c41', '#00796b', '#37474f', '#795548'];
+  /** Tocar abre; mantener presionado (500 ms) o el ⋮ abre la hoja de la sesión. */
+  function enlazarTarjeta(el) {
+    var t = null, largo = false, x0 = 0, y0 = 0;
+    var sel = function () { return { id: el.dataset.id || null, local: el.dataset.local || null }; };
+    el.addEventListener('pointerdown', function (e) {
+      if (e.target.closest('[data-mas]')) return;
+      largo = false; x0 = e.clientX; y0 = e.clientY; el.classList.add('presion');
+      t = setTimeout(function () { largo = true; el.classList.remove('presion'); try { if (navigator.vibrate) navigator.vibrate(18); } catch (er) {} hojaSesion(sel()); }, 500);
+    });
+    var soltar = function () { clearTimeout(t); el.classList.remove('presion'); };
+    el.addEventListener('pointerup', soltar); el.addEventListener('pointerleave', soltar); el.addEventListener('pointercancel', soltar);
+    el.addEventListener('pointermove', function (e) { if (Math.abs(e.clientX - x0) + Math.abs(e.clientY - y0) > 10) soltar(); });
+    el.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    el.addEventListener('click', function (e) {
+      if (e.target.closest('[data-mas]')) { e.stopPropagation(); return hojaSesion(sel()); }
+      if (largo) return; abrir(sel());
+    });
+    el.addEventListener('keydown', function (e) { if (e.key === 'Enter') abrir(sel()); });
+  }
+  var PALETA = ['#00897b', '#5c6bc0', '#8d6e63', '#43a047', '#f4511e', '#546e7a', '#7e57c2', '#00acc1'];
   function color(t) { var n = 0; String(t || '').split('').forEach(function (c) { n = (n * 31 + c.charCodeAt(0)) % 997; }); return PALETA[n % PALETA.length]; }
+
+  // ── V1.31 · la sesión a mano: fijar, renombrar, archivar ──────────────
+  function sesionDe(s) {
+    s = s || {};
+    return todasLasSesiones().filter(function (c) { return (s.id && c.id === s.id) || (s.local && c.local === s.local); })[0] ||
+      (s.id && ST.hilo && ST.hilo.caso && ST.hilo.caso.id === s.id ? ST.hilo.caso : null);
+  }
+  function accionesDe(c) {
+    if (!c.id) return [];
+    var mia = c.puede_editar === true, n = nombreCorto(c.autor, c.autor_nombre);
+    var porque = mia ? '' : '<small>Solo ' + esc(n) + (n === 'Esteban' ? '' : ' o Esteban') + '</small>';
+    var arch = archivada(c);
+    var quien = c.archivado_por ? 'Archivada por ' + esc(nombreCorto(c.archivado_por)) + (c.archivado_at ? ' · ' + esc(diaDe(c.archivado_at) + ' ' + hora(c.archivado_at)) : '')
+      : 'La archivaron los cierres por quieta';
+    return [
+      { k: c.fijado ? 'desfijar' : 'fijar', ic: c.fijado ? 'desfijar' : 'fijar', t: c.fijado ? 'Quitar fijado' : 'Fijar arriba', sub: '<small>Solo en tu lista</small>', ok: true },
+      { k: 'renombrar', ic: 'lapiz', t: 'Renombrar', sub: porque, ok: mia },
+      { k: arch ? 'desarchivar' : 'archivar', ic: arch ? 'desarchivar' : 'archivar', t: arch ? 'Desarchivar' : 'Archivar',
+        sub: porque || (arch ? '<small>' + quien + '</small>' : '<small>No se borra: sigue en la base</small>'), ok: mia }
+    ];
+  }
+  function cerrarVelo() { var v = $('#velo'); v.className = 'velo'; v.innerHTML = ''; }
+  function velo(html, oscuro) {
+    var v = $('#velo'); v.className = 'velo on' + (oscuro ? ' oscuro' : ''); v.innerHTML = html;
+    v.onclick = function (e) { if (e.target === v) cerrarVelo(); };
+    return v;
+  }
+  function enMenu(btn, html, izq) {
+    var r = btn.getBoundingClientRect();
+    var v = velo('<div class="menu" role="menu" style="top:' + (r.bottom + 2) + 'px;' + (izq ? 'left:' + Math.max(8, r.left) + 'px' : 'right:' + Math.max(8, innerWidth - r.right) + 'px') + '">' + html + '</div>', false);
+    var m = $('.menu', v), b = m.getBoundingClientRect();
+    if (b.bottom > innerHeight - 8) m.style.top = Math.max(8, innerHeight - 8 - b.height) + 'px';
+    return v;
+  }
+  function hojaSesion(s) {
+    var c = sesionDe(s); if (!c) return;
+    if (!c.id) return toast('Esta sesión todavía no llega al servidor: se puede cuando vuelva la señal.');
+    var h = '<div class="hoja-ses" role="dialog" aria-label="Opciones de la sesión"><div class="asa"></div><div class="cabh"><div class="av" style="width:40px;height:40px;font-size:14px;background:' + color(c.titulo) + '">' + esc(iniciales(c.cliente || c.titulo)) + '</div>' +
+      '<div><b>' + esc(c.titulo) + '</b><small>' + esc(nombreCorto(c.autor, c.autor_nombre)) + ' · ' + esc(corto(c.ultima_actividad_at)) + '</small></div></div>' +
+      accionesDe(c).map(function (a) { return '<button data-a="' + a.k + '"' + (a.ok ? '' : ' disabled') + '>' + ico(a.ic) + '<span>' + a.t + a.sub + '</span></button>'; }).join('') + '</div>';
+    var v = velo(h, true);
+    $$('[data-a]', v).forEach(function (b) { b.onclick = function () { cerrarVelo(); hacerSesion(b.dataset.a, c); }; });
+  }
+  function menuLista(btn) {
+    var v = enMenu(btn, '<button data-a="aprendio">' + ico('libro', 's') + '<span>Lo que aprendió</span></button>');
+    $('[data-a]', v).onclick = function () { cerrarVelo(); verAprendio(); };
+  }
+  function menuUsuario(btn) {
+    var L = [{ actor: 'todos', n: 'Todos' }].concat(personas());
+    var v = enMenu(btn, L.map(function (p) {
+      return '<button data-u="' + esc(p.actor) + '">' + (p.actor === 'todos' ? ico('usuario', 's') : '<span class="chip-av" style="background:' + color(p.actor) + '">' + esc(p.n[0]) + '</span>') +
+        '<span>' + esc(p.n) + (p.actor === yo() ? ' <small>tú</small>' : '') + '</span>' + (ST.usuario === p.actor ? '<span style="margin-left:auto">✓</span>' : '') + '</button>'; }).join(''), true);
+    $$('[data-u]', v).forEach(function (b) { b.onclick = function () { cerrarVelo(); ST.usuario = b.dataset.u; pintarLista(); }; });
+  }
+  function dialogoRenombrar(c) {
+    var v = velo('<div class="dlg" role="dialog" aria-label="Renombrar"><h3>Renombrar</h3><p>Lo ven todos en la lista. La carpeta del caso en el repo no cambia.</p>' +
+      '<input id="nNom" maxlength="80" value="' + esc(c.titulo) + '" aria-label="Nombre de la sesión"><div class="cuenta"><span id="nCta">' + String(c.titulo || '').length + '</span>/80</div>' +
+      '<div class="acciones"><button id="nNo">Cancelar</button><button id="nSi">Guardar</button></div></div>', true);
+    var i = $('#nNom', v); setTimeout(function () { i.focus(); i.select(); }, 30);
+    i.oninput = function () { $('#nCta', v).textContent = i.value.length; };
+    var guardar = async function () {
+      var t = i.value.replace(/\s+/g, ' ').trim();
+      if (t.length < 3) return toast('El nombre necesita al menos 3 letras.');
+      if (t === c.titulo) return cerrarVelo();
+      $('#nSi', v).disabled = true;
+      var r = await C.renombrar(c.id, t);
+      if (!r.ok) { $('#nSi', v).disabled = false; return aviso(r); }
+      cerrarVelo(); await refrescarSesiones();
+      toast('Renombrada · antes «' + (r.antes || c.titulo) + '»');
+    };
+    $('#nSi', v).onclick = guardar; $('#nNo', v).onclick = cerrarVelo;
+    i.onkeydown = function (e) { if (e.key === 'Enter') guardar(); if (e.key === 'Escape') cerrarVelo(); };
+  }
+  /** Lo que se ve sale del servidor después de cada cambio: nada se pinta antes de que la base lo confirme. */
+  async function refrescarSesiones() {
+    await cargarCasos(); pintarLista();
+    if ($('#app').classList.contains('ver-chat') && ST.sel && ST.sel.id) { pintarCabecera(); cargarHilo(); }
+  }
+  async function hacerSesion(a, c) {
+    if (a === 'renombrar') return dialogoRenombrar(c);
+    if (a === 'detalles') return menuSesion();
+    var r = await C[a](c.id);
+    if (!r.ok) return aviso(r);
+    if (a === 'archivar' && ST.sel && ST.sel.id === c.id && innerWidth < 900) volverALista();
+    await refrescarSesiones();
+    if (a === 'fijar') return toast('Fijada arriba (solo en tu lista)');
+    if (a === 'desfijar') return toast('Ya no está fijada');
+    if (a === 'archivar') return toast('Archivada. Sigue en la base.', 'Deshacer', function () { hacerSesion('desarchivar', c); });
+    if (a === 'desarchivar') return toast('Desarchivada: vuelve a la lista.');
+  }
 
   function nuevaCotizacion() { abrirMenu(); }
   /** V1.30 · la sesión nueva empieza en el chat con tres opciones. */
@@ -115,17 +348,17 @@
   }
   function pintarMenu() {
     pintarCabecera(); $('#senal').style.display = 'none'; $('#fijo').style.display = 'none';
-    $('#msgs').innerHTML = '<div class="b el"><div class="quien">Conceptualizador</div><div class="txt">¿Qué vamos a hacer?</div>' +
+    $('#msgs').innerHTML = '<div class="fila el sig"><div class="b el"><div class="quien">Conceptualizador</div><div class="txt">¿Qué vamos a hacer?</div>' +
       '<div class="opciones">' +
       '<button class="opc" data-modo="acompanamiento"><b>1 · Voy a hacer un levantamiento</b><small>Te acompaño en planta: te pido fotos, la ruta, medidas y acceso según el trabajo.</small></button>' +
       '<button class="opc" data-modo="levantamiento"><b>2 · Ya tengo el levantamiento</b><small>Me mandas todo (fotos, audios, PDFs, notas) y al final tocas «Ya es todo».</small></button>' +
       '<button class="opc" data-modo="seguir"><b>3 · Seguir una cotización</b><small>Abre la lista de sesiones.</small></button></div>' +
       '<div class="pais">País: ' + [['mx', 'México · MXN'], ['usa', 'USA · USD']].map(function (p) {
-        return '<button data-pais="' + p[0] + '" class="' + (ST.pais === p[0] ? 'on' : '') + '">' + p[1] + '</button>'; }).join('') + '</div></div>';
+        return '<button data-pais="' + p[0] + '" class="' + (ST.pais === p[0] ? 'on' : '') + '">' + p[1] + '</button>'; }).join('') + '</div></div></div>';
     $$('#msgs [data-pais]').forEach(function (b) { b.onclick = function () { ST.pais = b.dataset.pais; pintarMenu(); }; });
     $$('#msgs [data-modo]').forEach(function (b) { b.onclick = async function () {
       var m = b.dataset.modo;
-      if (m === 'seguir') { ST.sel = null; guardarSel(); $('#app').classList.remove('ver-chat'); $('#app').classList.remove('en-menu'); ST.filtro = 'vivas'; pintarLista(); pintarChat(); return; }
+      if (m === 'seguir') { ST.filtro = 'vivas'; ST.archivadas = false; volverALista(); pintarChat(); return; }
       b.disabled = true;
       var c = await Q.nuevaSesion({ titulo: MODOS[m].titulo, pais: ST.pais || 'mx', modo: m });
       ST.locales = await Q.casosLocales(); $('#app').classList.remove('en-menu'); abrir({ local: c.local_id });
@@ -145,9 +378,9 @@
   function pintarFijo() {
     var m = modoActual(), c = (ST.hilo && ST.hilo.caso) || casoActual() || {}, el = $('#fijo');
     var ver = m && !(ST.sel || {}).menu && ['abierto', 'local', undefined].indexOf(c.estado) >= 0 && !yaDisparo();
-    el.style.display = ver ? 'block' : 'none';
+    el.style.display = ver ? 'flex' : 'none';
     if (!ver) return;
-    $('#bFijo').textContent = MODOS[m].boton;
+    $('#bFijo').innerHTML = ico('disparo', 's') + esc(MODOS[m].boton);
     $('#bFijo').onclick = function () { this.disabled = true; var t = MODOS[m].boton; mandar(t).then(function () { $('#bFijo').disabled = false; pintarFijo(); }); };
   }
 
@@ -159,18 +392,63 @@
     var l = ST.locales.filter(function (x) { return x.local_id === s.local; })[0];
     return l ? { titulo: l.titulo, cliente: l.cliente, modo: l.modo, estado: 'local' } : null;
   }
+  /** V1.31 (1.4) · ¿el motor VA A CONTESTAR? Solo entonces hay «escribiendo…» y puntitos.
+   *  · «Ya tengo el levantamiento» antes del disparador: no. Lo que corre es guardar y transcribir.
+   *  · Después de «Ya es todo» / «Ya terminé, cotiza»: sí, desde que el trabajo entra a la cola.
+   *  · Acompañamiento (y sesiones sin modo): solo con un trabajo TOMADO por un motor. */
+  function trabajoQueContesta() {
+    var H = ST.hilo; if (!H) return null;
+    var c = H.caso || {}, disp = c.disparado_at ? new Date(c.disparado_at).getTime() : null;
+    if (c.modo === 'levantamiento' && !disp) return null;
+    var L = (H.trabajos || []).filter(function (t) {
+      if (t.lote_de) return false;                       // absorbido: lo contesta otro trabajo
+      if (t.estado === 'tomado') return true;
+      return t.estado === 'pendiente' && !!disp && new Date(t.created_at).getTime() >= disp - 5000;
+    });
+    return L.filter(function (t) { return t.estado === 'tomado'; })[0] || L[0] || null;
+  }
+  function notasSinTexto() {
+    return ((ST.hilo && ST.hilo.adjuntos) || []).filter(function (a) { return a.clase === 'audio' && !a.transcripcion && Date.now() - new Date(a.created_at) < 10 * 60000; }).length;
+  }
+  function volverALista() {
+    pararVoz();
+    $('#app').classList.remove('ver-chat'); $('#app').classList.remove('en-menu'); ST.sel = null; guardarSel(); pintarLista();
+  }
   function pintarCabecera() {
-    var c = casoActual() || { titulo: '…' }, m = ST.motor;
+    var c = casoActual() || { titulo: '…' }, m = ST.motor, H = ST.hilo, vivo = false;
     var sub = !navigator.onLine ? 'sin señal · lo que escribas se guarda' :
       !m ? 'conectando…' : m.modo === 'rapido' ? 'motor rápido · en línea' : 'respaldo · contesta en minutos';
-    var tom = ST.hilo && (ST.hilo.trabajos || []).filter(function (t) { return t.estado === 'tomado' && !t.lote_de; })[0];
-    if (tom) sub = 'escribiendo…' + (tom.avance ? ' · ' + tom.avance : '');
-    $('#ch').innerHTML = '<button class="vuelve" id="bVuelve" aria-label="Volver">&#8592;</button>' +
-      '<div class="av" style="background:#fff;color:' + color(c.titulo) + '">' + esc(iniciales(c.cliente || c.titulo)) + '</div>' +
-      '<div class="tx"><b>' + esc(c.titulo) + '</b><small>' + esc(sub) + '</small></div>' +
-      '<button class="btl" id="bMenu" aria-label="Opciones">⋮</button>';
-    $('#bVuelve').onclick = function () { $('#app').classList.remove('ver-chat'); $('#app').classList.remove('en-menu'); ST.sel = null; guardarSel(); pintarLista(); };
-    $('#bMenu').onclick = menuSesion;
+    var t = trabajoQueContesta();
+    if (t && navigator.onLine) { sub = 'escribiendo…' + (t.estado === 'tomado' && t.avance ? ' · ' + t.avance : ''); vivo = true; }
+    else if (H && H.caso && H.caso.modo === 'levantamiento' && !H.caso.disparado_at && navigator.onLine) {
+      var n = notasSinTexto();
+      sub = 'guardando tu levantamiento' + (n ? ' · transcribiendo ' + n + ' nota' + (n > 1 ? 's' : '') : '');
+    }
+    if (c.id && archivada(c)) sub = 'archivada · ' + sub;
+    $('#ch').innerHTML = '<button class="btn-ic vuelve" id="bVuelve" aria-label="Volver">' + ico('atras') + '</button>' +
+      '<div class="av" style="background:' + color(c.titulo) + '">' + esc(iniciales(c.cliente || c.titulo)) + '</div>' +
+      '<div class="tx"><b><span>' + esc(c.titulo) + '</span><span class="ver" title="Build del módulo">' + VERSION + '</span></b><small class="' + (vivo ? 'vivo' : '') + '">' + esc(sub) + '</small></div>' +
+      '<button class="btn-ic" id="bMenu" aria-label="Opciones">' + ico('mas') + '</button>';
+    $('#bVuelve').onclick = volverALista;
+    $('#bMenu').onclick = function (e) { menuChat(e.currentTarget); };
+  }
+  /** ⋮ del chat: lo de la sesión (fijar, renombrar, archivar) y, abajo, detalles y lo aprendido. */
+  function menuChat(btn) {
+    var c = sesionDe(ST.sel) || casoActual() || {};
+    var A = accionesDe(c), abierta = c.estado === 'abierto' || c.estado === 'enviada';
+    var h = A.map(function (a) { return '<button data-a="' + a.k + '"' + (a.ok ? '' : ' disabled') + '>' + ico(a.ic, 's') + '<span>' + a.t + a.sub + '</span></button>'; }).join('') +
+      (A.length ? '<hr>' : '') +
+      ((ST.sel || {}).menu ? '' : '<button data-a="detalles">' + ico('info', 's') + '<span>Detalles y línea de tiempo</span></button>') +
+      (abierta && c.id ? '<button data-a="cierre">' + ico('candado', 's') + '<span>Cerrar con /cierre</span></button>' : '') +
+      '<button data-a="aprendio">' + ico('libro', 's') + '<span>Lo que aprendió</span></button>';
+    var v = enMenu(btn, h);
+    $$('[data-a]', v).forEach(function (b) { b.onclick = function () {
+      cerrarVelo(); var a = b.dataset.a;
+      if (a === 'detalles') return menuSesion();
+      if (a === 'aprendio') return verAprendio();
+      if (a === 'cierre') { $('#in').value = '/cierre '; autoAlto(); pintarComposer(); return $('#in').focus(); }
+      hacerSesion(a, c);
+    }; });
   }
   function pintarSenal() {
     var mias = salidaDelCaso(), pend = mias.filter(function (x) { return x.estado !== 'error'; }).length;
@@ -195,62 +473,69 @@
     var M = $('#msgs'), abajo = M.scrollHeight - M.scrollTop - M.clientHeight < 80, H = ST.hilo;
     pintarCabecera(); pintarSenal(); pintarFijo();
     var modo = modoActual();
-    var h = '', ultimoDia = '';
-    var dia = function (t) { var d = diaDe(t); if (d && d !== ultimoDia) { ultimoDia = d; h += '<div class="dia"><span>' + esc(d) + '</span></div>'; } };
+    var h = '', ultimoDia = '', prev = null;
+    var dia = function (t) { var d = separador(t); if (d && d !== ultimoDia) { ultimoDia = d; h += '<div class="dia"><span>' + esc(d) + '</span></div>'; prev = null; } };
+    var aparte = function (html) { h += html; prev = null; };
+    // Una burbuja; la primera de cada racha lleva la colita y, si es del motor, quién habla.
+    var burbuja = function (lado, cls, quien, cuerpo) {
+      var sig = prev !== lado; prev = lado;
+      h += '<div class="fila ' + lado + (sig ? ' sig' : '') + '"><div class="b ' + lado + (cls ? ' ' + cls : '') + '">' +
+        (lado === 'el' && sig && quien ? '<div class="quien">' + esc(quien) + '</div>' : '') + cuerpo + '</div></div>';
+    };
     var meta = adjuntosPorId();
     var acc = accionesPorTrabajo(), pintadas = {};
     var U = H && (H.propuesta || H.ultima), porTrabajo = {}; ((H && H.trabajos) || []).forEach(function (t) { porTrabajo[t.id] = t; });
-    if (!H && !(ST.sel || {}).local) h += '<div class="sistema"><span>Cargando…</span></div>';
-    if (modo) h += '<div class="b el intro"><div class="quien">Conceptualizador</div><div class="txt">' + esc(MODOS[modo].intro) + '</div></div>';
-    else if ((ST.sel || {}).local && !(H && H.mensajes && H.mensajes.length)) h += '<div class="sistema"><span>Platícale el trabajo: texto, notas de voz, fotos y PDFs. Cuando termines escribe «ya es todo».</span></div>';
+    if (!H && !(ST.sel || {}).local) aparte('<div class="sis"><span>Cargando…</span></div>');
+    if (modo) burbuja('el', 'intro', 'Conceptualizador', '<div class="txt">' + esc(MODOS[modo].intro) + '</div>');
+    else if ((ST.sel || {}).local && !(H && H.mensajes && H.mensajes.length)) aparte('<div class="sis"><span>Platícale el trabajo: texto, notas de voz, fotos y PDFs. Cuando termines escribe «ya es todo».</span></div>');
     ((H && H.mensajes) || []).forEach(function (m) {
       var t = m.escrito_at || m.created_at; dia(t);
-      if (m.rol === 'sistema') { h += '<div class="sistema"><span>' + esc(m.texto) + '</span></div>'; return; }
-      var yo = m.rol === 'usuario', tr = m.trabajo_id && porTrabajo[m.trabajo_id];
+      if (m.rol === 'sistema') return aparte('<div class="sis"><span>' + esc(m.texto) + '</span></div>');
+      var mio = m.rol === 'usuario', tr = m.trabajo_id && porTrabajo[m.trabajo_id];
       // Sin trabajo en modo «ya tengo el levantamiento»: guardado; el motor lo lee todo junto al disparar.
-      var tk = yo ? (!m.trabajo_id && modo === 'levantamiento' ? '<span class="tk leido" title="Guardado; lo reviso todo junto cuando toques «Ya es todo»">✓✓</span>' : tick(tr)) : '';
-      h += '<div class="b ' + (yo ? 'yo' : 'el') + '">' + (yo ? '' : '<div class="quien">Conceptualizador' + (/respaldo/.test(m.autor) ? ' · respaldo' : '') + '</div>') +
+      var tk = mio ? (!m.trabajo_id && modo === 'levantamiento' ? '<span class="tk leido" title="Guardado; lo reviso todo junto cuando toques «Ya es todo»">' + palomita(true) + '</span>' : tick(tr)) : '';
+      burbuja(mio ? 'yo' : 'el', '', 'Conceptualizador' + (/respaldo/.test(m.autor) ? ' · respaldo' : ''),
         adjuntosHtml((m.adjuntos || []).map(function (a) { return Object.assign({}, a, meta[a.id] || {}); }), false) +
-        (m.texto ? '<div class="txt">' + (yo ? esc(m.texto) : md(m.texto)) + '</div>' : '') +
-        '<span class="meta">' + (m.escrito_at && Math.abs(new Date(m.created_at) - new Date(m.escrito_at)) > 120000 ? '<i title="Escrito sin señal; llegó ' + esc(hora(m.created_at)) + '">⟲</i> ' : '') +
-        esc(hora(t)) + ' ' + tk + '</span><div style="clear:both"></div></div>';
-      if (yo && tr && tr.estado === 'error') h += '<div class="sistema"><span class="mal">El motor no pudo con este mensaje: ' + esc(tr.error || '') + '. Escríbelo de otra forma o vuelve a intentar.</span></div>';
-      if (!yo && m.trabajo_id) {
+        (m.texto ? '<div class="txt">' + (mio ? esc(m.texto) : md(m.texto)) + '</div>' : '') +
+        '<span class="hora">' + (m.escrito_at && Math.abs(new Date(m.created_at) - new Date(m.escrito_at)) > 120000 ? '<i title="Escrito sin señal; llegó ' + esc(hora(m.created_at)) + '">⟲</i> ' : '') +
+        esc(hora(t)) + tk + '</span><div style="clear:both"></div>');
+      if (mio && tr && tr.estado === 'error') aparte('<div class="sis"><span class="mal">El motor no pudo con este mensaje: ' + esc(tr.error || '') + '. Escríbelo de otra forma o vuelve a intentar.</span></div>');
+      if (!mio && m.trabajo_id) {
         // Primero lo que hay que confirmar, luego conceptos y machote (el orden del método).
-        if (acc[m.trabajo_id]) { h += tarjetaAcciones(acc[m.trabajo_id].filter(function (a) { return a.tipo === 'conjetura'; })); }
-        if (U && U.trabajo_id === m.trabajo_id) h += tarjetasRespuesta(U);
-        if (acc[m.trabajo_id]) { h += tarjetaAcciones(acc[m.trabajo_id].filter(function (a) { return a.tipo !== 'conjetura'; })); pintadas[m.trabajo_id] = 1; }
+        if (acc[m.trabajo_id]) aparte(tarjetaAcciones(acc[m.trabajo_id].filter(function (a) { return a.tipo === 'conjetura'; })));
+        if (U && U.trabajo_id === m.trabajo_id) aparte(tarjetasRespuesta(U));
+        if (acc[m.trabajo_id]) { aparte(tarjetaAcciones(acc[m.trabajo_id].filter(function (a) { return a.tipo !== 'conjetura'; }))); pintadas[m.trabajo_id] = 1; }
       }
     });
     // Acciones que no cuelgan de un mensaje del motor (p. ej. «¿la cierro?» de los cierres automáticos).
-    Object.keys(acc).forEach(function (k) { if (!pintadas[k]) h += tarjetaAcciones(acc[k]); });
+    Object.keys(acc).forEach(function (k) { if (!pintadas[k]) aparte(tarjetaAcciones(acc[k])); });
     salidaDelCaso().sort(function (a, b) { return a.escrito_at - b.escrito_at; }).forEach(function (x) {
       dia(x.escrito_at);
       var subidos = x.archivos.filter(function (a) { return a.adjunto_id; }).length, total = x.archivos.length;
       var actual = x.archivos.filter(function (a) { return Q.progreso(a.local) !== undefined; })[0];
+      var reloj = '<svg class="ico xs" viewBox="0 0 24 24" aria-hidden="true" style="width:13px;height:13px">' + P.reloj + '</svg>';
       var est = x.estado === 'error' ? '<span class="mal">⚠ no se mandó</span>' :
-        x.estado === 'subiendo' && total ? '<span class="cola">subiendo ' + (subidos + (actual ? 1 : 0)) + '/' + total + (actual ? ' · ' + Math.round(Q.progreso(actual.local) * 100) + '%' : '') + '</span>' :
-        x.estado === 'enviando' ? '<span class="cola">enviando</span>' : '<span class="cola">en cola</span>';
-      h += '<div class="b yo pend">' + adjuntosHtml(x.archivos.map(function (a) { return { local: a.local, blob: a.blob, nombre: a.nombre, clase: a.clase, bytes: a.bytes, duracion_s: a.duracion_s, subido: !!a.adjunto_id }; }), true) +
+        x.estado === 'subiendo' && total ? '<span class="cola">' + reloj + 'subiendo ' + (subidos + (actual ? 1 : 0)) + '/' + total + (actual ? ' · ' + Math.round(Q.progreso(actual.local) * 100) + '%' : '') + '</span>' :
+        x.estado === 'enviando' ? '<span class="cola">' + reloj + 'enviando</span>' : '<span class="cola">' + reloj + 'en cola</span>';
+      burbuja('yo', 'pend', '', adjuntosHtml(x.archivos.map(function (a) { return { local: a.local, blob: a.blob, nombre: a.nombre, clase: a.clase, bytes: a.bytes, duracion_s: a.duracion_s, subido: !!a.adjunto_id }; }), true) +
         (x.texto ? '<div class="txt">' + esc(x.texto) + '</div>' : '') +
         (total && x.estado === 'subiendo' ? '<div class="barra"><i style="width:' + Math.round(100 * (subidos + (actual ? Q.progreso(actual.local) : 0)) / total) + '%"></i></div>' : '') +
-        '<span class="meta">' + esc(hora(x.escrito_at)) + ' ' + est + '</span><div style="clear:both"></div>' +
-        (x.estado === 'error' ? '<div class="corr"><span class="err">' + esc(x.error) + '</span><button class="boton" data-reint="' + esc(x.cliente_id) + '">Reintentar</button><button class="boton" data-desc="' + esc(x.cliente_id) + '">Descartar</button></div>' : '') + '</div>';
+        '<span class="hora">' + esc(hora(x.escrito_at)) + ' ' + est + '</span><div style="clear:both"></div>' +
+        (x.estado === 'error' ? '<div class="corr"><span class="err">' + esc(x.error) + '</span><button class="boton" data-reint="' + esc(x.cliente_id) + '">Reintentar</button><button class="boton" data-desc="' + esc(x.cliente_id) + '">Descartar</button></div>' : ''));
     });
-    if (H && (H.trabajos || []).some(function (t) { return t.estado === 'tomado' || t.estado === 'pendiente'; })) {
-      var paso = (H.trabajos || []).filter(function (t) { return t.estado === 'tomado' && t.avance; }).map(function (t) { return t.avance; })[0];
-      h += '<div class="b el escribe"><span></span><span></span><span></span>' + (paso ? '<em>' + esc(paso) + '</em>' : '') + '</div>';
-    }
+    var tq = trabajoQueContesta();
+    if (tq) h += '<div class="fila el sig"><div class="escribe" aria-label="El conceptualizador está escribiendo"><i></i><i></i><i></i>' +
+      (tq.estado === 'tomado' && tq.avance ? '<em>' + esc(tq.avance) + '</em>' : '') + '</div></div>';
     M.innerHTML = h;
     enlazarChat(M);
     if (abajo || ST.irAbajo) { M.scrollTop = M.scrollHeight; ST.irAbajo = false; }
   }
   function tick(tr) {
-    if (!tr) return '<span class="tk">✓</span>';
-    if (tr.estado === 'listo') return '<span class="tk leido" title="El motor ya contestó">✓✓</span>';
-    if (tr.estado === 'tomado') return '<span class="tk" title="El motor lo está trabajando">✓✓</span>';
+    if (!tr) return '<span class="tk" title="Recibido en el servidor">' + palomita(false) + '</span>';
+    if (tr.estado === 'listo') return '<span class="tk leido" title="El motor ya contestó">' + palomita(true) + '</span>';
+    if (tr.estado === 'tomado') return '<span class="tk" title="El motor lo está trabajando">' + palomita(true) + '</span>';
     if (tr.estado === 'error') return '<span class="tk mal">⚠</span>';
-    return '<span class="tk" title="Recibido en el servidor">✓</span>';
+    return '<span class="tk" title="Recibido en el servidor">' + palomita(false) + '</span>';
   }
   function adjuntosPorId() { var o = {}; ((ST.hilo && ST.hilo.adjuntos) || []).forEach(function (a) { o[a.id] = a; }); return o; }
   function accionesPorTrabajo() { var o = {}; ((ST.hilo && ST.hilo.acciones) || []).forEach(function (a) { var k = a.trabajo_id || ('sin-' + a.id); (o[k] = o[k] || []).push(a); }); return o; }
@@ -270,19 +555,125 @@
     }
     resto.forEach(function (a) {
       var k = local ? 'l:' + a.local : a.id;
-      if (a.clase === 'audio') {
-        h += '<div class="voz"><button class="play" data-audio="' + esc(k) + '" aria-label="Reproducir">▶</button><div class="onda">' + onda(a.nombre) +
-          '</div><div class="mic">🎤</div></div><div class="voz-pie"><span class="dur">' + dur(a.duracion_s) + '</span></div>' +
-          (a.transcripcion ? '<div class="trans">📝 ' + esc(a.transcripcion) + '</div>' : (!local ? '<div class="trans gris">transcripción pendiente</div>' : ''));
-      } else {
-        h += '<div class="doc" data-doc="' + esc(k) + '"><div class="ic">' + (a.clase === 'pdf' ? 'PDF' : '📄') + '</div><div><b>' + esc(a.nombre) + '</b><small>' + peso(a.bytes || 0) + '</small></div></div>';
-      }
+      if (a.clase === 'audio') h += vozHtml(a, k, local);
+      else h += '<div class="doc" data-doc="' + esc(k) + '"><div class="ic">' + (a.clase === 'pdf' ? 'PDF' : '📄') + '</div><div><b>' + esc(a.nombre) + '</b><small>' + peso(a.bytes || 0) + '</small></div></div>';
     });
     return h;
   }
-  function onda(semilla) { var h = '', n = 0; String(semilla || 'x').split('').forEach(function (c) { n = (n * 17 + c.charCodeAt(0)) % 9973; });
-    for (var i = 0; i < 30; i++) h += '<i style="height:' + (6 + Math.round(18 * Math.abs(Math.sin(i * 1.7 + n) * Math.cos(i * .45)))) + 'px"></i>'; return h; }
-  function dur(s) { s = Math.round(Number(s) || 0); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+  function dur(s) { s = Math.max(0, Math.floor(Number(s) || 0)); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+
+  // ── V1.31 (1.3) · nota de voz: ▶/❚❚, onda que avanza, tocar o arrastrar para saltar, 1×/1.5×/2× ──
+  // UN reproductor vivo en ST.player, fuera del DOM: el chat se repinta cada 2.5 s y el audio sigue;
+  // la burbuja nueva se pinta con el estado del reproductor (en V1.30 se reiniciaba).
+  ST.durs = {};
+  function barrasDe(k) { var a = [], n = 0; String(k).split('').forEach(function (c) { n = (n * 31 + c.charCodeAt(0)) % 233280; });
+    for (var i = 0; i < 30; i++) { n = (n * 9301 + 49297) % 233280; a.push(Math.round(5 + 22 * Math.abs(Math.sin(i * .55 + (n % 7)) * .55 + (n / 233280) * .45))); } return a; }
+  function durDe(k) { var d = ST.durs[k]; return d > 0 && isFinite(d) ? d : 0; }
+  function vozHtml(a, k, local) {
+    if (a.duracion_s && !ST.durs[k]) ST.durs[k] = Number(a.duracion_s);
+    var p = ST.player && ST.player.k === k ? ST.player : null, D = durDe(k);
+    var pos = p ? p.audio.currentTime : 0, f = p && D ? Math.min(1, pos / D) : 0;
+    var B = barrasDe(k), corte = Math.round(f * B.length), sk = esc(k);
+    var h = '<div class="voz" data-voz="' + sk + '"><button class="play" data-play="' + sk + '" aria-label="' + (p && p.playing ? 'Pausa' : 'Reproducir') + '"><svg viewBox="0 0 24 24">' + (p && p.playing ? P.pausa : P.play) + '</svg></button>' +
+      '<div class="cuerpo"><div class="onda" data-onda="' + sk + '" role="slider" aria-label="Posición" aria-valuemin="0" aria-valuemax="' + Math.round(D) + '" aria-valuenow="' + Math.round(pos) + '">' +
+      B.map(function (x, i) { return '<i style="height:' + x + 'px"' + (i < corte ? ' class="ya"' : '') + '></i>'; }).join('') +
+      '<span class="perilla" style="left:' + (f * 100) + '%"></span></div>' +
+      '<div class="voz-pie"><span data-t="' + sk + '">' + dur(p ? pos : D) + '</span></div></div>' +
+      '<button class="vel" data-vel="' + sk + '" aria-label="Velocidad">' + ST.rate + '×</button></div>';
+    if (a.transcripcion) h += '<div class="trans"><span class="et">Transcripción</span>' + esc(a.transcripcion) + '</div>';
+    else if (!local) {
+      // La base no guarda la falla (el vigía reintenta solo, hasta 30 min entre intentos, durante 2 días).
+      var edad = Date.now() - new Date(a.created_at || Date.now());
+      h += edad < 10 * 60000 ? '<div class="trans pend"><span class="giro"></span>transcribiendo…</div>' :
+        edad < 2 * 864e5 ? '<div class="trans mal">Todavía no se pudo transcribir: reintento solo.</div>' :
+        '<div class="trans mal">No se pudo transcribir.</div>';
+    }
+    return h;
+  }
+  function selVoz(k, sel) { return '[' + sel + '="' + (G.CSS && CSS.escape ? CSS.escape(k) : k) + '"]'; }
+  function pararVoz() { if (ST.player) { ST.player.audio.pause(); ST.player = null; } cancelAnimationFrame(rafVoz); }
+  /** MediaRecorder graba webm sin duración (Infinity) y Chrome no deja saltar: se fuerza a calcularla. */
+  function conDuracion(a, k) {
+    return new Promise(function (listo) {
+      var hecho = false;
+      var fin = function () { if (hecho) return; hecho = true; a.ontimeupdate = null; if (isFinite(a.duration) && a.duration > 0) ST.durs[k] = a.duration; listo(); };
+      var ya = function () {
+        if (isFinite(a.duration)) return fin();
+        a.ontimeupdate = function () { if (hecho) return; a.ontimeupdate = null; a.currentTime = 0; fin(); };
+        try { a.currentTime = 1e101; } catch (e) { fin(); }
+      };
+      if (a.readyState >= 1) ya(); else a.onloadedmetadata = ya;
+      // Si no se pudo medir en 4 s se suena igual; el truco ya no corre después (no regresa el audio a 0).
+      setTimeout(fin, 4000);
+    });
+  }
+  async function prepararAudio(k, tocar) {
+    if (ST.player && ST.player.k !== k) { var ant = ST.player.k; pararVoz(); actualizarVoz(ant, 0, false); }
+    if (!ST.player) {
+      var boton = $(selVoz(k, 'data-play')); if (boton) boton.setAttribute('aria-busy', 'true');
+      var u = await cargarUrl(k);
+      if (boton) boton.removeAttribute('aria-busy');
+      if (!u) { toast('No se pudo bajar el audio.'); return null; }
+      if (ST.player && ST.player.k !== k) pararVoz();
+      if (!ST.player) {
+        var a = new Audio(u); a.preload = 'auto';
+        ST.player = { k: k, audio: a, playing: false };
+        await conDuracion(a, k);
+        a.onended = function () { if (ST.player && ST.player.audio === a) { ST.player.playing = false; a.currentTime = 0; actualizarVoz(k, 0, false, true); } };
+        a.playbackRate = ST.rate;
+      }
+    }
+    if (tocar && ST.player && ST.player.k === k) {
+      try { await ST.player.audio.play(); ST.player.playing = true; } catch (e) { toast('El navegador no reprodujo este audio.'); }
+      ciclo();
+    }
+    return ST.player;
+  }
+  function alternar(k) {
+    if (ST.player && ST.player.k === k && ST.player.playing) { ST.player.audio.pause(); ST.player.playing = false; ciclo(); return; }
+    prepararAudio(k, true);
+  }
+  function actualizarVoz(k, pos, sonando, fin) {
+    var el = $(selVoz(k, 'data-voz')); if (!el) return;
+    var D = durDe(k), f = D ? Math.min(1, pos / D) : 0, B = $$('.onda i', el), corte = Math.round(f * B.length);
+    B.forEach(function (b, i) { b.classList.toggle('ya', i < corte); });
+    $('.perilla', el).style.left = (f * 100) + '%';
+    $('[data-t]', el).textContent = dur(fin || (!sonando && !pos) ? D : pos);
+    $('[data-play] svg', el).innerHTML = sonando ? P.pausa : P.play;
+    $('[data-play]', el).setAttribute('aria-label', sonando ? 'Pausa' : 'Reproducir');
+    $('.onda', el).setAttribute('aria-valuenow', Math.round(pos));
+  }
+  var rafVoz = null;
+  function ciclo() {
+    cancelAnimationFrame(rafVoz);
+    var p = ST.player; if (!p) return;
+    actualizarVoz(p.k, p.audio.currentTime, p.playing);
+    if (p.playing) rafVoz = requestAnimationFrame(ciclo);
+  }
+  function enlazarVoces(R) {
+    $$('[data-play]', R).forEach(function (b) { b.onclick = function () { alternar(b.dataset.play); }; });
+    $$('[data-vel]', R).forEach(function (b) { b.onclick = function () {
+      ST.rate = { 1: 1.5, 1.5: 2, 2: 1 }[ST.rate] || 1;
+      if (ST.player) ST.player.audio.playbackRate = ST.rate;
+      $$('[data-vel]').forEach(function (x) { x.textContent = ST.rate + '×'; });
+    }; });
+    $$('[data-onda]', R).forEach(function (o) {
+      var k = o.dataset.onda;
+      var mover = function (e) {
+        var p = ST.player; if (!p || p.k !== k) return;
+        var r = o.getBoundingClientRect(), f = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), D = durDe(k);
+        if (D) { p.audio.currentTime = f * D; actualizarVoz(k, f * D, p.playing); }
+      };
+      o.addEventListener('pointerdown', function (e) {
+        try { o.setPointerCapture(e.pointerId); } catch (er) {}
+        if (ST.player && ST.player.k === k) mover(e);
+        else { var x = e.clientX; prepararAudio(k, false).then(function () { mover({ clientX: x }); }); }
+        o.onpointermove = mover;
+      });
+      o.addEventListener('pointerup', function () { o.onpointermove = null; });
+      o.addEventListener('pointercancel', function () { o.onpointermove = null; });
+    });
+  }
 
   // ── tarjetas de la respuesta del motor ─────────────────────────────────
   function tarjetasRespuesta(U) {
@@ -372,7 +763,7 @@
       var k = f.dataset.foto; cargarUrl(k).then(function (u) { if (u) f.style.backgroundImage = 'url(' + u + ')'; });
       f.onclick = function () { verFotos(f.dataset.grupo.split(','), k); };
     });
-    $$('[data-audio]', M).forEach(function (b) { b.onclick = function () { tocar(b); }; });
+    enlazarVoces(M);
     $$('[data-doc]', M).forEach(function (d) { d.onclick = function () { bajar(d.dataset.doc); }; });
     $$('[data-reint]', M).forEach(function (b) { b.onclick = function () { Q.reintentar(b.dataset.reint); }; });
     $$('[data-desc]', M).forEach(function (b) { b.onclick = function () { if (confirm('¿Descartar este mensaje? No se manda.')) Q.descartar(b.dataset.desc); }; });
@@ -465,14 +856,6 @@
     };
     pinta();
   }
-  var sonando = null;
-  async function tocar(b) {
-    if (sonando) { sonando.a.pause(); sonando.b.textContent = '▶'; if (sonando.b === b) { sonando = null; return; } }
-    b.textContent = '…'; var u = await cargarUrl(b.dataset.audio); if (!u) { b.textContent = '▶'; return toast('No se pudo bajar el audio.'); }
-    var a = new Audio(u); sonando = { a: a, b: b }; b.textContent = '❚❚';
-    a.onended = function () { b.textContent = '▶'; sonando = null; };
-    a.play().catch(function () { b.textContent = '▶'; toast('El navegador no reprodujo este audio.'); });
-  }
   async function bajar(k) {
     var u = await cargarUrl(k); if (!u) return toast('No se pudo bajar el archivo.');
     var a = document.createElement('a'); a.href = u; a.download = (ST.nombres && ST.nombres[k]) || 'archivo'; a.target = '_blank'; document.body.appendChild(a); a.click(); a.remove();
@@ -487,7 +870,7 @@
   }
   function pintarComposer() {
     var hay = $('#in').value.trim() || ST.bandeja.length;
-    $('#bEnviar').textContent = hay ? '➤' : '🎤';
+    $('#bEnviar').innerHTML = ico(hay ? 'enviar' : 'mic');
     $('#bEnviar').setAttribute('aria-label', hay ? 'Enviar' : 'Grabar nota de voz');
     var B = $('#bandeja');
     if (!ST.bandeja.length) { B.style.display = 'none'; return; }
@@ -648,6 +1031,7 @@
     }, ST.sondeoMs);
   }
   async function abrir(sel) {
+    if (!ST.sel || ST.sel.id !== sel.id || ST.sel.local !== sel.local) pararVoz();
     ST.sel = sel; guardarSel(); ST.hilo = null; ST.vistos = null; ST.bandeja = []; ST.irAbajo = true;
     $('#app').classList.remove('en-menu'); $('#app').classList.add('ver-chat'); pintarLista(); pintarChat(); pintarComposer();
     await cargarHilo(); sondear();
@@ -656,6 +1040,7 @@
 
   G.CzApp = { VERSION: VERSION, arrancar: async function () {
     if (G.__ftsSinAcceso) return;
+    $('#lArch').insertAdjacentHTML('afterbegin', ico('clip')); $('#lCam').insertAdjacentHTML('afterbegin', ico('camara'));
     $('#in').oninput = function () { autoAlto(); pintarComposer(); };
     $('#in').onkeydown = function (e) { if (e.key === 'Enter' && !e.shiftKey && innerWidth >= 900) { e.preventDefault(); enviar(); } };
     $('#bEnviar').onclick = enviar;
