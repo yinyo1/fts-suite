@@ -27,7 +27,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.32';
+  var VERSION = 'V1.32.1';
   /* V1.32 (0006) · empresa y moneda de la sesión: la base acepta estas tres claves. */
   var EMPRESAS = { mx_mxn: { n: 'FTS México · MXN', s: 'Empresa 1 · pesos', id: 1, m: 'MXN', pais: 'mx' },
                    mx_usd: { n: 'FTS México · USD', s: 'Empresa 1 · dólares', id: 1, m: 'USD', pais: 'mx' },
@@ -369,7 +369,7 @@
   }
 
   function nuevaCotizacion() { abrirMenu(); }
-  /** V1.30 · la sesión nueva empieza en el chat con tres opciones. */
+  /** V1.30 · la sesión nueva empieza en el chat con dos opciones (V1.32.1 quitó «Seguir una cotización»: la lista ya lo hace). */
   function abrirMenu() {
     ST.sel = { menu: true }; ST.hilo = null; ST.bandeja = []; ST.pais = ST.pais || 'mx';
     $('#app').classList.add('ver-chat'); $('#app').classList.add('en-menu'); pintarLista(); pintarChat();
@@ -380,13 +380,11 @@
       '<p class="nota">Primero, ¿a nombre de qué empresa y en qué moneda?</p><div class="emp-sel">' + selEmpresa(ST.empresa) + '</div>' +
       '<div class="opciones">' +
       '<button class="opc" data-modo="acompanamiento"><b>1 · Voy a hacer un levantamiento</b><small>Te acompaño en planta: te pido fotos, la ruta, medidas y acceso según el trabajo.</small></button>' +
-      '<button class="opc" data-modo="levantamiento"><b>2 · Ya tengo el levantamiento</b><small>Me mandas todo (fotos, audios, PDFs, notas) y al final tocas «Ya es todo».</small></button>' +
-      '<button class="opc" data-modo="seguir"><b>3 · Seguir una cotización</b><small>Abre la lista de sesiones.</small></button></div>' +
+      '<button class="opc" data-modo="levantamiento"><b>2 · Ya tengo el levantamiento</b><small>Me mandas todo (fotos, audios, PDFs, notas) y al final tocas «Ya es todo».</small></button></div>' +
       '<p class="nota">La empresa se puede cambiar desde ⋮ mientras no haya machote.</p></div></div>';
     $$('#msgs [data-emp]').forEach(function (b) { b.onclick = function () { ST.empresa = b.dataset.emp; pintarMenu(); }; });
     $$('#msgs [data-modo]').forEach(function (b) { b.onclick = async function () {
       var m = b.dataset.modo;
-      if (m === 'seguir') { ST.filtro = 'vivas'; ST.archivadas = false; volverALista(); pintarChat(); return; }
       b.disabled = true;
       var c = await Q.nuevaSesion({ titulo: MODOS[m].titulo, pais: EMPRESAS[ST.empresa].pais, modo: m, empresa: ST.empresa });
       ST.locales = await Q.casosLocales(); $('#app').classList.remove('en-menu'); abrir({ local: c.local_id });
@@ -407,14 +405,29 @@
     if (H && (H.mensajes || []).some(function (m) { return m.rol === 'usuario' && DISPARO.test(m.texto || ''); })) return true;
     return salidaDelCaso().some(function (x) { return DISPARO.test(x.texto || ''); });
   }
+  /** ¿Se ofrece el disparador («Ya terminé, cotiza» / «Ya es todo»)? Devuelve el modo, o null. */
+  function modoDisparo() {
+    var m = modoActual(), c = (ST.hilo && ST.hilo.caso) || casoActual() || {};
+    var hayMachote = ((ST.hilo && ST.hilo.acciones) || []).some(function (x) { return x.tipo === 'crear_machote'; });
+    return m && !(ST.sel || {}).menu && ['abierto', 'local', undefined].indexOf(c.estado) >= 0 && !yaDisparo() && !hayMachote ? m : null;
+  }
+  /** V1.32.1 (#4 A5, Montalvo lo picó sin querer): el disparador SIEMPRE pide confirmación. */
+  function confirmarDisparo(m) {
+    modal('<h3>' + (m === 'acompanamiento' ? '¿Ya terminaste el levantamiento?' : '¿Ya es todo?') + '</h3>' +
+      '<p class="sub">Con lo que mandaste armo las preguntas que faltan y la lista de conceptos. Lo que mandes después también entra, en otra vuelta.</p>' +
+      '<div class="acc der"><button class="boton" data-cierra>' + (m === 'acompanamiento' ? 'Sigo levantando' : 'Todavía no') + '</button><button class="boton si" id="okDisparo">' + (m === 'acompanamiento' ? 'Sí, cotiza' : 'Sí, ya es todo') + '</button></div>');
+    $('#okDisparo').onclick = function () { this.disabled = true; cerrarModal(); mandar(MODOS[m].boton).then(function () { pintarFijo(); pintarCabecera(); }); };
+  }
   function pintarFijo() {
     var m = modoActual(), c = (ST.hilo && ST.hilo.caso) || casoActual() || {}, el = $('#fijo');
-    var hayMachote = ((ST.hilo && ST.hilo.acciones) || []).some(function (x) { return x.tipo === 'crear_machote'; });
-    var ver = m && !(ST.sel || {}).menu && ['abierto', 'local', undefined].indexOf(c.estado) >= 0 && !yaDisparo() && !hayMachote;
-    if (ver) {
+    var md = modoDisparo();
+    // En acompañamiento el botón SALE de la barra (queda junto a ⋮ y dentro de ⋮); en «ya tengo el levantamiento»
+    // sigue en la barra porque es la única acción del modo. Los dos piden confirmación.
+    if (md === 'acompanamiento') { el.style.display = 'none'; el.innerHTML = ''; return; }
+    if (md) {
       el.style.display = 'flex';
-      el.innerHTML = '<button id="bFijo" type="button">' + ico('disparo', 's') + esc(MODOS[m].boton) + '</button>';
-      $('#bFijo').onclick = function () { this.disabled = true; var t = MODOS[m].boton; mandar(t).then(function () { var b = $('#bFijo'); if (b) b.disabled = false; pintarFijo(); }); };
+      el.innerHTML = '<button id="bFijo" type="button">' + ico('disparo', 's') + esc(MODOS[md].boton) + '</button>';
+      $('#bFijo').onclick = function () { confirmarDisparo(md); };
       return;
     }
     // V1.32 (9a · 9b · 9c): con el BOM listo, «Todo listo, crear machote»; con el machote, abrirlo en el editor de
@@ -478,8 +491,10 @@
       '<div class="av" style="background:' + color(c.titulo) + '">' + esc(iniciales(c.cliente || c.titulo)) + '</div>' +
       '<div class="tx"><b><span>' + esc(c.titulo) + '</span>' + (((H && H.caso) || c).demo ? '<span class="chip-prueba" title="No enseña">PRUEBA</span>' : '') +
       '<span class="ver" title="Build del módulo">' + VERSION + '</span></b><small class="' + (vivo ? 'vivo' : '') + '">' + esc(sub) + '</small></div>' +
+      (modoDisparo() === 'acompanamiento' ? '<button class="cz-cotiza" id="bCotiza" type="button" aria-label="Ya terminé, cotiza">' + ico('disparo', 's') + '<span>Cotiza</span></button>' : '') +
       '<button class="btn-ic" id="bMenu" aria-label="Opciones">' + ico('mas') + '</button>';
     $('#bVuelve').onclick = volverALista;
+    if ($('#bCotiza')) $('#bCotiza').onclick = function () { confirmarDisparo('acompanamiento'); };
     $('#bMenu').onclick = function (e) { menuChat(e.currentTarget); };
   }
   /** ⋮ del chat: lo de la sesión (fijar, renombrar, archivar) y, abajo, detalles y lo aprendido. */
@@ -487,7 +502,8 @@
     var c = sesionDe(ST.sel) || casoActual() || {};
     var A = accionesDe(c), abierta = c.estado === 'abierto' || c.estado === 'enviada';
     var H = ST.hilo, cs = (H && H.caso) || {}, hayM = !!(cs.machote_id || cs.machote_folio), mia = c.puede_editar === true;
-    var V = c.id && !(ST.sel || {}).menu ? (
+    var md = modoDisparo();
+    var V = (md === 'acompanamiento' ? '<button data-a="disparo" class="destaca">' + ico('disparo', 's') + '<span>' + esc(MODOS[md].boton) + '<small>Te pido confirmación antes de mandarlo</small></span></button><hr>' : '') + (c.id && !(ST.sel || {}).menu ? (
       '<button data-a="ficha">' + ico('ficha', 's') + '<span>Ficha de la sesión<small>CRM · machote · orden · carpeta</small></span></button>' +
       '<button data-a="empresa"' + (hayM || !mia ? ' disabled' : '') + '>' + ico('empresa', 's') + '<span>Empresa: ' + esc((EMPRESAS[claveEmpresa(cs)] || EMPRESAS.mx_mxn).n) +
         '<small>' + (hayM ? 'Ya hay machote: no se cambia aquí' : !mia ? 'Solo quien la abrió o Esteban' : 'Cambiar mientras no haya machote') + '</small></span></button>' +
@@ -495,7 +511,7 @@
       '<button data-a="pagina">' + ico('pagina', 's') + '<span>Ver en página<small>Lo considerado y el machote, con versiones</small></span></button><hr>' +
       '<button data-a="archivos">' + ico('docs', 's') + '<span>Archivos, enlaces y docs.</span></button>' +
       '<button data-a="multimedia">' + ico('bajar', 's') + '<span>Descargar todo lo multimedia<small>Fotos, audios y PDFs en un ZIP</small></span></button>' +
-      '<button data-a="exportar">' + ico('exportar', 's') + '<span>Exportar chat<small>JSON o TXT, con o sin multimedia</small></span></button><hr>') : '';
+      '<button data-a="exportar">' + ico('exportar', 's') + '<span>Exportar chat<small>JSON o TXT, con o sin multimedia</small></span></button><hr>') : '');
     var h = V + A.map(function (a) { return '<button data-a="' + a.k + '"' + (a.ok ? '' : ' disabled') + '>' + ico(a.ic, 's') + '<span>' + a.t + a.sub + '</span></button>'; }).join('') +
       (A.length ? '<hr>' : '') +
       ((ST.sel || {}).menu ? '' : '<button data-a="detalles">' + ico('info', 's') + '<span>Detalles y línea de tiempo</span></button>') +
@@ -504,6 +520,7 @@
     var v = enMenu(btn, h);
     $$('[data-a]', v).forEach(function (b) { b.onclick = function () {
       cerrarVelo(); var a = b.dataset.a;
+      if (a === 'disparo') return confirmarDisparo(md);
       if (a === 'detalles') return menuSesion();
       if (a === 'aprendio') return verAprendio();
       if (a === 'ficha') return hojaFicha();

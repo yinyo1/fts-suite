@@ -51,14 +51,18 @@
     if (!op.simular) {
       var t = tipo();
       if (t === null) throw new Error('Este navegador no puede grabar audio.');
-      e.flujo = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      // Safari iOS: el AudioContext tiene que nacer DENTRO del toque. Después del await de getUserMedia ya no
+      // cuenta como gesto, nace suspendido y resume() se rechaza: la grabación sale bien pero la onda queda plana.
+      var AC = G.AudioContext || G.webkitAudioContext, ctx0 = null;
+      try { ctx0 = AC ? new AC() : null; if (ctx0 && ctx0.state === 'suspended' && ctx0.resume) ctx0.resume().catch(function () {}); } catch (er) { ctx0 = null; }
+      try { e.flujo = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
+      catch (er) { if (ctx0) { try { ctx0.close(); } catch (e2) {} } throw er; }
       e.rec = new MediaRecorder(e.flujo, t ? { mimeType: t, audioBitsPerSecond: 32000 } : undefined);
       e.mime = (e.rec.mimeType || t || 'audio/webm').split(';')[0];
       e.rec.ondataavailable = function (ev) { if (ev.data && ev.data.size) e.partes.push(ev.data); };
       e.rec.start(1000);
       try {
-        var AC = G.AudioContext || G.webkitAudioContext;
-        e.ctx = new AC(); var src = e.ctx.createMediaStreamSource(e.flujo);
+        e.ctx = ctx0 || new AC(); var src = e.ctx.createMediaStreamSource(e.flujo);
         e.an = e.ctx.createAnalyser(); e.an.fftSize = 512; src.connect(e.an); e.buf = new Uint8Array(e.an.fftSize);
         if (e.ctx.state === 'suspended' && e.ctx.resume) e.ctx.resume().catch(function () {});
       } catch (er) { e.an = null; }
