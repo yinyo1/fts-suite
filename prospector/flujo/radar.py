@@ -31,9 +31,9 @@ from datetime import date, datetime
 
 from .catalogo_proyectos import (UNIDADES_DE_DINERO, magnitudes, plano,
                                  proceso_de)
+from . import rutas as _rutas  # #407: datos privados
 
-RUTA_CATALOGO = os.path.join(os.path.dirname(os.path.dirname(
-    os.path.abspath(__file__))), "datos", "catalogo-de-proyectos-fts.json")
+RUTA_CATALOGO = _rutas.datos("catalogo-de-proyectos-fts.json")  # #407: vive en el repo privado
 
 # --------------------------------------------------------------------- familias
 # Tipo de proyecto -> familia. La familia es la unidad que tiene sentido para el

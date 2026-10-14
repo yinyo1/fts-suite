@@ -26,6 +26,8 @@ RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 
 from flujo.radar import cargar_catalogo, evaluar                  # noqa: E402
+from flujo import rutas as _rutas  # noqa: E402  (#407: datos privados)
+from pathlib import Path as _Path  # noqa: E402
 
 # EN `datos/`, NO EN `datos/corridas/`. El primer intento lo puso ahi y
 # `.gitignore` lo ignoro en silencio -- `corridas/` esta ignorado a proposito: es
@@ -33,7 +35,7 @@ from flujo.radar import cargar_catalogo, evaluar                  # noqa: E402
 # pasado en esta maquina y fallado en un clon limpio. Lo que este archivo guarda no
 # es salida de corrida: es DATO DECLARADO con procedencia, como
 # `senales-documentadas.json`, y ese es su lugar.
-RUTA = RAIZ / "datos" / "radar-2026-10-05-descubrimiento.json"
+RUTA = _Path(_rutas.o_saltar("radar-2026-10-05-descubrimiento.json"))
 CORRIDA = json.loads(RUTA.read_text(encoding="utf-8"))
 
 

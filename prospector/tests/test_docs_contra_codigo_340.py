@@ -18,8 +18,11 @@ import pytest
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, RAIZ)
 
+from flujo import rutas as _rutas_g  # noqa: E402
+_rutas_g.o_saltar("catalogo-de-proyectos-fts.json")  # #407: el radar carga el catalogo privado al importar
 from flujo import aprendizaje, cadencia, importacion_odoo as io, radar
 from flujo.catalogo_proyectos import magnitudes
+from flujo import rutas as _rutas  # noqa: E402  (#407: datos privados)
 
 DOCS = os.path.join(RAIZ, "metodo")
 CAT = radar.cargar_catalogo()
@@ -168,7 +171,7 @@ def test_el_doc_de_la_linea_base_cuenta_las_senales_QUE_HAY():
     diga lo que el dato dice HOY, y que no se quede diciendo un numero viejo.
     """
     import json
-    sen = json.load(open(os.path.join(RAIZ, "datos", "senales-documentadas.json"),
+    sen = json.load(open(_rutas.o_saltar("senales-documentadas.json"),
                          encoding="utf-8"))
     con_senal = sum(1 for c in sen["cuentas"] if c.get("fuente"))
     huecos = sum(1 for c in sen["cuentas"] if not c.get("fuente"))

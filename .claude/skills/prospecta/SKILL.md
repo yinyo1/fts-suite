@@ -5,6 +5,14 @@ description: Arma la ficha de contactos de una planta industrial de una sola ins
 
 # prospecta
 
+> **Dónde viven los datos (#407, M4/M12).** La inteligencia comercial —catálogo de proyectos,
+> cuentas con proyecto, relación de grupo, señales, corridas del radar, entregas— ya **no** está
+> en este repo público: vive en `fts-conceptualizador/marketing/datos/` (privado). El código la
+> encuentra solo (`flujo/rutas.py`): primero `PROSPECTOR_DATOS`, después el clon hermano
+> `../fts-conceptualizador/marketing/datos`. Antes de `prospecta`, en una sesión que no tenga
+> el clon hermano: `export PROSPECTOR_DATOS=/ruta/a/fts-conceptualizador/marketing/datos`.
+> **Nunca** vuelvas a escribir esos archivos en `prospector/datos/` de este repo.
+
 **La frase:** `prospecta <empresa>` — y si hace falta, `prospecta <empresa> en <ciudad>`.
 
 La empresa es **lo único obligatorio**. Todo lo demás se infiere del padrón.
@@ -78,7 +86,7 @@ Llamarlos es tuyo, y llamarlos de verdad:
 > devuelve perfiles de la empresa y no devuelve los de planta.
 >
 > **3. La constancia de Odoo vence a los siete días — reléela antes de exportar.**
-> `datos/odoo-declarado.json` lleva su fecha. Pasada la vigencia, `exportar_etapa1`
+> `odoo-declarado.json` (en la carpeta de datos privados, ver «Dónde viven los datos») lleva su fecha. Pasada la vigencia, `exportar_etapa1`
 > marca **todas** las filas `SIN_CONSULTAR_A_ODOO` y no se sube nada. Y cuando la
 > leas, **busca los leads por nombre del lead, no sólo por `partner_id`**: en #361
 > eso destapó tres oportunidades —una con cotización enviada y una ganada— que

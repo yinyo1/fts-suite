@@ -24,9 +24,11 @@ RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 
 from flujo.radar import evaluar                                     # noqa: E402
+from flujo import rutas as _rutas  # noqa: E402  (#407: datos privados)
+from pathlib import Path as _Path  # noqa: E402
 
-RADAR = RAIZ / "datos" / "radar-2026-10-05-puertas.json"
-HOJA = RAIZ / "datos" / "prospecta-2026-10-06-seis-puertas-de-usuario.json"
+RADAR = _Path(_rutas.o_saltar("radar-2026-10-05-puertas.json"))
+HOJA = _Path(_rutas.o_saltar("prospecta-2026-10-06-seis-puertas-de-usuario.json"))
 
 
 def _radar():

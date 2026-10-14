@@ -24,6 +24,8 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 
+from flujo import rutas as _rutas_g  # noqa: E402
+_rutas_g.o_saltar("catalogo-de-proyectos-fts.json")  # #407: el radar carga el catalogo privado al importar
 from flujo import puertas as P                                     # noqa: E402
 from flujo.radar import (FASE_ANUNCIO, FASE_INAUGURADA,            # noqa: E402
                          FASE_OBRA_ARRANCADA, FUERZA_DE_FUENTE,

@@ -20,6 +20,7 @@ sys.path.insert(0, RAIZ)
 
 from flujo.estado import Corrida, comparar_subida
 from herramientas import verificar_entrega as ve
+from flujo import rutas as _rutas  # noqa: E402  (#407: datos privados)
 
 
 def _archivo(tmp_path, contenido=b"a,b,c\n1,2,3\n"):
@@ -123,7 +124,7 @@ def test_las_entregas_de_la_noche_quedaron_registradas():
     Lo que importa de #340 es que sus seis renglones sigan ahi y que los superados lo
     digan. Que haya mas renglones despues no es un defecto: es el libro funcionando.
     """
-    ruta = os.path.join(RAIZ, "datos", "entregas-fuera-de-corrida.json")
+    ruta = _rutas.o_saltar("entregas-fuera-de-corrida.json")
     d = json.load(open(ruta, encoding="utf-8"))
     por_nombre = {e["archivo"]: e for e in d["entregas"]}
     faltan = (VIGENTES | SUPERADOS) - set(por_nombre)
@@ -144,7 +145,7 @@ def test_las_entregas_de_la_noche_quedaron_registradas():
 
 
 def test_el_registro_no_lleva_datos_personales():
-    crudo = open(os.path.join(RAIZ, "datos", "entregas-fuera-de-corrida.json"),
+    crudo = open(_rutas.o_saltar("entregas-fuera-de-corrida.json"),
                  encoding="utf-8").read()
     assert "@" not in crudo.replace("estebandelacruz_fts_mx", ""), (
         "un correo en el registro es un dato personal; la unica cadena con "

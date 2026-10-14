@@ -22,9 +22,10 @@ sys.path.insert(0, os.path.join(RAIZ, "herramientas"))
 
 from flujo import radar
 from flujo.importacion_odoo import razon_de_caducidad
+from flujo import rutas as _rutas  # noqa: E402  (#407: datos privados)
 
 HOY = date(2026, 9, 28)
-SEN = json.load(open(os.path.join(RAIZ, "datos", "senales-documentadas.json"),
+SEN = json.load(open(_rutas.o_saltar("senales-documentadas.json"),
                     encoding="utf-8"))
 POR = {c["empresa"] + ("/" + c["planta"] if c.get("planta") else ""): c
        for c in SEN["cuentas"]}

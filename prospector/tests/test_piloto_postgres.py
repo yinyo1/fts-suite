@@ -16,6 +16,7 @@ sys.path.insert(0, RAIZ)
 sys.path.insert(0, os.path.join(RAIZ, "herramientas"))
 
 from flujo.base_motor3 import Base, SinPostgres
+from flujo import rutas as _rutas  # noqa: E402  (#407: datos privados)
 
 
 # ================================================  sin Postgres: las decisiones
@@ -192,8 +193,7 @@ def test_el_piloto_carga_y_sus_reglas_rechazan(base):
     # de Metalsa--. Lo que se fija es la INVARIANTE: cada cuenta con senal se carga,
     # cada hueco se queda fuera, y la suma cuadra.
     import json as _json
-    _inv = _json.load(open(os.path.join(RAIZ, "datos",
-                                        "senales-documentadas.json"),
+    _inv = _json.load(open(_rutas.o_saltar("senales-documentadas.json"),
                            encoding="utf-8"))["cuentas"]
     _con_senal = sum(1 for c in _inv if c.get("fuente"))
     _huecos = len(_inv) - _con_senal
