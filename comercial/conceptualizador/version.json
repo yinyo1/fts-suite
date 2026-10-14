@@ -1,0 +1,25 @@
+{
+  "version": "V1.30",
+  "historial": [
+    {
+      "version": "V1.30",
+      "nota": "Sesión nueva con menú de tres opciones (voy a hacer un levantamiento · ya tengo el levantamiento · seguir una cotización) y país. Cada modo trae su botón fijo («Ya terminé, cotiza» o «Ya es todo») que manda lo mismo que escribirlo. El motor dice qué está haciendo («escuchando el audio», «viendo 12 fotos») y la pantalla consulta cada 2.5 s mientras trabaja. Acuses al instante del servidor. El disparador escrito exige la palabra completa: «cotiza» dispara, «cotización de…» no."
+    },
+    {
+      "version": "V1.21",
+      "nota": "Crear machote y crear borrador esperan a que se contesten las suposiciones pendientes; una propuesta reemplazada se marca como tal (recorrido de prueba)."
+    },
+    {
+      "version": "V1.20",
+      "nota": "Botones que escriben, siempre con tu clic: alta de contacto o empresa en Odoo (busca antes de crear), crear el machote a tu nombre ligado a la oportunidad, y el borrador en Odoo detrás del mismo interruptor que el machote (#387). Vista del PDF al cliente con una línea por sección, sin costos, imprimible, y correo para copiar."
+    },
+    {
+      "version": "V1.10",
+      "nota": "Chat tipo WhatsApp: una sesión por cotización con estado, notas de voz, fotos reducidas a 1600 px y PDFs subidos uno por uno con avance, cola sin señal en el teléfono con la hora real, botones del motor (confirmar suposición, ya la mandé, cerrar) y /cierre."
+    },
+    {
+      "version": "V1.00",
+      "nota": "MVP: chat con el motor, conceptos con razón obligatoria, BOM a costo con fuente y fórmula, Lo que aprendió (Sesión 1 del conceptualizador)."
+    }
+  ]
+}
