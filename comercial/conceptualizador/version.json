@@ -1,6 +1,10 @@
 {
-  "version": "V1.21",
+  "version": "V1.30",
   "historial": [
+    {
+      "version": "V1.30",
+      "nota": "Sesión nueva con menú de tres opciones (voy a hacer un levantamiento · ya tengo el levantamiento · seguir una cotización) y país. Cada modo trae su botón fijo («Ya terminé, cotiza» o «Ya es todo») que manda lo mismo que escribirlo. El motor dice qué está haciendo («escuchando el audio», «viendo 12 fotos») y la pantalla consulta cada 2.5 s mientras trabaja. Acuses al instante del servidor."
+    },
     {
       "version": "V1.21",
       "nota": "Crear machote y crear borrador esperan a que se contesten las suposiciones pendientes; una propuesta reemplazada se marca como tal (recorrido Mattel)."

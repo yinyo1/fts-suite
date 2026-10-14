@@ -66,7 +66,7 @@
   /** Nueva sesión. Con red se da de alta de inmediato; sin red queda local. */
   async function nuevaSesion(datos) {
     var c = { local_id: id('caso'), actor: actor(), titulo: datos.titulo || 'Cotización nueva', cliente: datos.cliente || '',
-              pais: datos.pais || 'mx', caso_id: null, creado: Date.now() };
+              pais: datos.pais || 'mx', modo: datos.modo || 'libre', caso_id: null, creado: Date.now() };
     await poner('casos', c); avisar(); correr();
     return c;
   }
@@ -97,7 +97,7 @@
       var casos = await todos('casos');
       for (var i = 0; i < casos.length; i++) {
         var c = casos[i]; if (c.caso_id) continue;
-        var r = await C.nueva({ titulo: c.titulo, cliente: c.cliente, pais: c.pais });
+        var r = await C.nueva({ titulo: c.titulo, cliente: c.cliente, pais: c.pais, modo_sesion: c.modo || 'libre' });
         if (r.ok) { c.caso_id = r.caso_id; await poner('casos', c); avisar(); }
         else if (r.clase === 'red') { red = true; break; }
       }

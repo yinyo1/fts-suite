@@ -13,7 +13,16 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.21';
+  var VERSION = 'V1.30';
+  /* V1.30 · los dos modos de una sesión nueva (Fase 9). El botón fijo manda
+   * EXACTAMENTE la frase que se escribiría: el disparador es el mismo. */
+  var MODOS = {
+    acompanamiento: { titulo: 'Levantamiento en planta', boton: 'Ya terminé, cotiza',
+      intro: 'Modo acompañamiento. Mándame lo que vayas viendo: fotos, notas de voz, medidas, la ruta. Te contesto corto y te pido lo que no puede faltar según el trabajo. No propongo conceptos hasta que toques «Ya terminé, cotiza».' },
+    levantamiento: { titulo: 'Cotización nueva', boton: 'Ya es todo',
+      intro: 'Mándame todo (fotos, audios, PDFs, notas) y cuando acabes toca «Ya es todo».' }
+  };
+  var DISPARO = /^\s*(ya\s+es\s+todo|es\s+todo|ya\s+termin|cotiza)/i;
   var C = G.CzCliente, Q = G.CzCola, Me = G.CzMedios;
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
@@ -64,7 +73,7 @@
   // ── lista de sesiones ──────────────────────────────────────────────────
   function sesionesVisibles() {
     var loc = ST.locales.filter(function (l) { return !l.caso_id; }).map(function (l) {
-      return { local: l.local_id, titulo: l.titulo, cliente: l.cliente, estado: 'local', ultima_actividad_at: new Date(l.creado).toISOString(), ultimo: null }; });
+      return { local: l.local_id, titulo: l.titulo, cliente: l.cliente, modo: l.modo, estado: 'local', ultima_actividad_at: new Date(l.creado).toISOString(), ultimo: null }; });
     var srv = ST.casos.map(function (c) { return Object.assign({ id: c.id }, c); });
     var F = { vivas: ['local', 'abierto', 'enviada'], cerradas: ['cerrado'], archivadas: ['archivado'], todas: null }[ST.filtro];
     return loc.concat(srv).filter(function (c) { return !F || F.indexOf(c.estado) >= 0; });
@@ -97,37 +106,69 @@
   var PALETA = ['#128c7e', '#075e54', '#5d4037', '#455a64', '#6d4c41', '#00796b', '#37474f', '#795548'];
   function color(t) { var n = 0; String(t || '').split('').forEach(function (c) { n = (n * 31 + c.charCodeAt(0)) % 997; }); return PALETA[n % PALETA.length]; }
 
-  function nuevaCotizacion() {
-    modal('<h3>Nueva cotización</h3><p class="sub">Una sesión por cotización. Después platícale todo: texto, notas de voz, fotos, PDFs.</p>' +
-      '<label class="lb">Título corto<input id="nTit" maxlength="120" placeholder="Ej. reubicación de pantallas y audio"></label>' +
-      '<label class="lb">Cliente (como lo conozcas; lo busco en Odoo)<input id="nCli" maxlength="120" placeholder="Ej. nombre corto o razón social"></label>' +
-      '<label class="lb">País<select id="nPais"><option value="mx">México · MXN</option><option value="usa">USA · USD</option></select></label>' +
-      '<div class="acc der"><button class="boton" data-cierra>Cancelar</button><button class="boton si" id="nOk">Abrir</button></div>');
-    $('#nOk').onclick = async function () {
-      var t = $('#nTit').value.trim(); if (!t) return toast('Ponle un título corto.');
-      var c = await Q.nuevaSesion({ titulo: t, cliente: $('#nCli').value.trim(), pais: $('#nPais').value });
-      cerrarModal(); ST.locales = await Q.casosLocales(); abrir({ local: c.local_id });
-    };
-    setTimeout(function () { var i = $('#nTit'); if (i) i.focus(); }, 50);
+  function nuevaCotizacion() { abrirMenu(); }
+  /** V1.30 · la sesión nueva empieza en el chat con tres opciones. */
+  function abrirMenu() {
+    ST.sel = { menu: true }; ST.hilo = null; ST.bandeja = []; ST.pais = ST.pais || 'mx';
+    $('#app').classList.add('ver-chat'); $('#app').classList.add('en-menu'); pintarLista(); pintarChat();
+  }
+  function pintarMenu() {
+    pintarCabecera(); $('#senal').style.display = 'none'; $('#fijo').style.display = 'none';
+    $('#msgs').innerHTML = '<div class="b el"><div class="quien">Conceptualizador</div><div class="txt">¿Qué vamos a hacer?</div>' +
+      '<div class="opciones">' +
+      '<button class="opc" data-modo="acompanamiento"><b>1 · Voy a hacer un levantamiento</b><small>Te acompaño en planta: te pido fotos, la ruta, medidas y acceso según el trabajo.</small></button>' +
+      '<button class="opc" data-modo="levantamiento"><b>2 · Ya tengo el levantamiento</b><small>Me mandas todo (fotos, audios, PDFs, notas) y al final tocas «Ya es todo».</small></button>' +
+      '<button class="opc" data-modo="seguir"><b>3 · Seguir una cotización</b><small>Abre la lista de sesiones.</small></button></div>' +
+      '<div class="pais">País: ' + [['mx', 'México · MXN'], ['usa', 'USA · USD']].map(function (p) {
+        return '<button data-pais="' + p[0] + '" class="' + (ST.pais === p[0] ? 'on' : '') + '">' + p[1] + '</button>'; }).join('') + '</div></div>';
+    $$('#msgs [data-pais]').forEach(function (b) { b.onclick = function () { ST.pais = b.dataset.pais; pintarMenu(); }; });
+    $$('#msgs [data-modo]').forEach(function (b) { b.onclick = async function () {
+      var m = b.dataset.modo;
+      if (m === 'seguir') { ST.sel = null; guardarSel(); $('#app').classList.remove('ver-chat'); $('#app').classList.remove('en-menu'); ST.filtro = 'vivas'; pintarLista(); pintarChat(); return; }
+      b.disabled = true;
+      var c = await Q.nuevaSesion({ titulo: MODOS[m].titulo, pais: ST.pais || 'mx', modo: m });
+      ST.locales = await Q.casosLocales(); $('#app').classList.remove('en-menu'); abrir({ local: c.local_id });
+    }; });
+  }
+  function modoActual() {
+    var c = (ST.hilo && ST.hilo.caso) || casoActual() || {};
+    return MODOS[c.modo] ? c.modo : null;
+  }
+  /** ¿Ya se dijo «ya es todo»? En el servidor, en lo que ya llegó o en lo que está en cola. */
+  function yaDisparo() {
+    var H = ST.hilo;
+    if (H && H.caso && H.caso.disparado_at) return true;
+    if (H && (H.mensajes || []).some(function (m) { return m.rol === 'usuario' && DISPARO.test(m.texto || ''); })) return true;
+    return salidaDelCaso().some(function (x) { return DISPARO.test(x.texto || ''); });
+  }
+  function pintarFijo() {
+    var m = modoActual(), c = (ST.hilo && ST.hilo.caso) || casoActual() || {}, el = $('#fijo');
+    var ver = m && !(ST.sel || {}).menu && ['abierto', 'local', undefined].indexOf(c.estado) >= 0 && !yaDisparo();
+    el.style.display = ver ? 'block' : 'none';
+    if (!ver) return;
+    $('#bFijo').textContent = MODOS[m].boton;
+    $('#bFijo').onclick = function () { this.disabled = true; var t = MODOS[m].boton; mandar(t).then(function () { $('#bFijo').disabled = false; pintarFijo(); }); };
   }
 
   // ── chat ───────────────────────────────────────────────────────────────
   function casoActual() {
     var s = ST.sel || {};
+    if (s.menu) return { titulo: 'Nueva cotización', estado: 'menu' };
     if (s.id) return ST.casos.filter(function (c) { return c.id === s.id; })[0] || (ST.hilo && ST.hilo.caso && ST.hilo.caso.id === s.id ? ST.hilo.caso : null);
     var l = ST.locales.filter(function (x) { return x.local_id === s.local; })[0];
-    return l ? { titulo: l.titulo, cliente: l.cliente, estado: 'local' } : null;
+    return l ? { titulo: l.titulo, cliente: l.cliente, modo: l.modo, estado: 'local' } : null;
   }
   function pintarCabecera() {
     var c = casoActual() || { titulo: '…' }, m = ST.motor;
     var sub = !navigator.onLine ? 'sin señal · lo que escribas se guarda' :
       !m ? 'conectando…' : m.modo === 'rapido' ? 'motor rápido · en línea' : 'respaldo · contesta en minutos';
-    if (ST.hilo && (ST.hilo.trabajos || []).some(function (t) { return t.estado === 'tomado'; })) sub = 'escribiendo…';
+    var tom = ST.hilo && (ST.hilo.trabajos || []).filter(function (t) { return t.estado === 'tomado' && !t.lote_de; })[0];
+    if (tom) sub = 'escribiendo…' + (tom.avance ? ' · ' + tom.avance : '');
     $('#ch').innerHTML = '<button class="vuelve" id="bVuelve" aria-label="Volver">&#8592;</button>' +
       '<div class="av" style="background:#fff;color:' + color(c.titulo) + '">' + esc(iniciales(c.cliente || c.titulo)) + '</div>' +
       '<div class="tx"><b>' + esc(c.titulo) + '</b><small>' + esc(sub) + '</small></div>' +
       '<button class="btl" id="bMenu" aria-label="Opciones">⋮</button>';
-    $('#bVuelve').onclick = function () { $('#app').classList.remove('ver-chat'); ST.sel = null; guardarSel(); pintarLista(); };
+    $('#bVuelve').onclick = function () { $('#app').classList.remove('ver-chat'); $('#app').classList.remove('en-menu'); ST.sel = null; guardarSel(); pintarLista(); };
     $('#bMenu').onclick = menuSesion;
   }
   function pintarSenal() {
@@ -148,20 +189,25 @@
   }
 
   function pintarChat() {
+    if ((ST.sel || {}).menu) return pintarMenu();
+    $('#app').classList.remove('en-menu');
     var M = $('#msgs'), abajo = M.scrollHeight - M.scrollTop - M.clientHeight < 80, H = ST.hilo;
-    pintarCabecera(); pintarSenal();
+    pintarCabecera(); pintarSenal(); pintarFijo();
+    var modo = modoActual();
     var h = '', ultimoDia = '';
     var dia = function (t) { var d = diaDe(t); if (d && d !== ultimoDia) { ultimoDia = d; h += '<div class="dia"><span>' + esc(d) + '</span></div>'; } };
     var meta = adjuntosPorId();
     var acc = accionesPorTrabajo(), pintadas = {};
     var U = H && (H.propuesta || H.ultima), porTrabajo = {}; ((H && H.trabajos) || []).forEach(function (t) { porTrabajo[t.id] = t; });
     if (!H && !(ST.sel || {}).local) h += '<div class="sistema"><span>Cargando…</span></div>';
-    if ((ST.sel || {}).local && !(H && H.mensajes && H.mensajes.length)) h += '<div class="sistema"><span>Platícale el trabajo: texto, notas de voz, fotos y PDFs. Cuando termines escribe «ya es todo».</span></div>';
+    if (modo) h += '<div class="b el intro"><div class="quien">Conceptualizador</div><div class="txt">' + esc(MODOS[modo].intro) + '</div></div>';
+    else if ((ST.sel || {}).local && !(H && H.mensajes && H.mensajes.length)) h += '<div class="sistema"><span>Platícale el trabajo: texto, notas de voz, fotos y PDFs. Cuando termines escribe «ya es todo».</span></div>';
     ((H && H.mensajes) || []).forEach(function (m) {
       var t = m.escrito_at || m.created_at; dia(t);
       if (m.rol === 'sistema') { h += '<div class="sistema"><span>' + esc(m.texto) + '</span></div>'; return; }
       var yo = m.rol === 'usuario', tr = m.trabajo_id && porTrabajo[m.trabajo_id];
-      var tk = yo ? tick(tr) : '';
+      // Sin trabajo en modo «ya tengo el levantamiento»: guardado; el motor lo lee todo junto al disparar.
+      var tk = yo ? (!m.trabajo_id && modo === 'levantamiento' ? '<span class="tk leido" title="Guardado; lo reviso todo junto cuando toques «Ya es todo»">✓✓</span>' : tick(tr)) : '';
       h += '<div class="b ' + (yo ? 'yo' : 'el') + '">' + (yo ? '' : '<div class="quien">Conceptualizador' + (/respaldo/.test(m.autor) ? ' · respaldo' : '') + '</div>') +
         adjuntosHtml((m.adjuntos || []).map(function (a) { return Object.assign({}, a, meta[a.id] || {}); }), false) +
         (m.texto ? '<div class="txt">' + (yo ? esc(m.texto) : md(m.texto)) + '</div>' : '') +
@@ -190,8 +236,10 @@
         '<span class="meta">' + esc(hora(x.escrito_at)) + ' ' + est + '</span><div style="clear:both"></div>' +
         (x.estado === 'error' ? '<div class="corr"><span class="err">' + esc(x.error) + '</span><button class="boton" data-reint="' + esc(x.cliente_id) + '">Reintentar</button><button class="boton" data-desc="' + esc(x.cliente_id) + '">Descartar</button></div>' : '') + '</div>';
     });
-    if (H && (H.trabajos || []).some(function (t) { return t.estado === 'tomado' || t.estado === 'pendiente'; }))
-      h += '<div class="b el escribe"><span></span><span></span><span></span></div>';
+    if (H && (H.trabajos || []).some(function (t) { return t.estado === 'tomado' || t.estado === 'pendiente'; })) {
+      var paso = (H.trabajos || []).filter(function (t) { return t.estado === 'tomado' && t.avance; }).map(function (t) { return t.avance; })[0];
+      h += '<div class="b el escribe"><span></span><span></span><span></span>' + (paso ? '<em>' + esc(paso) + '</em>' : '') + '</div>';
+    }
     M.innerHTML = h;
     enlazarChat(M);
     if (abajo || ST.irAbajo) { M.scrollTop = M.scrollHeight; ST.irAbajo = false; }
@@ -562,10 +610,12 @@
     var r = await C.hilo(s.id); if (!r.ok) { aviso(r); return; }
     if ((ST.sel || {}).id !== s.id) return;
     ST.motor = r.motor;
-    var n = (r.hilo.mensajes || []).filter(function (m) { return m.rol !== 'usuario'; }).length;
+    var n = (r.hilo.mensajes || []).filter(function (m) { return m.rol !== 'usuario' && m.autor !== 'acuse'; }).length;
     if (ST.vistos && ST.vistos.id === s.id && n > ST.vistos.n) avisarLlegada();
     ST.vistos = { id: s.id, n: n };
     ST.hilo = r.hilo; pintarChat();
+    // Recién mandado: si el motor ya tiene trabajo, la siguiente consulta no espera los 20 s.
+    if (enCurso() && ST.sondeoMs > 2500) sondear();
   }
   async function refrescarSalida() {
     ST.salida = await Q.salida(); ST.locales = await Q.casosLocales();
@@ -584,20 +634,21 @@
     try { if (document.hidden && G.Notification && Notification.permission === 'granted') new Notification('Conceptualizador', { body: 'Llegó la respuesta.' }); } catch (e) {}
   }
   function enCurso() { return ST.hilo && (ST.hilo.trabajos || []).some(function (t) { return t.estado === 'pendiente' || t.estado === 'tomado'; }); }
-  /** Consulta sola: cada 4 s mientras el motor trabaja, cada 20 s si no. */
+  /** Consulta sola: cada 2.5 s mientras el motor trabaja (se ve el paso), cada 20 s si no. */
   function sondear(ya) {
     clearTimeout(ST.sondeo);
+    ST.sondeoMs = ya ? 1200 : (enCurso() ? 2500 : 20000);
     ST.sondeo = setTimeout(async function () {
       if (!document.hidden) {
         await cargarCasos(); pintarLista();
         if (ST.sel) await cargarHilo();
       }
       sondear();
-    }, ya ? 1200 : (enCurso() ? 4000 : 20000));
+    }, ST.sondeoMs);
   }
   async function abrir(sel) {
     ST.sel = sel; guardarSel(); ST.hilo = null; ST.vistos = null; ST.bandeja = []; ST.irAbajo = true;
-    $('#app').classList.add('ver-chat'); pintarLista(); pintarChat(); pintarComposer();
+    $('#app').classList.remove('en-menu'); $('#app').classList.add('ver-chat'); pintarLista(); pintarChat(); pintarComposer();
     await cargarHilo(); sondear();
     try { if (G.Notification && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {}
   }

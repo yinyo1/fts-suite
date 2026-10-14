@@ -106,6 +106,19 @@
   .mini{width:58px;height:58px;border-radius:6px;background:#cfd8dc center/cover no-repeat;position:relative;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#555}
   .mini button{position:absolute;top:-4px;right:-4px;width:22px;height:22px;border-radius:50%;border:0;background:#333;color:#fff;font-size:14px;line-height:1;cursor:pointer}
   #prep{display:none;font-size:12px;color:#667781;background:#f0f2f5;padding:4px 12px}
+  /* V1.30 · menú inicial, modos y botón fijo del disparador */
+  #fijo{display:none;background:#f0f2f5;padding:8px 10px 0;text-align:center}
+  #fijo button{width:100%;max-width:520px;border:0;border-radius:22px;background:var(--wa-osc);color:#fff;font:inherit;font-weight:700;font-size:15px;padding:12px 16px;min-height:46px;cursor:pointer}
+  .app.en-menu .compose,.app.en-menu #fijo{display:none!important}
+  .opciones{display:flex;flex-direction:column;gap:8px;margin:8px 0 6px}
+  .opc{text-align:left;border:1px solid #cfe3dd;background:#fff;border-radius:10px;padding:11px 12px;font:inherit;cursor:pointer;min-height:48px}
+  .opc b{display:block;font-size:15px;color:var(--wa-osc)}.opc small{display:block;color:#54656f;font-size:12.5px;margin-top:2px}
+  .opc:hover{background:#f3faf8}
+  .pais{font-size:12.5px;color:#54656f;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .pais button{border:1px solid #cfd8d6;background:#fff;border-radius:14px;padding:5px 10px;font:inherit;font-size:12.5px;cursor:pointer}
+  .pais button.on{background:var(--wa-teal);color:#fff;border-color:var(--wa-teal)}
+  .b.el.intro{background:#fff8e1}
+  .escribe em{font-style:normal;font-size:12.5px;color:#54656f;margin-left:6px;align-self:center}
   .compose{display:flex;gap:6px;align-items:flex-end;padding:6px 8px calc(6px + env(safe-area-inset-bottom));background:#f0f2f5}
   .compose .caja{flex:1;display:flex;align-items:flex-end;background:#fff;border-radius:22px;padding:3px 4px 3px 12px;min-height:46px}
   .compose textarea{flex:1;border:0;outline:0;font:inherit;font-size:16px;min-width:0;background:transparent;resize:none;padding:10px 0;max-height:140px;line-height:1.35}
@@ -163,6 +176,7 @@
     <div id="msgs"></div>
     <div id="bandeja"></div>
     <div id="prep"></div>
+    <div id="fijo"><button id="bFijo" type="button"></button></div>
     <div class="compose">
       <div class="caja">
         <label class="ico" title="Adjuntar fotos, PDFs o audios" aria-label="Adjuntar">📎<input type="file" id="fArch" multiple hidden
@@ -176,11 +190,11 @@
   </section>
 </div>
 <div class="modal" id="modal"></div>
-<script src="js/cz-cliente.js?v=V1.21"></script>
-<script src="js/cz-medios.js?v=V1.21"></script>
-<script src="js/cz-cola.js?v=V1.21"></script>
-<script src="js/cz-acciones.js?v=V1.21"></script>
-<script src="js/cz-app.js?v=V1.21"></script>
+<script src="js/cz-cliente.js?v=V1.30"></script>
+<script src="js/cz-medios.js?v=V1.30"></script>
+<script src="js/cz-cola.js?v=V1.30"></script>
+<script src="js/cz-acciones.js?v=V1.30"></script>
+<script src="js/cz-app.js?v=V1.30"></script>
 <script>window.CzApp.arrancar();</script>
 </body>
 </html>
