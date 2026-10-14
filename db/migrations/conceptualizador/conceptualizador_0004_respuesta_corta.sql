@@ -10,8 +10,9 @@
 --     encola en ese momento un evento `continuacion` para el MISMO caso: el
 --     candado por caso (0003) hace que corra en cuanto se libera, y lo pesado
 --     llega como la respuesta siguiente. No cambia `api_motor` ni n8n.
---   · Una continuación no puede pedir otra (no hay cadenas): si lo intenta, se
---     ignora y queda anotado en el evento original.
+--   · Una continuación no puede pedir otra (no hay cadenas): si trae `sigue`,
+--     no se encola nada. Además procesa.js solo deja mandar `sigue` en la
+--     respuesta a un mensaje.
 --
 -- Reglas de db/README.md de la suite: idempotente, etiquetas con nombre,
 -- sin llaves dobles, sin dólar seguido de dígito, comilla, & o acento grave.
