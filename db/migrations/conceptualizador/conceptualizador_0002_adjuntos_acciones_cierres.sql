@@ -348,7 +348,7 @@ BEGIN
            AND x.trabajo_id IS NOT DISTINCT FROM a.trabajo_id) THEN
       RETURN jsonb_build_object('ok', true, 'accion_id', a.id, 'espera_lote', true);
     END IF;
-    -- El evento lleva TODO el lote (recorrido Mattel, 14-oct: solo traía la última y el motor tuvo
+    -- El evento lleva TODO el lote (recorrido de prueba, 14-oct: solo traía la última y el motor tuvo
     -- que buscar las demás correcciones en estado.json).
     v_r := conceptualizador.encolar_evento(a.caso_id, 'accion', a.tipo, NULL,
       jsonb_build_object('accion_id', a.id, 'tipo', a.tipo, 'decision', p->>'decision',
@@ -487,7 +487,7 @@ BEGIN
     -- Botones que propone el motor. Cada uno lo resuelve una persona.
     IF jsonb_typeof(v_resp->'acciones') = 'array' THEN
       -- Una propuesta nueva del mismo tipo REEMPLAZA a la vieja sin resolver: un «Crear machote»
-      -- de hace dos respuestas llevaría números viejos (recorrido Mattel, 14-oct).
+      -- de hace dos respuestas llevaría números viejos (recorrido de prueba, 14-oct).
       UPDATE conceptualizador.accion SET estado = 'descartada', hecha_at = now(), hecha_por = 'motor',
              resultado = jsonb_build_object('reemplazada_por_trabajo', t.id)
        WHERE caso_id = t.caso_id AND estado = 'propuesta' AND tipo <> 'conjetura'
