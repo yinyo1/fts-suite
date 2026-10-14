@@ -352,6 +352,9 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 @keyframes brilla{0%,60%{background:rgba(255,235,59,.35)}100%{background:transparent}}
   /*@@CZ-V132-FIN@@*/
 
+  /* ═══ V1.32.1 · «Cotiza» fuera de la barra: junto a ⋮, lejos del micrófono y de la cámara (#4 A5) ═══ */
+  .cz-cotiza{flex-shrink:0;height:32px;border-radius:16px;padding:0 10px 0 7px;display:flex;align-items:center;gap:5px;background:#f0faf4;color:var(--acento-osc);border:1px solid #bfe3cf;font-weight:600;font-size:13px}
+  .menu button.destaca{color:var(--acento-osc);font-weight:600}
   /* ═══ V1.32 · piezas de la pantalla (prototipo aprobado chat-v3, puntos 3 a 9) ═══ */
   .chip-prueba{font-size:10.5px;font-weight:700;color:#8a5300;background:#fff1d6;border-radius:6px;padding:0 6px;line-height:17px;flex-shrink:0}
   #grab{display:none;flex:1;min-width:0}
@@ -473,13 +476,13 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <div class="cz-toast" id="toast" role="status" aria-live="polite"></div>
 <div class="modal" id="modal"></div>
 <div class="panel" id="panel"></div>
-<script src="js/cz-cliente.js?v=V1.32"></script>
-<script src="js/cz-medios.js?v=V1.32"></script>
-<script src="js/cz-grabadora.js?v=V1.32"></script>
-<script src="js/cz-archivos.js?v=V1.32"></script>
-<script src="js/cz-cola.js?v=V1.32"></script>
-<script src="js/cz-acciones.js?v=V1.32"></script>
-<script src="js/cz-app.js?v=V1.32"></script>
+<script src="js/cz-cliente.js?v=V1.32.1"></script>
+<script src="js/cz-medios.js?v=V1.32.1"></script>
+<script src="js/cz-grabadora.js?v=V1.32.1"></script>
+<script src="js/cz-archivos.js?v=V1.32.1"></script>
+<script src="js/cz-cola.js?v=V1.32.1"></script>
+<script src="js/cz-acciones.js?v=V1.32.1"></script>
+<script src="js/cz-app.js?v=V1.32.1"></script>
 <script>window.CzApp.arrancar();</script>
 </body>
 </html>
