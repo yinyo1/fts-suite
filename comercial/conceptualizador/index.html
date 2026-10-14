@@ -371,6 +371,45 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
   .decide button.si,.bt.si{background:var(--acento-osc);color:#fff}
   .bt:disabled,.decide button:disabled{opacity:.6;cursor:default}
   .bt.enviando,.decide button.enviando,.acc button.enviando{opacity:1;background:#e7f6ee;color:var(--acento-osc);border-color:#bfe3cf}
+  /* ═══ V1.34 · ciudad del proyecto (D89), «✓ Va» / «✎ Corregir» sin ✕, «¿Qué me falta?» ═══ */
+  .cd-pick{display:flex;align-items:center;gap:10px;width:100%;border:1px solid var(--acento-osc);border-radius:12px;padding:10px 12px;background:#f0faf4;text-align:left;font-size:14.5px;margin-top:4px;color:var(--texto)}
+  .cd-pick .cd-t{flex:1;min-width:0}.cd-pick small{display:block;font-size:11.5px;color:var(--sec)}
+  .cd-pick>.ico{color:var(--acento-osc);flex-shrink:0}
+  .cd-pre{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;color:#8a5300;background:#fff1d6;border-radius:6px;padding:0 6px;line-height:17px;vertical-align:1px}
+  .nota.geo{display:flex;gap:6px;align-items:flex-start}.nota.geo .ico{flex-shrink:0;margin-top:1px}
+  .dlg.cd-dlg{width:min(420px,calc(100vw - 32px));max-height:calc(100dvh - 32px);display:flex;flex-direction:column;padding-bottom:10px}
+  .cd-dlg p{margin-bottom:6px}
+  .cd-busca{display:flex;align-items:center;gap:8px;border:1px solid #ccd;border-radius:12px;padding:0 10px;margin:6px 0;height:44px;flex-shrink:0;color:var(--sec)}
+  .cd-busca input{flex:1;min-width:0;border:0!important;outline:0;font:inherit;font-size:16px;background:transparent;padding:0!important}
+  .cd-lista{overflow:auto;min-height:120px;flex:1 1 auto;border-top:1px solid var(--linea)}
+  .cd-g{font-size:11.5px;font-weight:700;color:var(--ter);text-transform:uppercase;letter-spacing:.03em;padding:10px 4px 4px}
+  .cd-op{display:flex;justify-content:space-between;align-items:baseline;gap:10px;width:100%;padding:10px 6px;border-bottom:1px solid #f0f0f0;text-align:left;font-size:14.5px;background:#fff;min-height:44px}
+  .cd-op span{min-width:0}.cd-op small{color:var(--sec);font-size:12px;flex-shrink:0}
+  .cd-op.on{background:#f0faf4;font-weight:600}.cd-op.otra{color:var(--acento-osc)}
+  .cd-otra{padding:8px 0 0;flex-shrink:0}
+  .cd-pais{display:flex;gap:6px;margin-top:8px}
+  .cd-pais button{height:32px;padding:0 14px;border-radius:16px;border:1px solid var(--linea);font-size:13px}
+  .cd-pais button.on{border-color:var(--acento-osc);background:#f0faf4;color:var(--acento-osc);font-weight:600}
+  .cd-otra .err-bt{margin-left:0}
+  #ciuF{display:none;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px;background:#f0faf4;color:#3b4a54;padding:5px 12px;border-bottom:1px solid #cfe9db;flex-shrink:0}
+  #ciuF .cf-t{display:flex;align-items:center;gap:5px;min-width:0;flex:0 1 auto}#ciuF .cf-t .ico{color:var(--acento-osc);flex-shrink:0}
+  #ciuF button{color:var(--acento-osc);font-weight:600;font-size:12.5px;padding:4px 6px;border-radius:12px;display:inline-flex;align-items:center;gap:5px;min-height:28px}
+  #ciuF button:hover{background:#e1f3e9}#ciuF button:disabled{opacity:.6}#ciuF .cf-p{color:var(--ter)}
+  #ciuF .giro{width:12px;height:12px}
+  /* «¿Qué me falta?» junto a «Cotiza» solo donde cabe sin comerse el título: 600–899 px (una columna) y desde
+     1100 px (dos columnas, el chat ya pasa de 720 px). En 380 y entre 900 y 1099 vive dentro de ⋮. */
+  .cz-falta{display:none}
+  @media(min-width:600px) and (max-width:899px),(min-width:1100px){.cz-falta{display:flex}}
+  .cz-cotiza .giro{width:12px;height:12px}
+  .cn .decide{margin:6px 0 0 34px}
+  /* desde 600 px los botones caben a la derecha del renglón; la cajita y el aviso siguen a todo lo ancho */
+  @media(min-width:600px){
+    .cn{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;align-items:start}
+    .cn>.fil{grid-column:1}.cn>.decide{grid-column:2;grid-row:1;margin:0}
+    .cn>.err-bt,.cn>.caja-razon{grid-column:1/-1}
+  }
+  .cn small.corr{color:#8a5300}.hecho.corr{color:#8a5300}
+  .cn .fil .hecho{flex-shrink:0;padding-top:1px}
   .err-bt{display:block;font-size:12px;color:var(--red);margin:4px 0 0 34px}
   .preg .err-bt{margin-left:0}
   .caja-razon{margin:8px 0 2px 34px;background:var(--sup2);border-radius:12px;padding:8px}
@@ -455,6 +494,7 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
   <section class="chat">
     <header class="cab" id="ch"></header>
     <div id="senal"></div>
+    <div id="ciuF" role="status"></div>
     <div id="msgs"></div>
     <button class="abajo" id="bAbajo" type="button" aria-label="Ir al último mensaje"><span class="badge" id="nAbajo" style="display:none"></span></button>
     <div id="bandeja"></div>
@@ -476,13 +516,14 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <div class="cz-toast" id="toast" role="status" aria-live="polite"></div>
 <div class="modal" id="modal"></div>
 <div class="panel" id="panel"></div>
-<script src="js/cz-cliente.js?v=V1.32.1"></script>
-<script src="js/cz-medios.js?v=V1.32.1"></script>
-<script src="js/cz-grabadora.js?v=V1.32.1"></script>
-<script src="js/cz-archivos.js?v=V1.32.1"></script>
-<script src="js/cz-cola.js?v=V1.32.1"></script>
-<script src="js/cz-acciones.js?v=V1.32.1"></script>
-<script src="js/cz-app.js?v=V1.32.1"></script>
+<script src="js/cz-cliente.js?v=V1.34"></script>
+<script src="js/cz-medios.js?v=V1.34"></script>
+<script src="js/cz-grabadora.js?v=V1.34"></script>
+<script src="js/cz-archivos.js?v=V1.34"></script>
+<script src="js/cz-ciudad.js?v=V1.34"></script>
+<script src="js/cz-cola.js?v=V1.34"></script>
+<script src="js/cz-acciones.js?v=V1.34"></script>
+<script src="js/cz-app.js?v=V1.34"></script>
 <script>window.CzApp.arrancar();</script>
 </body>
 </html>
