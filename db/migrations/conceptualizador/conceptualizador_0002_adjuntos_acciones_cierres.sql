@@ -348,9 +348,15 @@ BEGIN
            AND x.trabajo_id IS NOT DISTINCT FROM a.trabajo_id) THEN
       RETURN jsonb_build_object('ok', true, 'accion_id', a.id, 'espera_lote', true);
     END IF;
+    -- El evento lleva TODO el lote (recorrido Mattel, 14-oct: solo traía la última y el motor tuvo
+    -- que buscar las demás correcciones en estado.json).
     v_r := conceptualizador.encolar_evento(a.caso_id, 'accion', a.tipo, NULL,
       jsonb_build_object('accion_id', a.id, 'tipo', a.tipo, 'decision', p->>'decision',
-        'resultado', coalesce(p->'resultado','{}'::jsonb), 'lote_trabajo_id', a.trabajo_id), v_actor);
+        'resultado', coalesce(p->'resultado','{}'::jsonb), 'lote_trabajo_id', a.trabajo_id,
+        'lote', CASE WHEN a.tipo = 'conjetura' THEN (SELECT coalesce(jsonb_agg(jsonb_build_object('accion_id', x.id, 'titulo', x.titulo,
+            'datos', x.datos, 'decision', x.estado, 'resultado', x.resultado) ORDER BY x.id), '[]'::jsonb)
+          FROM conceptualizador.accion x WHERE x.caso_id = a.caso_id AND x.tipo = 'conjetura'
+           AND x.trabajo_id IS NOT DISTINCT FROM a.trabajo_id) ELSE NULL END), v_actor);
     RETURN jsonb_build_object('ok', true, 'accion_id', a.id, 'caso_id', a.caso_id) || v_r;
 
   ELSIF v_modo = 'ver_adjunto' THEN
@@ -480,6 +486,12 @@ BEGIN
     VALUES (t.caso_id, 'motor', 'motor-' || v_motor, v_resp->>'texto', t.id);
     -- Botones que propone el motor. Cada uno lo resuelve una persona.
     IF jsonb_typeof(v_resp->'acciones') = 'array' THEN
+      -- Una propuesta nueva del mismo tipo REEMPLAZA a la vieja sin resolver: un «Crear machote»
+      -- de hace dos respuestas llevaría números viejos (recorrido Mattel, 14-oct).
+      UPDATE conceptualizador.accion SET estado = 'descartada', hecha_at = now(), hecha_por = 'motor',
+             resultado = jsonb_build_object('reemplazada_por_trabajo', t.id)
+       WHERE caso_id = t.caso_id AND estado = 'propuesta' AND tipo <> 'conjetura'
+         AND tipo IN (SELECT x->>'tipo' FROM jsonb_array_elements(v_resp->'acciones') x);
       INSERT INTO conceptualizador.accion (caso_id, trabajo_id, tipo, titulo, datos)
       SELECT t.caso_id, t.id, x->>'tipo', left(coalesce(x->>'titulo', x->>'tipo'), 300), coalesce(x->'datos','{}'::jsonb)
         FROM jsonb_array_elements(v_resp->'acciones') x
