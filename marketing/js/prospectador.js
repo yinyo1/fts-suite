@@ -69,8 +69,8 @@
       if (tipo !== 'lista') t = t.slice(0, 1);
       return t.map(function (x) { var p = x.split(','); return { empresa: p[0].trim(), ciudad: (tipo === 'lista' ? p.slice(1).join(',').trim() : ($('#ciu').value || '').trim()) }; });
     }
-    function pinta() { var n = Math.max(1, lista().length); $('#pres').innerHTML = M.presupuestoHtml(n, est.uso) + (tipo === 'lista' && lista().length > 10 ? '<p class="ch-err">Una lista lleva hasta 10 empresas.</p>' : ''); }
-    V.addEventListener('input', pinta); pinta();
+    function pinta() { if (!$('#emp')) return; var n = Math.max(1, lista().length); $('#pres').innerHTML = M.presupuestoHtml(n, est.uso) + (tipo === 'lista' && lista().length > 10 ? '<p class="ch-err">Una lista lleva hasta 10 empresas.</p>' : ''); }
+    V.oninput = pinta; pinta();
     $('#go').onclick = async function () {
       var emps = lista(); if (!emps.length || emps[0].empresa.length < 2) { U.toast('Escribe la empresa.'); return; }
       if (emps.length > 10) { U.toast('Hasta 10 empresas por lista.'); return; }
@@ -351,7 +351,7 @@
 
   // ── Ruteo ────────────────────────────────────────────────────────────────
   function ruta() {
-    parar();
+    parar(); V.oninput = null;
     var h = (location.hash || '#/').slice(2).split('/'), k = h[0], a = h[1];
     if (k === 'nueva') return vNueva(a);
     if (k === 's' && a) return vSesion(a);
@@ -362,7 +362,7 @@
   }
   document.addEventListener('click', function (e) { var t = e.target.closest('[data-ir]'); if (t && !t.disabled) { e.preventDefault(); ir(t.getAttribute('data-ir')); } });
   window.addEventListener('hashchange', ruta);
-  Q.oir(function (x) { if (location.hash.startsWith('#/s/')) pintarChat(); else if (!location.hash || location.hash === '#/') { if (x && (x.sesion || x.errorSesion)) vLista(); } });
+  Q.oir(function (x) { if (location.hash.startsWith('#/s/')) { if (!est.sesionId && x && x.sesion) { parar(); refrescar(); } else pintarChat(); } else if (!location.hash || location.hash === '#/') { if (x && (x.sesion || x.errorSesion)) vLista(); } });
   G.MktProspectador = { arrancar: async function () {
     U.red(document.getElementById('red'));
     var ok = await Q.iniciar(); if (!ok) U.toast('Este navegador no guarda la cola: no cierres la pestaña sin señal.', 5000);
