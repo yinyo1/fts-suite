@@ -1,6 +1,10 @@
 {
-  "version": "V1.32.1",
+  "version": "V1.32.2",
   "historial": [
+    {
+      "version": "V1.32.2",
+      "nota": "Sin cambio visible. La firma de cada pedido (la cadena canónica del HMAC) se lee de un solo lugar, shared/chat/chat-firma.js, que ahora comparten el conceptualizador, Marketing y los workflows de n8n (#407 §2.2). La cadena es idéntica a la de V1.32.1."
+    },
     {
       "version": "V1.32.1",
       "nota": "Cambios chicos del uso en campo (#4 A5, 14-oct): «Ya terminé, cotiza» sale de la barra en modo acompañamiento (Montalvo lo picó sin querer): queda junto a ⋮ y dentro de ⋮, y siempre pide confirmación («¿Ya terminaste el levantamiento?»). «Ya es todo» sigue en la barra en «Ya tengo el levantamiento», también con confirmación. «Nueva cotización» ofrece dos opciones (se quitó «Seguir una cotización»). Grabadora en Safari iOS: el AudioContext nace dentro del toque para que la onda se mueva (la grabación ya salía en mp4/aac). El resto de V1.33 espera el visto bueno del prototipo."

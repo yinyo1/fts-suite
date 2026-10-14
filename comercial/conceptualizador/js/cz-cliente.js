@@ -37,12 +37,9 @@
     return b64url(await crypto.subtle.sign('HMAC', k, enc.encode(canon)));
   }
   function S(x) { return x === undefined || x === null ? '' : '' + x; }
-  function canonica(c) {
-    return [c.ts, c.nonce, c.modo, S(c.caso_id), S(c.texto), S(c.tipo), S(c.concepto), S(c.razon), S(c.sha256), S(c.accion_id),
-      S(c.decision), S(c.cliente_id), S(c.adjunto_id), S(c.escrito_at),
-      Array.isArray(c.adjuntos) ? c.adjuntos.filter(function (a) { return typeof a === 'string'; }).join(',') : '',
-      JSON.stringify(c.resultado === undefined ? null : c.resultado), JSON.stringify(c.datos === undefined ? null : c.datos)].join('\n');
-  }
+  /* V1.32.2 (#407 §2.2): la cadena canónica vive en UN solo lugar, shared/chat/chat-firma.js,
+   * que también usa Marketing y que n8n lleva pegado. Lista `conceptualizador`: idéntica a la de antes. */
+  function canonica(c) { return G.ChatFirma.canonica(c, G.ChatFirma.LISTAS.conceptualizador); }
 
   /** Clasifica en un solo lugar (fts-suite CLAUDE.md §20 #12b):
    *  sesion → volver a entrar · red → esperar · servidor → avisar. */
