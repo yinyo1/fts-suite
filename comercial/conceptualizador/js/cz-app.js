@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.43';
+  var VERSION = 'V1.43.1';
   /* V1.32 (0006) · empresa y moneda de la sesión: la base acepta estas tres claves. */
   var EMPRESAS = { mx_mxn: { n: 'FTS México · MXN', s: 'Empresa 1 · pesos', id: 1, m: 'MXN', pais: 'mx' },
                    mx_usd: { n: 'FTS México · USD', s: 'Empresa 1 · dólares', id: 1, m: 'USD', pais: 'mx' },
@@ -2233,14 +2233,27 @@
         alFallar: function () { $('#fCam').click(); } });
     });
     /* V1.43 (#4 punto 11) · con MOUSE se selecciona y copia texto; deslizar-para-responder es solo con el dedo.
-     * shared/chat/chat-gestos.js no se toca (lo comparten Marketing y el núcleo de WhatsApp): aquí, en captura, el
-     * pointerdown de mouse sobre una burbuja no llega a sus gestos. «Responder» queda en el menú ⌄ y el clic derecho. */
+     * shared/chat/chat-gestos.js no se toca (lo comparten Marketing y el núcleo de WhatsApp). Aquí, en captura: si el
+     * mouse ARRASTRA sobre una burbuja, su pointermove no llega a los gestos y se les manda un pointercancel (sueltan la
+     * burbuja y su temporizador), así el navegador selecciona texto. Mantener presionado sin mover sigue seleccionando
+     * el mensaje como antes, y «Responder» queda en el menú ⌄ y el clic derecho. */
+    var ratonG = null;
     $('#msgs').parentNode.addEventListener('pointerdown', function (e) {
+      ratonG = null;
       if (e.pointerType !== 'mouse' || e.button !== 0) return;
       var b = e.target.closest && e.target.closest('#msgs [data-chg-id]'); if (!b) return;
       if (e.target.closest('button, a, input, textarea, select, [data-onda], [role="slider"], .chg-cita, .chg-chev')) return;
-      e.stopPropagation();
+      ratonG = { x: e.clientX, y: e.clientY, cancelado: false };
     }, true);
+    G.addEventListener('pointermove', function (e) {
+      if (!ratonG || e.pointerType !== 'mouse') return;
+      e.stopPropagation();
+      if (!ratonG.cancelado && Math.abs(e.clientX - ratonG.x) + Math.abs(e.clientY - ratonG.y) > 6) {
+        ratonG.cancelado = true;
+        G.dispatchEvent(new PointerEvent('pointercancel', { pointerType: 'mouse', bubbles: true }));
+      }
+    }, true);
+    G.addEventListener('pointerup', function () { ratonG = null; }, true);
     $('#bEnviar').onclick = enviar;
     if (CG) GZ = CG.enganchar({
       contenedor: $('#msgs'), cabecera: $('#ch'), antesDe: $('.compose'),
