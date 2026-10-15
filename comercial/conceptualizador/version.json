@@ -1,6 +1,10 @@
 {
-  "version": "V1.39.1",
+  "version": "V1.40",
   "historial": [
+    {
+      "version": "V1.40",
+      "nota": "Franja de avance en una sola línea (prototipo aprobado, #4 punto 10): arriba del chat ya no van las 7 barritas; va una línea delgada «44 % · Siguiente: Cerrar Mecánica» (antes de que haya rubros, el paso y el siguiente, sin %). Se abre al tocarla o al jalar hacia abajo, encima del chat y sin moverlo, con los 7 pasos y los rubros con su %; se esconde sola al mover el chat, al mandar un mensaje o a los 6 segundos. En computadora (900 px o más) va como panel a la derecha, siempre abierto, y el chat conserva todo su alto; entre 900 y 1279 px, con un caso abierto, la lista se esconde como en el teléfono (con ←) para que el chat no quede angosto. Pantalla de rubros: el resumen por rubro aparece bajo la última respuesta del motor; al tocar un rubro se abren sus preguntas (✓ Va / ✎ Corregir), sus conceptos (la palomeada de siempre) y, con BOM, sus renglones, con «Confirmar», «En espera de datos» (con su porqué) y «Reabrir». El % y el estado de cada rubro los manda el motor; la pantalla no los calcula. Sigue igual: la oferta, la ciudad, el botón único del siguiente paso y los gestos."
+    },
     {
       "version": "V1.39.1",
       "nota": "Gestos tipo WhatsApp (#4 punto 11, prototipo aprobado): toque largo selecciona el mensaje y arriba sale Responder · Reenviar · ⋮ (Copiar, o Copiar transcripción en notas de voz); en escritorio, ⌄ o clic derecho con Responder. Deslizar a la derecha responde a ESE mensaje: la cita va arriba de la caja y el mensaje lleva la referencia (responde_a), así el motor sabe a qué pregunta contestas; tocar la cita lleva al original. Reenviar todavía no está en los chats de machote (se enciende cuando existan los de grupo y del prospectador). El componente vive en shared/chat/ para que Marketing lo use igual. Con el servidor sin la migración 0009, la referencia viaja también como una línea al inicio del texto."

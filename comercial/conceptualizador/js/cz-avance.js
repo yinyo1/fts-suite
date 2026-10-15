@@ -1,4 +1,4 @@
-/* ═══ Conceptualizador · dónde va la cotización (V1.37) ═══
+/* ═══ Conceptualizador · dónde va la cotización (V1.37; rubros V1.40) ═══
  *
  * La franja de avance, el botón del siguiente paso y el «Retomamos» salen de AQUÍ, con lo que
  * ya está en el hilo que manda la base (Postgres): el caso, las acciones, los eventos, la última
@@ -109,5 +109,56 @@
              version: porVersion ? op.version : null };
   }
 
-  G.CzAvance = { PASOS: PASOS, avance: avance, retomamos: retomamos, faltantes: faltantes, textoFaltantes: textoFaltantes, ultimaActividad: ultimaActividad };
+  /* ── V1.40 · los rubros con su % (#4 punto 10, prototipo aprobado V1.39 · 1) ──
+   * El % lo calcula el MOTOR (fts-conceptualizador, herramientas/motor/oferta-rubros.js → resumenRubros().pantalla) y
+   * llega en cada respuesta en `ultima.verifica.rubros`: {total_pct, con_bom, lista:[{id, nombre, estado, porque, pct,
+   * preguntas, conceptos, renglones, sin_precio}]}. Aquí NO se recalcula ni se inventa un %: si no llegó, no se pinta.
+   * Lo que sí se junta aquí es QUÉ pregunta, concepto y renglón es de cada rubro (cada uno trae su `rubro`). */
+  var CORTO = { 'Instalación mecánica': 'Mecánica', 'Instalación eléctrica & control': 'Eléctrica', 'Fechas tentativas': 'Fechas' };
+  function corto(n) { return CORTO[n] || n; }
+  /** Los rubros que mandó el motor, o null (antes del disparo no hay). */
+  function rubros(H) {
+    var L = [H && H.ultima, H && H.propuesta];
+    for (var i = 0; i < L.length; i++) {
+      var r = L[i] && L[i].verifica && L[i].verifica.rubros;
+      if (r && Array.isArray(r.lista) && r.lista.length) return r;
+    }
+    return null;
+  }
+  /** La respuesta que trae el BOM (la más nueva con BOM o machote). */
+  function conBom(H) { return [H && H.ultima, H && H.propuesta].filter(function (x) { return x && ((x.bom && Object.keys(x.bom).length) || x.machote); })[0] || {}; }
+  /** Lo que la pantalla tiene de UN rubro: sus preguntas (conjeturas), sus conceptos con la decisión y sus renglones. */
+  function delRubro(H, id) {
+    var A = (H && H.acciones) || [], U = (H && (H.propuesta || H.ultima)) || {}, B = conBom(H).bom || {};
+    var dec = {}; ((H && H.eventos) || []).forEach(function (e) { if (e.concepto && (e.tipo === 'aceptar' || e.tipo === 'rechazar')) dec[e.concepto] = e; });
+    var Q = A.filter(function (a) { return a.tipo === 'conjetura' && a.datos && a.datos.rubro === id; });
+    var K = (U.conceptos || []).filter(function (k) { return k.rubro === id; }).map(function (k) { return { k: k, d: dec[k.id] || null }; });
+    var R = [].concat((B.materiales || []).map(function (m) { return { mo: false, r: m }; }), (B.mano_obra || []).map(function (m) { return { mo: true, r: m }; }))
+      .filter(function (x) { return x.r && x.r.rubro === id; });
+    var abiertas = Q.filter(function (a) { return a.estado === 'propuesta'; }).length, sinDec = K.filter(function (x) { return !x.d; }).length;
+    var sinPrecio = R.filter(function (x) { return !conPrecio(x.r.importe) && !conPrecio(x.r.pu); }).length;
+    var conocido = R.reduce(function (s, x) { var v = Number(x.r.importe); return s + (isFinite(v) && conPrecio(x.r.importe) ? v : 0); }, 0);
+    return { Q: Q, K: K, R: R, abiertas: abiertas, sinDec: sinDec, sinPrecio: sinPrecio, conocido: conocido };
+  }
+  /** La línea delgada de la franja colapsada: «44 % · Siguiente: Cerrar Mecánica». Sin rubros: el paso y el siguiente
+   *  de avance() (sin %). `sig` es texto; `rojo` cuando el siguiente es la ciudad. */
+  function linea(H) {
+    var av = avance(H), R = rubros(H), sig = av.sig ? av.sig.txt : null, rojo = !!(av.sig && (av.sig.acc === 'ciudad' || av.sig.acc === 'confirma_ciudad'));
+    // Cortos, como el prototipo: que la línea quepa a 380 px. El botón de abajo dice lo largo.
+    if (av.sig && av.sig.a === 'oferta') sig = 'Contestar la oferta';
+    else if (av.sig && av.sig.acc === 'ciudad') sig = 'Elegir la ciudad';
+    else if (av.sig && av.sig.acc === 'confirma_ciudad') sig = 'Confirmar la ciudad';
+    if (!R) return { pct: null, paso: PASOS[av.actual], sig: sig, rojo: rojo, av: av, R: null };
+    var c = (H && H.caso) || {}, of = av.oferta;
+    // La ciudad va primero; con BOM manda el machote (avance()); antes del BOM, la oferta o el primer rubro abierto.
+    if (!rojo && !R.con_bom) {
+      var ab = R.lista.filter(function (r) { return r.estado === 'abierto'; })[0];
+      if (!c.disparado_at && of && of.estado === 'ofrecida') sig = 'Contestar la oferta';
+      else if (ab) sig = 'Cerrar ' + corto(ab.nombre);
+    }
+    return { pct: typeof R.total_pct === 'number' ? R.total_pct : null, paso: PASOS[av.actual], sig: sig, rojo: rojo, av: av, R: R };
+  }
+
+  G.CzAvance = { PASOS: PASOS, avance: avance, retomamos: retomamos, faltantes: faltantes, textoFaltantes: textoFaltantes, ultimaActividad: ultimaActividad,
+                 rubros: rubros, delRubro: delRubro, linea: linea, corto: corto };
 })(window);
