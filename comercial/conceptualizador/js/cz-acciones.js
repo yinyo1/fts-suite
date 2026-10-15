@@ -153,7 +153,7 @@
     if (_permiso) return _permiso;
     _permiso = C.suite(RUTA_ORDEN, { modo: 'permiso' }, 20000).then(function (r) {
       if (!r.ok) { _permiso = null; return { habilitado: false, mensaje: r.mensaje || '', error: r.error || 'SIN_RESPUESTA' }; }
-      return { habilitado: r.habilitado === true, mensaje: r.mensaje || '' };
+      return { habilitado: r.habilitado === true, mensaje: r.mensaje || '', referencias: r.referencias === true };
     });
     return _permiso;
   }
@@ -188,12 +188,21 @@
     if (!cot || !(cot.bloques || []).length) return { ok: false, mensaje: 'El motor no mandó la cotización armada (renglones, suma y anticipo). Pídele el botón otra vez.' };
     var p = await permiso();
     if (!p.habilitado) return { ok: false, mensaje: p.mensaje || 'Crear la cotización en Odoo todavía no está habilitado para tu usuario.' };
+    // V1.43 · precios de referencia (N3/N4): cuentan como precio, pero los acepta quien cotiza con «Cotizar con referencias».
+    var R = (a.datos || {}).referencias, conRef = !!(R && R.n);
+    if (conRef && !p.referencias) return { ok: false, mensaje: 'El servidor de Odoo todavía no acepta cotizar con referencias (falta publicar el workflow). El machote sí está al día.' };
+    if (conRef && !ctx.aceptaReferencias) return { ok: false, mensaje: 'Revisa las referencias y toca «Cotizar con referencias».' };
     var prev = ordenDe(H), modo = prev ? 'actualizar' : 'crear';
     var r = await C.suite(RUTA_ORDEN, { modo: modo, machote_id: caso.machote_id, version_leida: (cm.resultado || {}).version || 1,
-      caso_id: caso.id, cotizacion: cot }, 120000);
+      caso_id: caso.id, cotizacion: cot, acepta_referencias: conRef }, 120000);
     if (!r.ok || !r.odoo_so_id) return { ok: false, mensaje: r.mensaje || ('No se creó el borrador: ' + (r.error || 'sin orden')) };
     var o = releido(r);
     o.texto = textoOrden(o, modo === 'crear' ? 'Borrador' : 'Actualizado');
+    if (conRef) {   // queda en la acción y por ella en hilo.md: quién aceptó qué y cuándo
+      var S = G.SuiteAuth.getSession() || {};
+      o.referencias_aceptadas = { pct: R.pct, n3: R.n3, n4: R.n4, importe: R.importe, por: S.actor || null, at: new Date().toISOString() };
+      o.texto += ' Cotizada con referencias: ' + R.pct + ' % del costo' + (R.n3 ? ', ' + R.n3 + ' alerta' + (R.n3 === 1 ? '' : 's') + ' N3' : '') + ' (aceptado).';
+    }
     return { ok: true, resultado: o };
   }
 

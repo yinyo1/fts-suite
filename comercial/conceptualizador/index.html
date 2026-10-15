@@ -516,6 +516,20 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
   .preg.reemplazada .conj s{color:var(--muted2)}
   .hecho.repl{color:#0b6b45}
   small.antes{display:block;font-size:12px;color:var(--muted2);margin-top:2px;overflow-wrap:anywhere}
+  /* V1.43 · niveles de precio, referencias, «Supuse esto» (#4, decisión de Esteban del 15-oct) */
+  .niv{display:inline-block;font-size:11px;font-weight:700;border-radius:5px;padding:0 5px;line-height:17px;margin-right:3px;white-space:nowrap;vertical-align:1px}
+  .niv-N1{background:#dff3e8;color:#0b6b45}.niv-N2{background:#e3eefc;color:#1d4f91}.niv-N3{background:#ffe2cc;color:#8a3b00}
+  .niv-N4{background:#fff1c2;color:#6b5000}.niv-N5{background:#f3e0e0;color:#8a1f1f}
+  .niv-res{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0 2px}
+  .bom.alerta-n3{background:#fff8f2;border-radius:6px;padding-left:6px;padding-right:6px}
+  .riesgo{font-size:11.5px;color:#8a3b00;margin-top:2px;overflow-wrap:anywhere}
+  .ref-cot{border:1px solid #f3c79f;background:#fff6ee;border-radius:8px;padding:8px 10px;margin:6px 0;font-size:13px;color:#5c2f00;overflow-wrap:anywhere}
+  .ref-cot .alerta{color:#a33a00;font-weight:600}.ref-cot .nota{display:block;color:#7a4a20;font-size:12px;margin-top:2px}
+  .ref-cot ul{margin:4px 0 2px 0;padding:0;list-style:none}.ref-cot li{margin:3px 0}.ref-cot li.n3{font-weight:600}.ref-cot li small{display:block;font-weight:400;color:#8a3b00}
+  .mueve{font-size:12px;color:#5c4400;margin:2px 0}
+  .sup-carta .sup{border-top:1px solid #eee;padding:6px 0}.sup-carta .sup:first-of-type{border-top:0}
+  .sup-t{font-size:13.5px;overflow-wrap:anywhere}.sup-t small{color:var(--muted2)}.sup-t s{color:var(--muted2)}
+  .nota.mal{color:#8a1f1f}
   .odoo-rb{font-size:12.5px;margin:6px 0 0;padding:6px 8px;background:#f6f8fa;border-radius:8px;overflow-wrap:anywhere}
   .cn .fil .hecho{flex-shrink:0;padding-top:1px}
   .err-bt{display:block;font-size:12px;color:var(--red);margin:4px 0 0 34px}
@@ -636,17 +650,18 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <div class="modal" id="modal"></div>
 <div class="panel" id="panel"></div>
 <script src="../../shared/chat/chat-firma.js?v=V1.40"></script>
-<script src="js/cz-cliente.js?v=V1.42"></script>
-<script src="js/cz-medios.js?v=V1.42"></script>
-<script src="js/cz-grabadora.js?v=V1.42"></script>
-<script src="js/cz-archivos.js?v=V1.42"></script>
-<script src="js/cz-ciudad.js?v=V1.42"></script>
-<script src="js/cz-cola.js?v=V1.42"></script>
-<script src="js/cz-acciones.js?v=V1.42"></script>
-<script src="js/cz-avance.js?v=V1.42"></script>
+<script src="js/cz-cliente.js?v=V1.43"></script>
+<script src="js/cz-medios.js?v=V1.43"></script>
+<script src="js/cz-grabadora.js?v=V1.43"></script>
+<script src="js/cz-archivos.js?v=V1.43"></script>
+<script src="js/cz-ciudad.js?v=V1.43"></script>
+<script src="js/cz-cola.js?v=V1.43"></script>
+<script src="js/cz-acciones.js?v=V1.43"></script>
+<script src="js/cz-avance.js?v=V1.43"></script>
+<script src="js/cz-camara.js?v=V1.43"></script>
 <script src="../../shared/chat/chat-gestos.js?v=V1.40"></script>
-<script src="js/cz-app.js?v=V1.42"></script>
-<script src="js/cz-version.js?v=V1.42"></script>
+<script src="js/cz-app.js?v=V1.43"></script>
+<script src="js/cz-version.js?v=V1.43"></script>
 <script>window.CzApp.arrancar().then(function () { if (window.CzVersion) window.CzVersion.iniciar(); });</script>
 </body>
 </html>
