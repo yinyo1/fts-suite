@@ -1,6 +1,10 @@
 {
-  "version": "V1.35",
+  "version": "V1.36",
   "historial": [
+    {
+      "version": "V1.36",
+      "nota": "El machote se crea con pendientes (decisión de Esteban, #4, falla de campo de Richard en d9159b): los renglones sin precio van marcados y la tarjeta dice «Faltan N para cotizar en Odoo» con la lista. «Crear machote · N pendientes» en la barra fija; con el machote hecho y pendientes, la barra dice cuántos faltan en lugar de «Haz la cotización». Cuando llega un precio, el motor propone «Actualizar <folio>» y el clic guarda una versión nueva del MISMO machote (si alguien lo editó a mano, solo llena los renglones que seguían sin precio). El borrador en Odoo se niega mientras quede un pendiente. Esta versión también hace aparecer por primera vez el «Hay versión nueva · Actualizar» de V1.35."
+    },
     {
       "version": "V1.35",
       "nota": "«Hay versión nueva · Actualizar» (#4 de fts-conceptualizador, pendiente 6177746433 punto 1): la pantalla compara su versión con este version.json al abrir, cada 5 min, al volver a la pestaña y al volver la red. «Actualizar» recarga con ?v=<versión> (sin el HTML viejo del caché) y no pierde nada: lo que falta por enviar vive en IndexedDB y la cola lo retoma sola; con una grabación en curso pide terminarla; si el teléfono no guarda la cola (modo privado) y hay pendientes, pregunta antes; el texto escrito y las cajitas de «Corregir» se reponen después de recargar."
