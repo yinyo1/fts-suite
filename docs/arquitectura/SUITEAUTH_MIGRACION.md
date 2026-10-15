@@ -163,7 +163,7 @@ Dos capas. Las dos corren **antes y después de cada fase**, y una fase no se da
 
 **Capa 1 · matriz** (ya existe): `node tests/auth/matriz-paridad.js && node tests/auth/matriz-paridad.js --autoprueba`.
 
-**Capa 2 · navegador** (se construye en A1): Playwright sirviendo el repo local (Pages no es alcanzable desde el contenedor, CLAUDE.md §9), interceptando `users-suite.json` y los webhooks, y sembrando cada sesión. Para cada persona de la matriz y cada objetivo, abre la página y lee el resultado real del DOM (tarjeta atenuada/oculta, redirección, overlay). La salida se compara contra la Capa 1: si el navegador y el modelo no coinciden, el modelo está mal.
+**Capa 2 · navegador** (✅ construida en A1, `tests/auth/navegador-paridad.js`; línea base en `tests/auth/linea-base/`: **478/480** celdas iguales al modelo, ver §9.0): Playwright sirviendo el repo local (Pages no es alcanzable desde el contenedor, CLAUDE.md §9), interceptando `users-suite.json` y los webhooks, y sembrando cada sesión. Para cada persona de la matriz y cada objetivo, abre la página y lee el resultado real del DOM (tarjeta atenuada/oculta, redirección, overlay). La salida se compara contra la Capa 1: si el navegador y el modelo no coinciden, el modelo está mal.
 
 | # | Prueba | Qué exige |
 |---|---|---|
@@ -180,6 +180,8 @@ Dos capas. Las dos corren **antes y después de cada fase**, y una fase no se da
 | P-11 | Webhook de interruptores caído | todo se comporta como hoy |
 | P-12 | `pageerror` en consola | cualquiera es fallo (CLAUDE.md §20 #12) |
 | P-13 | Capturas a 380, 760, 900 y 1280 px de cada pantalla nueva, miradas | CLAUDE.md §20 #20 |
+| P-14 | (nace con el MFA) scope de nivel 2 o 3 con un token `acr` menor | se niega con `NIVEL_INSUFICIENTE`; con el nivel correcto, abre |
+| P-15 | `users-suite.json` caído + contraseña inventada para `ftsmaster` | **hoy ofrece activar la cuenta master (puerta abierta)**; después de C2, rechaza (`C2_CERRADA=1`) |
 
 **Piloto:** `esteban.delacruz`, `felipe.perez`, `ana.acevedo`. Nadie más entra a un interruptor `piloto` hasta que las tres personas usen el sistema nuevo en su trabajo normal sin un solo reporte.
 
@@ -221,7 +223,7 @@ Cada sesión es un PR, con bump de build donde haya `version.json`, la matriz y 
 | C5 | Login clásico en **solo lectura** (no se crean ni editan usuarios en `users-suite.json`; Config Master deja de escribir) | el token de GitHub ya no se necesita en el navegador (#390) | revert |
 | C6 | Login clásico apagado por módulo (el OR pasa a sólo Suite) | B4 aprobado para ese módulo; Tere y Carolina con plan de kiosko | interruptor |
 | C7 | `auth-suite.js` fuera de páginas | `pmo/chat-apply` actualizado y verificado antes | revert + restaurar versión del workflow |
-| C8 | Repo privado | ver §7: rompe Pages, el raw y lo que n8n lee de `main` | **casi irreversible**; decisión aparte |
+| C8 | Repo privado (**protege código y secretos, NO la página**: ver §10.4) | ver §7: en GitHub Free apaga Pages; rompe el raw y lo que n8n lee de `main` | **casi irreversible**; decisión aparte |
 
 ## 7 · Riesgos y lo irreversible
 
@@ -242,7 +244,177 @@ Cada sesión es un PR, con bump de build donde haya `version.json`, la matriz y 
 
 ## 8 · Decisiones que necesito de Esteban
 
-1. **¿`ftsmaster` lo usa sólo Esteban?** Si hay alguien más, necesita cuenta Suite antes de C.
-2. **Tere y Carolina** sólo tienen permiso del kiosko (no medí qué usan de verdad). ¿Se quedan en el clásico hasta el plan del kiosko (mi recomendación) o se les crea cuenta Suite desde ahora?
-3. **¿Arranco con A1 (pruebas de navegador) como siguiente sesión?** Es la única que no toca producción y sin ella las demás no se pueden verificar.
-4. **A4 escribe a `suite_usuarios`.** ¿La hago yo por MCP con read-back, o prefieres hacerla tú en la UI?
+Contestadas por Esteban el 15-oct-2026:
+1. **`ftsmaster` lo usa sólo Esteban.** ⚠️ El texto llegó con la marca «[CONFIRMAR O CORREGIR ANTES DE PEGAR]» sin quitar: se toma como confirmado, pero A8 lo vuelve a medir antes del bloque C.
+2. **Tere y Carolina se quedan en el login clásico** hasta que haya plan del kiosko.
+3. **Sí a A1** (hecha: §5 y §9.0).
+4. **A4 la hace Claude por MCP**, con read-back y el valor anterior guardado en el PR, en su propia sesión y con la aprobación de Esteban.
+
+## 9 · A1 (resultado) y estándares que el plan adopta
+
+### 9.0 · Capa 2 · resultado de la línea base (15-oct-2026)
+
+`node tests/auth/navegador-paridad.js` sirve el repo en local con Chromium, intercepta GitHub y n8n (nada sale del contenedor) y siembra sesiones de prueba. **No usa ninguna credencial real**: `users-suite.json` se sirve con los mismos roles y módulos, pero con hashes de contraseñas de prueba, y `ops-config.json` se sustituye por un blob nuevo con un token falso.
+
+| Prueba | Resultado |
+|---|---|
+| Grilla (P-06/P-07) | **478/480** celdas del DOM = Capa 1. Las 2 que difieren: **Nómina · Ana y Magaly** (modelo «abre», DOM «pide login»). |
+| P-01 | ✓ 6 cuentas clásicas entran y sus tarjetas = matriz; sólo el master recupera el token (del blob de prueba). |
+| P-02 | ✓ contraseña mala y usuario inexistente → el mismo «Usuario o contraseña incorrectos». |
+| P-03 | ✓ las 10 cuentas del snapshot (9 activas entran con sus scopes; `aldo.mendez` inactivo, rechazado); `?falta=` explica el scope. El plan decía «11 cuentas activas»: el snapshot tiene 10 cuentas y 9 activas. |
+| P-04 / P-05 | ✓ con sesión Suite (con o sin `suite:clasico`) el lanzador sigue mostrando el login clásico. |
+| P-07 | ✓ Comercial, Marketing, Rentabilidad, Bancos y Retardos = matriz. **Nómina**: la diferencia de arriba explicada (ver hallazgo 11). |
+| P-08 | ✓ Finanzas, Carga MO y Leads abren sólo con `fts_fin_session`; el clásico y la sesión Suite no las abren. |
+| P-09 | ✓ cerrar cualquiera de las tres sesiones no toca las otras dos. |
+| P-10 | ✓ a 31 min sin actividad el clásico se cierra; a 29 min no. |
+| P-11 | ✓ ninguna página pide interruptores hoy; con n8n caído el lanzador clásico se pinta idéntico. |
+| P-12 | ✗ **55 `pageerror`, 7 distintos (línea base de hoy)**: 6 son el `throw new Error('sin sesion')` con el que las páginas SuiteAuth cortan su propio arranque al negar (diseño, `shared/auth-jwt.js` `requerir`); 1 es `rentabilidad` sin datos (`reading 'resumen'`) por el webhook vacío de la prueba. Ninguno lo introdujo esta fase. A partir de aquí, **un `pageerror` nuevo** es fallo. |
+| P-13 | ✓ 16 capturas (4 escenas × 380/760/900/1280), revisadas; sin desborde horizontal. |
+| P-15 | ✓ **confirma la puerta abierta del ftsmaster de respaldo** (ver §10, C2). |
+
+**Hallazgo 11 (nuevo):** `NomAuth` (`modulos/rh/nomina-incidencias/js/nom-auth.js:109-113`) y `SuiteAuth` (`shared/auth-jwt.js`) comparten la llave `fts_suite_session`, pero no el formato:
+- Nómina exige `expires_at` (ISO) y SuiteAuth exige `exp` (epoch).
+- Una sesión abierta en `shared/login.html` **no abre Nómina** y pide login otra vez.
+- Entrar a Nómina **sobrescribe** la sesión con un formato que SuiteAuth no reconoce, y saca a la persona de Comercial y Marketing.
+- §7 ya mencionaba que «cerrar sesión en Nómina cierra Comercial». Esto va más allá: **entrar a una cierra la otra**.
+
+No se arregla en este frente. Queda medido en P-07 para que, el día que se unifique, la prueba lo confirme.
+
+### 9.1 · Estándares y brechas (verificados en la fuente oficial el 15-oct-2026)
+
+**Contraseñas guardadas (OWASP Password Storage CS).**
+- **Norma:** Argon2id (una de 5 configuraciones equivalentes, entre ellas m=19 MiB, t=2, p=1) o **PBKDF2-HMAC-SHA256 con 600,000 iteraciones**.
+- **Hoy:**
+  - SuiteAuth usa **PBKDF2-HMAC-SHA256 con 100,000** iteraciones y sal por usuario (`docs/n8n-workflows/fase0/node-suite-login.js:120`, respaldo del workflow; el vivo no se leyó). FinAuth, lo mismo.
+  - El clásico usa **SHA-256 sin sal en un archivo público**.
+- **Diseño:** re-hash transparente.
+  1. Columnas nuevas `algo` e `iter` en `suite_usuarios`, valor por omisión `pbkdf2-sha256` y `100000`.
+  2. En el **siguiente login exitoso**, si `iter < 600000`, se recalcula con 600,000 y se guarda con read-back.
+  3. Nunca en un login fallido.
+  4. ⚠️ PBKDF2 de 600k en JS puro dentro del sandbox de n8n puede tardar varios segundos por login. Se mide en un TMP antes de fijarlo (CLAUDE.md §20 #14). Si no es viable, Argon2id requiere un servicio fuera del sandbox.
+- **Referencia:** https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+
+**Política de contraseñas (NIST SP 800-63B-4, final, jul-2025, §3.1.1.2).**
+- **Norma:**
+  - **15 caracteres mínimo sin MFA**, 8 con MFA, permitir 64 o más, sin reglas de composición.
+  - **Lista de bloqueo** (comunes, filtradas, del contexto).
+  - Sin vencimiento periódico; cambio sólo ante compromiso.
+  - Gestores de contraseñas: **SHALL**; pegar: **SHOULD**.
+  - Techo de 100 fallos consecutivos (§3.2.2).
+- **Hoy:**
+  - El primer login clásico acepta 6 caracteres.
+  - No hay lista de bloqueo.
+  - No hay cambio de contraseña (hallazgo 6).
+- **Diseño para A5 y A6:**
+  - Mínimo 15, máximo ≥64.
+  - Consulta a **HIBP Pwned Passwords por rango (k-anonimato)**: sólo viajan los primeros 5 caracteres del SHA-1, con `Add-Padding: true`, sin API key (https://haveibeenpwned.com/API/v3). Se consulta desde n8n, no desde el navegador.
+  - Más una lista local con «fts», «servicios», nombres de módulos y el usuario mismo.
+  - Los campos permiten pegar (`autocomplete="new-password"` / `current-password`).
+- **Referencia:** https://pages.nist.gov/800-63-4/sp800-63b.html
+
+**JWT (RFC 8725, BCP 225).**
+- **Norma (secciones):** algoritmo fijado por quien verifica (§3.1); llave con entropía real, nunca una contraseña (§3.5); validar `iss` y `sub` (§3.8) y `aud` (§3.9); tipado explícito (§3.11); reglas de validación mutuamente excluyentes entre tipos de token (§3.12).
+- **Hoy** (según el respaldo en `docs/n8n-workflows/fase0/jwt-verify.js`, a confirmar contra el vivo):
+  - El algoritmo está fijo de hecho, porque siempre recalcula HMAC-SHA256 y compara en tiempo constante.
+  - **No se emiten ni validan `iss` ni `aud`.**
+  - Los tokens sin `scopes` se aceptan como Finanzas (`finanzas:read`, `finanzas:write`) por compatibilidad. Eso choca con §3.12 si alguna vez dos emisores comparten secreto. Hoy no lo comparten (`SUITE_JWT_SECRET` y `FINANZAS_JWT_SECRET` son variables distintas).
+  - Vida de 8 h, sin inactividad, sin revocación.
+- **Diseño:**
+  - Emitir `iss: "fts-suite"`, `aud: "fts-suite-web"`, `typ: "JWT"`, `jti`, `ver` (versión de credenciales del usuario), `acr` y `auth_time`.
+  - El verificador exige `iss`, `aud` y `ver == suite_usuarios.ver`.
+  - **Subir `ver` invalida todas las sesiones** de esa persona: se hace al cambiar contraseña, al reset de RH, al dar de baja y al quitar un factor.
+  - Vida: 8 h máximo para nivel 1; para nivel 2, 24 h total y 1 h de inactividad (NIST §2.2.3); para nivel 3, 12 h y 15 min.
+  - La inactividad la impone el servidor con un `ultimo_uso` por `jti` (tabla en `fts-suite-db`), no el navegador.
+- **Dónde vive el token:** `localStorage` es legible por cualquier script del origen `yinyo1.github.io`, o sea **un XSS en cualquier página de la Suite se lleva el token** (y hoy también `ops_github_token` y `ops_sync_password`, ver R0).
+  - Mitigaciones sin cambiar dominio: CSP estricta por página (`script-src` con hashes, sin `unsafe-inline` en las pantallas nuevas), vida corta, `ver`.
+  - Una cookie `HttpOnly` exigiría que n8n y la página compartan sitio, y eso depende del dominio: queda para la decisión de dominio.
+- **Referencia:** https://www.rfc-editor.org/rfc/rfc8725.html
+
+**Reset por RH (A6).**
+- **Norma:**
+  - OWASP Forgot Password CS: token aleatorio de CSPRNG, guardado de forma segura (remite a Password Storage), un solo uso, expiración, aviso al usuario, sin login automático, invalidar sesiones.
+  - **ASVS 5.0 6.4.1**: los secretos iniciales generados por el sistema son aleatorios, expiran pronto o al primer uso, y **no pueden quedarse como contraseña de largo plazo**.
+- **Diseño:**
+  - Temporal de ≥20 caracteres del CSPRNG, guardada **sólo con hash**, de un solo uso, que expira en 24 h.
+  - `debe_cambiar_password=true` **bloquea** todo scope salvo el de cambio de contraseña. Hoy la bandera sólo pinta un aviso.
+  - Sube `ver`, lo que cierra todas las sesiones.
+  - Aviso a la persona por correo, sin la contraseña.
+  - **RH ve la temporal una sola vez y nunca conoce la final.**
+  - Se registra en bitácora: quién, a quién y cuándo.
+- **Referencias:** https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html · ASVS V6
+
+**Fuerza bruta y enumeración.**
+- **Norma:** OWASP Authentication CS: mensaje genérico; el contador va **atado a la cuenta**, no a la IP; cuidar tiempo de respuesta y código HTTP. El límite por IP es buena práctica adicional, no viene de esa hoja.
+- **Hoy:**
+  - SuiteAuth: bloqueo de 5 fallos → 15 min por usuario en `staticData` y mensaje genérico. ✓
+  - Falta un tope por IP, y el bloqueo por usuario permite que un tercero bloquee una cuenta conocida.
+  - **El login clásico no necesita enumerarse: `users-suite.json` es público y trae usuarios, roles y hashes.** El mensaje genérico de P-02 no protege nada mientras ese archivo exista. **No se toca ahora**; se resuelve en C5/C6.
+- **Referencia:** https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html
+
+**Sesiones (ASVS 5.0.0, V7.5 «Defenses Against Session Abuse»).**
+- **Norma:** **7.5.1** pide reautenticación completa antes de cambiar factores o datos de recuperación. **7.5.2** pide que el usuario **vea y cierre sus sesiones activas**. Relacionados: 7.4.3 (cerrar las demás al cambiar un factor) y 7.4.5 (un admin cierra las sesiones de alguien).
+- **Hoy:** nada de esto existe.
+- **Diseño:** tabla de sesiones por `jti` en `fts-suite-db`. «Mi perfil › Seguridad» lista dispositivos y última actividad, con botón «cerrar». Configuración (A7) permite cerrar las de otra persona.
+- **Referencia:** https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x16-V7-Session-Management.md
+
+**Bitácora con alerta.**
+- **Diseño:** `auth_eventos` en `fts-suite-db`: `ts_utc`, `actor`, `evento` (`login_ok`, `login_fallo`, `bloqueo`, `reset`, `cambio_password`, `cambio_scopes`, `mfa_enrolado`, `mfa_fallo`, `step_up`, `sesion_cerrada`), `ip`, `user_agent`, `detalle` (nunca contraseñas ni códigos).
+- Escribe la bitácora el workflow de login y cada workflow que cambie identidad. Retención de 1 año fuera de n8n (los logs de n8n se podan a 14 días).
+- **Alerta activa a Esteban** (correo vía Graph, ya existe la credencial) ante cualquiera de estos casos:
+  - 10 o más fallos a una cuenta en 15 min;
+  - fallos desde más de 3 IPs para la misma cuenta;
+  - éxito después de un bloqueo;
+  - cualquier `cambio_scopes` o reset;
+  - login de un nivel 3 fuera de horario.
+- La A8 (registro de uso) se construye **sobre esta tabla**, no aparte.
+
+**Mínimo privilegio en credenciales técnicas.**
+- Una credencial por consumidor, con lo mínimo:
+  - Odoo: usuarios técnicos de lectura y de escritura.
+  - GitHub: tokens fine-grained por repo y por permiso, con vencimiento.
+  - Bases: un rol por app; nunca el dueño en uso diario.
+  - Azure: `Mail.Send` acotada por Application Access Policy (ya existe).
+- Plan concreto en `docs/seguridad/R0_SECRETOS.md` §5 y `docs/seguridad/R1_SUPERFICIE.md` §5.
+
+**Cada control nuevo entra a una prueba.** El nivel MFA (P-14), C2 (P-15), `ver` (P-16: tras cambiar contraseña, el token viejo se rechaza), la lista de bloqueo (P-17: una contraseña filtrada se rechaza con motivo) y la bitácora (P-18: un login fallido deja un evento) se agregan a la Capa 2 o a pruebas del workflow **antes** de activarse. Ninguno puede quitarle acceso a alguien que hoy lo tiene sin que la matriz o la Capa 2 se pongan rojas.
+
+## 10 · Orden por sesiones (actualizado el 15-oct-2026)
+
+**Regla:** R0 y R1 van antes de cualquier fase A que toque producción. **Excepción demostrada:** A2 (catálogo) no toca producción, así que no depende de ellos y puede ir en paralelo. Las demás fases A sí dependen, por una razón concreta: A3 a A8 agregan pantallas y workflows de identidad **sobre el mismo origen donde hoy viven `ops_github_token` y `ops_sync_password`**. Construir identidad nueva con esos secretos todavía en el navegador es construir sobre una puerta abierta.
+
+| Orden | Sesión | Qué toca | Prueba previa | Prueba posterior | Reversa | Clic |
+|---|---|---|---|---|---|---|
+| 1 | **R0-1** GitHub del navegador | tokens en GitHub (R0 §5) | listar tokens: nombre y fechas | Config Master escribe con el token nuevo; Capa 2 (P-01 ajustada a «sin token») | token nuevo | Esteban |
+| 2 | **R0-2** Odoo: llaves por consumidor, revocar la del navegador | Odoo, credenciales n8n | captura de las API keys por usuario | ejecuciones de n8n en verde 24 h | llave nueva | Esteban |
+| 3 | **C2** cerrar el ftsmaster de respaldo | `shared/auth-suite.js:60-102` + `index.html:218-228, 281` | **P-15 abierta** (hoy); confirmar que Esteban tiene `password_hash` en `users-suite.json` (sí: 64 caracteres) y entra por el camino normal | **P-15 con `C2_CERRADA=1` en verde**; P-01/P-02 iguales | revert | Esteban (merge) |
+| 4 | **R0-3** contraseñas clásicas | `users-suite.json` vía Config Master | Capa 2 | Capa 2 | hash anterior del historial | Esteban |
+| 5 | **R0-4** secret scanning + push protection + regla de `main` (sin bloquear los commits de n8n) | Settings del repo | inventario de quién empuja | push de prueba de n8n pasa | desactivar | Esteban |
+| 6 | **R1-1** cerrar el proxy de Redis | Railway | métricas en 0 durante 7 días | webhooks contestan | re-crear proxy | Esteban |
+| 7 | **R1-2** cerrar el proxy del Postgres de n8n | Railway | 24 h de tráfico público ≈ 0 | `/healthz` + 1 h de ejecuciones | re-crear proxy | Esteban, fuera de horario |
+| 8 | **R1-5** n8n: imagen fija, 2FA, respaldo de `N8N_ENCRYPTION_KEY`, `n8n audit` | Railway, n8n | — | `/healthz` | imagen anterior | Esteban |
+| 9 | **R1-3** tesorería: SSL obligatorio, borrar `TEMPORAL dueño`, roles | n8n, Postgres de tesorería | workflows por credencial | una ejecución por workflow | credencial anterior | Esteban |
+| 10 | **R1-4** fts-mcp-odoo: usuario de lectura, `X-Forwarded-For`, doble secreto | repo fts-mcp-odoo, Odoo, Railway | pruebas del repo | Claude se conecta | redeploy anterior | Esteban |
+| 11 | **R0-5 / R0-6** IA y HMAC del PMO | proveedores, n8n | ¿quién usa IPERC IA y Análisis estructural? | pantallas dicen «sin llave» | llave nueva | Esteban |
+| 12 | **R1-6** restauración probada + respaldo fuera de Railway | Railway | — | conteo de filas igual | borrar el desechable | Esteban |
+| — | **A2** catálogo (con `nivel_minimo` de MFA, §MFA 2) | no | gate | gate | borrar archivo | — (puede ir en paralelo) |
+| 13 | **A3** interruptores | una etiqueta por página + workflow | Capa 2 | Capa 2 idéntica con todo apagado | quitar etiqueta | Esteban |
+| 14 | **A4** sembrar espejo (por Claude, MCP, read-back y valor anterior en el PR) | `suite_usuarios` | re-leer y correr matriz | matriz con datos vivos | quitar lo agregado | Esteban aprueba |
+| 15 | **A5** Mi perfil › Seguridad (+ política NIST, HIBP, `ver`) | workflow + columnas | Capa 2 | P-16, P-17 | interruptor | Esteban |
+| 16 | **Bitácora** `auth_eventos` + alertas | `fts-suite-db` + workflows | — | P-18 | interruptor | Esteban |
+| 17 | **MFA-1** decisión Entra ID / TOTP (pregunta de licencia, MFA §7) | — | — | — | — | Esteban |
+| 18 | **MFA-2** nivel 3 para **Esteban** (Entra + FIDO2, o lo que se decida) | login + verificador | Capa 2 | P-14 | interruptor | Esteban |
+| 19 | **A7** Configuración: **lectura** | página | Capa 2 | Capa 2 | interruptor | Esteban |
+| 20 | **A7** Configuración: **escritura de permisos**, sólo con nivel 3 + step-up | workflow | P-14 | P-14 + read-back | interruptor | Esteban |
+| 21 | **A6** temporal de RH (ASVS 6.4.1) | workflow | — | P-16 | interruptor | Esteban |
+| 22 | **A8** aviso + tablero (sobre la bitácora) | página | — | — | interruptor | Esteban |
+| — | B1–B4 y C1, C3–C8 como en §6 | | | | | |
+
+**Por qué C2 tan pronto:** P-15 demuestra que hoy, si `users-suite.json` no carga (GitHub caído, bloqueo de red, CDN), cualquiera puede «activar» la cuenta master con 6 caracteres. Retirarlo **no le quita acceso a nadie**: Esteban tiene `password_hash` y entra por el camino normal (P-01). El único efecto es que, con GitHub caído, **nadie** entra al clásico, tampoco el master. Hoy los demás ya no entran en ese caso, porque `getDefaultUsers` sólo trae a `ftsmaster`. Es el riesgo que se acepta, y se dice.
+
+**Por qué MFA nivel 3 de Esteban antes de A7-escritura:** quien escriba permisos tiene en sus manos todos los accesos. ASVS 7.5.3 (L3) pide autenticación adicional antes de operaciones muy sensibles.
+
+### 10.4 · C8 ajustada: repo privado no es página privada
+
+GitHub lo dice textual: «GitHub Pages sites are publicly available on the internet, even if the repository for the site is private». En GitHub Free, además, Pages **sólo funciona con repos públicos**; publicar en privado requiere Enterprise Cloud.
+
+C8 deja de presentarse como «privacidad de la Suite». Es **protección de código y de secretos**, y vale la pena por eso. La privacidad real de lo que la Suite muestra depende del **login personal y de que cada webhook exija el token (#390)**. C8 queda condicionada a una decisión que hoy está fuera de alcance: dónde se publica la Suite si el repo deja de ser público.

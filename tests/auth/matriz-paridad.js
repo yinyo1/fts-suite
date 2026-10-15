@@ -22,6 +22,7 @@
 // Uso:  node tests/auth/matriz-paridad.js            (tabla + veredicto)
 //       node tests/auth/matriz-paridad.js --md       (tabla en markdown)
 //       node tests/auth/matriz-paridad.js --propuesta (scopes a sembrar por persona)
+//       node tests/auth/matriz-paridad.js --json      (celdas, para la Capa 2)
 
 'use strict';
 const fs = require('fs');
@@ -243,6 +244,12 @@ if (arg === '--propuesta') {
     console.log(p.quien.padEnd(10), (p.suite || '(SIN CUENTA SUITE)').padEnd(20), add.length ? '+ ' + add.join(',') : '(sin cambios)');
   }
   process.exit(0);
+}
+if (arg === '--json') {
+  // Lo consume tests/auth/navegador-paridad.js (Capa 2): el navegador se compara
+  // contra ESTE modelo, celda por celda.
+  console.log(JSON.stringify({ personas: PERSONAS, filas }, null, 1));
+  process.exit(rotas === 0 ? 0 : 1);
 }
 if (arg === '--md') {
   console.log('| Objetivo | ' + PERSONAS.map(p => p.quien).join(' | ') + ' |');
