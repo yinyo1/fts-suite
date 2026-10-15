@@ -36,7 +36,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.36.1';
+  var VERSION = 'V1.37';
   /* V1.32 (0006) · empresa y moneda de la sesión: la base acepta estas tres claves. */
   var EMPRESAS = { mx_mxn: { n: 'FTS México · MXN', s: 'Empresa 1 · pesos', id: 1, m: 'MXN', pais: 'mx' },
                    mx_usd: { n: 'FTS México · USD', s: 'Empresa 1 · dólares', id: 1, m: 'USD', pais: 'mx' },
@@ -491,34 +491,21 @@
   }
   function mia(c) { var s = sesionDe(ST.sel) || {}; return s.puede_editar === true || (c && c.autor && c.autor === yo()); }
   /** Franja discreta: «¿El proyecto es en X? Sí · Cambiar» (prellenada sin confirmar) o «Falta la ciudad» (sin ciudad). */
-  function pintarFranja() {
-    var el = $('#ciuF'); if (!el) return;
-    var H = ST.hilo, c = H && H.caso, x = ciudadDe(c);
-    var ver = c && conCiudad(c) && !(ST.sel || {}).menu && ['abierto', 'enviada'].indexOf(c.estado) >= 0 && !archivada(c) && mia(c) && !(x && x.confirmada);
-    if (!ver) { el.style.display = 'none'; el.innerHTML = ''; return; }
-    var e = ST.env.ciudad;
-    el.style.display = 'flex';
-    el.innerHTML = '<span class="cf-t">' + ico('mapa', 'xs') + '<span>' + (x ? '¿El proyecto es en <b>' + esc(CI.nombre(x)) + '</b>?' : 'Falta la ciudad del proyecto') + '</span></span>' +
-      (x ? '<button type="button" class="cf-si" id="cfSi"' + (e ? ' disabled' : '') + '>' + (e === 'confirma' ? GIRO : '') + 'Sí</button><span class="cf-p">·</span>' : '') +
-      '<button type="button" id="cfCambia"' + (e ? ' disabled' : '') + '>' + (x ? 'Cambiar' : 'Elegir') + '</button>';
-    var si = $('#cfSi'); if (si) si.onclick = confirmarCiudad;
-    $('#cfCambia').onclick = cambiarCiudad;
-  }
   async function confirmarCiudad() {
     var c = ST.hilo && ST.hilo.caso; if (!c) return;
-    ST.env.ciudad = 'confirma'; pintarFranja();
+    ST.env.ciudad = 'confirma'; pintarFranja(); pintarFijo();
     var r = await C.confirmarCiudad(c.id);
     delete ST.env.ciudad;
-    if (!r.ok) { pintarFranja(); return aviso(r); }
+    if (!r.ok) { pintarFranja(); pintarFijo(); return aviso(r); }
     await refrescarSesiones();
   }
   function cambiarCiudad() {
     var c = ST.hilo && ST.hilo.caso; if (!c) return;
     dlgCiudad(ciudadDe(c), async function (x) {
-      ST.env.ciudad = 'cambia'; pintarFranja(); toast('Guardando la ciudad del proyecto…');
+      ST.env.ciudad = 'cambia'; pintarFranja(); pintarFijo(); toast('Guardando la ciudad del proyecto…');
       var r = await C.ciudad(c.id, { ciudad: x.c, estado: x.e || '', pais: x.pais === 'US' ? 'US' : 'MX' });
       delete ST.env.ciudad;
-      if (!r.ok) { pintarFranja(); return aviso(r); }
+      if (!r.ok) { pintarFranja(); pintarFijo(); return aviso(r); }
       ST.irAbajo = true; await refrescarSesiones();
       toast('Proyecto en ' + CI.nombre(x) + '.');
     });
@@ -557,41 +544,74 @@
   }
   /** V1.32.1 (#4 A5, Montalvo lo picó sin querer): el disparador SIEMPRE pide confirmación. */
   function confirmarDisparo(m) {
+    // V1.37 · la confirmación de siempre, mostrando lo que falta (decisión de Esteban, #4): lo que se va como supuesto.
+    var AV = G.CzAvance, hc = (ST.hilo && ST.hilo.caso) || {}, f = AV ? AV.faltantes(ST.hilo) : null, falta = [];
+    if (f && f.total) falta.push(AV.textoFaltantes(f).replace(/^f/, 'F') + ' del levantamiento');
+    if (!hc.cliente && !hc.cliente_odoo_id) falta.push('El cliente todavía no se dijo');
     modal('<h3>' + (m === 'acompanamiento' ? '¿Ya terminaste el levantamiento?' : '¿Ya es todo?') + '</h3>' +
       '<p class="sub">Con lo que mandaste armo las preguntas que faltan y la lista de conceptos. Lo que mandes después también entra, en otra vuelta.</p>' +
+      (falta.length ? '<div class="falta-disp"><b>Lo que falta</b><ul>' + falta.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' +
+        '<span>Lo que no llegue entra como supuesto en la cotización.' + (hc.id ? ' <button type="button" class="link" id="okFalta">Ver la lista</button>' : '') + '</span></div>' : '') +
       '<div class="acc der"><button class="boton" data-cierra>' + (m === 'acompanamiento' ? 'Sigo levantando' : 'Todavía no') + '</button><button class="boton si" id="okDisparo">' + (m === 'acompanamiento' ? 'Sí, cotiza' : 'Sí, ya es todo') + '</button></div>');
     $('#okDisparo').onclick = function () { this.disabled = true; cerrarModal(); mandar(MODOS[m].boton).then(function () { pintarFijo(); pintarCabecera(); }); };
+    if ($('#okFalta')) $('#okFalta').onclick = function () { cerrarModal(); queFalta(this); };
   }
+  /* V1.37 · UN botón con el siguiente paso (prototipo aprobado, #4): sale de CzAvance.avance(), con lo que ya
+   * está en el hilo. Sustituye a «Todo listo, crear machote», «Abrir · Haz la cotización» y al «Cotiza» del encabezado. */
   function pintarFijo() {
-    var m = modoActual(), c = (ST.hilo && ST.hilo.caso) || casoActual() || {}, el = $('#fijo');
-    var md = modoDisparo();
-    // En acompañamiento el botón SALE de la barra (queda junto a ⋮ y dentro de ⋮); en «ya tengo el levantamiento»
-    // sigue en la barra porque es la única acción del modo. Los dos piden confirmación.
-    if (md === 'acompanamiento') { el.style.display = 'none'; el.innerHTML = ''; return; }
-    if (md) {
-      el.style.display = 'flex';
-      el.innerHTML = '<button id="bFijo" type="button">' + ico('disparo', 's') + esc(MODOS[md].boton) + '</button>';
-      $('#bFijo').onclick = function () { confirmarDisparo(md); };
+    var el = $('#fijo'), H = ST.hilo, c = (H && H.caso) || casoActual() || {}, md = modoDisparo();
+    var abierta = ['abierto', 'enviada'].indexOf(c.estado) >= 0 && !archivada(c);
+    // Sin hilo todavía (sesión local recién creada): el disparador de siempre.
+    if (!H || !G.CzAvance) {
+      if (md) { el.style.display = 'flex'; el.innerHTML = '<button id="bFijo" type="button">' + ico('disparo', 's') + esc(MODOS[md].boton) + '</button>'; $('#bFijo').onclick = function () { confirmarDisparo(md); }; }
+      else { el.style.display = 'none'; el.innerHTML = ''; }
       return;
     }
-    // V1.32 (9a · 9b · 9c): con el BOM listo, «Todo listo, crear machote»; con el machote, abrirlo en el editor de
-    // siempre y pedir la cotización (el motor relee el machote como quedó).
-    var A = (ST.hilo && ST.hilo.acciones) || [], pendC = A.some(function (x) { return x.tipo === 'conjetura' && x.estado === 'propuesta'; });
-    var cm = A.filter(function (x) { return x.tipo === 'crear_machote'; }), prop = cm.filter(function (x) { return x.estado === 'propuesta'; }).pop();
-    var hecho = cm.filter(function (x) { return x.estado === 'hecha'; }).pop();
-    var abierta = ['abierto', 'enviada'].indexOf(c.estado) >= 0, h = '';
-    // V1.36 · el machote se crea CON pendientes; la cotización en Odoo espera a cero (decisión de Esteban, #4).
-    var np = prop ? Number((prop.datos || {}).n_pendientes) || 0 : 0, pend = G.CzAcciones ? G.CzAcciones.pendientes(ST.hilo) : { n: 0 };
-    var actualiza = prop && (prop.datos || {}).actualiza;
-    if (abierta && prop && !pendC && (!hecho || actualiza)) h = '<button id="bFijo" type="button" data-fijo="crear">' + ico('disparo', 's') +
-      (actualiza ? 'Actualizar ' + esc(actualiza.folio || 'machote') : np ? 'Crear machote' : 'Todo listo, crear machote') + (np ? ' · ' + np + ' pendiente' + (np === 1 ? '' : 's') : '') + '</button>';
-    else if (abierta && hecho) h = '<button type="button" data-fijo="abrir">' + ico('ext', 's') + 'Abrir ' + esc((hecho.resultado || {}).folio || c.machote_folio || 'machote') + '</button>' +
-      (pend.n ? '<span class="fijo-falta" title="' + esc(G.CzAcciones.textoPendientes(pend)) + '">Faltan ' + pend.n + ' para cotizar en Odoo</span>'
-        : '<button type="button" data-fijo="cotiza">' + ico('pagina', 's') + 'Haz la cotización</button>');
-    el.style.display = h ? 'flex' : 'none'; el.innerHTML = h;
-    var b1 = $('[data-fijo="crear"]', el); if (b1) b1.onclick = function () { b1.disabled = true; b1.innerHTML = GIRO + (actualiza ? 'actualizando…' : 'creando…'); hacer(prop.id, b1).then(function () { pintarFijo(); }); };
-    var b2 = $('[data-fijo="abrir"]', el); if (b2) b2.onclick = function () { abrirEditor(hecho); };
-    var b3 = $('[data-fijo="cotiza"]', el); if (b3) b3.onclick = function () { b3.disabled = true; mandar('Haz la cotización').then(function () { b3.disabled = false; }); };
+    var sg = abierta && !(ST.sel || {}).menu ? G.CzAvance.avance(H).sig : null;
+    if (sg && (sg.acc === 'ciudad' || sg.acc === 'confirma_ciudad') && !mia(c)) sg = null;
+    if (!sg) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    var e = ST.env.fijo || (ST.env.ciudad ? 'guardando la ciudad…' : null), ic = sg.acc === 'ciudad' || sg.acc === 'confirma_ciudad' ? 'mapa' : sg.acc === 'machote' || sg.acc === 'disparo' ? 'disparo' : 'pagina';
+    el.style.display = 'flex';
+    el.innerHTML = '<button id="bFijo" type="button" data-fijo="' + esc(sg.acc) + '"' + (sg.espera || e ? ' disabled' : '') + ' class="' + (sg.espera ? 'espera' : '') + '">' +
+      (sg.espera || e ? GIRO : ico(ic, 's')) + '<span class="fx">' + esc(e || sg.txt) + '</span></button>';
+    var b = $('#bFijo');
+    b.onclick = function () {
+      if (sg.acc === 'ciudad') return cambiarCiudad();
+      if (sg.acc === 'confirma_ciudad') return confirmarCiudad();
+      if (sg.acc === 'disparo') return confirmarDisparo(c.modo === 'acompanamiento' ? 'acompanamiento' : 'levantamiento');
+      if (sg.acc === 'machote') { ST.env.fijo = /^Actualizar/.test(sg.txt) ? 'actualizando…' : 'creando…'; pintarFijo(); return hacer(sg.id, b).then(function () { delete ST.env.fijo; pintarFijo(); }); }
+      if (sg.acc === 'cotiza' || sg.acc === 'mandar') { b.disabled = true; return mandar(sg.acc === 'cotiza' ? 'Haz la cotización' : sg.texto).then(function () { pintarFijo(); }); }
+      if (sg.acc === 'ir') {
+        var t = sg.a === 'conjetura' ? $('[data-conf]') : sg.a === 'conceptos' ? $('[data-acepta]') : $('.pend-cot');
+        if (t) { t.scrollIntoView({ block: 'center', behavior: 'smooth' }); var k = t.closest('.carta') || t; k.classList.add('resalta'); setTimeout(function () { k.classList.remove('resalta'); }, 1600); }
+      }
+    };
+  }
+
+  /* V1.37 · la franja de avance, fija bajo el encabezado e igual para todos (prototipo aprobado, #4). Sustituye a la
+   * franja de la ciudad de V1.34: la ciudad sin confirmar sale aquí en rojo y el botón de abajo la pide primero. */
+  function pintarFranja() {
+    var el = $('#avance'), viejo = $('#ciuF'); if (viejo) { viejo.style.display = 'none'; viejo.innerHTML = ''; }
+    if (!el) return;
+    var H = ST.hilo, c = H && H.caso;
+    if (!H || !c || !G.CzAvance || (ST.sel || {}).menu || ['abierto', 'enviada'].indexOf(c.estado) < 0 || archivada(c)) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    var AV = G.CzAvance, av = AV.avance(H), a = av.actual, P = AV.PASOS;
+    var cnt = a === 0 && av.faltan && av.faltan.total ? 'faltan ' + av.faltan.total : a === 2 && av.conjAb ? av.conjAb + ' abierta' + (av.conjAb === 1 ? '' : 's') :
+      a === 3 && av.sinDec ? av.sinDec + ' sin palomear' : (a === 4 || a === 5) && av.pendCot ? av.pendCot + ' pendiente' + (av.pendCot === 1 ? '' : 's') : '';
+    var abierto = !!ST.franjaAbierta, x = ciudadDe(c), folio = av.machote && ((av.machote.resultado || {}).folio || c.machote_folio);
+    el.style.display = 'block'; el.className = abierto ? 'abierta' : '';
+    el.innerHTML = '<button type="button" class="av-top" id="avTop" aria-expanded="' + abierto + '" aria-controls="avPanel"><span class="av-tx"><span class="av-paso">Paso ' + (a + 1) + ' de 7' + (a === 0 && av.faltan && av.faltan.a_medias ? ' · ' + av.faltan.abiertos + ' sin nada · ' + av.faltan.a_medias + ' a medias' : '') + '</span><b>' +
+        (av.ciudad ? '' : '<span class="av-rojo">Falta la ciudad</span> · ') + esc(P[a]) + (cnt ? ' · <span class="av-cnt">' + esc(cnt) + '</span>' : '') + '</b></span>' + ico('abajo', 's') + '</button>' +
+      '<div class="av-barras" aria-hidden="true">' + av.e.map(function (x) { return '<i class="' + x + '"></i>'; }).join('') + '</div>' +
+      '<div class="av-etiq" aria-hidden="true">' + P.map(function (p, i) { return '<span class="' + av.e[i] + '">' + esc(p) + '</span>'; }).join('') + '</div>' +
+      '<div class="av-panel" id="avPanel">' +
+        (av.ciudad ? '' : '<div class="av-pp falta"><span class="av-pt">!</span><span class="av-px"><b>Ciudad del proyecto' + (x ? ': ' + esc(CI.nombre(x)) + ' (sin confirmar)' : '') + '</b><span>Sin ella no se buscan precios: tiendas, fletes y viáticos se miden contra ella.' +
+          (mia(c) ? ' <button type="button" class="link" id="avCiudad">' + (x ? 'Cambiar' : 'Elegir') + '</button>' : '') + '</span></span></div>') +
+        P.map(function (p, i) { return '<div class="av-pp ' + av.e[i] + '"><span class="av-pt">' + (av.e[i] === 'hecho' ? '✓' : i + 1) + '</span><span class="av-px"><b>' + esc(p) + '</b><span>' + esc(av.det[i]) +
+          (i === 5 && av.machote ? ' <button type="button" class="link" id="avAbrir">Abrir ' + esc(folio || 'machote') + '</button>' : '') + '</span></span></div>'; }).join('') + '</div>';
+    $('#avTop').onclick = function () { ST.franjaAbierta = !ST.franjaAbierta; pintarFranja(); };
+    if ($('#avCiudad')) $('#avCiudad').onclick = cambiarCiudad;
+    if ($('#avAbrir')) $('#avAbrir').onclick = function () { abrirEditor(av.machote); };
   }
 
   // ── chat ───────────────────────────────────────────────────────────────
@@ -645,13 +665,9 @@
       '<div class="av" style="background:' + color(c.titulo) + '">' + esc(iniciales(c.cliente || c.titulo)) + '</div>' +
       '<div class="tx"><b><span>' + esc(c.titulo) + '</span>' + (((H && H.caso) || c).demo ? '<span class="chip-prueba" title="No enseña">PRUEBA</span>' : '') +
       '<span class="ver" title="Build del módulo">' + VERSION + '</span></b><small class="' + (vivo ? 'vivo' : '') + '">' + esc(sub) + '</small></div>' +
-      // V1.34 · «¿Qué me falta?» junto a «Cotiza» cuando cabe (≥ 600 px); en el teléfono vive dentro de ⋮.
-      (modoDisparo() === 'acompanamiento' && c.id ? '<button class="cz-cotiza cz-falta" id="bFalta" type="button" aria-label="¿Qué me falta?">' + ico('falta', 's') + '<span>¿Qué me falta?</span></button>' : '') +
-      (modoDisparo() === 'acompanamiento' ? '<button class="cz-cotiza" id="bCotiza" type="button" aria-label="Ya terminé, cotiza">' + ico('disparo', 's') + '<span>Cotiza</span></button>' : '') +
+      // V1.37 · «Ya terminé, cotiza» es el botón del siguiente paso (abajo) y «¿Qué me falta?» vive en ⋮ (decisión de Esteban, #4).
       '<button class="btn-ic" id="bMenu" aria-label="Opciones">' + ico('mas') + '</button>';
     $('#bVuelve').onclick = volverALista;
-    if ($('#bCotiza')) $('#bCotiza').onclick = function () { confirmarDisparo('acompanamiento'); };
-    if ($('#bFalta')) $('#bFalta').onclick = function () { queFalta(this); };
     $('#bMenu').onclick = function (e) { menuChat(e.currentTarget); };
   }
   /** ⋮ del chat: lo de la sesión (fijar, renombrar, archivar) y, abajo, detalles y lo aprendido. */
@@ -774,6 +790,13 @@
         '<span class="hora">' + esc(hora(x.escrito_at)) + ' ' + est + '</span><div style="clear:both"></div>' +
         (x.estado === 'error' ? '<div class="corr"><span class="err">' + esc(x.error) + '</span><button class="boton" data-reint="' + esc(x.cliente_id) + '">Reintentar</button><button class="boton" data-desc="' + esc(x.cliente_id) + '">Descartar</button></div>' : ''));
     });
+    var RT = ST.retoma;
+    if (RT && RT.id === (ST.sel || {}).id && G.CzAvance && G.CzAvance.ultimaActividad(H) === RT.t && !salidaDelCaso().length) {
+      dia(new Date().toISOString());
+      aparte('<div class="reto" role="status"><div class="rt">' + ico('reloj', 'xs') + 'Retomamos · tu último mensaje fue ' + esc(RT.hace) + '</div>' +
+        '<p>Vas en <b>' + esc(RT.vas) + '</b>.</p>' + (RT.falta.length ? '<p>Falta: ' + esc(RT.falta.join(', ')) + '.</p>' : '') +
+        (RT.sig ? '<p>Siguiente: <b>' + esc(RT.sig) + '</b> (el botón de abajo).</p>' : '') + '</div>');
+    }
     var tq = trabajoQueContesta();
     if (tq) h += escribeHtml(tq);
     // ¿Llegaron respuestas del motor desde el último pintado? Si la persona está leyendo arriba, se cuentan
@@ -1574,6 +1597,11 @@
     var n = (r.hilo.mensajes || []).filter(function (m) { return m.rol !== 'usuario' && m.autor !== 'acuse'; }).length;
     if (ST.vistos && ST.vistos.id === s.id && n > ST.vistos.n) avisarLlegada();
     ST.vistos = { id: s.id, n: n };
+    // V1.37 · «Retomamos»: se calcula UNA vez al abrir el caso; se va sola en cuanto hay actividad nueva.
+    if (ST.retomaPara !== s.id && G.CzAvance) {
+      ST.retomaPara = s.id; var rt = G.CzAvance.retomamos(r.hilo, Date.now());
+      ST.retoma = rt ? Object.assign({ id: s.id, t: G.CzAvance.ultimaActividad(r.hilo) }, rt) : null;
+    }
     ST.hilo = r.hilo; registrarPasos(r.hilo); revisarDictados(); pintarChat();
     // Recién mandado: si el motor ya tiene trabajo, la siguiente consulta no espera los 20 s.
     if (enCurso() && ST.sondeoMs > 2500) sondear();

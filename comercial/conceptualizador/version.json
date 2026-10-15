@@ -1,6 +1,10 @@
 {
-  "version": "V1.36.1",
+  "version": "V1.37",
   "historial": [
+    {
+      "version": "V1.37",
+      "nota": "Franja de avance (prototipo aprobado, #4): fija bajo el encabezado e igual para todos, «Paso N de 7 · <paso> · <conteo>» con 7 barritas (Levantamiento → Cotiza → Preguntas → Conceptos → BOM y precios → Machote → Cotización Odoo); en el teléfono un toque la abre con el detalle de cada paso y desde 760 px se ven las 7 etiquetas. Un solo botón con el siguiente paso: primero la ciudad si falta; en acompañamiento «Ya terminé, cotiza» con la confirmación de siempre, que ahora muestra lo que falta («faltan 11 · 6 sin nada · 5 a medias», contado por el motor sin modelo); «¿Qué me falta?» queda en ⋮. Al reabrir un caso con 2 h o más sin actividad, «Retomamos: vas en X, falta Y, siguiente: Z», armado por la pantalla con lo que ya está guardado. La franja de la ciudad de V1.34 se integra a la de avance."
+    },
     {
       "version": "V1.36.1",
       "nota": "Sin cambio visible. Junta V1.36 con la firma única de Marketing (#410): la cadena canónica del HMAC se lee de shared/chat/chat-firma.js, idéntica a la de V1.36. Pruebas de pantalla del conceptualizador en verde contra el simulador."
