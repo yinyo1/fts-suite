@@ -1,5 +1,12 @@
 /* ═══ Conceptualizador · pantalla tipo WhatsApp ═══
  *
+ * V1.34 · ciudad del proyecto (D89, migración 0007; cz-ciudad.js): selector con buscador en el menú de la
+ * sesión nueva, prellenado por ubicación (en el teléfono, sin mandar coordenadas) o zona horaria; proyecto
+ * y persona aparte; encabezado «empresa · moneda · ciudad», «Ciudad del proyecto» en ⋮ y la franja
+ * «¿El proyecto es en X? Sí · Cambiar». Conjeturas y conceptos sin ✕: «✓ Va» / «✎ Corregir» (la corrección
+ * de un concepto viaja en el lote como `aceptar` + `datos.corregido`). «¿Qué me falta?» en acompañamiento.
+ * Con un servidor sin la 0007, los modos nuevos regresan MODO_DESCONOCIDO y la pantalla lo dice en una línea.
+ *
  * V1.32 · lo del prototipo aprobado (fts-conceptualizador prototipos/chat-v3.html, #4, puntos 3 a 9
  * y el ajuste del visto bueno): palomeada en lote con «Listo, sigue», botones que dicen «enviando…»
  * hasta que el servidor contesta, corregir y rechazar debajo del renglón y con voz, el registro de
@@ -27,7 +34,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.32.2';
+  var VERSION = 'V1.34.1';
   /* V1.32 (0006) · empresa y moneda de la sesión: la base acepta estas tres claves. */
   var EMPRESAS = { mx_mxn: { n: 'FTS México · MXN', s: 'Empresa 1 · pesos', id: 1, m: 'MXN', pais: 'mx' },
                    mx_usd: { n: 'FTS México · USD', s: 'Empresa 1 · dólares', id: 1, m: 'USD', pais: 'mx' },
@@ -44,7 +51,7 @@
   };
   // Igual que es_disparador() de la base: «cotiza» sí, «cotización…» no.
   var DISPARO = /^\s*(ya\s+es\s+todo|es\s+todo|ya\s+termin|cotiza(?![a-záéíóúñ]))/i;
-  var C = G.CzCliente, Q = G.CzCola, Me = G.CzMedios, GR = G.CzGrabadora, AR = G.CzArchivos;
+  var C = G.CzCliente, Q = G.CzCola, Me = G.CzMedios, GR = G.CzGrabadora, AR = G.CzArchivos, CI = G.CzCiudad;
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -55,7 +62,9 @@
              usuario: 'todos', archivadas: false, busca: null, player: null, rate: 1,
              // V1.32
              empresa: 'mx_mxn', borr: {}, env: {}, errBt: {}, listo: false, pasos: {}, abiertoReg: null, abajoN: 0,
-             nMotor: null, panel: null };
+             nMotor: null, panel: null,
+             // V1.34 · ciudad: lo que el teléfono dedujo (geo) y la del proyecto elegida en el menú (ciuNueva)
+             geo: null, ciuNueva: null, qf: null };
   try { var g = JSON.parse(sessionStorage.getItem('cz_sel') || 'null'); if (g && (g.id || g.local)) ST.sel = g; } catch (e) {}
 
   // ── iconos de línea (genéricos, los del prototipo) ─────────────────────
@@ -94,7 +103,10 @@
     bajar: '<path d="M12 4v11"/><path d="M7 10.5l5 5 5-5"/><path d="M5 19.5h14"/>',
     exportar: '<path d="M12 15V4"/><path d="M7 8.5l5-5 5 5"/><path d="M5 13v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6"/>',
     ext: '<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
-    flecha: '<path d="M7 10l5 5 5-5"/>'
+    flecha: '<path d="M7 10l5 5 5-5"/>',
+    // V1.34
+    mapa: '<path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/>',
+    falta: '<path d="M10 6.5h10M10 12h10M10 17.5h6"/><path d="M3.5 6.5l1.5 1.5 2.5-3"/><path d="M3.5 12l1.5 1.5 2.5-3"/><circle cx="5.2" cy="17.5" r="1.4"/>'
   };
   var GIRO = '<span class="giro" aria-hidden="true"></span>';
   function ico(n, c) { return '<svg class="ico ' + (c || '') + '" viewBox="0 0 24 24" aria-hidden="true">' + P[n] + '</svg>'; }
@@ -110,7 +122,7 @@
   }
   function aviso(r) { if (!r || r.ok) return; toast(r.clase === 'red' ? 'Sin conexión. Se reintenta solo.' :
     // V1.31: si la pantalla sale antes que el verificador nuevo de n8n, lo dice en vez de un código.
-    r.error === 'MODO_DESCONOCIDO' ? 'Esa opción todavía no está encendida en el servidor.' : (r.mensaje || ('No se pudo: ' + (r.error || 'error')))); }
+    r.error === 'MODO_DESCONOCIDO' ? 'Esto se activa cuando se actualice el servidor.' : (r.mensaje || ('No se pudo: ' + (r.error || 'error')))); }
   var MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
   function fecha(t) { return t ? new Date(t) : null; }
   function hora(t) { var d = fecha(t); return d ? d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : ''; }
@@ -371,24 +383,154 @@
   function nuevaCotizacion() { abrirMenu(); }
   /** V1.30 · la sesión nueva empieza en el chat con dos opciones (V1.32.1 quitó «Seguir una cotización»: la lista ya lo hace). */
   function abrirMenu() {
-    ST.sel = { menu: true }; ST.hilo = null; ST.bandeja = []; ST.pais = ST.pais || 'mx';
+    ST.sel = { menu: true }; ST.hilo = null; ST.bandeja = []; ST.pais = ST.pais || 'mx'; ST.ciuNueva = null;
     $('#app').classList.add('ver-chat'); $('#app').classList.add('en-menu'); pintarLista(); pintarChat();
+    // V1.34 (D89) · prellenar la ciudad: ubicación con permiso (→ ciudad más cercana de la lista, en el teléfono)
+    // o la zona horaria. Nunca bloquea: el menú ya se ve y se puede elegir mientras tanto.
+    if (!ST.geo) {
+      ST.geo = { estado: 'buscando', persona: null };
+      CI.detectar().then(function (g) { ST.geo = g; if ((ST.sel || {}).menu) pintarMenu(); });
+    }
+  }
+  /** La ciudad del proyecto del menú: la elegida, o la prellenada (de la persona) sin confirmar. */
+  function ciudadMenu() {
+    if (ST.ciuNueva) return ST.ciuNueva;
+    var p = ST.geo && ST.geo.persona; return p ? Object.assign({}, p) : null;
+  }
+  function lineaGeo() {
+    var g = ST.geo || {}, p = g.persona;
+    var t = g.estado === 'buscando' ? 'Buscando tu ciudad…' :
+      g.estado === 'ubicacion' ? 'Estás en <b>' + esc(CI.nombre(p)) + '</b> (ubicación del teléfono). Solo guardo ciudad y estado, nunca coordenadas.' :
+      g.estado === 'zona' ? 'Sin permiso de ubicación: tomé <b>' + esc(CI.nombre(p)) + '</b> por la zona horaria del teléfono. Cámbiala si no es.' :
+      g.estado === 'lejos' ? 'Tu ubicación no cae cerca de ninguna ciudad de la lista: elige «Otra» y escríbela. No guardo coordenadas.' :
+      'No supe dónde estás. Elige la ciudad o déjala: te la pregunto antes de buscar precios.';
+    return '<p class="nota geo">' + ico('mapa', 'xs') + '<span>' + t + '</span></p>';
   }
   function pintarMenu() {
-    pintarCabecera(); $('#senal').style.display = 'none'; $('#fijo').style.display = 'none';
+    pintarCabecera(); $('#senal').style.display = 'none'; $('#fijo').style.display = 'none'; pintarFranja();
+    var cm = ciudadMenu(), pre = cm && cm.fuente !== 'elegida';
     $('#msgs').innerHTML = '<div class="fila el sig"><div class="b el"><div class="quien">Conceptualizador</div><div class="txt">¿Qué vamos a hacer?</div>' +
       '<p class="nota">Primero, ¿a nombre de qué empresa y en qué moneda?</p><div class="emp-sel">' + selEmpresa(ST.empresa) + '</div>' +
+      '<p class="nota"><b>¿Dónde es el proyecto?</b></p>' +
+      '<button type="button" class="cd-pick" id="bCiudadIni">' + ico('mapa', 's') + '<span class="cd-t">' + (cm ? esc(CI.nombre(cm)) : 'Elegir ciudad') +
+        (pre ? '<span class="cd-pre">prellenada</span>' : '') +
+        '<small>' + (!cm ? 'De aquí sale la procura: tiendas, flete y viáticos' : pre ? (cm.fuente === 'ubicacion' ? 'por tu ubicación' : 'por la zona horaria') + ' · cámbiala si el proyecto es en otra' : 'elegida por ti · toca para cambiar') + '</small></span>' + ico('flecha', 's') + '</button>' +
+      lineaGeo() +
       '<div class="opciones">' +
       '<button class="opc" data-modo="acompanamiento"><b>1 · Voy a hacer un levantamiento</b><small>Te acompaño en planta: te pido fotos, la ruta, medidas y acceso según el trabajo.</small></button>' +
       '<button class="opc" data-modo="levantamiento"><b>2 · Ya tengo el levantamiento</b><small>Me mandas todo (fotos, audios, PDFs, notas) y al final tocas «Ya es todo».</small></button></div>' +
-      '<p class="nota">La empresa se puede cambiar desde ⋮ mientras no haya machote.</p></div></div>';
+      '<p class="nota">Empresa y ciudad se cambian después desde&nbsp;⋮.</p></div></div>';
     $$('#msgs [data-emp]').forEach(function (b) { b.onclick = function () { ST.empresa = b.dataset.emp; pintarMenu(); }; });
+    $('#bCiudadIni').onclick = function () { dlgCiudad(ciudadMenu(), function (x) { ST.ciuNueva = Object.assign({ fuente: 'elegida' }, x); pintarMenu(); }); };
     $$('#msgs [data-modo]').forEach(function (b) { b.onclick = async function () {
-      var m = b.dataset.modo;
+      var m = b.dataset.modo, cp = ciudadMenu(), per = ST.geo && ST.geo.persona;
       b.disabled = true;
-      var c = await Q.nuevaSesion({ titulo: MODOS[m].titulo, pais: EMPRESAS[ST.empresa].pais, modo: m, empresa: ST.empresa });
+      // Persona ≠ proyecto: cada una con su fuente. Solo ciudad, estado y país; nunca coordenadas.
+      var c = await Q.nuevaSesion({ titulo: MODOS[m].titulo, pais: EMPRESAS[ST.empresa].pais, modo: m, empresa: ST.empresa,
+        proyecto: cp ? { ciudad: cp.c, estado: cp.e || '', pais: cp.pais === 'US' ? 'US' : 'MX', fuente: cp.fuente || 'elegida' } : null,
+        persona: per ? { ciudad: per.c, estado: per.e || '', fuente: per.fuente } : null });
       ST.locales = await Q.casosLocales(); $('#app').classList.remove('en-menu'); abrir({ local: c.local_id });
     }; });
+  }
+  /** V1.34 · selector de ciudad con buscador: la lista de D89 y «Otra» (texto libre). `alElegir({c,e,pais})`. */
+  function dlgCiudad(actual, alElegir, titulo) {
+    var lista = function (f) {
+      f = CI.sinAcento(f);
+      return CI.CIUDADES.map(function (gr) {
+        var L = gr.L.filter(function (x) { return !f || CI.sinAcento(x[0] + ' ' + x[1]).indexOf(f) >= 0; });
+        if (!L.length) return '';
+        return '<div class="cd-g">' + esc(gr.g) + '</div>' + L.map(function (x) {
+          var on = actual && actual.c === x[0];
+          return '<button type="button" class="cd-op' + (on ? ' on' : '') + '" data-ciudad="' + esc(x[0]) + '"><span>' + esc(x[0]) + '</span><small>' + esc(x[1]) + (on ? ' ✓' : '') + '</small></button>';
+        }).join('');
+      }).join('') + '<button type="button" class="cd-op otra" data-ciudad="otra"><span>Otra…</span><small>escribe ciudad y estado</small></button>';
+    };
+    var v = velo('<div class="dlg cd-dlg" role="dialog" aria-label="Ciudad del proyecto"><h3>' + esc(titulo || 'Ciudad del proyecto') + '</h3>' +
+      '<p>De aquí sale la procura: tienda o sucursal con existencia en esta ciudad, distribuidores de la zona, flete si el material está en otra, y viáticos.</p>' +
+      '<label class="cd-busca">' + ico('buscar', 's') + '<input id="cdQ" placeholder="Busca la ciudad" autocomplete="off" aria-label="Buscar ciudad"></label>' +
+      '<div class="cd-lista" id="cdL">' + lista('') + '</div>' +
+      '<div class="cd-otra" id="cdO" hidden><input id="cdT" maxlength="90" placeholder="Ciudad, estado (ej. Reynosa, Tamps.)" aria-label="Ciudad y estado">' +
+        '<div class="cd-pais"><button type="button" data-cp="MX" class="on">México</button><button type="button" data-cp="US">USA</button></div><span class="err-bt" id="cdE"></span></div>' +
+      '<div class="acciones"><button id="cdNo">Cancelar</button><button id="cdSi" hidden>Usar esta</button></div></div>', true);
+    var pais = EMPRESAS[ST.empresa] && EMPRESAS[ST.empresa].pais === 'usa' ? 'US' : 'MX';
+    var marcaPais = function () { $$('[data-cp]', v).forEach(function (b) { b.classList.toggle('on', b.dataset.cp === pais); }); };
+    marcaPais();
+    var enlaza = function () {
+      $$('[data-ciudad]', v).forEach(function (b) { b.onclick = function () {
+        if (b.dataset.ciudad === 'otra') { $('#cdO', v).hidden = false; $('#cdSi', v).hidden = false; $('#cdT', v).focus(); return; }
+        cerrarVelo(); alElegir(CI.buscar(b.dataset.ciudad));
+      }; });
+    };
+    enlaza();
+    $('#cdQ', v).oninput = function () { $('#cdL', v).innerHTML = lista(this.value); enlaza(); };
+    $$('[data-cp]', v).forEach(function (b) { b.onclick = function () { pais = b.dataset.cp; marcaPais(); }; });
+    var usar = function () {
+      var x = CI.deTexto($('#cdT', v).value, pais);
+      if (x.error) { $('#cdE', v).textContent = x.error; return; }
+      cerrarVelo(); alElegir(x);
+    };
+    $('#cdSi', v).onclick = usar;
+    $('#cdT', v).onkeydown = function (e) { if (e.key === 'Enter') usar(); };
+    $('#cdNo', v).onclick = cerrarVelo;
+  }
+  // ── V1.34 · la ciudad del proyecto en el chat ──────────────────────────
+  /** ¿El servidor ya trae la ciudad (0007)? Con uno viejo, la pantalla no inventa nada. */
+  function conCiudad(c) { return !!c && Object.prototype.hasOwnProperty.call(c, 'proyecto_ciudad'); }
+  function ciudadDe(c) {
+    if (!c) return null;
+    if (conCiudad(c)) return c.proyecto_ciudad ? { c: c.proyecto_ciudad, e: c.proyecto_estado || '', pais: c.proyecto_pais, confirmada: !!c.proyecto_confirmada_at } : null;
+    return c.proyecto ? { c: c.proyecto.ciudad, e: c.proyecto.estado, pais: c.proyecto.pais, confirmada: c.proyecto.fuente === 'elegida' } : null;
+  }
+  /** Texto de la ciudad para el encabezado: «Monterrey, N.L.», «ciudad por confirmar», o nada (servidor viejo). */
+  function ciudadTxt(c) {
+    var x = ciudadDe(c);
+    if (x) return CI.nombre(x);
+    return conCiudad(c) || (c && c.estado === 'local') ? 'ciudad por confirmar' : '';
+  }
+  function mia(c) { var s = sesionDe(ST.sel) || {}; return s.puede_editar === true || (c && c.autor && c.autor === yo()); }
+  /** Franja discreta: «¿El proyecto es en X? Sí · Cambiar» (prellenada sin confirmar) o «Falta la ciudad» (sin ciudad). */
+  function pintarFranja() {
+    var el = $('#ciuF'); if (!el) return;
+    var H = ST.hilo, c = H && H.caso, x = ciudadDe(c);
+    var ver = c && conCiudad(c) && !(ST.sel || {}).menu && ['abierto', 'enviada'].indexOf(c.estado) >= 0 && !archivada(c) && mia(c) && !(x && x.confirmada);
+    if (!ver) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    var e = ST.env.ciudad;
+    el.style.display = 'flex';
+    el.innerHTML = '<span class="cf-t">' + ico('mapa', 'xs') + '<span>' + (x ? '¿El proyecto es en <b>' + esc(CI.nombre(x)) + '</b>?' : 'Falta la ciudad del proyecto') + '</span></span>' +
+      (x ? '<button type="button" class="cf-si" id="cfSi"' + (e ? ' disabled' : '') + '>' + (e === 'confirma' ? GIRO : '') + 'Sí</button><span class="cf-p">·</span>' : '') +
+      '<button type="button" id="cfCambia"' + (e ? ' disabled' : '') + '>' + (x ? 'Cambiar' : 'Elegir') + '</button>';
+    var si = $('#cfSi'); if (si) si.onclick = confirmarCiudad;
+    $('#cfCambia').onclick = cambiarCiudad;
+  }
+  async function confirmarCiudad() {
+    var c = ST.hilo && ST.hilo.caso; if (!c) return;
+    ST.env.ciudad = 'confirma'; pintarFranja();
+    var r = await C.confirmarCiudad(c.id);
+    delete ST.env.ciudad;
+    if (!r.ok) { pintarFranja(); return aviso(r); }
+    await refrescarSesiones();
+  }
+  function cambiarCiudad() {
+    var c = ST.hilo && ST.hilo.caso; if (!c) return;
+    dlgCiudad(ciudadDe(c), async function (x) {
+      ST.env.ciudad = 'cambia'; pintarFranja(); toast('Guardando la ciudad del proyecto…');
+      var r = await C.ciudad(c.id, { ciudad: x.c, estado: x.e || '', pais: x.pais === 'US' ? 'US' : 'MX' });
+      delete ST.env.ciudad;
+      if (!r.ok) { pintarFranja(); return aviso(r); }
+      ST.irAbajo = true; await refrescarSesiones();
+      toast('Proyecto en ' + CI.nombre(x) + '.');
+    });
+  }
+  /** «¿Qué me falta?»: un trabajo a demanda; la respuesta llega al chat como cualquier otra. */
+  async function queFalta(b) {
+    var c = ST.hilo && ST.hilo.caso; if (!c) return;
+    if (b) { b.disabled = true; b.dataset.tx = b.innerHTML; b.innerHTML = GIRO + '<span>preguntando…</span>'; }
+    var r = await C.queFalta(c.id);
+    if (b) { b.disabled = false; b.innerHTML = b.dataset.tx; }
+    if (!r.ok) return aviso(r);
+    ST.qf = r.trabajo_id || null; ST.irAbajo = true;
+    toast('Le pregunté al motor qué falta: contesta aquí en el chat.');
+    await cargarHilo(); sondear(true);
   }
   function selEmpresa(sel) {
     return Object.keys(EMPRESAS).map(function (k) { return '<button type="button" data-emp="' + k + '" class="' + (sel === k ? 'on' : '') + '"><span class="rad"></span><span>' +
@@ -451,7 +593,7 @@
     if (s.menu) return { titulo: 'Nueva cotización', estado: 'menu' };
     if (s.id) return ST.casos.filter(function (c) { return c.id === s.id; })[0] || (ST.hilo && ST.hilo.caso && ST.hilo.caso.id === s.id ? ST.hilo.caso : null);
     var l = ST.locales.filter(function (x) { return x.local_id === s.local; })[0];
-    return l ? { titulo: l.titulo, cliente: l.cliente, modo: l.modo, estado: 'local' } : null;
+    return l ? { titulo: l.titulo, cliente: l.cliente, modo: l.modo, estado: 'local', proyecto: l.proyecto || null } : null;
   }
   /** V1.31 (1.4) · ¿el motor VA A CONTESTAR? Solo entonces hay «escribiendo…» y puntitos.
    *  · «Ya tengo el levantamiento» antes del disparador: no. Lo que corre es guardar y transcribir.
@@ -464,6 +606,8 @@
     var L = (H.trabajos || []).filter(function (t) {
       if (t.lote_de) return false;                       // absorbido: lo contesta otro trabajo
       if (t.estado === 'tomado') return true;
+      // V1.34: «¿Qué me falta?» lo pidió la persona con un botón: el motor sí va a contestar.
+      if (t.estado === 'pendiente' && ST.qf && String(t.id) === String(ST.qf)) return true;
       return t.estado === 'pendiente' && !!disp && new Date(t.created_at).getTime() >= disp - 5000;
     });
     return L.filter(function (t) { return t.estado === 'tomado'; })[0] || L[0] || null;
@@ -478,6 +622,9 @@
   function pintarCabecera() {
     var c = casoActual() || { titulo: '…' }, m = ST.motor, H = ST.hilo, vivo = false;
     var ke = claveEmpresa((H && H.caso) || c), emp = ke ? EMPRESAS[ke].n + ' · ' : '';
+    // V1.34 (D89) · empresa · moneda · ciudad (o «ciudad por confirmar»). Con servidor viejo no se pinta ciudad.
+    var cTx = (ST.sel || {}).menu ? '' : ciudadTxt((H && H.caso) || c);
+    if (cTx) emp += cTx + ' · ';
     var sub = !navigator.onLine ? 'sin señal · lo que mandes se guarda en el teléfono' :
       emp + (!m ? 'conectando…' : m.modo === 'rapido' ? 'motor rápido · en línea' : 'respaldo · contesta en minutos');
     var t = trabajoQueContesta();
@@ -491,10 +638,13 @@
       '<div class="av" style="background:' + color(c.titulo) + '">' + esc(iniciales(c.cliente || c.titulo)) + '</div>' +
       '<div class="tx"><b><span>' + esc(c.titulo) + '</span>' + (((H && H.caso) || c).demo ? '<span class="chip-prueba" title="No enseña">PRUEBA</span>' : '') +
       '<span class="ver" title="Build del módulo">' + VERSION + '</span></b><small class="' + (vivo ? 'vivo' : '') + '">' + esc(sub) + '</small></div>' +
+      // V1.34 · «¿Qué me falta?» junto a «Cotiza» cuando cabe (≥ 600 px); en el teléfono vive dentro de ⋮.
+      (modoDisparo() === 'acompanamiento' && c.id ? '<button class="cz-cotiza cz-falta" id="bFalta" type="button" aria-label="¿Qué me falta?">' + ico('falta', 's') + '<span>¿Qué me falta?</span></button>' : '') +
       (modoDisparo() === 'acompanamiento' ? '<button class="cz-cotiza" id="bCotiza" type="button" aria-label="Ya terminé, cotiza">' + ico('disparo', 's') + '<span>Cotiza</span></button>' : '') +
       '<button class="btn-ic" id="bMenu" aria-label="Opciones">' + ico('mas') + '</button>';
     $('#bVuelve').onclick = volverALista;
     if ($('#bCotiza')) $('#bCotiza').onclick = function () { confirmarDisparo('acompanamiento'); };
+    if ($('#bFalta')) $('#bFalta').onclick = function () { queFalta(this); };
     $('#bMenu').onclick = function (e) { menuChat(e.currentTarget); };
   }
   /** ⋮ del chat: lo de la sesión (fijar, renombrar, archivar) y, abajo, detalles y lo aprendido. */
@@ -503,7 +653,12 @@
     var A = accionesDe(c), abierta = c.estado === 'abierto' || c.estado === 'enviada';
     var H = ST.hilo, cs = (H && H.caso) || {}, hayM = !!(cs.machote_id || cs.machote_folio), mia = c.puede_editar === true;
     var md = modoDisparo();
-    var V = (md === 'acompanamiento' ? '<button data-a="disparo" class="destaca">' + ico('disparo', 's') + '<span>' + esc(MODOS[md].boton) + '<small>Te pido confirmación antes de mandarlo</small></span></button><hr>' : '') + (c.id && !(ST.sel || {}).menu ? (
+    var cx = ciudadDe(cs.id ? cs : c);
+    var V = (md === 'acompanamiento' ? '<button data-a="disparo" class="destaca">' + ico('disparo', 's') + '<span>' + esc(MODOS[md].boton) + '<small>Te pido confirmación antes de mandarlo</small></span></button>' +
+      (c.id ? '<button data-a="falta">' + ico('falta', 's') + '<span>¿Qué me falta?<small>Lo que no puede faltar para cotizar este trabajo</small></span></button>' : '') + '<hr>' : '') + (c.id && !(ST.sel || {}).menu ? (
+      // V1.34 (D89) · la ciudad del proyecto se cambia aquí (solo quien la abrió o Esteban; la base vuelve a decidir).
+      '<button data-a="ciudad"' + (mia ? '' : ' disabled') + '>' + ico('mapa', 's') + '<span>Ciudad del proyecto' + (cx ? ': ' + esc(CI.nombre(cx)) : '') +
+        '<small>' + (!mia ? 'Solo quien la abrió o Esteban' : cx ? (cx.confirmada ? 'Cambiarla: tiendas, flete y viáticos se recalculan' : 'Prellenada, sin confirmar · cambiar o confirmar') : 'Por confirmar · elegirla') + '</small></span></button>' +
       '<button data-a="ficha">' + ico('ficha', 's') + '<span>Ficha de la sesión<small>CRM · machote · orden · carpeta</small></span></button>' +
       '<button data-a="empresa"' + (hayM || !mia ? ' disabled' : '') + '>' + ico('empresa', 's') + '<span>Empresa: ' + esc((EMPRESAS[claveEmpresa(cs)] || EMPRESAS.mx_mxn).n) +
         '<small>' + (hayM ? 'Ya hay machote: no se cambia aquí' : !mia ? 'Solo quien la abrió o Esteban' : 'Cambiar mientras no haya machote') + '</small></span></button>' +
@@ -521,6 +676,8 @@
     $$('[data-a]', v).forEach(function (b) { b.onclick = function () {
       cerrarVelo(); var a = b.dataset.a;
       if (a === 'disparo') return confirmarDisparo(md);
+      if (a === 'falta') return queFalta(null);
+      if (a === 'ciudad') return cambiarCiudad();
       if (a === 'detalles') return menuSesion();
       if (a === 'aprendio') return verAprendio();
       if (a === 'ficha') return hojaFicha();
@@ -557,7 +714,7 @@
     var M = $('#msgs'), abajo = M.scrollHeight - M.scrollTop - M.clientHeight < 80, H = ST.hilo, arriba0 = M.scrollTop;
     // Lo escrito en una cajita abierta y su cursor sobreviven al repintado (sondeo de 2.5 s).
     var fe = document.activeElement, foco = fe && fe.dataset && fe.dataset.borr ? { k: fe.dataset.borr, a: fe.selectionStart, b: fe.selectionEnd } : null;
-    pintarCabecera(); pintarSenal(); pintarFijo();
+    pintarCabecera(); pintarSenal(); pintarFijo(); pintarFranja();
     var modo = modoActual();
     var h = '', ultimoDia = '', prev = null;
     var dia = function (t) { var d = separador(t); if (d && d !== ultimoDia) { ultimoDia = d; h += '<div class="dia"><span>' + esc(d) + '</span></div>'; prev = null; } };
@@ -813,14 +970,17 @@
       h += '<div class="carta conceptos"><h4>🧩 Conceptos propuestos' + (faltan ? ' · <span class="gris">' + faltan + ' por decidir</span>' : '') + '</h4>';
       U.conceptos.forEach(function (k) {
         var d = decididos[k.id], kk = 'c:' + k.id, e = ST.env[kk], b = ST.borr[kk] || {};
+        // V1.34 · sin ✕: «✓ Va» y «✎ Corregir». Corregir abre la cajita (texto o voz); la corrección viaja en el
+        // lote como `aceptar` con su razón y `datos.corregido` (el motor la interpreta: si dice que no va, es rechazo).
+        var corr = d && d.tipo === 'aceptar' && d.datos && d.datos.corregido;
         h += '<div class="cn" data-con="' + esc(k.id) + '"><div class="fil"><span class="n">' + esc(k.id) + '</span><div class="d">' + esc(k.concepto) + '<small>origen: ' + esc(k.origen || '') + '</small>' +
-          (d && d.razon ? '<small class="mal">' + esc(d.razon) + '</small>' : '') + '</div>' +
-          (d ? '<span class="hecho' + (d.tipo === 'rechazar' ? ' mal' : '') + '">' + (d.tipo === 'aceptar' ? 'aceptado' : 'rechazado') + '</span>'
-             : b.abierto ? '' : '<div class="decide">' +
-               (e === 'aceptar' ? '<button class="si enviando" disabled aria-label="Enviando">' + GIRO + '</button>' : '<button class="si" data-acepta="' + esc(k.id) + '" aria-label="Aceptar">✓</button>') +
-               '<button class="no" data-rechaza="' + esc(k.id) + '" aria-label="Rechazar"' + (e ? ' disabled' : '') + '>✕</button></div>') + '</div>' +
+          (d && d.razon ? '<small class="' + (corr ? 'corr' : 'mal') + '">' + (corr ? '✎ ' : '') + esc(d.razon) + '</small>' : '') + '</div>' +
+          (d ? '<span class="hecho' + (d.tipo === 'rechazar' ? ' mal' : corr ? ' corr' : '') + '">' + (corr ? '✎ corregido' : d.tipo === 'aceptar' ? '✓ va' : 'rechazado') + '</span>' : '') + '</div>' +
+          (d || b.abierto ? '' : '<div class="decide">' +
+               (e === 'aceptar' ? '<button class="si enviando" disabled aria-label="Enviando">' + GIRO + 'enviando…</button>' : '<button class="si" data-acepta="' + esc(k.id) + '">✓ Va</button>') +
+               '<button data-corrige="' + esc(k.id) + '"' + (e ? ' disabled' : '') + '>✎ Corregir</button></div>') +
           (ST.errBt[kk] && !b.abierto ? '<span class="err-bt">' + esc(ST.errBt[kk]) + '</span>' : '') +
-          (b.abierto && !d ? cajaRazon(kk, '¿Por qué no va? (obligatorio)', 'Rechazar', true) : '') + '</div>';
+          (b.abierto && !d ? cajaRazon(kk, 'Escribe o dicta qué cambia. Si no va, di por qué.', 'Guardar', false) : '') + '</div>';
       });
       if (enLote && !faltan) h += '<div class="pie-lote"><span class="txt-lote">✓ Mandé tus ' + enLote + ' decisiones juntas: armo el BOM.</span></div>';
       else h += '<div class="pie-lote"><span class="txt-lote">' + (enLote ? '✓ Ya mandé ' + enLote + '. ' : '') + (dec ? 'Llevas ' + dec + ' de ' + U.conceptos.length + '. Se mandan juntas cuando decidas el último' : 'Palomea cada uno; las decisiones se mandan juntas al final') + '.</span>' +
@@ -876,10 +1036,10 @@
       conj.forEach(function (a) {
         var d = a.datos || {}, r = a.resultado || {}, kk = 'j:' + a.id, e = ST.env[kk], b = ST.borr[kk] || {};
         h += '<div class="preg"><p>' + esc(d.pregunta || a.titulo) + '</p>' + (d.conjetura ? '<div class="conj">Supongo: ' + esc(d.conjetura) + (d.porque ? '<small> · ' + esc(d.porque) + '</small>' : '') + '</div>' : '') +
-          (a.estado === 'hecha' ? '<span class="hecho">✓ Confirmado</span>' : a.estado === 'descartada' ? '<span class="hecho mal">✎ Corregido: ' + esc(r.correccion || '') + '</span>' :
+          (a.estado === 'hecha' ? '<span class="hecho">✓ Confirmado</span>' : a.estado === 'descartada' ? '<span class="hecho corr">✎ Corregido: ' + esc(r.correccion || '') + '</span>' :
            b.abierto ? cajaRazon(kk, '¿Qué es lo correcto?', 'Mandar', false) :
-           '<div class="acc" data-acc="' + a.id + '">' + (e === 'confirma' ? '<button class="si enviando" disabled>' + GIRO + 'enviando…</button>' : '<button class="si" data-conf="' + a.id + '">Confirmo</button>') +
-           '<button data-corr="' + a.id + '"' + (e ? ' disabled' : '') + '>Corrijo</button></div>' + (ST.errBt[kk] ? '<span class="err-bt">' + esc(ST.errBt[kk]) + '</span>' : '')) + '</div>';
+           '<div class="acc" data-acc="' + a.id + '">' + (e === 'confirma' ? '<button class="si enviando" disabled>' + GIRO + 'enviando…</button>' : '<button class="si" data-conf="' + a.id + '">✓ Va</button>') +
+           '<button data-corr="' + a.id + '"' + (e ? ' disabled' : '') + '>✎ Corregir</button></div>' + (ST.errBt[kk] ? '<span class="err-bt">' + esc(ST.errBt[kk]) + '</span>' : '')) + '</div>';
       });
       h += (pend ? '<p class="nota">Cuando contestes todas, sigo con los conceptos.</p>' : '') + '</div>';
     }
@@ -911,7 +1071,7 @@
     $$('[data-reint]', M).forEach(function (b) { b.onclick = function () { Q.reintentar(b.dataset.reint); }; });
     $$('[data-desc]', M).forEach(function (b) { b.onclick = function () { if (confirm('¿Descartar este mensaje? No se manda.')) Q.descartar(b.dataset.desc); }; });
     $$('[data-acepta]', M).forEach(function (b) { b.onclick = function () { decidirConcepto(b.dataset.acepta, 'aceptar'); }; });
-    $$('[data-rechaza]', M).forEach(function (b) { b.onclick = function () { abrirCaja('c:' + b.dataset.rechaza); }; });
+    $$('[data-corrige]', M).forEach(function (b) { b.onclick = function () { abrirCaja('c:' + b.dataset.corrige); }; });
     $$('[data-conf]', M).forEach(function (b) { b.onclick = function () { responder('j:' + b.dataset.conf, b.dataset.conf, 'hecha', { confirma: true }, 'confirma'); }; });
     $$('[data-corr]', M).forEach(function (b) { b.onclick = function () { abrirCaja('j:' + b.dataset.corr); }; });
     $$('[data-borr]', M).forEach(function (t) { t.oninput = function () { (ST.borr[t.dataset.borr] = ST.borr[t.dataset.borr] || { abierto: true }).texto = t.value; }; });
@@ -944,8 +1104,8 @@
   function sinSenal(r) { return r && r.clase === 'red' ? 'Sin señal: no se mandó. Toca otra vez.' : (r && (r.mensaje || r.error)) || 'No se pudo.'; }
   function mandarCaja(k) {
     var b = ST.borr[k] || {}, txt = String(b.texto || '').trim();
-    if (txt.length < 3) { b.err = 'Escribe o dicta ' + (k.indexOf('c:') === 0 ? 'la razón' : 'lo correcto') + ' (3 letras mínimo).'; return pintarChat(); }
-    if (k.indexOf('c:') === 0) return decidirConcepto(k.slice(2), 'rechazar', txt);
+    if (txt.length < 3) { b.err = 'Escribe o dicta ' + (k.indexOf('c:') === 0 ? 'qué cambia' : 'lo correcto') + ' (3 letras mínimo).'; return pintarChat(); }
+    if (k.indexOf('c:') === 0) return decidirConcepto(k.slice(2), 'aceptar', txt, { corregido: true });
     return responder(k, k.slice(2), 'descartada', { correccion: txt }, 'corrige');
   }
   /** Confirmar o corregir una conjetura: el botón dice «enviando…» hasta que el servidor contesta. */
@@ -1007,11 +1167,11 @@
       var ok = await fn(v); if (!ok) d.querySelector('button').disabled = false; };
     d.querySelector('button').onclick = ir; i.onkeydown = function (e) { if (e.key === 'Enter') ir(); };
   }
-  async function decidirConcepto(id, tipo, razon) {
+  async function decidirConcepto(id, tipo, razon, extra) {
     var U = ST.hilo && (ST.hilo.propuesta || ST.hilo.ultima), k = U && (U.conceptos || []).filter(function (x) { return x.id === id; })[0]; if (!k) return;
     var kk = 'c:' + id;
     ST.env[kk] = tipo; delete ST.errBt[kk]; pintarChat();
-    var r = await C.evento({ caso_id: ST.hilo.caso.id, tipo: tipo, concepto: k.id, razon: razon || '', datos: { concepto: k.concepto, origen: k.origen } });
+    var r = await C.evento({ caso_id: ST.hilo.caso.id, tipo: tipo, concepto: k.id, razon: razon || '', datos: Object.assign({ concepto: k.concepto, origen: k.origen }, extra || {}) });
     delete ST.env[kk];
     if (!r.ok) { ST.errBt[kk] = sinSenal(r); pintarChat(); return false; }
     delete ST.borr[kk];
@@ -1232,7 +1392,7 @@
     var ant = function (lista, campo, val) { return comp ? ((lista || []).filter(function (z) { return z[campo] === val; })[0] || {}) : {}; };
     var mat = (v.bom && v.bom.materiales) || [], mo = (v.bom && v.bom.mano_obra) || [];
     var cons = !(v.conceptos || []).length ? '' : '<h3>Conceptos</h3><div class="scroll-x"><table class="tabla"><tr><th>#</th><th>Concepto</th><th>Origen</th><th>Estado</th></tr>' +
-      (v.conceptos || []).map(function (k) { var d = dec[k.id]; return '<tr><td>' + esc(k.id) + '</td><td>' + esc(k.concepto) + '</td><td>' + esc(k.origen || '') + '</td><td>' + (d ? (d.tipo === 'aceptar' ? 'aceptado' : 'rechazado · ' + esc(d.razon || '')) : 'sin decidir') + '</td></tr>'; }).join('') + '</table></div>';
+      (v.conceptos || []).map(function (k) { var d = dec[k.id]; return '<tr><td>' + esc(k.id) + '</td><td>' + esc(k.concepto) + '</td><td>' + esc(k.origen || '') + '</td><td>' + (d ? (d.tipo === 'aceptar' ? (d.datos && d.datos.corregido ? 'corregido · ' + esc(d.razon || '') : 'va') : 'rechazado · ' + esc(d.razon || '')) : 'sin decidir') + '</td></tr>'; }).join('') + '</table></div>';
     cons += '<h3>BOM a costo</h3><div class="scroll-x"><table class="tabla"><tr><th>Descripción</th><th class="r">Qty</th><th class="r">P. unit.</th><th>Fuente</th><th>Tienda · existencia</th></tr>' +
       mat.map(function (r) { var o = ant(a && a.bom && a.bom.materiales, 'descripcion', r.descripcion); var nuevo = comp && !o.descripcion;
         return '<tr' + (comp && (nuevo || String(o.qty) !== String(r.qty) || String(o.pu) !== String(r.pu)) ? ' class="cambio"' : '') + '><td>' + (nuevo ? '<ins>' + esc(r.descripcion) + '</ins>' : esc(r.descripcion)) + (r.sku ? ' <span class="sku">' + esc(r.sku) + '</span>' : '') + '</td><td class="r">' + (nuevo ? esc(r.qty) : cambio(r.qty, o.qty)) +

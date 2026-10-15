@@ -1,6 +1,14 @@
 {
-  "version": "V1.32.2",
+  "version": "V1.34.1",
   "historial": [
+    {
+      "version": "V1.34.1",
+      "nota": "Sin cambio visible. Junta V1.34 con V1.32.2: la firma de cada pedido (la cadena canónica del HMAC) se lee de shared/chat/chat-firma.js, que comparten el conceptualizador, Marketing y los workflows de n8n (#407 §2.2). La cadena es idéntica a la de V1.34."
+    },
+    {
+      "version": "V1.34",
+      "nota": "Ciudad del proyecto (D89, migración 0007): el menú de «Nueva cotización» trae un selector con buscador (las ciudades donde trabaja FTS en MX y USA, más «Otra» en texto libre), prellenado por la ubicación del teléfono con permiso (ciudad más cercana de la lista en 30 km; las coordenadas no salen del teléfono) o por la zona horaria, y dice que es prellenada. La ciudad del proyecto y la de la persona se guardan aparte. Encabezado «empresa · moneda · ciudad» (o «ciudad por confirmar»), «Ciudad del proyecto» en ⋮ y una franja «¿El proyecto es en X? Sí · Cambiar» mientras no esté confirmada. Conjeturas y conceptos sin ✕: «✓ Va» y «✎ Corregir» (texto o voz, por la misma cajita); la corrección de un concepto viaja en el lote como «va» con su razón y marcada como corregida. «¿Qué me falta?» en acompañamiento (junto a «Cotiza» desde 600 px; en el teléfono, dentro de ⋮). Con un servidor sin la 0007 los modos nuevos dicen «Esto se activa cuando se actualice el servidor» y la pantalla sigue."
+    },
     {
       "version": "V1.32.2",
       "nota": "Sin cambio visible. La firma de cada pedido (la cadena canónica del HMAC) se lee de un solo lugar, shared/chat/chat-firma.js, que ahora comparten el conceptualizador, Marketing y los workflows de n8n (#407 §2.2). La cadena es idéntica a la de V1.32.1."
