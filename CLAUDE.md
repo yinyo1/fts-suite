@@ -1417,6 +1417,18 @@ El chat lo usan **dos productos** (conceptualizador y Marketing). Por eso:
 - **Los cambios a `shared/chat` son aditivos** y se prueban corriendo, **sin tocar su código**, las pruebas de pantalla del OTRO producto contra el cambio y contra `main`. Tienen que dar lo mismo en los dos.
 - **Una sola sesión a la vez trabaja `shared/chat`.** Antes de tocarlo, buscar PRs abiertos y ramas recientes que lo toquen.
 
+### 25. Un solo chat para toda la suite: el look y el comportamiento se cambian en `shared/chat`, y se prueban en TODOS los productos que lo usan (#428)
+El chat tipo WhatsApp de la suite es **uno**: el **núcleo** (`shared/chat/chat-nucleo.js`). Marketing (Prospectador y Nuevo lead) lo usa desde la v4. El conceptualizador es la **referencia** y migra en su propia sesión. Comercial, Operaciones, RH, Compras y Administración lo van a usar después.
+- **Todo cambio de look o de comportamiento del chat va en `shared/chat`, una sola vez**, y llega a todos. Eso incluye encabezado, fondo, burbujas, palomitas, hora, separador de día, sistema, «escribiendo…», voz, grabadora, fotos, documentos, tarjetas, botón fijo, ⇊, barra de escribir, lista y dos paneles. **Un producto nunca trae estilos del chat.** Le pasa al núcleo configuración y contenido: título, avatar, chips, acciones, etiquetas con **tono** (`verde ambar rojo naranja pizarra azul morado teal gris borde`) y el interior de sus tarjetas, armado con las piezas del núcleo (`carta`, `conj`, `bt`, `chn-liga`, `chn-et`). Si un producto necesita una pieza que el núcleo no tiene, la pieza se sube al núcleo; no se dibuja en el producto.
+- **Las piezas del conceptualizador no se reescriben: se suben.** `shared/chat/subir-del-conceptualizador.js` copia su CSS y sus funciones (voz, álbum, markdown, palomitas) y su grabadora y su visor tal cual. Así genera `chat-nucleo-cz.js`, `chat-nucleo-grabadora.js` y `chat-nucleo-archivos.js`, que **no se editan a mano**. Si el conceptualizador cambia su look, se vuelve a generar. `--revisar` falla si lo generado ya no coincide con el conceptualizador.
+- **Antes de dar por bueno un cambio al chat se corren TODAS las pruebas de los productos que lo usan**, sin tocar su código, contra el cambio y contra `main`:
+  - **Paridad:** `fts-conceptualizador/pruebas/nucleo/paridad.js`. Abre las dos pantallas reales y falla si difieren encabezado, fondo, burbujas, voz o barra de escribir.
+  - **Conceptualizador:** sus `pantalla-v1xx.js`.
+  - **Marketing:** `pruebas/marketing/pantalla-v3.js` más las SQL.
+  - **Revisión del generador:** `node shared/chat/subir-del-conceptualizador.js --revisar`.
+
+  Lo que dé distinto en la rama que en `main` es del cambio, y se explica en el issue.
+
 ---
 
 ---

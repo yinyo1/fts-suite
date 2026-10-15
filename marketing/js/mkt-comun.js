@@ -13,8 +13,18 @@
   }
   function sesion() { try { return G.SuiteAuth.getSession() || {}; } catch (e) { return {}; } }
   function tiene(sc) { try { return G.SuiteAuth.tieneScope(sc); } catch (e) { return false; } }
-  /** Encabezado: título, subtítulo y a dónde regresa la flecha. */
+  /** v4 (#428): el marco es el NÚCLEO de chat de la suite (shared/chat/chat-nucleo.js). Se crea una vez por página; el
+   *  Prospectador le pasa su lista y su conversación, el Lead rápido solo usa su página. Con la página de antes (sin el
+   *  núcleo) no hay marco y todo sigue como estaba. */
+  var marcoN = null;
+  function marco(conf) {
+    if (!marcoN && G.ChatNucleo && document.getElementById('raiz')) marcoN = G.ChatNucleo.crear(document.getElementById('raiz'), conf || { titulo: 'Marketing' });
+    return marcoN;
+  }
+  /** Encabezado: título, subtítulo y a dónde regresa la flecha. Con el núcleo, es una página con su encabezado. */
   function cab(t, s, atras) {
+    var n = marco();
+    if (n) { n.pagina({ titulo: t, sub: s || 'Marketing', atras: function () { if (typeof atras === 'function') atras(); else location.href = atras || '../index.html'; } }); return; }
     var a = document.getElementById('tit'), b = document.getElementById('sub'), c = document.getElementById('atras');
     if (a) a.textContent = t; if (b) b.textContent = s || 'Marketing';
     if (c) c.onclick = function () { if (typeof atras === 'function') atras(); else location.href = atras || '../index.html'; };
@@ -44,6 +54,6 @@
       '<br><span style="color:var(--muted2)">Antes de gastar una sola consulta web, el motor revisa Odoo y la lista negra: si ya es cliente, competidor o duplicado, esa empresa no gasta.</span></div></div>';
   }
   function hoyISO() { var d = new Date(Date.now() - 6 * 3600e3); return d.toISOString().slice(0, 10); }
-  G.Mkt = { cliente: cliente, cola: laCola, sesion: sesion, tiene: tiene, cab: cab, usoHtml: usoHtml, presupuestoHtml: presupuestoHtml,
-            medidor: medidor, hoyISO: hoyISO, esc: U.esc, toast: U.toast };
+  G.Mkt = { cliente: cliente, cola: laCola, marco: marco, sesion: sesion, tiene: tiene, cab: cab, usoHtml: usoHtml, presupuestoHtml: presupuestoHtml,
+            medidor: medidor, hoyISO: hoyISO, esc: U.esc, toast: function (t, ms) { return G.ChatUI.toast(t, ms); } };
 })(window);

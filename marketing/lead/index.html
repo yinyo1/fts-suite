@@ -2,39 +2,36 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+<meta name="theme-color" content="#ffffff" />
 <title>FTS Suite · Marketing · Nuevo lead</title>
 <link rel="stylesheet" href="../../shared/fts-styles.css" />
-<link rel="stylesheet" href="../../shared/chat/chat.css?v=20261015-mkt-lead-v3" />
+<link rel="stylesheet" href="../../shared/chat/chat.css?v=20261015-mkt-lead-v4-nucleo" />
 <!-- Gate ANTES de pintar (patrón de la suite). La app no arranca si el gate negó. -->
 <script src="../../shared/auth-jwt.js"></script>
 <script>if (!window.SuiteAuth.requerir('marketing:usar', '../../shared/login.html')) { throw new Error('sin sesion'); }</script>
-<style>body{background:var(--dark)} .topbar{position:sticky;top:0;z-index:20} .ver{font-size:10px;color:var(--muted);text-align:center;padding:6px 0 18px}</style>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#fff} #vista{padding-bottom:24px} .ver{font-size:10px;color:var(--muted);text-align:center;padding:6px 0 18px}</style>
 </head>
 <body>
-<div class="ch-app">
-  <div class="topbar">
-    <button class="tb-back" id="atras" aria-label="Volver">&#8249;</button>
-    <div class="tb-logo" role="img" aria-label="FTS"></div>
-    <div class="tb-info"><strong id="tit">Nuevo lead</strong><span id="sub">Marketing</span></div>
-    <span class="ch-red on" id="red">● en línea</span>
-  </div>
-  <main id="vista"></main>
-  <p class="ver" id="ver"></p>
-</div>
-<script src="../../shared/chat/chat-firma.js?v=20261015-mkt-lead-v3"></script>
-<script src="../../shared/chat/chat-cliente.js?v=20261015-mkt-lead-v3"></script>
-<script src="../../shared/chat/chat-medios.js?v=20261015-mkt-lead-v3"></script>
-<script src="../../shared/chat/chat-cola.js?v=20261015-mkt-lead-v3"></script>
-<script src="../../shared/chat/chat-shell.js?v=20261015-mkt-lead-v3"></script>
-<script src="../../shared/chat/chat-archivos.js?v=20261015-mkt-lead-v3"></script>
-<script src="../../shared/chat/chat-grabadora.js?v=20261015-mkt-lead-v3"></script>
+<!-- v4 (#428): el encabezado es el del núcleo de chat (el del conceptualizador); el estado de la red va en el subtítulo. -->
+<div id="raiz"></div>
+<main id="vista"></main>
+<script src="../../shared/chat/chat-firma.js?v=20261015-mkt-lead-v4-nucleo"></script>
+<script src="../../shared/chat/chat-cliente.js?v=20261015-mkt-lead-v4-nucleo"></script>
+<script src="../../shared/chat/chat-medios.js?v=20261015-mkt-lead-v4-nucleo"></script>
+<script src="../../shared/chat/chat-cola.js?v=20261015-mkt-lead-v4-nucleo"></script>
+<script src="../../shared/chat/chat-shell.js?v=20261015-mkt-lead-v4-nucleo"></script>
+<script src="../../shared/chat/chat-archivos.js?v=20261015-mkt-lead-v4-nucleo"></script>
+<script src="../../shared/chat/chat-grabadora.js?v=20261015-mkt-lead-v4-nucleo"></script>
+<script src="../../shared/chat/chat-nucleo-cz.js?v=20261015-mkt-lead-v4-nucleo"></script>
+<script src="../../shared/chat/chat-nucleo-grabadora.js?v=20261015-mkt-lead-v4-nucleo"></script>
+<script src="../../shared/chat/chat-nucleo-archivos.js?v=20261015-mkt-lead-v4-nucleo"></script>
+<script src="../../shared/chat/chat-nucleo.js?v=20261015-mkt-lead-v4-nucleo"></script>
 <script src="../../shared/version-check.js"></script>
-<script src="../js/mkt-comun.js?v=20261015-mkt-lead-v3"></script>
-<script src="../js/lead.js?v=20261015-mkt-lead-v3"></script>
+<script>window.MKT_BUILD = '20261015-mkt-lead-v4-nucleo';</script>
+<script src="../js/mkt-comun.js?v=20261015-mkt-lead-v4-nucleo"></script>
+<script src="../js/lead.js?v=20261015-mkt-lead-v4-nucleo"></script>
 <script>
-  var MKT_BUILD = '20261015-mkt-lead-v3';
-  document.getElementById('ver').textContent = 'Marketing · Nuevo lead · ' + MKT_BUILD;
   try { FTSVersionCheck.run({ versionUrl: 'version.json', localBuild: MKT_BUILD, tag: 'mkt-lead' }); } catch (e) {}
   if (!window.__ftsSinAcceso) window.MktLead.arrancar();
 </script>
