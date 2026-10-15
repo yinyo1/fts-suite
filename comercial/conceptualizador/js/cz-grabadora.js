@@ -180,9 +180,16 @@
     return h + '<button type="button" class="g-bt g-enviar" data-g="enviar" aria-label="' + esc(e.op.etiquetaEnviar || 'Enviar') + '">' + ico('enviar') + '</button></div>';
   }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  /* V1.42 · TODAS las barras de la llave, no la primera. Desde V1.40 la cajita de «✎ Corregir» sale dos veces con
+   * la misma llave (en el chat y en la hoja del rubro, encima). Con querySelector se movía la del chat, escondida
+   * detrás de la hoja: el reloj y la onda no avanzaban en la que se ve, y ▶ Escuchar no cambiaba (reporte de
+   * campo, #4). Sigue siendo UNA pieza: la caja principal y las cajitas usan esta misma. */
+  function barras(k) {
+    return G.document ? Array.prototype.slice.call(document.querySelectorAll('[data-grab="' + String(k).replace(/"/g, '') + '"]')) : [];
+  }
   function pinta(k) {
-    var el = G.document && document.querySelector('[data-grab="' + String(k).replace(/"/g, '') + '"]'); if (!el) return;
-    el.outerHTML = html(k); enlazar(document);
+    var L = barras(k); if (!L.length) return;
+    L.forEach(function (el) { el.outerHTML = html(k); }); enlazar(document);
   }
   function enlazar(raiz) {
     Array.prototype.forEach.call((raiz || document).querySelectorAll('[data-grab]'), function (el) {
@@ -201,19 +208,20 @@
     cancelAnimationFrame(raf);
     var vivo = false;
     Object.keys(E).forEach(function (k) {
-      var e = E[k], el = G.document && document.querySelector('[data-grab="' + k + '"]');
+      var e = E[k], L = barras(k);
       if (e.fase === 'grabando') {
         vivo = true;
         if (Date.now() - e.ult >= CADA_MS) { e.ult = Date.now(); e.barras.push(nivel(e)); }
         if (seg(e) >= MAX_SEG) { enviar(k); return; }
       }
       if (e.escuchando) { vivo = true; if (posEscucha(e) >= 1 && !e.escuchando.audio) { e.escuchando = null; pinta(k); return; } }
-      if (!el) return;
-      var t = el.querySelector('[data-g-t]'), o = el.querySelector('[data-g-onda]');
-      if (o && o.clientWidth) e.n = Math.max(12, Math.min(120, Math.floor(o.clientWidth / 5)));
-      var n = e.n || (e.op.chico ? 22 : 34);
-      if (t) t.textContent = mmss(seg(e));
-      if (o) o.innerHTML = e.fase === 'grabando' ? ondaVivaHtml(e, n) : ondaGrabadaHtml(e, n);
+      L.forEach(function (el) {
+        var t = el.querySelector('[data-g-t]'), o = el.querySelector('[data-g-onda]');
+        if (o && o.clientWidth) e.n = Math.max(12, Math.min(120, Math.floor(o.clientWidth / 5)));
+        var n = e.n || (e.op.chico ? 22 : 34);
+        if (t) t.textContent = mmss(seg(e));
+        if (o) o.innerHTML = e.fase === 'grabando' ? ondaVivaHtml(e, n) : ondaGrabadaHtml(e, n);
+      });
     });
     if (vivo) raf = requestAnimationFrame(ciclo);
   }

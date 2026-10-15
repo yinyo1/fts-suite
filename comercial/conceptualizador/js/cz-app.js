@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.40';
+  var VERSION = 'V1.42';
   /* V1.32 (0006) · empresa y moneda de la sesión: la base acepta estas tres claves. */
   var EMPRESAS = { mx_mxn: { n: 'FTS México · MXN', s: 'Empresa 1 · pesos', id: 1, m: 'MXN', pais: 'mx' },
                    mx_usd: { n: 'FTS México · USD', s: 'Empresa 1 · dólares', id: 1, m: 'USD', pais: 'mx' },
@@ -75,7 +75,9 @@
              empresa: 'mx_mxn', borr: {}, env: {}, errBt: {}, listo: false, pasos: {}, abiertoReg: null, abajoN: 0,
              nMotor: null, panel: null,
              // V1.34 · ciudad: lo que el teléfono dedujo (geo) y la del proyecto elegida en el menú (ciuNueva)
-             geo: null, ciuNueva: null, qf: null };
+             geo: null, ciuNueva: null, qf: null,
+             // V1.42 · renglones reabiertos con «↺ Cambiar» (clave j:<id> o c:<id>) y permiso de Odoo
+             reab: {}, permOdoo: null };
   try { var g = JSON.parse(sessionStorage.getItem('cz_sel') || 'null'); if (g && (g.id || g.local)) ST.sel = g; } catch (e) {}
 
   // ── iconos de línea (genéricos, los del prototipo) ─────────────────────
@@ -780,10 +782,12 @@
     if (d.K.length) {
       h += '<div class="rub-sec">Conceptos</div><div class="carta rub-in conceptos">';
       d.K.forEach(function (x) {
-        var k = x.k, dd = x.d, kk = 'c:' + k.id, e = ST.env[kk], b = ST.borr[kk] || {}, corr = dd && dd.tipo === 'aceptar' && dd.datos && dd.datos.corregido;
+        var k = x.k, kk = 'c:' + k.id, reab = !!ST.reab[kk] && !!x.d, dd = reab ? null : x.d, e = ST.env[kk], b = ST.borr[kk] || {}, corr = dd && dd.tipo === 'aceptar' && dd.datos && dd.datos.corregido;
         h += '<div class="cn" data-con="' + esc(k.id) + '"><div class="fil"><span class="n">' + esc(k.id) + '</span><div class="d">' + esc(k.concepto) + '<small>origen: ' + esc(k.origen || '') + '</small>' +
           (dd && dd.razon ? '<small class="' + (corr ? 'corr' : 'mal') + '">' + (corr ? '✎ ' : '') + esc(dd.razon) + '</small>' : '') + '</div>' +
           (dd ? '<span class="hecho' + (dd.tipo === 'rechazar' ? ' mal' : corr ? ' corr' : '') + '">' + (corr ? '✎ corregido' : dd.tipo === 'aceptar' ? '✓ va' : 'rechazado') + '</span>' : '') + '</div>' +
+          (reab ? '<p class="nota reab">↺ Reabierto: vale tu última decisión.</p>' : '') +
+          (dd && puede && !b.abierto ? '<div class="decide">' + botonCambiar(kk) + '</div>' : '') +
           (dd || b.abierto || !puede ? '' : '<div class="decide">' + (e === 'aceptar' ? '<button class="si enviando" disabled aria-label="Enviando">' + GIRO + 'enviando…</button>' : '<button class="si" data-acepta="' + esc(k.id) + '">✓ Va</button>') +
             '<button data-corrige="' + esc(k.id) + '"' + (e ? ' disabled' : '') + '>✎ Corregir</button></div>') +
           (ST.errBt[kk] && !b.abierto ? '<span class="err-bt">' + esc(ST.errBt[kk]) + '</span>' : '') +
@@ -1235,14 +1239,17 @@
       var lotes = (H.eventos || []).filter(function (e) { return e.tipo === 'palomeada' && e.datos && Number(e.datos.propuesta_trabajo_id) === Number(U.trabajo_id); });
       var enLote = lotes.reduce(function (n, e) { return n + ((e.datos.decisiones || []).length); }, 0);
       h += '<div class="carta conceptos"><h4>🧩 Conceptos propuestos' + (faltan ? ' · <span class="gris">' + faltan + ' por decidir</span>' : '') + '</h4>';
+      var puedeC = mia(H.caso);
       U.conceptos.forEach(function (k) {
-        var d = decididos[k.id], kk = 'c:' + k.id, e = ST.env[kk], b = ST.borr[kk] || {};
+        var kk = 'c:' + k.id, reab = !!ST.reab[kk] && !!decididos[k.id], d = reab ? null : decididos[k.id], e = ST.env[kk], b = ST.borr[kk] || {};
         // V1.34 · sin ✕: «✓ Va» y «✎ Corregir». Corregir abre la cajita (texto o voz); la corrección viaja en el
         // lote como `aceptar` con su razón y `datos.corregido` (el motor la interpreta: si dice que no va, es rechazo).
         var corr = d && d.tipo === 'aceptar' && d.datos && d.datos.corregido;
         h += '<div class="cn" data-con="' + esc(k.id) + '"><div class="fil"><span class="n">' + esc(k.id) + '</span><div class="d">' + esc(k.concepto) + '<small>origen: ' + esc(k.origen || '') + '</small>' +
           (d && d.razon ? '<small class="' + (corr ? 'corr' : 'mal') + '">' + (corr ? '✎ ' : '') + esc(d.razon) + '</small>' : '') + '</div>' +
           (d ? '<span class="hecho' + (d.tipo === 'rechazar' ? ' mal' : corr ? ' corr' : '') + '">' + (corr ? '✎ corregido' : d.tipo === 'aceptar' ? '✓ va' : 'rechazado') + '</span>' : '') + '</div>' +
+          (reab ? '<p class="nota reab">↺ Reabierto: vale tu última decisión.</p>' : '') +
+          (d && puedeC && !b.abierto ? '<div class="decide">' + botonCambiar(kk) + '</div>' : '') +
           (d || b.abierto ? '' : '<div class="decide">' +
                (e === 'aceptar' ? '<button class="si enviando" disabled aria-label="Enviando">' + GIRO + 'enviando…</button>' : '<button class="si" data-acepta="' + esc(k.id) + '">✓ Va</button>') +
                '<button data-corrige="' + esc(k.id) + '"' + (e ? ' disabled' : '') + '>✎ Corregir</button></div>') +
@@ -1294,16 +1301,59 @@
   }
 
   var ETIQ = { alta_contacto: 'Sí, dar de alta', crear_machote: 'Crear machote', crear_borrador: 'Crear borrador en Odoo',
-               enviada: 'Ya la mandé al cliente', cerrar: 'Sí, ciérrala' };
+               enviada: 'Ya la mandé', cerrar: 'Sí, ciérrala' };
+
+  /* ── V1.42 · qué gana (#4, correcciones del ingeniero de campo) ───────────────────────────────────────────────
+   * La última decisión del AUTOR sobre la misma pregunta gana, venga del botón, del texto o de la voz. Lo vigente lo
+   * manda el motor en cada respuesta (`verifica.reemplazos`, de reemplazos.json); un «↺ Cambiar» que el motor todavía
+   * no contesta se pinta ya con el valor nuevo y «enviando al motor». La pregunta reemplazada se ve reemplazada:
+   * el historial no enseña lo viejo como vigente. */
+  function reemplazosDe(H) {
+    var m = {}, U = H && H.ultima, t0 = U && U.created_at ? Date.parse(U.created_at) : 0;
+    (((U && U.verifica) || {}).reemplazos || []).forEach(function (r) { m[r.objetivo] = { vigente: r.vigente, antes: r.antes, via: r.via, autor: r.autor, at: r.at, veces: r.veces || 1 }; });
+    ((H && H.eventos) || []).forEach(function (e) {
+      var d = e.datos || {};
+      if (e.tipo === 'correccion' && e.concepto === 'cambia' && d.objetivo && Date.parse(e.created_at) > t0)
+        m[d.objetivo] = { vigente: d.despues, antes: (m[d.objetivo] || {}).vigente || d.antes, via: d.via, autor: e.autor, at: e.created_at, pendiente: true };
+    });
+    return m;
+  }
+  var VIA = { boton: 'con el botón', texto: 'por texto', voz: 'por voz' };
+  function lineaReemplazo(rp) {
+    return '<span class="hecho repl">↺ Vigente: ' + esc(rp.vigente) + '</span><small class="antes">Reemplazada' + (rp.antes ? ' · antes: ' + esc(rp.antes) : '') +
+      ' · ' + esc(VIA[rp.via] || rp.via || '') + (rp.pendiente ? ' · esperando al motor' : '') + '</small>';
+  }
+  /* V1.42 · quién crea la cotización en Odoo lo dice el SERVIDOR (modo permiso); aquí solo se pinta la leyenda. */
+  function leyendaOdoo(tipo) {
+    if (!G.CzAcciones || !G.CzAcciones.permiso) return '';
+    if (ST.permOdoo === null) { ST.permOdoo = 'cargando'; G.CzAcciones.permiso().then(function (p) { ST.permOdoo = p; pintarChat(); }); return ''; }
+    var p = ST.permOdoo; if (!p || p === 'cargando' || p.habilitado) return '';
+    if (tipo === 'enviada') return '<p class="nota">En Odoo la marca quien tiene la emisión habilitada: crear y mover la cotización en Odoo todavía no está habilitado para tu usuario.</p>';
+    return '<p class="nota">' + esc(p.mensaje || 'Crear la cotización en Odoo todavía no está habilitado para tu usuario.') + '</p>';
+  }
+  /** Lo releído de Odoo (no el 200): renglón por renglón, la suma y los opcionales fuera del total. */
+  function releidoOdoo(r) {
+    if (!r || !r.orden_id || !(r.renglones || []).length) return '';
+    var din = function (n) { return '$' + Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+    return '<div class="odoo-rb">' + r.renglones.map(function (x) { return esc(String(x.texto || '').slice(0, 70)) + ' · ' + din(x.precio); }).join('<br>') +
+      '<br><b>' + r.renglones.map(function (x) { return Number(x.precio || 0).toLocaleString('es-MX'); }).join(' + ') + ' = ' + din(r.subtotal) + ' ' + esc(r.moneda || '') + '</b>' +
+      ((r.opcionales || []).length ? '<br>Fuera del total: ' + r.opcionales.map(function (o) { return esc(String(o).slice(0, 60)); }).join(' · ') : '') +
+      (r.estado ? '<br>Estado en Odoo: ' + esc(r.estado === 'sent' ? 'Cotización enviada' : r.estado === 'draft' ? 'Borrador' : r.estado) : '') + '</div>';
+  }
+  function botonCambiar(kk) { return '<button type="button" class="cambiar" data-cambia="' + esc(kk) + '" aria-label="Cambiar esta respuesta">↺ Cambiar</button>'; }
   function tarjetaAcciones(L) {
     var conj = L.filter(function (a) { return a.tipo === 'conjetura'; }), otras = L.filter(function (a) { return a.tipo !== 'conjetura'; }), h = '';
     if (conj.length) {
       var pend = conj.filter(function (a) { return a.estado === 'propuesta'; }).length;
       h += '<div class="carta"><h4>❓ Lo que supongo · confírmalo o corrígelo' + (pend ? ' · <span class="gris">faltan ' + pend + '</span>' : '') + '</h4>';
+      var REP = reemplazosDe(ST.hilo), puede = mia(ST.hilo && ST.hilo.caso);
       conj.forEach(function (a) {
         var d = a.datos || {}, r = a.resultado || {}, kk = 'j:' + a.id, e = ST.env[kk], b = ST.borr[kk] || {};
-        h += '<div class="preg"><p>' + esc(d.pregunta || a.titulo) + '</p>' + (d.conjetura ? '<div class="conj">Supongo: ' + esc(d.conjetura) + (d.porque ? '<small> · ' + esc(d.porque) + '</small>' : '') + '</div>' : '') +
-          (a.estado === 'hecha' ? '<span class="hecho">✓ Confirmado</span>' : a.estado === 'descartada' ? '<span class="hecho corr">✎ Corregido: ' + esc(r.correccion || '') + '</span>' :
+        var rp = REP['conjetura:' + a.id], reab = !!ST.reab[kk] && a.estado !== 'propuesta', decidida = a.estado !== 'propuesta' && !reab;
+        h += '<div class="preg' + (rp ? ' reemplazada' : '') + (reab ? ' reabierta' : '') + '" data-preg="' + a.id + '"><p>' + esc(d.pregunta || a.titulo) + '</p>' + (d.conjetura ? '<div class="conj">Supongo: ' + (rp ? '<s>' + esc(d.conjetura) + '</s>' : esc(d.conjetura)) + (d.porque ? '<small> · ' + esc(d.porque) + '</small>' : '') + '</div>' : '') +
+          (reab ? '<p class="nota reab">↺ Reabierta: vale tu última decisión.' + (rp ? ' Hoy está: ' + esc(rp.vigente) + '.' : '') + '</p>' : '') +
+          (decidida && rp ? lineaReemplazo(rp) + (puede ? botonCambiar(kk) : '') :
+           decidida ? (a.estado === 'hecha' ? '<span class="hecho">✓ Confirmado</span>' : '<span class="hecho corr">✎ Corregido: ' + esc(r.correccion || '') + '</span>') + (puede ? botonCambiar(kk) : '') :
            b.abierto ? cajaRazon(kk, '¿Qué es lo correcto?', 'Mandar', false) :
            '<div class="acc" data-acc="' + a.id + '">' + (e === 'confirma' ? '<button class="si enviando" disabled>' + GIRO + 'enviando…</button>' : '<button class="si" data-conf="' + a.id + '">✓ Va</button>') +
            '<button data-corr="' + a.id + '"' + (e ? ' disabled' : '') + '>✎ Corregir</button></div>' + (ST.errBt[kk] ? '<span class="err-bt">' + esc(ST.errBt[kk]) + '</span>' : '')) + '</div>';
@@ -1323,11 +1373,12 @@
         (a.tipo === 'crear_machote' && Number(d.n_pendientes) > 0 && a.estado !== 'descartada' && a.id === ultimoCm ? '<div class="pend-cot"><b>' + esc(G.CzAcciones.textoPendientes({ n: Number(d.n_pendientes), lista: d.pendientes || [] })) + '</b>' +
           '<ul>' + (d.pendientes || []).map(function (hh) { return (hh.items && hh.items.length ? hh.items : [hh.titulo]).map(function (it) { return '<li>' + esc(it) + '</li>'; }).join(''); }).join('') + '</ul>' +
           '<span class="nota">El machote sí se crea: esos renglones van sin precio y marcados. Nunca se estima un precio.</span></div>' : '') +
-        (a.estado === 'hecha' ? '<span class="hecho">✓ ' + esc(r.texto || 'Hecho') + '</span>' :
+        (a.estado === 'hecha' ? '<span class="hecho">✓ ' + esc(r.texto || 'Hecho') + '</span>' + releidoOdoo(r) :
          a.estado === 'descartada' ? '<span class="hecho gris">' + ((r.reemplazada_por_trabajo) ? 'Reemplazado por una propuesta más nueva' : 'Descartado') + '</span>' :
          espera ? '<p class="nota">Contesta primero las suposiciones pendientes: el machote se arma con lo que confirmes.</p>' :
          (a.tipo === 'enviada' || a.tipo === 'cerrar' || manejador) ?
-           '<div class="acc"><button class="si" data-hacer="' + a.id + '">' + esc(d.boton || ETIQ[a.tipo] || 'Hacer') + '</button><button data-descartar="' + a.id + '">' + (a.tipo === 'cerrar' ? 'Todavía no' : 'No') + '</button></div>' :
+           '<div class="acc"><button class="si" data-hacer="' + a.id + '">' + esc(d.boton || ETIQ[a.tipo] || 'Hacer') + '</button><button data-descartar="' + a.id + '">' + (a.tipo === 'cerrar' ? 'Todavía no' : 'No') + '</button></div>' +
+           (a.tipo === 'crear_borrador' || a.tipo === 'enviada' ? leyendaOdoo(a.tipo) : '') :
            '<p class="nota">Este botón se enciende cuando se active la escritura a Odoo correspondiente.</p>') + '</div>';
     });
     return h;
@@ -1414,8 +1465,13 @@
     $$('[data-desc]', M).forEach(function (b) { b.onclick = function () { if (confirm('¿Descartar este mensaje? No se manda.')) Q.descartar(b.dataset.desc); }; });
     $$('[data-acepta]', M).forEach(function (b) { b.onclick = function () { decidirConcepto(b.dataset.acepta, 'aceptar'); }; });
     $$('[data-corrige]', M).forEach(function (b) { b.onclick = function () { abrirCaja('c:' + b.dataset.corrige); }; });
-    $$('[data-conf]', M).forEach(function (b) { b.onclick = function () { responder('j:' + b.dataset.conf, b.dataset.conf, 'hecha', { confirma: true }, 'confirma'); }; });
+    $$('[data-conf]', M).forEach(function (b) { b.onclick = function () {
+      var k = 'j:' + b.dataset.conf;
+      if (ST.reab[k]) { var a = accionPorId(b.dataset.conf); return cambiar(k, 'conjetura:' + b.dataset.conf, ((a && a.datos) || {}).conjetura || 'lo que supuse', 'boton'); }
+      responder(k, b.dataset.conf, 'hecha', { confirma: true }, 'confirma'); }; });
     $$('[data-corr]', M).forEach(function (b) { b.onclick = function () { abrirCaja('j:' + b.dataset.corr); }; });
+    // V1.42 · «↺ Cambiar» reabre el renglón con «✓ Va / ✎ Corregir». No manda nada hasta que decidas.
+    $$('[data-cambia]', M).forEach(function (b) { b.onclick = function () { ST.reab[b.dataset.cambia] = true; delete ST.borr[b.dataset.cambia]; pintarChat(); if (ST.rubHoja) pintarHojaRubro(); }; });
     $$('[data-borr]', M).forEach(function (t) { t.oninput = function () { (ST.borr[t.dataset.borr] = ST.borr[t.dataset.borr] || { abierto: true }).texto = t.value; }; });
     $$('[data-cancela]', M).forEach(function (b) { b.onclick = function () { var k = b.dataset.cancela; if (GR.activa('d-' + k)) GR.basura('d-' + k); delete ST.borr[k]; delete ST.errBt[k]; pintarChat(); }; });
     $$('[data-manda]', M).forEach(function (b) { b.onclick = function () { mandarCaja(b.dataset.manda); }; });
@@ -1463,7 +1519,24 @@
     }
     if (txt.length < 3) { b.err = 'Escribe o dicta ' + (k.indexOf('c:') === 0 ? 'qué cambia' : 'lo correcto') + ' (3 letras mínimo).'; return pintarChat(); }
     if (k.indexOf('c:') === 0) return decidirConcepto(k.slice(2), 'aceptar', txt, { corregido: true });
+    if (ST.reab[k]) return cambiar(k, 'conjetura:' + k.slice(2), txt, b.voz ? 'voz' : 'texto');
     return responder(k, k.slice(2), 'descartada', { correccion: txt }, 'corrige');
+  }
+  function accionPorId(id) { return ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return String(x.id) === String(id); })[0] || null; }
+  /** V1.42 · el valor vigente de una pregunta: el último reemplazo, o lo que se decidió con el botón. */
+  function vigenteDe(objetivo) {
+    var rp = reemplazosDe(ST.hilo)[objetivo]; if (rp) return rp.vigente;
+    var m = /^conjetura:(.+)$/.exec(objetivo), a = m && accionPorId(m[1]); if (!a) return '';
+    return a.estado === 'descartada' ? ((a.resultado || {}).correccion || '') : ((a.datos || {}).conjetura || '');
+  }
+  /** «↺ Cambiar» de una conjetura: evento `correccion`/`cambia` (la base ya lo acepta y le da trabajo al motor). */
+  async function cambiar(k, objetivo, despues, via) {
+    ST.env[k] = 'cambia'; delete ST.errBt[k]; pintarChat();
+    var r = await C.evento({ caso_id: ST.hilo.caso.id, tipo: 'correccion', concepto: 'cambia', razon: '',
+      datos: { objetivo: objetivo, antes: vigenteDe(objetivo), despues: String(despues).trim(), via: via } });
+    delete ST.env[k];
+    if (!r.ok) { ST.errBt[k] = sinSenal(r); pintarChat(); return false; }
+    delete ST.reab[k]; delete ST.borr[k]; ST.irAbajo = true; await cargarHilo(); return true;
   }
   /** Confirmar o corregir una conjetura: el botón dice «enviando…» hasta que el servidor contesta. */
   async function responder(k, id, decision, resultado, que) {
@@ -1508,7 +1581,7 @@
     Object.keys(ST.borr).forEach(function (k) {
       var b = ST.borr[k]; if (!b.adjunto) return;
       var a = meta[b.adjunto];
-      if (a && a.transcripcion) { b.texto = (b.texto ? b.texto.replace(/\s+$/, '') + ' ' : '') + a.transcripcion.trim(); b.transcribiendo = false; delete b.adjunto; }
+      if (a && a.transcripcion) { b.texto = (b.texto ? b.texto.replace(/\s+$/, '') + ' ' : '') + a.transcripcion.trim(); b.transcribiendo = false; b.voz = true; delete b.adjunto; }
       else if (Date.now() - b.desde > 120000 && !b.tarda) { b.tarda = true; b.err = 'La transcripción está tardando: puedes escribirlo mientras.'; }
     });
     if (!navigator.onLine || !ST.hilo) return;
@@ -1528,8 +1601,15 @@
     var U = ST.hilo && (ST.hilo.propuesta || ST.hilo.ultima), k = U && (U.conceptos || []).filter(function (x) { return x.id === id; })[0]; if (!k) return;
     var kk = 'c:' + id;
     ST.env[kk] = tipo; delete ST.errBt[kk]; pintarChat();
-    var r = await C.evento({ caso_id: ST.hilo.caso.id, tipo: tipo, concepto: k.id, razon: razon || '', datos: Object.assign({ concepto: k.concepto, origen: k.origen }, extra || {}) });
+    var cambio = null;
+    if (ST.reab[kk]) {   // V1.42 · concepto reabierto: la decisión nueva gana; lleva lo de antes para el rastro.
+      var prev = ((ST.hilo.eventos || []).filter(function (x) { return x.concepto === id && (x.tipo === 'aceptar' || x.tipo === 'rechazar'); }).pop()) || null;
+      cambio = { cambio: true, antes: prev ? (prev.tipo === 'rechazar' ? 'rechazado: ' + (prev.razon || '') : prev.datos && prev.datos.corregido ? prev.razon : 'va') : '',
+                 via: razon ? ((ST.borr[kk] || {}).voz ? 'voz' : 'texto') : 'boton' };
+    }
+    var r = await C.evento({ caso_id: ST.hilo.caso.id, tipo: tipo, concepto: k.id, razon: razon || '', datos: Object.assign({ concepto: k.concepto, origen: k.origen }, extra || {}, cambio || {}) });
     delete ST.env[kk];
+    if (r.ok) delete ST.reab[kk];
     if (!r.ok) { ST.errBt[kk] = sinSenal(r); pintarChat(); return false; }
     delete ST.borr[kk];
     if (r.trabajo_id) ST.irAbajo = true;     // el último decidió el lote: el motor arma el BOM
@@ -1543,7 +1623,7 @@
   }
   async function hacer(id, b) {
     var a = ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return String(x.id) === String(id); })[0]; if (!a) return;
-    if (a.tipo === 'enviada') return resolver(id, 'hecha', { texto: 'Marcada como enviada al cliente' }, b);
+    if (a.tipo === 'enviada' && !(G.CzAcciones && G.CzAcciones.enviada)) return resolver(id, 'hecha', { texto: 'Marcada como enviada al cliente' }, b);
     if (a.tipo === 'cerrar') return confirmarCierre(function () { return resolver(id, 'hecha', { texto: 'Cerrada a mano' }, b); });
     var m = G.CzAcciones && G.CzAcciones[a.tipo]; if (!m) return;
     b.disabled = true;
