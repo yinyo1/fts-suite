@@ -187,27 +187,75 @@
   #fijo button:disabled{opacity:.6}
 
   /* V1.37 · franja de avance (prototipo aprobado, #4): fija bajo el encabezado, igual para todos */
-  #avance{display:none;background:var(--sup);border-bottom:1px solid var(--linea);flex-shrink:0;position:relative;z-index:3}
-  #avance .av-top{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:6px 8px 4px 16px;text-align:left}
-  #avance .av-tx{flex:1;min-width:0}
-  #avance .av-paso{display:block;font-size:11.5px;color:var(--sec)}
-  #avance .av-tx b{display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #avance .av-cnt{color:#8a6400}#avance .av-rojo{color:var(--rojo)}
-  #avance .av-top .ico{color:var(--sec);transition:transform .15s;flex-shrink:0}#avance.abierta .av-top .ico{transform:rotate(180deg)}
-  #avance .av-barras{display:flex;gap:3px;padding:0 16px 7px}
-  #avance .av-barras i{flex:1;height:5px;border-radius:3px;background:#d9d5cf}
-  #avance .av-barras i.hecho{background:var(--acento)}#avance .av-barras i.actual{background:#e0a800}#avance .av-barras i.falta{background:var(--rojo)}
-  #avance .av-etiq{display:none}
-  #avance .av-panel{display:none;padding:0 16px 10px;max-height:55vh;overflow-y:auto}#avance.abierta .av-panel{display:block}
-  #avance .av-pp{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-top:1px solid var(--linea)}#avance .av-pp:first-child{border-top:0}
-  #avance .av-pt{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;background:#d9d5cf;color:#fff;margin-top:1px}
-  #avance .av-pp.hecho .av-pt{background:var(--acento)}#avance .av-pp.actual .av-pt{background:#e0a800}#avance .av-pp.falta .av-pt{background:var(--rojo)}
-  #avance .av-px{flex:1;min-width:0}#avance .av-px b{display:block;font-size:13.5px;font-weight:600}#avance .av-px span{display:block;font-size:12.5px;color:var(--sec);overflow-wrap:anywhere}
-  #avance .av-pp.futuro .av-px b{color:var(--sec);font-weight:500}
-  #avance .link,.falta-disp .link{color:var(--acento-osc);font-weight:600;font-size:inherit;display:inline;padding:0;min-height:0;text-decoration:underline}
-  @media(min-width:760px){#avance .av-barras{padding-bottom:2px}#avance .av-etiq{display:flex;gap:3px;padding:0 16px 7px}
-    #avance .av-etiq span{flex:1;min-width:0;font-size:11px;color:var(--sec);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    #avance .av-etiq span.actual{color:#8a6400;font-weight:600}#avance .av-etiq span.hecho{color:var(--acento-osc)}#avance .av-etiq span.falta{color:var(--rojo);font-weight:600}}
+  /* V1.40 · franja de avance en UNA línea (prototipo aprobado V1.39 · 1). Colapsada ~34 px; el detalle se abre ENCIMA
+   * del chat (no lo empuja); ≥900 px es un panel lateral de 300 px siempre abierto (ver abajo). Prefijos avl- y rub-:
+   * nombres nuevos, para no chocar con clases que ya significan otra cosa aquí (.barra, .hoja, .chips, .pie). */
+  #avance{display:none;background:var(--sup);border-bottom:1px solid var(--linea);flex-shrink:0;position:relative;z-index:6;user-select:none;-webkit-user-select:none}
+  #avance .avl-top{display:flex;align-items:center;gap:6px;height:34px;padding:0 8px 0 14px;width:100%;text-align:left;font-size:13.5px;touch-action:none}
+  #avance .avl-l{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--sec)}
+  #avance .avl-l b{color:var(--texto);font-weight:600}#avance .avl-rojo{color:var(--rojo);font-weight:600}
+  #avance .avl-chev{color:var(--sec);transition:transform .15s;flex-shrink:0}#avance.abierta .avl-chev{transform:rotate(180deg)}
+  #avance .avl-det{display:none;position:absolute;left:0;right:0;top:100%;background:var(--sup);border-bottom:1px solid var(--linea);box-shadow:0 8px 16px rgba(11,20,26,.16);max-height:min(68dvh,560px);overflow-y:auto;padding:2px 16px 12px}
+  #avance.abierta .avl-det{display:block}
+  #avance .avl-tit{font-size:12.5px;color:var(--sec);margin:4px 0 6px}#avance .avl-tit b{color:#8a6400;font-weight:600;white-space:nowrap}
+  #avance .avl-ciu{font-size:12.5px;color:var(--sec);background:#fff1f1;border:1px solid #f3c9c9;border-radius:8px;padding:6px 8px;margin:0 0 8px}
+  #avance .avl-ciu b{display:block;color:var(--rojo);font-weight:600}
+  #avance .avl-pasos{list-style:none;display:flex;flex-wrap:wrap;gap:4px 6px;margin:0 0 8px}
+  #avance .avl-pasos li{font-size:12px;border-radius:10px;padding:1px 8px;background:var(--sup2);border:1px solid var(--linea);color:var(--ter);white-space:nowrap}
+  #avance .avl-pasos li.hecho{background:#e7f6ee;border-color:#b8e3cb;color:#0b6b45}
+  #avance .avl-pasos li.actual{background:var(--aviso);border-color:#f0dc8c;color:#8a6400;font-weight:600}
+  #avance .avl-pasos li.falta{background:#fff1f1;border-color:#f3c9c9;color:var(--rojo);font-weight:600}
+  #avance .avl-maq{font-size:12.5px;color:var(--sec);margin:0 0 6px}
+  #avance .avl-sub{font-size:12px;font-weight:600;color:var(--acento-osc);margin:6px 0 0}
+  #avance .avl-nada{font-size:12.5px;color:var(--sec);padding:4px 0}
+  #avance .link,.falta-disp .link,.rub-hoja .link{color:var(--acento-osc);font-weight:600;font-size:inherit;display:inline;padding:0;min-height:0;text-decoration:underline}
+  /* un renglón de rubro (en la franja y en la tarjeta) */
+  .rub-fila{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 2px;border-top:1px solid var(--linea);font:inherit;color:inherit}
+  .rub-fila .rub-n{flex:1;min-width:0}.rub-fila .rub-n b{display:block;font-size:14.5px;font-weight:500}
+  .rub-fila .rub-sub{display:block;font-size:12px;color:var(--sec)}
+  .rub-fila .rub-pct{font-size:13px;font-weight:600;min-width:46px;text-align:right;flex-shrink:0}
+  .rub-barra{display:block;height:4px;border-radius:2px;background:#e3dfd9;margin-top:4px;overflow:hidden}.rub-barra i{display:block;height:100%;background:#e0a800}
+  .rub-fila.cerrado .rub-barra i{background:var(--acento)}.rub-fila.cerrado .rub-pct{color:var(--acento-osc)}
+  .rub-fila.espera .rub-barra i{background:#e7a3a3}.rub-fila.espera .rub-pct{color:#9b2226}
+  .rub-tag{display:inline-block;font-size:11px;font-weight:600;border-radius:6px;padding:0 6px;margin-left:6px;vertical-align:1px}
+  .rub-tag.cerr{background:#e7f6ee;color:#0b6b45}.rub-tag.esp{background:#fff1f1;color:#9b2226}
+  .rub-carta{min-width:min(100%,300px)}.rub-carta h4{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .rub-carta .rub-tot{font-size:13px;color:#8a6400;font-weight:600}.rub-carta .nota{margin:0 0 4px}
+  .rub-pav{display:inline-block;font-size:12.5px;font-weight:600;color:#8a6400;background:var(--aviso);border-radius:8px;padding:0 6px}
+  /* la hoja de un rubro: abajo en el teléfono, centrada desde 760 px */
+  .rub-velo{position:fixed;inset:0;background:rgba(11,20,26,.45);z-index:190;display:none}.rub-velo.on{display:block}
+  .rub-hoja{position:absolute;left:0;right:0;bottom:0;max-height:92dvh;background:var(--sup);border-radius:16px 16px 0 0;display:flex;flex-direction:column;box-shadow:0 -2px 12px rgba(0,0,0,.18)}
+  @media(min-width:760px){.rub-hoja{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);width:min(600px,92vw);max-height:88dvh;border-radius:14px}}
+  .rub-cab{padding:12px 8px 6px 16px;display:flex;align-items:center;gap:8px}
+  .rub-ht{flex:1;min-width:0}.rub-ht b{font-size:17px;display:block;font-weight:600}.rub-ht span{font-size:12.5px;color:var(--sec);display:block}
+  .rub-cuerpo{overflow-y:auto;padding:0 16px 8px;flex:1;min-height:0}
+  .rub-sec{font-size:12px;font-weight:600;color:var(--acento-osc);margin:10px 0 4px}
+  .rub-hoja .carta.rub-in{max-width:none;margin:0;box-shadow:none;border:1px solid var(--linea);border-radius:10px}
+  .rub-hoja .carta.rub-in h4{display:none}
+  .rub-bom{border:1px solid var(--linea);border-radius:10px;padding:2px 10px}
+  .rub-br{display:flex;gap:8px;font-size:13px;padding:6px 0;border-top:1px dashed var(--linea)}.rub-br:first-child{border-top:0}
+  .rub-br .d{flex:1;min-width:0}.rub-br .i{white-space:nowrap;font-variant-numeric:tabular-nums}.rub-br .i.pend{color:#8a6400;font-weight:600;font-size:12px}
+  .rub-vacio{margin:10px 0}
+  .rub-porque{margin-top:10px}.rub-porque .caja-razon{margin-left:0}
+  .rub-hoja .carta.rub-in>.nota{display:none}   /* «Cuando contestes todas, sigo con los conceptos» no aplica dentro de un rubro */
+  .rub-pie{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;align-items:center;padding:10px 16px calc(14px + var(--pie));border-top:1px solid var(--linea)}
+  .rub-pie .nota{flex:1 1 100%;margin:0}.rub-pie .bt.rub-gris{border-color:#c9cdd3;color:#54656f}
+  /* ≥900 px: panel lateral de 300 px a la derecha del chat, siempre abierto; el chat conserva todo su alto.
+   * De 900 a 1279 px, con un caso abierto, la lista se esconde (como en el teléfono, con ←) para que el chat quede en
+   * ≥600 px, el ancho del prototipo aprobado; desde 1280 caben lista (380) + chat (600) + panel (300). */
+  @media(min-width:900px){
+    .app.con-lado .chat>*:not(#ch):not(.chg-barra):not(#avance):not(.abajo){margin-right:300px}
+    .app.con-lado #avance{position:absolute;top:var(--cab);right:0;bottom:0;width:300px;border-bottom:0;border-left:1px solid var(--linea);overflow-y:auto;z-index:4}
+    .app.con-lado .abajo{right:312px}
+    #avance .avl-top{height:auto;padding:12px 16px 4px;cursor:default;touch-action:auto}
+    #avance .avl-l{white-space:normal;color:var(--texto)}
+    #avance .avl-chev{display:none}
+    #avance .avl-det{display:block;position:static;box-shadow:none;border:0;max-height:none;overflow:visible}
+  }
+  @media(min-width:900px) and (max-width:1279px){
+    .app.con-lado.ver-chat #lista{display:none!important}
+    .app.con-lado.ver-chat #ch .vuelve{display:flex}
+  }
   #fijo button.espera{background:var(--sup);color:var(--sec)}#fijo button .fx{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
   #fijo button{max-width:100%}
   .reto{align-self:center;margin:8px auto;max-width:520px;width:calc(100% - 8px);background:var(--aviso);border:1px solid #f0dc8c;border-radius:12px;padding:10px 12px;font-size:14px;box-shadow:var(--sombra)}
@@ -576,20 +624,21 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 </div>
 <div class="velo" id="velo"></div>
 <div class="cz-toast" id="toast" role="status" aria-live="polite"></div>
+<div class="rub-velo" id="rubHoja"></div>
 <div class="modal" id="modal"></div>
 <div class="panel" id="panel"></div>
-<script src="../../shared/chat/chat-firma.js?v=V1.39.1"></script>
-<script src="js/cz-cliente.js?v=V1.39.1"></script>
-<script src="js/cz-medios.js?v=V1.39.1"></script>
-<script src="js/cz-grabadora.js?v=V1.39.1"></script>
-<script src="js/cz-archivos.js?v=V1.39.1"></script>
-<script src="js/cz-ciudad.js?v=V1.39.1"></script>
-<script src="js/cz-cola.js?v=V1.39.1"></script>
-<script src="js/cz-acciones.js?v=V1.39.1"></script>
-<script src="js/cz-avance.js?v=V1.39.1"></script>
-<script src="../../shared/chat/chat-gestos.js?v=V1.39.1"></script>
-<script src="js/cz-app.js?v=V1.39.1"></script>
-<script src="js/cz-version.js?v=V1.39.1"></script>
+<script src="../../shared/chat/chat-firma.js?v=V1.40"></script>
+<script src="js/cz-cliente.js?v=V1.40"></script>
+<script src="js/cz-medios.js?v=V1.40"></script>
+<script src="js/cz-grabadora.js?v=V1.40"></script>
+<script src="js/cz-archivos.js?v=V1.40"></script>
+<script src="js/cz-ciudad.js?v=V1.40"></script>
+<script src="js/cz-cola.js?v=V1.40"></script>
+<script src="js/cz-acciones.js?v=V1.40"></script>
+<script src="js/cz-avance.js?v=V1.40"></script>
+<script src="../../shared/chat/chat-gestos.js?v=V1.40"></script>
+<script src="js/cz-app.js?v=V1.40"></script>
+<script src="js/cz-version.js?v=V1.40"></script>
 <script>window.CzApp.arrancar().then(function () { if (window.CzVersion) window.CzVersion.iniciar(); });</script>
 </body>
 </html>

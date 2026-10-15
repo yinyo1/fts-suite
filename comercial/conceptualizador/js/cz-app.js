@@ -1,5 +1,10 @@
 /* ═══ Conceptualizador · pantalla tipo WhatsApp ═══
  *
+ * V1.40 · franja en UNA línea y pantalla de rubros (prototipo aprobado V1.39 · 1, #4 punto 10): «44 % · Siguiente:
+ *   Cerrar Mecánica» colapsada; se abre al tocarla o jalar hacia abajo y se esconde sola (scroll, mensaje, 6 s); a
+ *   ≥900 px es un panel lateral de 300 px. La tarjeta de rubros y la hoja de cada rubro usan SOLO lo que manda el motor
+ *   (`verifica.rubros` y el `rubro` de cada pregunta, concepto y renglón); confirmar / en espera / reabrir viajan como
+ *   mensajes que el motor resuelve sin modelo.
  * V1.35 · «Hay versión nueva · Actualizar» (cz-version.js): compara VERSION con version.json y recarga sin
  *   perder lo pendiente (la cola vive en IndexedDB). Nada más cambia en este archivo.
  * V1.34 · ciudad del proyecto (D89, migración 0007; cz-ciudad.js): selector con buscador en el menú de la
@@ -36,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.39.1';
+  var VERSION = 'V1.40';
   /* V1.32 (0006) · empresa y moneda de la sesión: la base acepta estas tres claves. */
   var EMPRESAS = { mx_mxn: { n: 'FTS México · MXN', s: 'Empresa 1 · pesos', id: 1, m: 'MXN', pais: 'mx' },
                    mx_usd: { n: 'FTS México · USD', s: 'Empresa 1 · dólares', id: 1, m: 'USD', pais: 'mx' },
@@ -147,7 +152,8 @@
     var L = esc(t).split('\n'), h = '', tabla = null;
     function cierraTabla() { if (tabla) { h += '<table class="tabla">' + tabla.join('') + '</table>'; tabla = null; } }
     L.forEach(function (l) {
-      var x = l.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>');
+      var x = l.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\bLlevas (\d{1,3}) %/g, '<span class="rub-pav">Llevas $1 %</span>');   // V1.40: el % del motor en sus mensajes
       if (/^\s*\|.*\|\s*$/.test(l)) {
         if (/^\s*\|[\s:|-]+\|\s*$/.test(l)) return;
         var celdas = x.trim().replace(/^\||\|$/g, '').split('|');
@@ -626,6 +632,14 @@
     if (sg && (sg.acc === 'ciudad' || sg.acc === 'confirma_ciudad') && !mia(c)) sg = null;
     // Ya se dijo «ya es todo» (en la cola o recién llegado) y la base todavía no marca `disparado_at`: no se ofrece otra vez.
     if (sg && sg.acc === 'disparo' && yaDisparo()) sg = { txt: 'Armando las preguntas…', espera: true };
+    // V1.40 · antes del BOM, con rubros y nada más que hacer: «Seguir con <rubro>» abre su hoja (prototipo aprobado).
+    var Rb = abierta && !(ST.sel || {}).menu ? G.CzAvance.rubros(H) : null;
+    // V1.40 · con rubros (antes del BOM) las preguntas y los conceptos se contestan por rubro: el botón dice el mismo
+    // siguiente que la línea de arriba, «Seguir con <rubro>», y abre su hoja (prototipo aprobado).
+    if (Rb && !Rb.con_bom && (!sg || (sg.espera && sg.txt === 'Armando el BOM…') || (sg.acc === 'ir' && (sg.a === 'conjetura' || sg.a === 'conceptos')))) {
+      var rab = Rb.lista.filter(function (r) { return r.estado === 'abierto'; })[0];
+      if (rab) sg = { txt: 'Seguir con ' + rab.nombre, acc: 'rubro', id: rab.id };
+    }
     if (!sg) { el.style.display = 'none'; el.innerHTML = ''; return; }
     var e = ST.env.fijo || (ST.env.ciudad ? 'guardando la ciudad…' : null), ic = sg.acc === 'ciudad' || sg.acc === 'confirma_ciudad' ? 'mapa' : sg.acc === 'machote' || sg.acc === 'disparo' ? 'disparo' : 'pagina';
     el.style.display = 'flex';
@@ -635,6 +649,7 @@
     b.onclick = function () {
       if (sg.acc === 'ciudad') return cambiarCiudad();
       if (sg.acc === 'confirma_ciudad') return confirmarCiudad();
+      if (sg.acc === 'rubro') return abrirRubro(sg.id);
       if (sg.acc === 'disparo') return confirmarDisparo(c.modo === 'acompanamiento' ? 'acompanamiento' : 'levantamiento');
       if (sg.acc === 'machote') { ST.env.fijo = /^Actualizar/.test(sg.txt) ? 'actualizando…' : 'creando…'; pintarFijo(); return hacer(sg.id, b).then(function () { delete ST.env.fijo; pintarFijo(); }); }
       if (sg.acc === 'cotiza' || sg.acc === 'mandar') { b.disabled = true; return mandar(sg.acc === 'cotiza' ? 'Haz la cotización' : sg.texto).then(function () { pintarFijo(); }); }
@@ -645,30 +660,186 @@
     };
   }
 
-  /* V1.37 · la franja de avance, fija bajo el encabezado e igual para todos (prototipo aprobado, #4). Sustituye a la
-   * franja de la ciudad de V1.34: la ciudad sin confirmar sale aquí en rojo y el botón de abajo la pide primero. */
+  /* V1.40 · la franja de avance como UNA línea (visto bueno de Esteban al prototipo V1.39 · 1, #4). Sustituye a la franja
+   * de 7 barritas de V1.37, que estorbaba y le quitaba alto al chat:
+   *  · colapsada por omisión, ~34 px: «44 % · Siguiente: Cerrar Mecánica ⌄». El % es el del motor (verifica.rubros);
+   *    sin rubros todavía, el paso y el siguiente de CzAvance.avance(), sin %.
+   *  · se abre al tocarla o al jalar hacia abajo (sobre la línea o desde arriba del chat), ENCIMA del chat sin moverlo:
+   *    los 7 pasos y los rubros con su %;
+   *  · se esconde sola al hacer scroll en el chat, al mandar un mensaje y a los CIERRE_MS sin tocarla;
+   *  · ≥900 px: panel lateral de 300 px a la derecha, siempre abierto y sin cerrarse solo (el chat conserva su alto).
+   * Integra la ciudad (sin confirmar sale en rojo y el botón de abajo la pide primero) y el «Abrir M-xxxx». */
+  var CIERRE_MS = 6000;
+  function lateral() { return G.matchMedia && G.matchMedia('(min-width:900px)').matches; }
+  function abrirFranja(v) {
+    ST.franjaAbierta = !!v; var el = $('#avance');
+    if (el) { el.classList.toggle('abierta', ST.franjaAbierta); var t = $('#avTop'); if (t) t.setAttribute('aria-expanded', String(ST.franjaAbierta || lateral())); }
+    clearTimeout(ST.tFranja); if (ST.franjaAbierta && !lateral()) armarCierre();
+  }
+  function armarCierre() { clearTimeout(ST.tFranja); ST.tFranja = setTimeout(function () { abrirFranja(false); }, CIERRE_MS); }
   function pintarFranja() {
     var el = $('#avance'), viejo = $('#ciuF'); if (viejo) { viejo.style.display = 'none'; viejo.innerHTML = ''; }
     if (!el) return;
-    var H = ST.hilo, c = H && H.caso;
-    if (!H || !c || !G.CzAvance || (ST.sel || {}).menu || ['abierto', 'enviada'].indexOf(c.estado) < 0 || archivada(c)) { el.style.display = 'none'; el.innerHTML = ''; return; }
-    var AV = G.CzAvance, av = AV.avance(H), a = av.actual, P = AV.PASOS;
-    var cnt = a === 0 && av.faltan && av.faltan.total ? 'faltan ' + av.faltan.total : a === 2 && av.conjAb ? av.conjAb + ' abierta' + (av.conjAb === 1 ? '' : 's') :
-      a === 3 && av.sinDec ? av.sinDec + ' sin palomear' : (a === 4 || a === 5) && av.pendCot ? av.pendCot + ' pendiente' + (av.pendCot === 1 ? '' : 's') : '';
-    var abierto = !!ST.franjaAbierta, x = ciudadDe(c), folio = av.machote && ((av.machote.resultado || {}).folio || c.machote_folio);
-    el.style.display = 'block'; el.className = abierto ? 'abierta' : '';
-    el.innerHTML = '<button type="button" class="av-top" id="avTop" aria-expanded="' + abierto + '" aria-controls="avPanel"><span class="av-tx"><span class="av-paso">Paso ' + (a + 1) + ' de 7' + (a === 0 && av.faltan && av.faltan.a_medias ? ' · ' + av.faltan.abiertos + ' sin nada · ' + av.faltan.a_medias + ' a medias' : '') + '</span><b>' +
-        (av.ciudad ? '' : '<span class="av-rojo">Falta la ciudad</span> · ') + esc(P[a]) + (cnt ? ' · <span class="av-cnt">' + esc(cnt) + '</span>' : '') + '</b></span>' + ico('abajo', 's') + '</button>' +
-      '<div class="av-barras" aria-hidden="true">' + av.e.map(function (x) { return '<i class="' + x + '"></i>'; }).join('') + '</div>' +
-      '<div class="av-etiq" aria-hidden="true">' + P.map(function (p, i) { return '<span class="' + av.e[i] + '">' + esc(p) + '</span>'; }).join('') + '</div>' +
-      '<div class="av-panel" id="avPanel">' +
-        (av.ciudad ? '' : '<div class="av-pp falta"><span class="av-pt">!</span><span class="av-px"><b>Ciudad del proyecto' + (x ? ': ' + esc(CI.nombre(x)) + ' (sin confirmar)' : '') + '</b><span>Sin ella no se buscan precios: tiendas, fletes y viáticos se miden contra ella.' +
-          (mia(c) ? ' <button type="button" class="link" id="avCiudad">' + (x ? 'Cambiar' : 'Elegir') + '</button>' : '') + '</span></span></div>') +
-        P.map(function (p, i) { return '<div class="av-pp ' + av.e[i] + '"><span class="av-pt">' + (av.e[i] === 'hecho' ? '✓' : i + 1) + '</span><span class="av-px"><b>' + esc(p) + '</b><span>' + esc(av.det[i]) +
-          (i === 5 && av.machote ? ' <button type="button" class="link" id="avAbrir">Abrir ' + esc(folio || 'machote') + '</button>' : '') + '</span></span></div>'; }).join('') + '</div>';
-    $('#avTop').onclick = function () { ST.franjaAbierta = !ST.franjaAbierta; pintarFranja(); };
-    if ($('#avCiudad')) $('#avCiudad').onclick = cambiarCiudad;
+    var H = ST.hilo, c = H && H.caso, app = $('#app');
+    if (!H || !c || !G.CzAvance || (ST.sel || {}).menu || ['abierto', 'enviada'].indexOf(c.estado) < 0 || archivada(c)) {
+      el.style.display = 'none'; el.innerHTML = ''; if (app) app.classList.remove('con-lado'); return;
+    }
+    var AV = G.CzAvance, L = AV.linea(H), av = L.av, R = L.R, a = av.actual, P = AV.PASOS, abierto = !!ST.franjaAbierta;
+    var x = ciudadDe(c), folio = av.machote && ((av.machote.resultado || {}).folio || c.machote_folio);
+    el.style.display = 'block'; el.classList.toggle('abierta', abierto); if (app) app.classList.add('con-lado');
+    var cab = (L.pct !== null ? '<b>' + L.pct + ' %</b>' : '<b>' + esc(L.paso) + '</b>') +
+      (L.sig ? ' · Siguiente: ' + (L.rojo ? '<span class="avl-rojo">' + esc(L.sig) + '</span>' : esc(L.sig)) : '');
+    var h = '<button type="button" class="avl-top" id="avTop" aria-expanded="' + (abierto || lateral()) + '" aria-controls="avDet"><span class="avl-l">' + cab + '</span>' + ico('abajo', 's avl-chev') + '</button>';
+    h += '<div class="avl-det" id="avDet"><div class="avl-tit">Paso ' + (a + 1) + ' de 7 · ' + esc(P[a]) + (av.det[a] ? ' · ' + esc(av.det[a].replace(/\.$/, '')) : '') +
+      (L.pct !== null ? ' · <b>Llevas ' + L.pct + ' %</b>' : '') + (R ? ' · ' + R.lista.length + ' rubros' : '') + '</div>';
+    if (!av.ciudad) h += '<div class="avl-ciu"><b>Ciudad del proyecto' + (x ? ': ' + esc(CI.nombre(x)) + ' (sin confirmar)' : '') + '</b> Sin ella no se buscan precios: tiendas, fletes y viáticos se miden contra ella.' +
+      (mia(c) ? ' <button type="button" class="link" id="avCiudad">' + (x ? 'Cambiar' : 'Elegir') + '</button>' : '') + '</div>';
+    h += '<ol class="avl-pasos">' + P.map(function (p, i) { var e = av.e[i]; return '<li class="' + e + '" title="' + esc(av.det[i]) + '">' + (e === 'hecho' ? '✓ ' : '') + (i + 1) + ' ' + esc(p) + '</li>'; }).join('') + '</ol>';
+    if (av.machote) h += '<div class="avl-maq">Machote ' + esc(folio || '') + ' · <button type="button" class="link" id="avAbrir">Abrir ' + esc(folio || 'machote') + '</button></div>';
+    h += '<div class="avl-sub">Rubros</div>';
+    if (R) {
+      h += R.lista.map(function (r) {
+        var cls = r.estado === 'cerrado' ? ' cerrado' : r.estado === 'espera' ? ' espera' : '';
+        var est = r.estado === 'cerrado' ? (r.id === 'fec' ? 'cerradas' : 'cerrado') : r.estado === 'espera' ? 'en espera' : (typeof r.pct === 'number' ? r.pct + ' %' : '');
+        return '<button type="button" class="rub-fila' + cls + '" data-rub="' + esc(r.id) + '"><span class="rub-n"><b>' + esc(r.nombre) + '</b>' + barraRubro(r) + '</span><span class="rub-pct">' + esc(est) + '</span></button>';
+      }).join('');
+    } else h += '<div class="avl-nada">' + (av.oferta && av.oferta.estado === 'ofrecida' ? 'Los rubros salen cuando contestes la oferta.' : 'Los rubros salen cuando arranque con el machote.') + '</div>';
+    el.innerHTML = h + '</div>';
+    if ($('#avCiudad')) $('#avCiudad').onclick = function () { cambiarCiudad(); };
     if ($('#avAbrir')) $('#avAbrir').onclick = function () { abrirEditor(av.machote); };
+  }
+  /** La barrita de un rubro: el % que mandó el motor (cerrado = lleno). Sin % no hay barra. */
+  function barraRubro(r) {
+    var v = r.estado === 'cerrado' ? 100 : typeof r.pct === 'number' ? r.pct : null;
+    return v === null ? '' : '<span class="rub-barra"><i style="width:' + Math.max(0, Math.min(100, v)) + '%"></i></span>';
+  }
+  /** Los gestos de la franja. Se enlazan UNA vez (la franja se repinta con cada sondeo, el contenedor no). */
+  function enlazarFranja() {
+    var F = $('#avance'), M = $('#msgs'), jalon = null;
+    F.addEventListener('click', function (e) {
+      if (e.target.closest('#avTop')) { if (lateral() || Date.now() - (ST.jalado || 0) < 400) return; abrirFranja(!ST.franjaAbierta); return; }
+      var r = e.target.closest('[data-rub]');
+      if (r) { if (!lateral()) abrirFranja(false); return abrirRubro(r.dataset.rub); }
+      if (ST.franjaAbierta) armarCierre();   // cualquier toque dentro reinicia el reloj
+    });
+    // Jalar hacia abajo: sobre la línea, o desde arriba del chat cuando ya está hasta arriba.
+    var inicia = function (x, y, desdeChat) { if (lateral() || ST.franjaAbierta || F.style.display === 'none') return; if (desdeChat && M.scrollTop > 2) return; jalon = { x: x, y: y }; };
+    var mueve = function (x, y) {
+      if (!jalon) return; var dy = y - jalon.y;
+      if (dy > 40 && Math.abs(x - jalon.x) < dy) { jalon = null; ST.jalado = Date.now(); try { G.getSelection().removeAllRanges(); } catch (er) {} abrirFranja(true); }
+    };
+    F.addEventListener('pointerdown', function (e) { inicia(e.clientX, e.clientY, false); });
+    M.addEventListener('pointerdown', function (e) { inicia(e.clientX, e.clientY, true); });
+    document.addEventListener('pointermove', function (e) { mueve(e.clientX, e.clientY); });
+    document.addEventListener('pointerup', function () { jalon = null; });
+    M.addEventListener('touchstart', function (e) { var t = e.touches[0]; inicia(t.clientX, t.clientY, true); }, { passive: true });
+    M.addEventListener('touchmove', function (e) { var t = e.touches[0]; mueve(t.clientX, t.clientY); }, { passive: true });
+    // El scroll de la persona la esconde; el que hace la pantalla para bajar al final, no.
+    M.addEventListener('scroll', function () { if (ST.franjaAbierta && !lateral() && Date.now() - (ST.scrollProg || 0) > 250) abrirFranja(false); }, { passive: true });
+  }
+
+  /* ── V1.40 · la pantalla de rubros (prototipo «después de Adelante») ─────────────────────────────
+   * Tarjeta «Resumen por rubro para confirmar» bajo la respuesta más nueva del motor, y la hoja de cada rubro con sus
+   * preguntas (✓ Va / ✎ Corregir, las mismas conjeturas de siempre), sus conceptos (la palomeada de siempre) y, con BOM,
+   * sus renglones. «Confirmar», «En espera de datos» y «Reabrir» mandan un MENSAJE que el motor resuelve sin modelo
+   * (oferta-rubros.js `cambioDeRubro`): «Cerrar rubro: <nombre>», «Rubro <nombre> en espera de datos: <porqué>» y
+   * «Reabrir rubro: <nombre>». El estado que se pinta es SIEMPRE el que regresa el motor; mientras tanto, «enviado». */
+  function rubroDe(id) { var R = G.CzAvance.rubros(ST.hilo); return R ? R.lista.filter(function (r) { return r.id === id; })[0] || null : null; }
+  function rubEnviado(id) { var e = (ST.rubEnv || {})[id], u = ST.hilo && ST.hilo.ultima; return e && (!u || u.trabajo_id === e.base) ? e : null; }
+  function tarjetaRubros(R) {
+    var h = '<div class="carta rub-carta"><h4>Resumen por rubro para confirmar <span class="rub-tot">Llevas ' + esc(R.total_pct) + ' %</span></h4>' +
+      '<p class="nota">' + (R.con_bom ? 'Con BOM: % de renglones con precio; el total pesa cada rubro por su costo.' : 'Antes del BOM: preguntas contestadas y conceptos palomeados.') + ' Toca un rubro para cerrarlo.</p>';
+    R.lista.forEach(function (r) {
+      var d = G.CzAvance.delRubro(ST.hilo, r.id), env = rubEnviado(r.id), sub;
+      if (r.estado === 'cerrado') sub = 'Cerrado';
+      else if (r.estado === 'espera') sub = 'En espera de datos' + (r.porque ? ': ' + r.porque : '');
+      else if (r.id === 'fec' && !r.renglones) sub = 'Sin costo: alimenta el tiempo de ejecución';
+      else if (R.con_bom && r.renglones) sub = r.sin_precio + ' sin precio de ' + r.renglones + (d.R.length && d.conocido ? ' · ' + dinero(d.conocido, ((ST.hilo.caso || {}).moneda === 'USD' ? 'USD' : '')) + ' conocidos' : '');
+      else if (d.Q.length || d.K.length) sub = plural(d.abiertas, 'pregunta abierta', 'preguntas abiertas') + ' · ' + plural(d.sinDec, 'concepto sin palomear', 'conceptos sin palomear');
+      else sub = plural(r.preguntas || 0, 'pregunta', 'preguntas') + ' · ' + plural(r.conceptos || 0, 'concepto', 'conceptos');
+      if (env) sub = (env.tipo === 'cerrar' ? 'Confirmación enviada' : env.tipo === 'espera' ? 'En espera: enviado' : 'Reabrir: enviado') + ' · esperando al motor';
+      h += '<button type="button" class="rub-fila' + (r.estado === 'cerrado' ? ' cerrado' : r.estado === 'espera' ? ' espera' : '') + '" data-rub="' + esc(r.id) + '"><span class="rub-n"><b>' + esc(r.nombre) +
+        (r.estado === 'cerrado' ? '<span class="rub-tag cerr">✓ cerrado</span>' : r.estado === 'espera' ? '<span class="rub-tag esp">en espera</span>' : '') + '</b><span class="rub-sub">' + esc(sub) + '</span>' + barraRubro(r) + '</span>' +
+        '<span class="rub-pct">' + (r.estado === 'cerrado' ? '✓' : typeof r.pct === 'number' ? r.pct + ' %' : '') + '</span></button>';
+    });
+    return h + '</div>';
+  }
+  function plural(n, uno, varios) { return n + ' ' + (n === 1 ? uno : varios); }
+  function abrirRubro(id) { if (!rubroDe(id)) return; ST.rubHoja = id; ST.rubPorque = false; pintarHojaRubro(); }
+  function cerrarHojaRubro() { ST.rubHoja = null; var h = $('#rubHoja'); h.className = 'rub-velo'; h.innerHTML = ''; }
+  function pintarHojaRubro() {
+    var el = $('#rubHoja'), id = ST.rubHoja; if (!el) return;
+    var r = id && rubroDe(id); if (!r || !ST.hilo) return cerrarHojaRubro();
+    var H = ST.hilo, d = G.CzAvance.delRubro(H, id), c = H.caso || {}, puede = mia(c), env = rubEnviado(id), nom = G.CzAvance.corto(r.nombre);
+    var cuerpoAntes = el.querySelector('.rub-cuerpo'), arriba = cuerpoAntes ? cuerpoAntes.scrollTop : 0;
+    var fe = document.activeElement, foco = fe && fe.closest && fe.closest('#rubHoja') && fe.dataset && fe.dataset.borr ? { k: fe.dataset.borr, a: fe.selectionStart, b: fe.selectionEnd } : null;
+    var est = r.estado === 'cerrado' ? 'cerrado' : r.estado === 'espera' ? 'en espera de datos' : (typeof r.pct === 'number' ? r.pct + ' %' : '');
+    var h = '<div class="rub-hoja" role="dialog" aria-modal="true" aria-label="' + esc(r.nombre) + '"><div class="rub-cab"><span class="rub-ht"><b>' + esc(r.nombre) + '</b><span>' + esc(est) +
+      (r.estado === 'espera' && r.porque ? ' · ' + esc(r.porque) : '') + '</span></span><button type="button" class="btn-ic" id="rubX" aria-label="Cerrar">' + ico('cerrar') + '</button></div><div class="rub-cuerpo">';
+    if (d.Q.length) h += '<div class="rub-sec">Preguntas</div>' + tarjetaAcciones(d.Q).replace(/^<div class="carta">/, '<div class="carta rub-in">');
+    if (d.K.length) {
+      h += '<div class="rub-sec">Conceptos</div><div class="carta rub-in conceptos">';
+      d.K.forEach(function (x) {
+        var k = x.k, dd = x.d, kk = 'c:' + k.id, e = ST.env[kk], b = ST.borr[kk] || {}, corr = dd && dd.tipo === 'aceptar' && dd.datos && dd.datos.corregido;
+        h += '<div class="cn" data-con="' + esc(k.id) + '"><div class="fil"><span class="n">' + esc(k.id) + '</span><div class="d">' + esc(k.concepto) + '<small>origen: ' + esc(k.origen || '') + '</small>' +
+          (dd && dd.razon ? '<small class="' + (corr ? 'corr' : 'mal') + '">' + (corr ? '✎ ' : '') + esc(dd.razon) + '</small>' : '') + '</div>' +
+          (dd ? '<span class="hecho' + (dd.tipo === 'rechazar' ? ' mal' : corr ? ' corr' : '') + '">' + (corr ? '✎ corregido' : dd.tipo === 'aceptar' ? '✓ va' : 'rechazado') + '</span>' : '') + '</div>' +
+          (dd || b.abierto || !puede ? '' : '<div class="decide">' + (e === 'aceptar' ? '<button class="si enviando" disabled aria-label="Enviando">' + GIRO + 'enviando…</button>' : '<button class="si" data-acepta="' + esc(k.id) + '">✓ Va</button>') +
+            '<button data-corrige="' + esc(k.id) + '"' + (e ? ' disabled' : '') + '>✎ Corregir</button></div>') +
+          (ST.errBt[kk] && !b.abierto ? '<span class="err-bt">' + esc(ST.errBt[kk]) + '</span>' : '') +
+          (b.abierto && !dd ? cajaRazon(kk, 'Escribe o dicta qué cambia. Si no va, di por qué.', 'Guardar', false) : '') + '</div>';
+      });
+      h += '</div>';
+    }
+    if (d.R.length && r.renglones) {
+      h += '<div class="rub-sec">Renglones del BOM</div><div class="rub-bom">' + d.R.map(function (x) {
+        var m = x.r, sin = !conPrecioR(m);
+        return '<div class="rub-br"><span class="d">' + esc(x.mo ? 'MO · ' + (m.rol || '') : m.descripcion || '') + '</span><span class="i' + (sin ? ' pend' : '') + '">' + (sin ? 'PENDIENTE PROVEEDOR' : dinero(m.importe, m.moneda)) + '</span></div>';
+      }).join('') + '</div>';
+    }
+    if (!d.Q.length && !d.K.length && !(d.R.length && r.renglones)) h += '<p class="nota rub-vacio">' + (r.preguntas || r.conceptos || r.renglones ?
+      'El motor cuenta ' + [r.preguntas ? plural(r.preguntas, 'pregunta', 'preguntas') : '', r.conceptos ? plural(r.conceptos, 'concepto', 'conceptos') : '', r.renglones ? plural(r.renglones, 'renglón', 'renglones') : ''].filter(Boolean).join(', ') + ' en este rubro; todavía no llegan a esta pantalla.' :
+      'Este rubro todavía no tiene preguntas, conceptos ni renglones.') + '</p>';
+    if (ST.rubPorque && !ST.borr['r:espera']) ST.rubPorque = false;   // «Cancelar» de la cajita
+    if (ST.rubPorque && puede && r.estado !== 'cerrado') {
+      var chips = d.Q.filter(function (a) { return a.estado === 'propuesta'; }).map(function (a) { return String((a.datos && a.datos.pregunta) || a.titulo || '').replace(/^¿|\?$/g, ''); }).filter(Boolean).slice(0, 5);
+      var bp = ST.borr['r:espera'] || {};
+      h += '<div class="rub-porque">' + (chips.length ? '<div class="of-chips">' + chips.map(function (f) {
+          return '<button type="button" data-rfalta="' + esc(f) + '" class="' + (String(bp.texto || '').indexOf(f) >= 0 ? 'on' : '') + '">' + esc(f) + '</button>'; }).join('') + '</div>' : '') +
+        cajaRazon('r:espera', '¿Qué datos faltan? (escribe, dicta o toca)', 'Dejar en espera') + '</div>';
+    }
+    h += '</div><div class="rub-pie">';
+    if (env) h += '<span class="nota">' + esc(env.tipo === 'cerrar' ? 'Mandé «Confirmar ' + nom + '»' : env.tipo === 'espera' ? 'Mandé «en espera de datos»' : 'Mandé «Reabrir»') + '; espera la respuesta del motor.</span>';
+    else if (!puede) h += '<span class="nota">Solo quien abrió la sesión confirma los rubros.</span>';
+    else if (r.estado === 'cerrado') h += '<span class="nota">✓ Rubro cerrado. Si algo cambia, lo reabres.</span><button type="button" class="bt" id="rubReabre">Reabrir</button>';
+    else {
+      var falta = d.abiertas + d.sinDec;
+      h += '<span class="nota">' + (falta ? 'Faltan ' + falta + ' por contestar o palomear.' : 'Todo contestado: ya puedes confirmarlo.') + (r.estado === 'espera' && r.porque ? ' En espera de: ' + esc(r.porque) + '.' : '') + '</span>' +
+        (r.estado === 'espera' ? '<button type="button" class="bt" id="rubReabre">Sacar de espera</button>' : ST.rubPorque ? '' : '<button type="button" class="bt rub-gris" id="rubEspera">En espera de datos</button>') +
+        '<button type="button" class="bt si" id="rubCierra"' + (falta ? ' disabled' : '') + '>Confirmar ' + esc(nom) + '</button>';
+    }
+    el.innerHTML = h + '</div></div>'; el.className = 'rub-velo on';
+    enlazarChat(el);
+    el.onclick = function (e) { if (e.target === el) cerrarHojaRubro(); };
+    $('#rubX').onclick = cerrarHojaRubro;
+    $$('[data-rfalta]', el).forEach(function (b) { b.onclick = function () {
+      var bb = ST.borr['r:espera'] = ST.borr['r:espera'] || { abierto: true, texto: '' }, f = b.dataset.rfalta, L = String(bb.texto || '').replace(/^falta:\s*/i, '').split(/\s*;\s*/).filter(Boolean);
+      L = L.indexOf(f) >= 0 ? L.filter(function (z) { return z !== f; }) : L.concat(f);
+      bb.texto = L.length ? 'falta: ' + L.join('; ') : ''; pintarHojaRubro(); }; });
+    if ($('#rubCierra')) $('#rubCierra').onclick = function () { cambiarRubro('cerrar', r); };
+    if ($('#rubReabre')) $('#rubReabre').onclick = function () { cambiarRubro('reabrir', r); };
+    if ($('#rubEspera')) $('#rubEspera').onclick = function () { ST.rubPorque = true; ST.borr['r:espera'] = ST.borr['r:espera'] || { abierto: true, texto: '' }; pintarHojaRubro(); var t = $('#rubHoja [data-borr="r:espera"]'); if (t) t.focus(); };
+    var cu = el.querySelector('.rub-cuerpo'); if (cu) cu.scrollTop = arriba;
+    if (foco) { var t = $('#rubHoja [data-borr="' + foco.k + '"]'); if (t) { t.focus(); try { t.setSelectionRange(foco.a, foco.b); } catch (er) {} } }
+  }
+  function conPrecioR(m) { var ok = function (v) { return v !== null && v !== undefined && v !== ''; }; return ok(m.importe) || ok(m.pu); }
+  /** Manda el cambio de estado como mensaje (lo resuelve el motor sin modelo) y espera su respuesta para pintarlo. */
+  function cambiarRubro(tipo, r, porque) {
+    var txt = tipo === 'cerrar' ? 'Cerrar rubro: ' + r.nombre : tipo === 'reabrir' ? 'Reabrir rubro: ' + r.nombre :
+      'Rubro ' + r.nombre + ' en espera de datos' + (porque ? ': ' + porque : '');
+    ST.rubEnv = ST.rubEnv || {}; ST.rubEnv[r.id] = { tipo: tipo, base: ST.hilo && ST.hilo.ultima ? ST.hilo.ultima.trabajo_id : null };
+    ST.rubPorque = false; delete ST.borr['r:espera']; cerrarHojaRubro();
+    return mandar(txt).then(function () { pintarFijo(); pintarChat(); });
   }
 
   // ── chat ───────────────────────────────────────────────────────────────
@@ -701,7 +872,7 @@
   }
   function volverALista() {
     pararVoz();
-    $('#app').classList.remove('ver-chat'); $('#app').classList.remove('en-menu'); ST.sel = null; guardarSel(); pintarLista();
+    $('#app').classList.remove('ver-chat'); $('#app').classList.remove('en-menu'); $('#app').classList.remove('con-lado'); cerrarHojaRubro(); ST.sel = null; guardarSel(); pintarLista();
   }
   function pintarCabecera() {
     var c = casoActual() || { titulo: '…' }, m = ST.motor, H = ST.hilo, vivo = false;
@@ -793,7 +964,7 @@
     $('#app').classList.remove('en-menu');
     var M = $('#msgs'), abajo = M.scrollHeight - M.scrollTop - M.clientHeight < 80, H = ST.hilo, arriba0 = M.scrollTop;
     // Lo escrito en una cajita abierta y su cursor sobreviven al repintado (sondeo de 2.5 s).
-    var fe = document.activeElement, foco = fe && fe.dataset && fe.dataset.borr ? { k: fe.dataset.borr, a: fe.selectionStart, b: fe.selectionEnd } : null;
+    var fe = document.activeElement, foco = fe && fe.dataset && fe.dataset.borr && !(fe.closest && fe.closest('#rubHoja')) ? { k: fe.dataset.borr, a: fe.selectionStart, b: fe.selectionEnd } : null;
     pintarCabecera(); pintarSenal(); pintarFijo(); pintarFranja();
     var modo = modoActual();
     var h = '', ultimoDia = '', prev = null;
@@ -808,7 +979,7 @@
     var meta = adjuntosPorId();
     var acc = accionesPorTrabajo(), pintadas = {};
     var U = H && (H.propuesta || H.ultima), porTrabajo = {}; ((H && H.trabajos) || []).forEach(function (t) { porTrabajo[t.id] = t; });
-    var OFR = ofertaDe(H);
+    var OFR = ofertaDe(H), RUB = H && G.CzAvance ? G.CzAvance.rubros(H) : null;
     if (!H && !(ST.sel || {}).local) aparte('<div class="sis"><span>Cargando…</span></div>');
     if (modo) burbuja('el', 'intro', 'Conceptualizador', '<div class="txt">' + esc(MODOS[modo].intro) + '</div>');
     else if ((ST.sel || {}).local && !(H && H.mensajes && H.mensajes.length)) aparte('<div class="sis"><span>Platícale el trabajo: texto, notas de voz, fotos y PDFs. Cuando termines escribe «ya es todo».</span></div>');
@@ -830,6 +1001,8 @@
         if (acc[m.trabajo_id]) aparte(tarjetaAcciones(acc[m.trabajo_id].filter(function (a) { return a.tipo === 'conjetura'; })));
         if (U && U.trabajo_id === m.trabajo_id) aparte(tarjetasRespuesta(U));
         if (OFR && Number(OFR.trabajo_id) === Number(m.trabajo_id)) aparte(tarjetaOferta(OFR));
+        // V1.40 · el resumen por rubro, una sola vez: bajo la respuesta más nueva del motor (trae el % al día).
+        if (RUB && H.ultima && Number(H.ultima.trabajo_id) === Number(m.trabajo_id)) aparte(tarjetaRubros(RUB));
         if (acc[m.trabajo_id]) { aparte(tarjetaAcciones(acc[m.trabajo_id].filter(function (a) { return a.tipo !== 'conjetura'; }))); pintadas[m.trabajo_id] = 1; }
       }
     });
@@ -868,10 +1041,12 @@
     M.innerHTML = h;
     enlazarChat(M);
     if (GZ) GZ.decorar();
-    if (foco) { var t = $('[data-borr="' + foco.k + '"]'); if (t) { t.focus(); try { t.setSelectionRange(foco.a, foco.b); } catch (e) {} } }
+    if (foco) { var t = $('#msgs [data-borr="' + foco.k + '"]'); if (t) { t.focus(); try { t.setSelectionRange(foco.a, foco.b); } catch (e) {} } }
+    ST.scrollProg = Date.now();   // V1.40: este scroll lo hace la pantalla; no esconde la franja
     if (abajo || ST.irAbajo) { M.scrollTop = M.scrollHeight; ST.irAbajo = false; ST.abajoN = 0; }
     else { M.scrollTop = arriba0; ST.abajoN += nuevas; }
     actualizarAbajo();
+    if (ST.rubHoja) pintarHojaRubro();
   }
   /** «escribiendo…» que se despliega con los pasos de ESE trabajo (6a). Los pasos los junta la
    *  pantalla de lo que el motor va publicando (`trabajo.avance`), con sus segundos. */
@@ -1246,6 +1421,7 @@
     $$('[data-manda]', M).forEach(function (b) { b.onclick = function () { mandarCaja(b.dataset.manda); }; });
     $$('[data-dicta]', M).forEach(function (b) { b.onclick = function () { dictar(b.dataset.dicta); }; });
     $$('[data-of]', M).forEach(function (b) { b.onclick = function () { botonOferta(b.dataset.of); }; });
+    $$('.rub-carta [data-rub]', M).forEach(function (b) { b.onclick = function () { abrirRubro(b.dataset.rub); }; });   // V1.40
     $$('[data-ofalta]', M).forEach(function (b) { b.onclick = function () {
       var bb = ST.borr['o:esperar'] = ST.borr['o:esperar'] || { abierto: true, texto: '' }, f = b.dataset.ofalta, L = String(bb.texto || '').replace(/^falta:\s*/i, '').split(/\s*,\s*/).filter(Boolean);
       L = L.indexOf(f) >= 0 ? L.filter(function (x) { return x !== f; }) : L.concat(f);
@@ -1272,11 +1448,14 @@
       '<button type="button" class="bt ' + (rechazo ? 'no' : 'si') + (e ? ' enviando' : '') + '" data-manda="' + esc(k) + '"' + (e || g ? ' disabled' : '') + '>' + (e ? GIRO + 'enviando…' : esc(boton)) + '</button></div>' +
       (ST.errBt[k] ? '<span class="err-bt">' + esc(ST.errBt[k]) + '</span>' : '') + '</div>';
   }
-  function abrirCaja(k) { ST.borr[k] = ST.borr[k] || { abierto: true, texto: '' }; ST.borr[k].abierto = true; delete ST.errBt[k]; pintarChat(); var t = $('[data-borr="' + k + '"]'); if (t) t.focus(); }
+  function abrirCaja(k) { ST.borr[k] = ST.borr[k] || { abierto: true, texto: '' }; ST.borr[k].abierto = true; delete ST.errBt[k]; pintarChat();
+    var t = (ST.rubHoja && $('#rubHoja [data-borr="' + k + '"]')) || $('[data-borr="' + k + '"]'); if (t) t.focus(); }
   function sinSenal(r) { return r && r.clase === 'red' ? 'Sin señal: no se mandó. Toca otra vez.' : (r && (r.mensaje || r.error)) || 'No se pudo.'; }
   function mandarCaja(k) {
     var b = ST.borr[k] || {}, txt = String(b.texto || '').trim();
     // V1.39 · punto 7: la respuesta a la oferta va como mensaje; el motor la reconoce por su arranque.
+    // V1.40 · el porqué de «En espera de datos» de un rubro.
+    if (k === 'r:espera') { var rr = rubroDe(ST.rubHoja); if (!rr) return; return cambiarRubro('espera', rr, txt.replace(/^falta:\s*/i, 'falta ')); }
     if (k === 'o:esperar') return contestarOferta('esperando', k, 'Esperar más' + (txt ? ': ' + txt.replace(/^falta:\s*/i, 'falta ') : '.'));
     if (k === 'o:editar') {
       if (txt.length < 2) { b.err = 'Escribe o dicta tu respuesta.'; return pintarChat(); }
@@ -1475,6 +1654,7 @@
    *  línea marcador de shared/chat/chat-gestos.js — salvo en «/cierre» y en el disparador («ya es todo»…), que la
    *  base reconoce por cómo EMPIEZA el texto: ahí solo viaja `datos`. */
   async function mandar(t, resp) {
+    if (ST.franjaAbierta) abrirFranja(false);   // V1.40: mandar un mensaje esconde la franja
     var arch = ST.bandeja.slice(); ST.bandeja = [];
     $('#in').value = ''; autoAlto(); pintarComposer();
     var datos = null;
@@ -1829,6 +2009,7 @@
     if (!ST.sel || ST.sel.id !== sel.id || ST.sel.local !== sel.local) {
       pararVoz();
       if (GZ) { GZ.quitarSeleccion(); GZ.enviada(); }   // la cita y la selección son del caso que se deja
+      cerrarHojaRubro(); ST.rubEnv = {}; ST.franjaAbierta = false;   // V1.40: la hoja y los envíos de rubro son del caso que se deja
     }
     ST.sel = sel; guardarSel(); ST.hilo = null; ST.vistos = null; ST.bandeja = []; ST.irAbajo = true;
     $('#app').classList.remove('en-menu'); $('#app').classList.add('ver-chat'); pintarLista(); pintarChat(); pintarComposer();
@@ -1855,6 +2036,8 @@
     $('#bAbajo').insertAdjacentHTML('afterbegin', ico('abajo2'));
     $('#bAbajo').onclick = function () { var M = $('#msgs'); M.scrollTo({ top: M.scrollHeight, behavior: 'smooth' }); ST.abajoN = 0; };
     $('#msgs').addEventListener('scroll', actualizarAbajo, { passive: true });
+    enlazarFranja();
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && ST.rubHoja) cerrarHojaRubro(); });
     document.addEventListener('visibilitychange', function () { if (!document.hidden) sondear(true); });
     Q.oir(function (e) { refrescarSalida(); if (e && e.enviado) cargarHilo(); });
     await Q.iniciar();
