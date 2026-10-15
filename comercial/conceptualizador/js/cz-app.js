@@ -36,7 +36,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.38';
+  var VERSION = 'V1.39';
   /* V1.32 (0006) · empresa y moneda de la sesión: la base acepta estas tres claves. */
   var EMPRESAS = { mx_mxn: { n: 'FTS México · MXN', s: 'Empresa 1 · pesos', id: 1, m: 'MXN', pais: 'mx' },
                    mx_usd: { n: 'FTS México · USD', s: 'Empresa 1 · dólares', id: 1, m: 'USD', pais: 'mx' },
@@ -584,7 +584,7 @@
       if (sg.acc === 'machote') { ST.env.fijo = /^Actualizar/.test(sg.txt) ? 'actualizando…' : 'creando…'; pintarFijo(); return hacer(sg.id, b).then(function () { delete ST.env.fijo; pintarFijo(); }); }
       if (sg.acc === 'cotiza' || sg.acc === 'mandar') { b.disabled = true; return mandar(sg.acc === 'cotiza' ? 'Haz la cotización' : sg.texto).then(function () { pintarFijo(); }); }
       if (sg.acc === 'ir') {
-        var t = sg.a === 'conjetura' ? $('[data-conf]') : sg.a === 'conceptos' ? $('[data-acepta]') : $('.pend-cot');
+        var t = sg.a === 'conjetura' ? $('[data-conf]') : sg.a === 'conceptos' ? $('[data-acepta]') : sg.a === 'oferta' ? $('.of-carta') : $('.pend-cot');
         if (t) { t.scrollIntoView({ block: 'center', behavior: 'smooth' }); var k = t.closest('.carta') || t; k.classList.add('resalta'); setTimeout(function () { k.classList.remove('resalta'); }, 1600); }
       }
     };
@@ -753,6 +753,7 @@
     var meta = adjuntosPorId();
     var acc = accionesPorTrabajo(), pintadas = {};
     var U = H && (H.propuesta || H.ultima), porTrabajo = {}; ((H && H.trabajos) || []).forEach(function (t) { porTrabajo[t.id] = t; });
+    var OFR = ofertaDe(H);
     if (!H && !(ST.sel || {}).local) aparte('<div class="sis"><span>Cargando…</span></div>');
     if (modo) burbuja('el', 'intro', 'Conceptualizador', '<div class="txt">' + esc(MODOS[modo].intro) + '</div>');
     else if ((ST.sel || {}).local && !(H && H.mensajes && H.mensajes.length)) aparte('<div class="sis"><span>Platícale el trabajo: texto, notas de voz, fotos y PDFs. Cuando termines escribe «ya es todo».</span></div>');
@@ -772,6 +773,7 @@
         // Primero lo que hay que confirmar, luego conceptos y machote (el orden del método).
         if (acc[m.trabajo_id]) aparte(tarjetaAcciones(acc[m.trabajo_id].filter(function (a) { return a.tipo === 'conjetura'; })));
         if (U && U.trabajo_id === m.trabajo_id) aparte(tarjetasRespuesta(U));
+        if (OFR && Number(OFR.trabajo_id) === Number(m.trabajo_id)) aparte(tarjetaOferta(OFR));
         if (acc[m.trabajo_id]) { aparte(tarjetaAcciones(acc[m.trabajo_id].filter(function (a) { return a.tipo !== 'conjetura'; }))); pintadas[m.trabajo_id] = 1; }
       }
     });
@@ -1098,6 +1100,75 @@
     return h;
   }
 
+  // ── V1.39 · punto 7 (#4): «¿me permites ir analizando precios…?» ─────────
+  /* La oferta la escribe el motor (procesa.js, con el apodo de motor/apodos.json) y su estado llega en cada respuesta
+   * en `ultima.verifica.oferta` (sin migración). Aquí solo los tres botones del prototipo aprobado. En este paso las
+   * palabras son «machote» y «procura»: nunca «cotización» ni «cotiza». */
+  var TXT_ADELANTE = 'Ya terminé: adelante con el machote y la procura de los materiales principales.';   // es el disparador (db/003)
+  var TXT_EDITAR = 'Sobre arrancar el machote:';                                                        // procesa.js → ES_EDITAR
+  function ofertaDe(H) { var v = H && H.ultima && H.ultima.verifica, o = v && v.oferta; return o && o.trabajo_id ? o : null; }
+  function tarjetaOferta(o) {
+    var c = (ST.hilo && ST.hilo.caso) || {}, est = (ST.ofEnv && ST.ofEnv[o.trabajo_id]) || o.estado;
+    if (c.disparado_at && est === 'ofrecida') est = 'arrancada';
+    var h = '<div class="carta of-carta" data-oferta="' + esc(o.trabajo_id) + '"><div class="of-tiene"><b>Ya tengo:</b> ' + esc((o.tengo || []).join(' · ')) +
+      ((o.falta || []).length ? '<br><i>Falta:</i> ' + esc(o.falta.join(' · ')) : '') + '</div>';
+    if (est === 'arrancada' || est === 'adelante') h += '<div class="of-est">✓ Adelante</div>';
+    else if (est === 'esperando') h += '<div class="of-est of-esp">⏸ Esperando más' + (o.esperando && (o.esperando.que || []).length ? ': ' + esc(o.esperando.que.join(', ')) : '') +
+      ' · no te vuelvo a preguntar hasta que llegue</div>';
+    else if (est === 'editada') h += '<div class="of-est">✎ Contestaste con ajuste</div>';
+    else if (!mia(c)) h += '<div class="of-est of-esp">Espera la respuesta de quien abrió la sesión.</div>';
+    else {
+      h += '<div class="of-bt"><button type="button" class="bt si" data-of="adelante">Adelante</button><button type="button" class="bt" data-of="editar">Editar respuesta</button>' +
+        '<button type="button" class="bt of-gris" data-of="esperar">Esperar más</button></div>';
+      if (ST.borr['o:editar']) h += cajaRazon('o:editar', 'Tu respuesta (escribe o dicta). Por ejemplo: «sí, pero sin la escalera».', 'Mandar');
+      if (ST.borr['o:esperar']) h += ((o.falta || []).length ? '<div class="of-chips">' + o.falta.map(function (f) {
+          return '<button type="button" data-ofalta="' + esc(f) + '" class="' + (String((ST.borr['o:esperar'] || {}).texto || '').indexOf(f) >= 0 ? 'on' : '') + '">' + esc(f) + '</button>'; }).join('') + '</div>' : '') +
+        cajaRazon('o:esperar', '¿Qué falta? (opcional: escribe, dicta o toca)', 'Esperar');
+    }
+    return h + '</div>';
+  }
+  function botonOferta(que) {
+    if (que === 'editar' || que === 'esperar') { delete ST.borr['o:' + (que === 'editar' ? 'esperar' : 'editar')]; return abrirCaja('o:' + que); }
+    var o = ofertaDe(ST.hilo); if (!o) return;
+    var AV = G.CzAvance, f = AV ? AV.faltantes(ST.hilo) : null, falta = (o.falta || []).slice();
+    if (f && f.total && !falta.length) falta.push(AV.textoFaltantes(f).replace(/^f/, 'F') + ' del levantamiento');
+    modal('<h3>¿Arranco con el machote?</h3><p class="sub">Arranco con el machote y los precios de los materiales principales. Lo que falte va como pregunta con conjetura; lo puedes seguir mandando después.</p>' +
+      (falta.length ? '<div class="falta-disp"><b>Lo que falta</b><ul>' + falta.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>' : '') +
+      '<div class="acc der"><button class="boton" data-cierra>Todavía no</button><button class="boton si" id="okAdelante">Adelante</button></div>');
+    $('#okAdelante').onclick = function () { this.disabled = true; cerrarModal(); contestarOferta('adelante', null, TXT_ADELANTE); };
+  }
+  function contestarOferta(estado, k, texto) {
+    var o = ofertaDe(ST.hilo); ST.ofEnv = ST.ofEnv || {}; if (o) ST.ofEnv[o.trabajo_id] = estado;
+    if (k) { if (GR.activa('d-' + k)) GR.basura('d-' + k); delete ST.borr[k]; delete ST.errBt[k]; }
+    return mandar(texto).then(function () { pintarFijo(); pintarCabecera(); pintarChat(); });
+  }
+  /* V1.39 · punto 8, nivel 2 (#4): al actualizar de versión, UN evento ligero «revisa» por caso que podría estar listo para
+   * la oferta: abierto, propio, no demo, con actividad en 14 días, sin disparar, con la ciudad confirmada, sin oferta todavía
+   * y SIN trabajo en curso. Una vez por caso y por versión (se anota en el teléfono antes de mandarlo). El motor contesta
+   * solo la oferta que toque, sin BOM ni búsquedas. Viaja como evento `correccion` con concepto `revisa` (la base no
+   * acepta un tipo nuevo sin migración; procesa.js lo reconoce). */
+  async function revisarAlActualizar() {
+    var sv = G.CzVersion && G.CzVersion.salto ? G.CzVersion.salto() : null; if (!sv || ST.revisado) return;
+    ST.revisado = true;
+    var quien = yo(), ahora = Date.now(), n = 0;
+    var L = (ST.casos || []).filter(function (c) {
+      return c.autor === quien && c.estado === 'abierto' && !c.demo && !c.archivada && !c.disparado_at && !Number(c.pendientes || 0) &&
+        ahora - Date.parse(c.ultima_actividad_at || c.updated_at || 0) < 14 * 864e5;
+    });
+    for (var i = 0; i < L.length; i++) {
+      var c = L[i], k = 'cz_revisa_v_' + c.id;
+      try { if (localStorage.getItem(k) === VERSION) continue; } catch (e) {}
+      var r = await C.hilo(c.id); if (!r.ok || !r.hilo) continue;
+      var H = r.hilo, hc = H.caso || {};
+      if ((H.trabajos || []).some(function (t) { return t.estado === 'pendiente' || t.estado === 'tomado'; })) continue;   // en curso: en otra carga
+      try { localStorage.setItem(k, VERSION); } catch (e) {}
+      if (ofertaDe(H) || hc.disparado_at || !hc.proyecto_confirmada_at) continue;
+      var rv = await C.evento({ caso_id: c.id, tipo: 'correccion', concepto: 'revisa', razon: '', datos: { revisa: true, version: VERSION } });
+      if (rv && rv.ok) n++;
+    }
+    return n;
+  }
+
   // ── eventos del chat ───────────────────────────────────────────────────
   function enlazarChat(M) {
     $$('[data-foto]', M).forEach(function (f) {
@@ -1116,6 +1187,11 @@
     $$('[data-cancela]', M).forEach(function (b) { b.onclick = function () { var k = b.dataset.cancela; if (GR.activa('d-' + k)) GR.basura('d-' + k); delete ST.borr[k]; delete ST.errBt[k]; pintarChat(); }; });
     $$('[data-manda]', M).forEach(function (b) { b.onclick = function () { mandarCaja(b.dataset.manda); }; });
     $$('[data-dicta]', M).forEach(function (b) { b.onclick = function () { dictar(b.dataset.dicta); }; });
+    $$('[data-of]', M).forEach(function (b) { b.onclick = function () { botonOferta(b.dataset.of); }; });
+    $$('[data-ofalta]', M).forEach(function (b) { b.onclick = function () {
+      var bb = ST.borr['o:esperar'] = ST.borr['o:esperar'] || { abierto: true, texto: '' }, f = b.dataset.ofalta, L = String(bb.texto || '').replace(/^falta:\s*/i, '').split(/\s*,\s*/).filter(Boolean);
+      L = L.indexOf(f) >= 0 ? L.filter(function (x) { return x !== f; }) : L.concat(f);
+      bb.texto = L.length ? 'falta: ' + L.join(', ') : ''; pintarChat(); }; });
     GR.enlazar(M);
     var bl = $('#bListo', M); if (bl) bl.onclick = listoSigue;
     var be = $('#bEscribe', M); if (be) be.onclick = function () { var tq = trabajoQueContesta(); ST.abiertoReg = ST.abiertoReg === (tq && tq.id) ? null : (tq && tq.id); pintarChat(); };
@@ -1142,6 +1218,12 @@
   function sinSenal(r) { return r && r.clase === 'red' ? 'Sin señal: no se mandó. Toca otra vez.' : (r && (r.mensaje || r.error)) || 'No se pudo.'; }
   function mandarCaja(k) {
     var b = ST.borr[k] || {}, txt = String(b.texto || '').trim();
+    // V1.39 · punto 7: la respuesta a la oferta va como mensaje; el motor la reconoce por su arranque.
+    if (k === 'o:esperar') return contestarOferta('esperando', k, 'Esperar más' + (txt ? ': ' + txt.replace(/^falta:\s*/i, 'falta ') : '.'));
+    if (k === 'o:editar') {
+      if (txt.length < 2) { b.err = 'Escribe o dicta tu respuesta.'; return pintarChat(); }
+      return contestarOferta('editada', k, TXT_EDITAR + ' ' + txt);
+    }
     if (txt.length < 3) { b.err = 'Escribe o dicta ' + (k.indexOf('c:') === 0 ? 'qué cambia' : 'lo correcto') + ' (3 letras mínimo).'; return pintarChat(); }
     if (k.indexOf('c:') === 0) return decidirConcepto(k.slice(2), 'aceptar', txt, { corregido: true });
     return responder(k, k.slice(2), 'descartada', { correccion: txt }, 'corrige');
@@ -1677,5 +1759,6 @@
     await cargarCasos(); pintarLista();
     if (ST.sel) abrir(ST.sel);
     sondear();
+    revisarAlActualizar().catch(function () {});
   }, _st: ST };
 })(window);

@@ -46,7 +46,9 @@
     var cmP = A.filter(function (a) { return a.tipo === 'crear_machote' && a.estado === 'propuesta'; }).pop();
     var cmH = A.filter(function (a) { return a.tipo === 'crear_machote' && a.estado === 'hecha'; }).pop();
     var pendCot = cmP ? Number((cmP.datos || {}).n_pendientes) || 0 : cmH ? Number((cmH.datos || {}).n_pendientes) || 0 : pendBom;
-    var ciudad = !!c.proyecto_confirmada_at, hayCiudad = !!c.proyecto_ciudad, disparo = !!c.disparado_at;
+    // V1.39 (#4 punto 7): la oferta contestada con «Editar respuesta» puede arrancar sin el disparador en la base.
+    var of = (H && H.ultima && H.ultima.verifica && H.ultima.verifica.oferta) || null;
+    var ciudad = !!c.proyecto_confirmada_at, hayCiudad = !!c.proyecto_ciudad, disparo = !!c.disparado_at || !!(of && of.estado === 'arrancada');
     var e = [], det = [];
     e[0] = disparo ? 'hecho' : 'actual';
     det[0] = disparo ? 'Terminado.' : f ? (f.total ? textoFaltantes(f).replace(/^f/, 'F') + '.' : 'Ya no falta nada de la lista.') : 'En curso.';
@@ -71,6 +73,7 @@
     // La ciudad va primero mientras no hay BOM: un caso de antes de V1.34 que ya llegó al machote no se atora aquí.
     var antesDelBom = !mat.length && !cmP && !cmH;
     if (!ciudad && antesDelBom) sig = hayCiudad ? { txt: '¿Es en ' + c.proyecto_ciudad + '? Confirmar', acc: 'confirma_ciudad' } : { txt: 'Elegir la ciudad del proyecto', acc: 'ciudad' };
+    else if (!disparo && of && of.estado === 'ofrecida') sig = { txt: 'Contestar: ¿arranco con el machote?', acc: 'ir', a: 'oferta' };
     else if (!disparo && (c.modo === 'acompanamiento' || c.modo === 'levantamiento')) sig = { txt: c.modo === 'acompanamiento' ? 'Ya terminé, cotiza' : 'Ya es todo', acc: 'disparo' };
     else if (conjAb) sig = { txt: 'Contestar ' + plural(conjAb, 'pregunta', 'preguntas'), acc: 'ir', a: 'conjetura' };
     else if (cs.length && sinDec) sig = { txt: 'Palomear ' + plural(sinDec, 'concepto', 'conceptos'), acc: 'ir', a: 'conceptos' };
@@ -80,7 +83,7 @@
     else if (cmH && !c.orden_nombre) sig = { txt: 'Haz la cotización', acc: 'cotiza' };
     // Llegó al BOM y el motor todavía no ofreció el machote (casos de antes de V1.36): se le pide con el verbo del método.
     else if (mat.length && !cmH) sig = { txt: 'Armar el machote', acc: 'mandar', texto: 'Arma el machote' };
-    return { e: e, det: det, actual: actual, sig: sig, ciudad: ciudad, faltan: f, pendCot: pendCot, conjAb: conjAb, sinDec: sinDec, machote: cmH || null };
+    return { oferta: of, e: e, det: det, actual: actual, sig: sig, ciudad: ciudad, faltan: f, pendCot: pendCot, conjAb: conjAb, sinDec: sinDec, machote: cmH || null };
   }
 
   /** La hora de la última actividad del caso: el último mensaje, de quien sea. */

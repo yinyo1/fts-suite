@@ -457,6 +457,15 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
   .err-bt{display:block;font-size:12px;color:var(--red);margin:4px 0 0 34px}
   .preg .err-bt{margin-left:0}
   .caja-razon{margin:8px 0 2px 34px;background:var(--sup2);border-radius:12px;padding:8px}
+  /* V1.39 · punto 7: la oferta «¿me permites…?» (prototipo aprobado) */
+  .of-carta .of-tiene{font-size:13px;color:var(--sec);line-height:1.45}.of-carta .of-tiene b{color:var(--tx,#111)}
+  .of-carta .of-bt{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .of-carta .bt.of-gris{border-color:#c9cdd3;color:#555}
+  .of-carta .of-est{margin-top:8px;font-size:13px;font-weight:600;color:var(--acento-osc)}.of-carta .of-est.of-esp{color:#8a5a00}
+  .of-carta .caja-razon{margin-left:0}
+  .of-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .of-chips button{border:1px solid #c9cdd3;background:#fff;border-radius:16px;padding:5px 10px;font:inherit;font-size:12.5px;color:#444}
+  .of-chips button.on{background:var(--acento-osc);border-color:var(--acento-osc);color:#fff}
   .preg .caja-razon{margin-left:0}
   .caja-razon label{display:block;font-size:12px;font-weight:600;color:var(--sec);margin-bottom:4px}
   .caja-razon .lin{display:flex;gap:6px;align-items:flex-end}
@@ -561,17 +570,17 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <div class="cz-toast" id="toast" role="status" aria-live="polite"></div>
 <div class="modal" id="modal"></div>
 <div class="panel" id="panel"></div>
-<script src="../../shared/chat/chat-firma.js?v=V1.38"></script>
-<script src="js/cz-cliente.js?v=V1.38"></script>
-<script src="js/cz-medios.js?v=V1.38"></script>
-<script src="js/cz-grabadora.js?v=V1.38"></script>
-<script src="js/cz-archivos.js?v=V1.38"></script>
-<script src="js/cz-ciudad.js?v=V1.38"></script>
-<script src="js/cz-cola.js?v=V1.38"></script>
-<script src="js/cz-acciones.js?v=V1.38"></script>
-<script src="js/cz-avance.js?v=V1.38"></script>
-<script src="js/cz-app.js?v=V1.38"></script>
-<script src="js/cz-version.js?v=V1.38"></script>
+<script src="../../shared/chat/chat-firma.js?v=V1.39"></script>
+<script src="js/cz-cliente.js?v=V1.39"></script>
+<script src="js/cz-medios.js?v=V1.39"></script>
+<script src="js/cz-grabadora.js?v=V1.39"></script>
+<script src="js/cz-archivos.js?v=V1.39"></script>
+<script src="js/cz-ciudad.js?v=V1.39"></script>
+<script src="js/cz-cola.js?v=V1.39"></script>
+<script src="js/cz-acciones.js?v=V1.39"></script>
+<script src="js/cz-avance.js?v=V1.39"></script>
+<script src="js/cz-app.js?v=V1.39"></script>
+<script src="js/cz-version.js?v=V1.39"></script>
 <script>window.CzApp.arrancar().then(function () { if (window.CzVersion) window.CzVersion.iniciar(); });</script>
 </body>
 </html>

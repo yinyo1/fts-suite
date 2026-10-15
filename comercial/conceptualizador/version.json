@@ -1,6 +1,10 @@
 {
-  "version": "V1.38",
+  "version": "V1.39",
   "historial": [
+    {
+      "version": "V1.39",
+      "nota": "Oferta «¿me permites…?» (#4 punto 7, prototipo aprobado): cuando el motor ya tiene concepto sólido (ciudad confirmada, alcance y medidas principales) pregunta por tu apodo si puede ir armando el machote y analizando precios con proveedores; debajo, «Ya tengo / Falta» y tres botones: «Adelante» (con su confirmación «Arranco con el machote y los precios de los materiales principales»), «Editar respuesta» (cajita para escribir o dictar) y «Esperar más» (porqué opcional con lo que falta). Lo ofrece a lo más una vez, más otra si llega mucho nuevo o lo que pediste esperar. Al actualizar de versión, cada caso que podría estar listo le pide al motor que lo revise una sola vez (punto 8, nivel 2). Del lado del motor (fts-conceptualizador), el disparador ya contesta por rubros con su %."
+    },
     {
       "version": "V1.38",
       "nota": "Al actualizar de versión (botón «Actualizar» o recarga dura con versión nueva), cada caso abierto muestra su paso sin que la persona escriba: «Retomamos · actualizaste a V1.38 · Vas en X, falta Y, siguiente: Z» sale aunque no hayan pasado 2 h, una vez por caso y por versión, con lo que ya está en Postgres (sin trabajo del motor). Del lado del motor (fts-conceptualizador), el botón «Armar el machote» ya no gasta un trabajo con modelo cuando el caso tiene su spec guardada."
