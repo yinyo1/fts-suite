@@ -10,11 +10,12 @@
  *     llave pública que da el servidor (push_estado) y la guarda (push_alta) con su plataforma y su zona horaria
  *     (las horas de silencio 21–7 son las de ESTE teléfono). Un servidor viejo (sin la migración 0010) contesta
  *     MODO_DESCONOCIDO: no se dice nada, se reintenta cada 30 min y al volver la red.
- *   · AL TOCAR un aviso, sw-push.js abre `?caso=<id>&ver=oferta|recordatorio[&accion=cotiza|recuerda]` o, si la
+ *   · AL TOCAR un aviso, sw-push.js abre `?caso=<id>&ver=oferta|recordatorio[&accion=adelante|recuerda]` o, si la
  *     app ya estaba abierta, le manda un mensaje. Aquí se abre el caso y: la oferta se resalta con sus tres botones
- *     (Adelante / Editar respuesta / Esperar más, de V1.39); el recordatorio abre la hoja «Cotiza ya / Recuérdame en…»
- *     (en iPhone el aviso no lleva botones: la hoja los pone). «Cotiza ya» muestra la confirmación de siempre;
- *     NUNCA dispara solo.
+ *     (Adelante / Editar respuesta / Esperar más, de V1.39); el recordatorio abre la hoja «Adelante / Recuérdame en…»
+ *     (en iPhone el aviso no lleva botones: la hoja los pone). «Adelante» muestra la confirmación de siempre;
+ *     NUNCA dispara solo. Regla de Esteban (15-oct, 00:38 CST): en esta pantalla, el recordatorio y el aviso no se
+ *     dice «cotiza» ni «cotización» (esa palabra es solo la de Odoo); `accion=cotiza` se sigue aceptando como alias.
  *   · ⋮ › Recordatorios (apagarlos para sí), ⋮ › No molestar (la guía), y para admins ⋮ › Avisos del equipo.
  *
  * Este archivo se carga ANTES de cz-app.js: si la página abre con ?caso=, deja el caso elegido en sessionStorage
@@ -39,7 +40,7 @@
     var q0 = new URLSearchParams(G.location.search), c0 = q0.get('caso');
     if (c0 && UUID.test(c0)) {
       ST.pend = { caso: c0, ver: q0.get('ver') === 'recordatorio' ? 'recordatorio' : q0.get('ver') === 'oferta' ? 'oferta' : '',
-                  accion: q0.get('accion') === 'cotiza' || q0.get('accion') === 'recuerda' ? q0.get('accion') : '' };
+                  accion: q0.get('accion') === 'adelante' || q0.get('accion') === 'cotiza' ? 'adelante' : q0.get('accion') === 'recuerda' ? 'recuerda' : '' };
       G.sessionStorage.setItem('cz_sel', JSON.stringify({ id: c0 }));
     }
   } catch (e) {}
@@ -150,7 +151,7 @@
       if (c) { c.scrollIntoView({ block: 'center' }); c.classList.add('resalta'); setTimeout(function () { c.classList.remove('resalta'); }, 2400); }
       else toast('Esa pregunta ya se contestó.');
     } else if (p.ver === 'recordatorio') {
-      if (p.accion === 'cotiza') return cotizaYa();
+      if (p.accion === 'adelante') return adelante();
       if (p.accion === 'recuerda') return hojaRecuerdame(h.caso);
       hojaRecordatorio(h);
     }
@@ -161,7 +162,7 @@
       G.history.replaceState(G.history.state, '', u.pathname + (u.search || '') + u.hash);
     } catch (e) {}
   }
-  function cotizaYa() { if (app().disparo) app().disparo(); }
+  function adelante() { if (app().disparo) app().disparo(); }
 
   // ── 4. pantallas (mismo look que el prototipo aprobado) ──
   var P = {
@@ -256,7 +257,7 @@
   function cerrarHoja() { var v = D.getElementById('czpHoja'); if (v) v.remove(); }
 
   var PERM = [
-    { k: 'notif', ic: 'campana', t: 'Notificaciones', d: 'Para avisarte cuando tenga lista una pregunta para ti y recordarte los levantamientos sin cotizar.' },
+    { k: 'notif', ic: 'campana', t: 'Notificaciones', d: 'Para avisarte cuando tenga lista una pregunta para ti y recordarte los levantamientos pendientes.' },
     { k: 'mic', ic: 'mic', t: 'Micrófono', d: 'Para las notas de voz.' },
     { k: 'cam', ic: 'camara', t: 'Cámara y fotos', d: 'Para las fotos del levantamiento.' },
     { k: 'ubi', ic: 'pin', t: 'Ubicación', d: 'Solo para proponer la ciudad del proyecto. No guarda tus coordenadas.' }
@@ -351,7 +352,7 @@
     var a = est.ajustes || { recordatorios: true, avisos: true }, tope = est.recordar_tope || 3, s = est.silencio || { desde: 21, hasta: 7 };
     var sw = function (k, on, et) { return '<button type="button" class="czp-sw' + (on ? '' : ' off') + '" data-sw="' + k + '" role="switch" aria-checked="' + !!on + '" aria-label="' + esc(et) + '"></button>'; };
     var v = capa('<h1>Recordatorios y avisos</h1>' +
-      '<div class="czp-aj"><span class="czp-tx"><b>Recordarme levantamientos sin cotizar</b><span>Si una sesión tiene fotos, audios o PDFs, no dijiste «Cotiza» y lleva 30 min sin mensajes.</span></span>' + sw('recordatorios', a.recordatorios, 'Recordatorios') + '</div>' +
+      '<div class="czp-aj"><span class="czp-tx"><b>Recordarme levantamientos pendientes</b><span>Si una sesión tiene fotos, audios o PDFs, todavía no pides el machote y lleva 30 min sin mensajes.</span></span>' + sw('recordatorios', a.recordatorios, 'Recordatorios') + '</div>' +
       '<div class="czp-aj"><span class="czp-tx"><b>Avisarme cuando te pregunte algo</b><span>Por ejemplo, «¿puedo ir buscando precios…?» cuando no estás en la app.</span></span>' + sw('avisos', a.avisos, 'Avisos') + '</div>' +
       '<div class="czp-aj"><span class="czp-tx"><b>Máximo ' + esc(tope) + ' por sesión</b><span>Después del tercer aviso ya no insisto en esa sesión.</span></span></div>' +
       '<div class="czp-aj"><span class="czp-tx"><b>Nunca entre las ' + esc(s.desde) + ':00 y las ' + esc(s.hasta) + ':00</b><span>En la hora de este teléfono. Lo que llegue de noche sale a las ' + esc(s.hasta) + ':00.</span></span></div>' +
@@ -392,10 +393,10 @@
     var c = h.caso || {}, adj = Array.isArray(h.adjuntos) ? h.adjuntos : [], cuenta = function (cl) { return adj.filter(function (a) { return a && a.clase === cl; }).length; };
     var partes = [], f = cuenta('foto'), au = cuenta('audio'), pd = cuenta('pdf');
     if (f) partes.push(f + (f === 1 ? ' foto' : ' fotos')); if (au) partes.push(au + (au === 1 ? ' nota de voz' : ' notas de voz')); if (pd) partes.push(pd + ' PDF');
-    var v = hoja('<h3>' + esc(c.titulo || 'Levantamiento') + '</h3><p class="czp-sub">' + (partes.length ? 'Tiene ' + esc(partes.join(', ')) + ' y no' : 'No') + ' has dicho «Cotiza».</p>' +
-      '<div class="czp-fila"><button class="czp-btn prim" type="button" data-czp="cotiza">Cotiza ya</button><button class="czp-btn lin" type="button" data-czp="recuerda">Recuérdame en…</button></div>' +
-      '<p class="czp-nota">«Cotiza ya» te pide confirmar; nunca arranca solo.</p>', 'Levantamiento sin cotizar');
-    v.querySelector('[data-czp="cotiza"]').onclick = function () { cerrarHoja(); cotizaYa(); };
+    var v = hoja('<h3>' + esc(c.titulo || 'Levantamiento') + '</h3><p class="czp-sub">' + (partes.length ? 'Tiene ' + esc(partes.join(', ')) + ' y no' : 'No') + ' has pedido el machote.</p>' +
+      '<div class="czp-fila"><button class="czp-btn prim" type="button" data-czp="adelante">Adelante</button><button class="czp-btn lin" type="button" data-czp="recuerda">Recuérdame en…</button></div>' +
+      '<p class="czp-nota">«Adelante» te pide confirmar; nunca arranca solo.</p>', 'Levantamiento pendiente');
+    v.querySelector('[data-czp="adelante"]').onclick = function () { cerrarHoja(); adelante(); };
     v.querySelector('[data-czp="recuerda"]').onclick = function () { hojaRecuerdame(c); };
   }
   function hojaRecuerdame(c) {

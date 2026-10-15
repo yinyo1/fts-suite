@@ -34,7 +34,9 @@ function destino(data, accion) {
   if (data && data.caso && UUID.test(data.caso)) {
     u.searchParams.set('caso', data.caso);
     if (data.ver) u.searchParams.set('ver', data.ver);
-    if (accion === 'cotiza' || accion === 'recuerda') u.searchParams.set('accion', accion);
+    // «adelante» (V1.41: sin «cotiza» en el aviso); «cotiza» queda como alias de un aviso viejo.
+    if (accion === 'adelante' || accion === 'cotiza') u.searchParams.set('accion', 'adelante');
+    else if (accion === 'recuerda') u.searchParams.set('accion', accion);
   }
   return u.href;
 }

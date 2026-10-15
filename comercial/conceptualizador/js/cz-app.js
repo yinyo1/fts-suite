@@ -2052,7 +2052,7 @@
     sondear();
     revisarAlActualizar().catch(function () {});
   },
-  // V1.41 (cz-push.js) · al tocar un aviso: abrir ese caso, y «Cotiza ya» con la confirmación de siempre (nunca dispara solo).
+  // V1.41 (cz-push.js) · al tocar un aviso: abrir ese caso, y «Adelante» con la confirmación de siempre (nunca dispara solo).
   abrirCaso: function (id) { return abrir({ id: id }); },
   disparo: function () { var m = modoDisparo(); if (!m) return toast('Esta sesión ya arrancó: no hay nada que confirmar.'); confirmarDisparo(m); },
   _st: ST };
