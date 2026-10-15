@@ -404,7 +404,9 @@
     var t = g.estado === 'buscando' ? 'Buscando tu ciudad…' :
       g.estado === 'ubicacion' ? 'Estás en <b>' + esc(CI.nombre(p)) + '</b> (ubicación del teléfono). Solo guardo ciudad y estado, nunca coordenadas.' :
       g.estado === 'zona' ? 'Sin permiso de ubicación: tomé <b>' + esc(CI.nombre(p)) + '</b> por la zona horaria del teléfono. Cámbiala si no es.' :
-      g.estado === 'lejos' ? 'Tu ubicación no cae cerca de ninguna ciudad de la lista: elige «Otra» y escríbela. No guardo coordenadas.' :
+      g.estado === 'region' ? 'Sin permiso de ubicación: por la zona horaria pongo arriba las ciudades de <b>' + esc(g.region.nombre) + '</b>. Elige la del proyecto.' :
+      g.estado === 'lejos' ? (g.region ? 'Tu ubicación cae en <b>' + esc(g.region.nombre) + '</b>: sus ciudades van primero en la lista. No guardo coordenadas.' :
+        'Tu ubicación no cae cerca de ninguna ciudad de la lista: búscala por nombre o por estado. No guardo coordenadas.') :
       'No supe dónde estás. Elige la ciudad o déjala: te la pregunto antes de buscar precios.';
     return '<p class="nota geo">' + ico('mapa', 'xs') + '<span>' + t + '</span></p>';
   }
@@ -434,40 +436,89 @@
       ST.locales = await Q.casosLocales(); $('#app').classList.remove('en-menu'); abrir({ local: c.local_id });
     }; });
   }
-  /** V1.34 · selector de ciudad con buscador: la lista de D89 y «Otra» (texto libre). `alElegir({c,e,pais})`. */
-  function dlgCiudad(actual, alElegir, titulo) {
-    var lista = function (f) {
-      f = CI.sinAcento(f);
-      return CI.CIUDADES.map(function (gr) {
-        var L = gr.L.filter(function (x) { return !f || CI.sinAcento(x[0] + ' ' + x[1]).indexOf(f) >= 0; });
-        if (!L.length) return '';
-        return '<div class="cd-g">' + esc(gr.g) + '</div>' + L.map(function (x) {
-          var on = actual && actual.c === x[0];
-          return '<button type="button" class="cd-op' + (on ? ' on' : '') + '" data-ciudad="' + esc(x[0]) + '"><span>' + esc(x[0]) + '</span><small>' + esc(x[1]) + (on ? ' ✓' : '') + '</small></button>';
-        }).join('');
-      }).join('') + '<button type="button" class="cd-op otra" data-ciudad="otra"><span>Otra…</span><small>escribe ciudad y estado</small></button>';
+  /** V1.39 (#4 punto 9) · selector de ciudad con el catálogo COMPLETO (INEGI municipios + Census places), que se baja
+   *  SOLO al abrir (CI.catalogo). Sin texto: la actual, las del estado donde está la persona (ubicación o zona
+   *  horaria) y donde ya trabaja FTS. Con texto: ciudad o estado, sin acentos («cd juarez», «Chihuahua», «CA»).
+   *  «Otra» (texto libre) es el último recurso. `alElegir({c,e,pais})`: solo ciudad, estado y país, nunca coordenadas.
+   *  `paisCtx` (MX|US): el país de la empresa del caso, para acomodar los homónimos. */
+  function dlgCiudad(actual, alElegir, titulo, paisCtx) {
+    var pais = paisCtx || (actual && (actual.pais === 'US' || actual.pais === 'MX') ? actual.pais : null) ||
+      (EMPRESAS[ST.empresa] && EMPRESAS[ST.empresa].pais === 'usa' ? 'US' : 'MX');
+    var miles = function (n) { return Number(n).toLocaleString('es-MX'); };
+    var reg = function () { return (ST.geo && ST.geo.region) || null; };
+    // Sin detección todavía (se llegó desde ⋮ sin pasar por el menú): se intenta aquí; nunca bloquea.
+    if (!ST.geo) { ST.geo = { estado: 'buscando', persona: null }; CI.detectar().then(function (g) { ST.geo = g; if ($('#cdL')) pinta(); }); }
+    var marca = function (t, q) {
+      var k = CI.norm(q); if (!k) return esc(t);
+      var n = CI.norm(t), i = n.indexOf(k);
+      if (i < 0 || CI.norm(t.slice(0, i + k.length)) !== n.slice(0, i + k.length)) return esc(t);
+      return esc(t.slice(0, i)) + '<mark>' + esc(t.slice(i, i + k.length)) + '</mark>' + esc(t.slice(i + k.length));
     };
+    var op = function (x, q) {
+      // Segunda línea: estado, habitantes y al final el alias (lo que más se recorta en el teléfono va al último).
+      var on = CI.igual(actual, x), sub = [];
+      if (on) sub.push('la de ahora ✓');
+      if (x.en) sub.push(x.en);
+      if (x.pais === 'MX' && x.pob) sub.push(miles(x.pob) + ' hab.');
+      if (x.cdp) sub.push('lugar censal');
+      if (x.alias) sub.push(x.alias);
+      return '<button type="button" class="cd-op' + (on ? ' on' : '') + '" data-ciudad="' + esc(x.c) + '" data-estado="' + esc(x.e) + '" data-pais="' + esc(x.pais) + '">' +
+        '<span class="cd-n"><span class="cd-n1">' + marca(x.c, q) + ', ' + esc(x.e) + '</span>' + (sub.length ? '<span class="cd-n2">' + esc(sub.join(' · ')) + '</span>' : '') + '</span>' +
+'<span class="cd-pa">' + esc(x.pais) + '</span></button>';
+    };
+    var grupo = function (t) { return '<div class="cd-g">' + t + '</div>'; };
+    var lista = function (q) {
+      var h = '', vistos = {}, k = CI.norm(q), r0 = reg();
+      var una = function (x) { var id = x.c + '|' + x.e + '|' + x.pais; if (vistos[id]) return ''; vistos[id] = 1; return op(x, q); };
+      if (!k) {
+        if (actual && actual.c) {
+          var enCat = CI.delCatalogo(actual);
+          h += grupo('La de ahora') + una(enCat || { c: actual.c, e: actual.e || '', pais: actual.pais || pais });
+        }
+        if (r0) {
+          var de = r0.fuente === 'ubicacion' ? 'tu ubicación' : 'la zona horaria del teléfono';
+          var L = CI.delEstado(r0, 12);
+          if (L.length) { h += grupo('Cerca de ti · ' + esc(r0.nombre) + ' (por ' + de + ')'); L.forEach(function (x) { h += una(x); }); }
+        } else if (ST.geo && ST.geo.estado === 'buscando') h += grupo('Buscando dónde estás…');
+        h += grupo('Donde ya trabaja FTS');
+        CI.deFts().forEach(function (x) { h += una(x); });
+        var n = CI.conteo(); if (n) h += '<div class="cd-mas">Busca entre ' + miles(n.mx) + ' municipios de México (INEGI) y ' + miles(n.us) + ' ciudades de Estados Unidos (Census).</div>';
+      } else if (CI.listo()) {
+        var r = CI.buscarCat(q, { region: r0, pais: pais });
+        h += grupo(r.st ? esc(r.st.nombre) + ' (' + esc(r.st.e) + ') · sus ciudades, de más a menos pobladas' : r.total ? miles(r.total) + ' resultado' + (r.total === 1 ? '' : 's') : 'Sin resultados');
+        r.L.forEach(function (x) { h += una(x); });
+        if (r.total > r.L.length) h += '<div class="cd-mas">… y ' + miles(r.total - r.L.length) + ' más. Escribe más para afinar.</div>';
+      } else {
+        var f = CI.norm(q), Lf = CI.deFts().filter(function (x) { return CI.norm(x.c + ' ' + x.e + ' ' + (x.en || '')).indexOf(f) >= 0; });
+        h += grupo('Donde ya trabaja FTS'); Lf.forEach(function (x) { h += una(x); });
+      }
+      if (!CI.listo()) h += '<div class="cd-mas" id="cdCarga">' + (cargando ? 'Cargando el catálogo completo (México y Estados Unidos)…' : 'Sin señal y sin el catálogo en el teléfono: elige de la lista o escribe la ciudad en «Otra».') + '</div>';
+      return h + '<button type="button" class="cd-op otra" data-ciudad="otra"><span class="cd-n"><span class="cd-n1">Otra…</span><span class="cd-n2">Escríbela tú: ciudad y estado (sin coordenadas)</span></span></button>';
+    };
+    var cargando = true;
     var v = velo('<div class="dlg cd-dlg" role="dialog" aria-label="Ciudad del proyecto"><h3>' + esc(titulo || 'Ciudad del proyecto') + '</h3>' +
       '<p>De aquí sale la procura: tienda o sucursal con existencia en esta ciudad, distribuidores de la zona, flete si el material está en otra, y viáticos.</p>' +
-      '<label class="cd-busca">' + ico('buscar', 's') + '<input id="cdQ" placeholder="Busca la ciudad" autocomplete="off" aria-label="Buscar ciudad"></label>' +
-      '<div class="cd-lista" id="cdL">' + lista('') + '</div>' +
+      '<label class="cd-busca">' + ico('buscar', 's') + '<input id="cdQ" placeholder="Busca ciudad o estado" autocomplete="off" aria-label="Buscar ciudad o estado"></label>' +
+      '<div class="cd-lista" id="cdL"></div>' +
       '<div class="cd-otra" id="cdO" hidden><input id="cdT" maxlength="90" placeholder="Ciudad, estado (ej. Reynosa, Tamps.)" aria-label="Ciudad y estado">' +
         '<div class="cd-pais"><button type="button" data-cp="MX" class="on">México</button><button type="button" data-cp="US">USA</button></div><span class="err-bt" id="cdE"></span></div>' +
       '<div class="acciones"><button id="cdNo">Cancelar</button><button id="cdSi" hidden>Usar esta</button></div></div>', true);
-    var pais = EMPRESAS[ST.empresa] && EMPRESAS[ST.empresa].pais === 'usa' ? 'US' : 'MX';
-    var marcaPais = function () { $$('[data-cp]', v).forEach(function (b) { b.classList.toggle('on', b.dataset.cp === pais); }); };
-    marcaPais();
-    var enlaza = function () {
-      $$('[data-ciudad]', v).forEach(function (b) { b.onclick = function () {
-        if (b.dataset.ciudad === 'otra') { $('#cdO', v).hidden = false; $('#cdSi', v).hidden = false; $('#cdT', v).focus(); return; }
-        cerrarVelo(); alElegir(CI.buscar(b.dataset.ciudad));
-      }; });
+    var pinta = function () { var L = $('#cdL', v); if (!L) return; var y = L.scrollTop; L.innerHTML = lista($('#cdQ', v).value); L.scrollTop = y; };
+    var paisO = pais;
+    var marcaPais = function () { $$('[data-cp]', v).forEach(function (b) { b.classList.toggle('on', b.dataset.cp === paisO); }); };
+    marcaPais(); pinta();
+    CI.catalogo().then(function () { cargando = false; if ($('#cdL') === $('#cdL', v)) pinta(); });
+    $('#cdL', v).onclick = function (ev) {
+      var b = ev.target.closest('[data-ciudad]'); if (!b) return;
+      if (b.dataset.ciudad === 'otra') { $('#cdO', v).hidden = false; $('#cdSi', v).hidden = false; $('#cdT', v).focus(); return; }
+      var x = { c: b.dataset.ciudad, e: b.dataset.estado, pais: b.dataset.pais, alias: '' };
+      if (x.c.length > 60) { var cat = CI.buscarCat(x.c, {}, 5).L.filter(function (y) { return y.c === x.c && y.e === x.e; })[0]; if (cat) x.alias = cat.alias; }
+      cerrarVelo(); alElegir(CI.eleccion(x));
     };
-    enlaza();
-    $('#cdQ', v).oninput = function () { $('#cdL', v).innerHTML = lista(this.value); enlaza(); };
-    $$('[data-cp]', v).forEach(function (b) { b.onclick = function () { pais = b.dataset.cp; marcaPais(); }; });
+    $('#cdQ', v).oninput = pinta;
+    $$('[data-cp]', v).forEach(function (b) { b.onclick = function () { paisO = b.dataset.cp; marcaPais(); }; });
     var usar = function () {
-      var x = CI.deTexto($('#cdT', v).value, pais);
+      var x = CI.deTexto($('#cdT', v).value, paisO);
       if (x.error) { $('#cdE', v).textContent = x.error; return; }
       cerrarVelo(); alElegir(x);
     };
@@ -508,7 +559,7 @@
       if (!r.ok) { pintarFranja(); pintarFijo(); return aviso(r); }
       ST.irAbajo = true; await refrescarSesiones();
       toast('Proyecto en ' + CI.nombre(x) + '.');
-    });
+    }, null, claveEmpresa(c) === 'usa_usd' ? 'US' : 'MX');
   }
   /** «¿Qué me falta?»: un trabajo a demanda; la respuesta llega al chat como cualquier otra. */
   async function queFalta(b) {
