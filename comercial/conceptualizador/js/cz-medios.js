@@ -4,7 +4,7 @@
  *   · fotos: se reducen a 1600 px del lado largo y JPEG 0.82 (una foto de
  *     12 MP pasa de ~4 MB a ~300 KB). Si el navegador no puede leerla (HEIC
  *     fuera de Safari, p. ej.) se sube tal cual si cabe en 10 MB.
- *   · notas de voz: MediaRecorder, opus/webm o mp4 según el navegador.
+ *   · notas de voz: las graba cz-grabadora.js (una sola pieza para el chat y «✎ Corregir»).
  *   · PDFs y lo demás: tal cual, hasta 10 MB por archivo (tope de la base).
  * Cada archivo se sube en su propia petición con su sha256; la base vuelve a
  * calcularlo y rechaza el que no cuadre.
@@ -65,42 +65,7 @@
     });
   }
 
-  // ── Grabadora ──────────────────────────────────────────────────────────
-  var TIPOS = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
-  function tipoGrabacion() {
-    if (!G.MediaRecorder) return null;
-    for (var i = 0; i < TIPOS.length; i++) { try { if (MediaRecorder.isTypeSupported(TIPOS[i])) return TIPOS[i]; } catch (e) {} }
-    return '';
-  }
-  /** grabar() → { detener(): Promise<{blob,mime,duracion_s,nombre}>, cancelar(), inicio } */
-  async function grabar() {
-    var tipo = tipoGrabacion();
-    if (tipo === null) throw new Error('Este navegador no puede grabar audio.');
-    var flujo = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-    var rec = new MediaRecorder(flujo, tipo ? { mimeType: tipo, audioBitsPerSecond: 32000 } : undefined);
-    var partes = [], inicio = Date.now(), cancelado = false;
-    rec.ondataavailable = function (e) { if (e.data && e.data.size) partes.push(e.data); };
-    rec.start(1000);
-    function soltar() { flujo.getTracks().forEach(function (t) { t.stop(); }); }
-    return {
-      inicio: inicio,
-      detener: function () {
-        return new Promise(function (ok) {
-          rec.onstop = function () {
-            soltar();
-            var mime = (rec.mimeType || tipo || 'audio/webm').split(';')[0];
-            var ext = /mp4/.test(mime) ? 'm4a' : /ogg/.test(mime) ? 'ogg' : 'webm';
-            var blob = new Blob(partes, { type: mime });
-            ok(cancelado ? null : { blob: blob, mime: mime, clase: 'audio', bytes: blob.size,
-              duracion_s: Math.round((Date.now() - inicio) / 1000), nombre: 'nota-de-voz-' + new Date(inicio).toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.' + ext });
-          };
-          try { rec.stop(); } catch (e) { soltar(); ok(null); }
-        });
-      },
-      cancelar: function () { cancelado = true; try { rec.stop(); } catch (e) {} soltar(); }
-    };
-  }
-
-  G.CzMedios = { preparar: preparar, sha256: sha256, base64: base64, grabar: grabar, puedeGrabar: function () {
-    return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && tipoGrabacion() !== null); }, TOPE: TOPE, clase: clase };
+  /* V1.42 · aquí vivía una SEGUNDA grabadora (grabar(), MediaRecorder sin reloj ni onda) que nadie llamaba desde
+   * V1.32. Se quitó para que quede UNA sola pieza: cz-grabadora.js, la misma en la caja principal y en «✎ Corregir». */
+  G.CzMedios = { preparar: preparar, sha256: sha256, base64: base64, TOPE: TOPE, clase: clase };
 })(window);

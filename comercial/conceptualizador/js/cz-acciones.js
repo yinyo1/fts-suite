@@ -8,8 +8,11 @@
  *
  *   crear_machote  → comercial/machote-guardar (a nombre de quien da el clic)
  *                    y comercial/oportunidades modo 'ligar' (folio en el CRM)
- *   crear_borrador → comercial/orden-crear-v2, detrás del MISMO interruptor
- *                    que el machote (issue #387): apagado, no sale nada.
+ *   crear_borrador → conceptualizador/orden-odoo (V1.42): crea la cotización
+ *                    en Odoo como BORRADOR, o actualiza la MISMA orden si ya
+ *                    existe. Nunca confirma. Solo para quien el servidor tenga
+ *                    habilitado (hoy solo Dirección); los demás ven la leyenda.
+ *   enviada        → la misma ruta, modo `enviada`: state=sent sin correo.
  *   alta_contacto  → conceptualizador/odoo-alta (busca antes de crear)
  *
  * El PDF al cliente y la orden usan MachoteDocumento de la suite: una línea
@@ -18,9 +21,10 @@
 (function (G) {
   'use strict';
   var C = G.CzCliente;
-  /* Igual que `EMITIR_ENCENDIDO` de comercial/machote/js/almacen.js: los dos se
-   * encienden juntos, cuando el ciclo de #387 se haya recorrido desde pantalla. */
-  var EMITIR_ENCENDIDO = false;
+  /* V1.42 · ya no hay interruptor en la pantalla: quién puede crear la cotización en Odoo lo decide el
+   * SERVIDOR (EMISION_HABILITADA en conceptualizador/orden-odoo, hoy solo Dirección). `EMITIR_ENCENDIDO` y
+   * `CONFIRMAR_ENCENDIDO` de comercial/machote/js/almacen.js NO se tocan: son el machote, no esto. */
+  var RUTA_ORDEN = '/webhook/conceptualizador/orden-odoo';
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var dinero = function (n, m) { return '$' + Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (m ? ' ' + m : ''); };
@@ -142,6 +146,36 @@
         (tp ? ' ' + tp : ' Ya no falta nada para cotizar en Odoo.') } };
   }
 
+  // ── V1.42 · cotización en Odoo: permiso, borrador, la misma orden, enviada ──
+  var _permiso = null;
+  /** ¿Puede este usuario crear la cotización en Odoo? Lo contesta el servidor (modo `permiso`). */
+  function permiso() {
+    if (_permiso) return _permiso;
+    _permiso = C.suite(RUTA_ORDEN, { modo: 'permiso' }, 20000).then(function (r) {
+      if (!r.ok) { _permiso = null; return { habilitado: false, mensaje: r.mensaje || '', error: r.error || 'SIN_RESPUESTA' }; }
+      return { habilitado: r.habilitado === true, mensaje: r.mensaje || '' };
+    });
+    return _permiso;
+  }
+  /** La orden que ya se creó para este caso (la última «crear borrador» hecha). */
+  function ordenDe(H) {
+    var b = ((H && H.acciones) || []).filter(function (x) { return x.tipo === 'crear_borrador' && x.estado === 'hecha' && x.resultado && x.resultado.orden_id; }).pop();
+    return b ? b.resultado : null;
+  }
+  /** Lo releído de Odoo, en corto: se guarda en la acción y se pinta desde ahí, no desde el 200. */
+  function releido(r) {
+    var base = (r.renglones || []).filter(function (x) { return x.tipo === 'linea'; });
+    return { orden_id: r.odoo_so_id, orden_nombre: r.odoo_so_name || null, estado: r.estado || null, partner: r.partner || null,
+      lista_precios: r.lista_precios || null, moneda: r.moneda || null, subtotal: r.subtotal, total: r.total, vence_el: r.vence_el || null,
+      renglones: base.map(function (x) { return { texto: x.texto, precio: x.precio }; }),
+      opcionales: (r.renglones || []).filter(function (x) { return x.tipo === 'line_note' && /no incluido en el total/.test(x.texto || ''); }).map(function (x) { return x.texto; }),
+      avisos: r.avisos || [] };
+  }
+  function textoOrden(o, que) {
+    return que + ' ' + (o.orden_nombre || o.orden_id) + ' · ' + (o.partner || '') + ' · subtotal ' + dinero(o.subtotal, o.moneda) +
+      ' · total con IVA ' + dinero(o.total, o.moneda) + (o.avisos.length ? '. Revisa: ' + o.avisos.join(' ') : '.');
+  }
+
   // ── crear borrador en Odoo ──────────────────────────────────────────────
   async function crearBorrador(a, ctx) {
     var caso = ctx.caso, H = ctx.hilo;
@@ -150,15 +184,31 @@
     // V1.36 · la cotización en Odoo espera a que no quede ninguna regla dura (precio, diagnóstico, tarifa).
     var pend = pendientes(H);
     if (pend.n) return { ok: false, mensaje: textoPendientes(pend) + ' Nunca se estima un precio: cuando lleguen, se actualiza el machote y aquí se enciende.' };
-    if (!EMITIR_ENCENDIDO) {
-      return { ok: false, mensaje: 'Crear la orden en Odoo está apagado a propósito, igual que en el machote (issue #387). ' +
-        'El borrador está listo: cuando se encienda, este botón lo crea. Mientras, ábrelo desde el machote.' };
-    }
-    var b = await bloques(a.datos || {}, caso);
-    var r = await C.suite('/webhook/comercial/orden-crear-v2', { machote_id: caso.machote_id, version_leida: (cm.resultado || {}).version || 1,
-      bloques: G.MachoteDocumento.paraOdoo(b), compromisos: {}, lead_id: caso.oportunidad_id || null }, 60000);
+    var cot = (a.datos || {}).cotizacion;
+    if (!cot || !(cot.bloques || []).length) return { ok: false, mensaje: 'El motor no mandó la cotización armada (renglones, suma y anticipo). Pídele el botón otra vez.' };
+    var p = await permiso();
+    if (!p.habilitado) return { ok: false, mensaje: p.mensaje || 'Crear la cotización en Odoo todavía no está habilitado para tu usuario.' };
+    var prev = ordenDe(H), modo = prev ? 'actualizar' : 'crear';
+    var r = await C.suite(RUTA_ORDEN, { modo: modo, machote_id: caso.machote_id, version_leida: (cm.resultado || {}).version || 1,
+      caso_id: caso.id, cotizacion: cot }, 120000);
     if (!r.ok || !r.odoo_so_id) return { ok: false, mensaje: r.mensaje || ('No se creó el borrador: ' + (r.error || 'sin orden')) };
-    return { ok: true, resultado: { orden_id: r.odoo_so_id, orden_nombre: r.odoo_so_name || null, texto: 'Borrador ' + (r.odoo_so_name || r.odoo_so_id) + ' creado en Odoo.' } };
+    var o = releido(r);
+    o.texto = textoOrden(o, modo === 'crear' ? 'Borrador' : 'Actualizado');
+    return { ok: true, resultado: o };
+  }
+
+  // ── «Ya la mandé»: state=sent, sin correo desde Odoo ─────────────────────
+  async function enviada(a, ctx) {
+    var o = ordenDe(ctx.hilo);
+    if (!o) return { ok: true, resultado: { texto: 'Marcada como enviada al cliente (no hay cotización en Odoo de este caso).' } };
+    var p = await permiso();
+    if (!p.habilitado) return { ok: true, resultado: { texto: 'Marcada como enviada aquí. En Odoo la marca quien tiene la emisión habilitada: ' + (o.orden_nombre || o.orden_id) + '.' } };
+    var r = await C.suite(RUTA_ORDEN, { modo: 'enviada', machote_id: ctx.caso.machote_id, caso_id: ctx.caso.id }, 60000);
+    if (!r.ok) return { ok: false, mensaje: r.mensaje || ('No se marcó como enviada en Odoo: ' + (r.error || 'error')) };
+    if (r.estado !== 'sent') return { ok: false, mensaje: 'Odoo dice que ' + (r.odoo_so_name || '') + ' quedó en «' + r.estado + '», no en «Cotización enviada». No se marcó.' };
+    var x = releido(r);
+    x.texto = (r.odoo_so_name || '') + ' quedó como «Cotización enviada» en Odoo, sin mandar correo desde Odoo. El correo lo mandas tú.';
+    return { ok: true, resultado: x };
   }
 
   // ── alta de contacto o empresa ──────────────────────────────────────────
@@ -216,7 +266,7 @@
       '</div>';
   }
 
-  G.CzAcciones = { crear_machote: crearMachote, crear_borrador: crearBorrador, alta_contacto: altaContacto,
-    pendientes: pendientes, textoPendientes: textoPendientes,
-    _pdfCliente: pdfCliente, _bloques: bloques, EMITIR_ENCENDIDO: EMITIR_ENCENDIDO };
+  G.CzAcciones = { crear_machote: crearMachote, crear_borrador: crearBorrador, alta_contacto: altaContacto, enviada: enviada,
+    pendientes: pendientes, textoPendientes: textoPendientes, permiso: permiso, ordenDe: ordenDe,
+    _pdfCliente: pdfCliente, _bloques: bloques };
 })(window);

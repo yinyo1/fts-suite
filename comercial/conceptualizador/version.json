@@ -1,6 +1,10 @@
 {
-  "version": "V1.40",
+  "version": "V1.42",
   "historial": [
+    {
+      "version": "V1.42",
+      "nota": "Cotización en Odoo hasta «enviada» y correcciones de campo (#4). «Crear borrador en Odoo» crea la cotización como borrador desde el machote, con la suma de los renglones a la vista, los opcionales fuera del total y el anticipo en la nota; si el machote cambia, actualiza la MISMA orden. «Ya la mandé» la marca como «Cotización enviada» en Odoo sin mandar ningún correo: el correo y el PDF los mandas tú. Nunca se confirma una orden. Por ahora solo Dirección la crea; los demás ven el botón con la leyenda. Se niega mientras falte un precio de proveedor. «↺ Cambiar» en toda pregunta o concepto ya decidido: lo reabre con «✓ Va / ✎ Corregir»; gana tu última decisión, venga del botón, del texto o de la voz, y la pregunta cambiada se ve reemplazada con el valor vigente y lo de antes tachado. Solo el autor del caso y Dirección pueden cambiar. La grabadora de «✎ Corregir» es la misma del chat: ahora corren el reloj y la onda mientras grabas, y ▶ Escuchar funciona antes de enviar, también en la hoja del rubro."
+    },
     {
       "version": "V1.40",
       "nota": "Franja de avance en una sola línea (prototipo aprobado, #4 punto 10): arriba del chat ya no van las 7 barritas; va una línea delgada «44 % · Siguiente: Cerrar Mecánica» (antes de que haya rubros, el paso y el siguiente, sin %). Se abre al tocarla o al jalar hacia abajo, encima del chat y sin moverlo, con los 7 pasos y los rubros con su %; se esconde sola al mover el chat, al mandar un mensaje o a los 6 segundos. En computadora (900 px o más) va como panel a la derecha, siempre abierto, y el chat conserva todo su alto; entre 900 y 1279 px, con un caso abierto, la lista se esconde como en el teléfono (con ←) para que el chat no quede angosto. Pantalla de rubros: el resumen por rubro aparece bajo la última respuesta del motor; al tocar un rubro se abren sus preguntas (✓ Va / ✎ Corregir), sus conceptos (la palomeada de siempre) y, con BOM, sus renglones, con «Confirmar», «En espera de datos» (con su porqué) y «Reabrir». El % y el estado de cada rubro los manda el motor; la pantalla no los calcula. Sigue igual: la oferta, la ciudad, el botón único del siguiente paso y los gestos."
