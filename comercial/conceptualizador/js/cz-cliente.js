@@ -143,6 +143,12 @@
     ciudad: function (casoId, proyecto) { return pedir('ciudad', { caso_id: casoId, datos: { proyecto: proyecto } }); },
     confirmarCiudad: function (casoId) { return pedir('ciudad', { caso_id: casoId, datos: { confirmar: true } }); },
     queFalta: function (casoId) { return pedir('que_falta', { caso_id: casoId }); },
+    // V1.41 (0010): avisos push y permisos (cz-push.js). Todo en `datos` (firmado). Con un servidor viejo
+    // regresan MODO_DESCONOCIDO y cz-push.js reintenta solo, sin avisar.
+    push: function (modo, campos) {
+      if (['push_estado', 'push_alta', 'push_baja', 'permisos', 'recordar', 'push_ajustes', 'equipo_avisos'].indexOf(modo) < 0) return Promise.resolve({ ok: false, error: 'MODO_DESCONOCIDO' });
+      return pedir(modo, campos);
+    },
     _canonica: canonica
   };
 })(window);
