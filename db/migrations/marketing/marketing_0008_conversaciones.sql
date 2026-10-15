@@ -504,9 +504,19 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = marketing, chat, public AS $
 DECLARE modo text := req->>'modo'; actor text := req->>'actor'; scopes jsonb := coalesce(req->'scopes','[]'::jsonb);
   d jsonb := coalesce(req->'datos','{}'::jsonb); c marketing.conversacion; n int; v_tid bigint; x record; r jsonb;
 BEGIN
-  IF req ? 'conversacion_id' THEN
-    BEGIN SELECT * INTO c FROM marketing.conversacion WHERE id = (req->>'conversacion_id')::uuid; EXCEPTION WHEN others THEN RETURN chat.err('CONVERSACION_INVALIDA'); END;
+  -- conversacion_id viaja dentro de `datos` (firmado); chat/suite lo copia al pedido. Se aceptan los dos lugares.
+  IF coalesce(req->>'conversacion_id', d->>'conversacion_id') IS NOT NULL THEN
+    BEGIN SELECT * INTO c FROM marketing.conversacion WHERE id = coalesce(req->>'conversacion_id', d->>'conversacion_id')::uuid; EXCEPTION WHEN others THEN RETURN chat.err('CONVERSACION_INVALIDA'); END;
     IF c.id IS NULL THEN RETURN chat.err('CONVERSACION_NO_EXISTE'); END IF;
+  END IF;
+  -- «Volver a la conversación» desde una ficha, una tarjeta o una sesión de antes (historia).
+  IF c.id IS NULL AND modo = 'conv' AND req ? 'ficha_id' THEN
+    BEGIN SELECT cv.* INTO c FROM marketing.conversacion cv JOIN marketing.ficha f ON f.conversacion_id = cv.id WHERE f.id = (req->>'ficha_id')::uuid;
+    EXCEPTION WHEN others THEN RETURN chat.err('FICHA_INVALIDA'); END;
+  END IF;
+  IF c.id IS NULL AND modo = 'conv' AND req ? 'sesion_id' THEN
+    SELECT cv.* INTO c FROM marketing.conversacion cv WHERE cv.sesion_id = (req->>'sesion_id')::uuid;
+    IF c.id IS NULL THEN SELECT cv.* INTO c FROM marketing.conversacion cv JOIN marketing.conv_sesion h ON h.conversacion_id = cv.id WHERE h.sesion_id = (req->>'sesion_id')::uuid; END IF;
   END IF;
 
   IF modo = 'conversaciones' THEN
@@ -524,10 +534,11 @@ BEGIN
     IF c.id IS NULL THEN RETURN chat.err('SIN_CONVERSACION'); END IF;
     c := marketing.conv_revisar(c.id);
     RETURN jsonb_build_object('ok', true, 'conversacion', marketing.conv_vista(c, actor), 'hoy', to_char(chat.hoy(), 'YYYY-MM-DD'),
-      'fichas', coalesce((SELECT jsonb_agg(marketing.ficha_corta(f) || jsonb_build_object('acceso', f.datos->'acceso', 'conmutador', f.datos->'conmutador') ORDER BY f.created_at) FROM marketing.ficha f WHERE f.conversacion_id = c.id), '[]'::jsonb),
+      'fichas', coalesce((SELECT jsonb_agg(marketing.ficha_corta(f) || jsonb_build_object('acceso', f.datos->'acceso', 'conmutador', f.datos->'conmutador', 'por_que', f.datos->'por_que') ORDER BY f.created_at) FROM marketing.ficha f WHERE f.conversacion_id = c.id), '[]'::jsonb),
       'senales', coalesce((SELECT jsonb_agg(marketing.senal_vista(b) ORDER BY b.created_at) FROM marketing.bandeja_senal b WHERE b.conversacion_id = c.id), '[]'::jsonb),
       'eventos', coalesce((SELECT jsonb_agg(jsonb_build_object('tipo', e.tipo, 'actor', e.actor, 'datos', e.datos, 'at', e.created_at) ORDER BY e.id) FROM marketing.conv_evento e WHERE e.conversacion_id = c.id), '[]'::jsonb),
-      'toques', coalesce((SELECT jsonb_agg(jsonb_build_object('id', q.id, 'actor', q.actor, 'canal', q.canal, 'resultado', q.resultado, 'revisado', q.revisado, 'propuesta', q.propuesta, 'motor', q.motor, 'at', q.created_at) ORDER BY q.id) FROM marketing.conv_toque q WHERE q.conversacion_id = c.id), '[]'::jsonb),
+      'tarjeta_id', (SELECT t.id FROM marketing.seg_tarjeta t WHERE t.conversacion_id = c.id AND t.odoo_lead_id IS NOT NULL ORDER BY t.updated_at DESC LIMIT 1),
+      'toques', coalesce((SELECT jsonb_agg(jsonb_build_object('id', q.id, 'cliente_id', q.cliente_id, 'actor', q.actor, 'canal', q.canal, 'resultado', q.resultado, 'revisado', q.revisado, 'propuesta', q.propuesta, 'motor', q.motor, 'at', q.created_at) ORDER BY q.id) FROM marketing.conv_toque q WHERE q.conversacion_id = c.id), '[]'::jsonb),
       'historial', coalesce((SELECT jsonb_agg(jsonb_build_object('sesion_id', h.sesion_id, 'rol', h.rol, 'titulo', s.titulo, 'tipo', s.tipo, 'at', s.created_at) ORDER BY s.created_at) FROM marketing.conv_sesion h JOIN chat.sesion s ON s.id = h.sesion_id WHERE h.conversacion_id = c.id), '[]'::jsonb),
       'odoo', coalesce((SELECT jsonb_agg(jsonb_build_object('accion', o.accion, 'estado', o.estado, 'lead_id', o.lead_id, 'at', o.created_at) ORDER BY o.id) FROM marketing.conv_odoo o WHERE o.conversacion_id = c.id), '[]'::jsonb));
 
@@ -550,7 +561,7 @@ BEGIN
   ELSIF modo IN ('conv_fijar','conv_desfijar','conv_leido') THEN
     IF c.id IS NULL THEN RETURN chat.err('SIN_CONVERSACION'); END IF;
     INSERT INTO marketing.conv_marca (conversacion_id, actor, fijada, leido_hasta)
-    VALUES (c.id, actor, modo = 'conv_fijar', CASE WHEN modo = 'conv_leido' THEN coalesce((req->>'hasta')::bigint, 0) ELSE 0 END)
+    VALUES (c.id, actor, modo = 'conv_fijar', CASE WHEN modo = 'conv_leido' THEN coalesce((coalesce(req->>'hasta', d->>'hasta'))::bigint, 0) ELSE 0 END)
     ON CONFLICT ON CONSTRAINT conv_marca_pkey DO UPDATE SET
       fijada = CASE WHEN modo = 'conv_leido' THEN marketing.conv_marca.fijada ELSE EXCLUDED.fijada END,
       leido_hasta = greatest(marketing.conv_marca.leido_hasta, EXCLUDED.leido_hasta);
@@ -575,7 +586,7 @@ BEGIN
     IF coalesce(btrim(req->>'texto'),'') !~ '^[a-z0-9._-]{3,60}' THEN RETURN chat.err('RESPONSABLE_INVALIDO', 'Escribe el usuario de la suite de quien la va a trabajar.'); END IF;
     IF btrim(req->>'texto') = c.dueno AND NOT coalesce((d->>'etapa')::int, c.etapa) <> c.etapa THEN RETURN chat.err('SIN_CAMBIOS'); END IF;
     INSERT INTO marketing.conv_evento (conversacion_id, tipo, actor, datos) VALUES (c.id, 'reasignacion', actor,
-      jsonb_build_object('de', c.dueno, 'a', btrim(req->>'texto'), 'motivo', left(req->>'razon', 300), 'etapa', c.etapa));
+      jsonb_build_object('de', c.dueno, 'a', btrim(req->>'texto'), 'motivo', left(coalesce(req->>'razon', d->>'razon'), 300), 'etapa', c.etapa));
     INSERT INTO chat.mensaje (sesion_id, rol, autor, texto, datos) VALUES (c.sesion_id, 'sistema', 'sistema',
       'Reasignada: ' || c.dueno || ' → ' || btrim(req->>'texto') || ' (la asignó ' || actor || '). La historia completa se queda.', jsonb_build_object('conv', 'reasignacion'));
     UPDATE marketing.conversacion SET dueno = btrim(req->>'texto') WHERE id = c.id RETURNING * INTO c;
@@ -588,6 +599,12 @@ BEGIN
     END IF;
     RETURN jsonb_build_object('ok', true, 'conversacion', marketing.conv_vista(c, actor), 'trabajo_id', v_tid);
 
+  ELSIF modo = 'conv_ligar' THEN
+    -- «Nuevo lead»: la sesión de captura (tipo lead, de quien la capturó) se liga a la conversación de su empresa.
+    IF NOT EXISTS (SELECT 1 FROM chat.sesion WHERE id = (req->>'sesion_id')::uuid AND autor = actor AND tipo = 'lead') THEN RETURN chat.err('NO_ES_TUYA'); END IF;
+    RETURN marketing.api_motor_conv(req || jsonb_build_object('empresa', coalesce(req->>'empresa', d->>'empresa'), 'ciudad', coalesce(req->>'ciudad', d->>'ciudad', ''),
+                                                              'resumen', coalesce(req->>'resumen', d->>'resumen', '')));
+
   ELSIF modo = 'conv_sugerir' THEN
     -- La persona pide sugerencia: un trabajo para la conversación (se junta con la ráfaga pendiente).
     IF c.id IS NULL THEN RETURN chat.err('SIN_CONVERSACION'); END IF;
@@ -598,6 +615,7 @@ BEGIN
   ELSIF modo = 'conv_propuesta_base' THEN
     -- La pantalla guarda la propuesta mecánica que ya pintó (toque-base.js) en el toque de su mensaje.
     IF c.id IS NULL THEN RETURN chat.err('SIN_CONVERSACION'); END IF;
+    d := d - 'conversacion_id';
     UPDATE marketing.conv_toque SET propuesta = d,
       canal = CASE WHEN d->>'canal' IN ('conmutador','llamada','correo','whatsapp','visita','linkedin','portal','otro') THEN d->>'canal' END,
       resultado = CASE WHEN d->>'resultado' IN ('sin_respuesta','transferido','contesto','cita','envio_info','rechazo','alta_proveedor','otro') THEN d->>'resultado' END,
@@ -667,8 +685,28 @@ $ac$;
 -- ── API del motor ───────────────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION marketing.api_motor_conv(req jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = marketing, chat, public AS $mc$
-DECLARE modo text := req->>'modo'; c marketing.conversacion; p jsonb := coalesce(req->'propuesta','{}'::jsonb); ev jsonb := req->'evidencia'; n int;
+DECLARE modo text := req->>'modo'; c marketing.conversacion; p jsonb := coalesce(req->'propuesta','{}'::jsonb); ev jsonb := req->'evidencia'; n int; s chat.sesion;
 BEGIN
+  IF modo = 'conv_ligar' THEN
+    -- Un «Nuevo lead» capturado sin señal (sesión tipo lead) o una sesión vieja del Prospectador: se liga a la
+    -- conversación de su empresa; si no hay, se abre (origen Nuevo lead). No cuenta para el tope: la sesión ya contó.
+    SELECT * INTO s FROM chat.sesion WHERE id = (req->>'sesion_id')::uuid AND producto = 'marketing';
+    IF s.id IS NULL THEN RETURN chat.err('SESION_NO_EXISTE'); END IF;
+    IF coalesce(btrim(req->>'empresa'),'') = '' THEN RETURN chat.err('SIN_EMPRESA'); END IF;
+    c := marketing.conv_buscar(req->>'empresa', req->>'ciudad', nullif(req->>'lead_id','')::int, s.demo);
+    IF c.id IS NULL THEN
+      c := marketing.conv_crear(req->>'empresa', req->>'ciudad', s.autor, s.autor_nombre,
+             CASE WHEN req->>'origen' IN ('radar','manual','investigacion','nuevo_lead') THEN req->>'origen' ELSE 'nuevo_lead' END, 1::smallint, false, s.demo, 'motor');
+    END IF;
+    IF c.sesion_id <> s.id THEN
+      INSERT INTO marketing.conv_sesion (sesion_id, conversacion_id, rol) VALUES (s.id, c.id, CASE WHEN s.tipo = 'lead' THEN 'lead' ELSE 'prospectador' END) ON CONFLICT (sesion_id) DO NOTHING;
+      INSERT INTO chat.mensaje (sesion_id, rol, autor, texto, datos) VALUES (c.sesion_id, 'sistema', 'sistema',
+        CASE WHEN s.tipo = 'lead' THEN 'Nuevo lead capturado por ' || s.autor ELSE 'Sesión del Prospectador ligada' END || coalesce(': ' || nullif(left(req->>'resumen', 300),''), '') || '.',
+        jsonb_build_object('conv', 'ligada', 'sesion_origen', s.id));
+    END IF;
+    UPDATE marketing.lead_rapido SET conversacion_id = c.id WHERE sesion_id = s.id AND conversacion_id IS NULL;
+    RETURN jsonb_build_object('ok', true, 'conversacion', marketing.conv_vista(c, NULL));
+  END IF;
   SELECT * INTO c FROM marketing.conversacion WHERE sesion_id = (req->>'sesion_id')::uuid;
   IF c.id IS NULL THEN RETURN chat.err('SIN_CONVERSACION'); END IF;
 
@@ -744,7 +782,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = marketing, chat, public AS $
 BEGIN
   -- despachador_0008: conversaciones primero; lo demás, como en 0004.
   IF req->>'modo' IN ('conversaciones','conv','conv_abrir','conv_fijar','conv_desfijar','conv_leido','conv_archivar','conv_desarchivar','conv_renombrar',
-                      'conv_reasignar','conv_sugerir','conv_propuesta_base','conv_cuarentena','conv_reactivar','conv_cerrar','conv_reabrir','tablero') THEN
+                      'conv_reasignar','conv_sugerir','conv_propuesta_base','conv_cuarentena','conv_reactivar','conv_cerrar','conv_reabrir','conv_ligar','tablero') THEN
     RETURN marketing.api_conv(req);
   END IF;
   RETURN marketing.api_suite_ext_0004(req);
@@ -755,7 +793,7 @@ CREATE OR REPLACE FUNCTION marketing.api_motor_ext(req jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = marketing, chat, public AS $me8$
 BEGIN
   -- despachador_0008
-  IF req->>'modo' IN ('conv_propuesta','conv_evidencia','conv_caso','conv_leer') THEN RETURN marketing.api_motor_conv(req); END IF;
+  IF req->>'modo' IN ('conv_propuesta','conv_evidencia','conv_caso','conv_leer','conv_ligar') THEN RETURN marketing.api_motor_conv(req); END IF;
   RETURN marketing.api_motor_ext_0004(req);
 END
 $me8$;
