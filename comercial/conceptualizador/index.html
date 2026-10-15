@@ -4,6 +4,11 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
 <meta name="theme-color" content="#ffffff" />
+<!-- V1.41 · en iPhone los avisos solo llegan con la app en inicio y abierta como app (no en Safari): para eso el manifiesto. -->
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Conceptualizador" />
+<link rel="apple-touch-icon" href="icono-180.png" />
 <title>FTS Suite · Conceptualizador</title>
 <script src="../../shared/auth-jwt.js"></script>
 <script>if (!window.SuiteAuth.requerir('conceptualizador:usar', '../../shared/login.html')) { throw new Error('sin sesion'); }</script>
@@ -627,18 +632,19 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <div class="rub-velo" id="rubHoja"></div>
 <div class="modal" id="modal"></div>
 <div class="panel" id="panel"></div>
-<script src="../../shared/chat/chat-firma.js?v=V1.40"></script>
-<script src="js/cz-cliente.js?v=V1.40"></script>
-<script src="js/cz-medios.js?v=V1.40"></script>
-<script src="js/cz-grabadora.js?v=V1.40"></script>
-<script src="js/cz-archivos.js?v=V1.40"></script>
-<script src="js/cz-ciudad.js?v=V1.40"></script>
-<script src="js/cz-cola.js?v=V1.40"></script>
-<script src="js/cz-acciones.js?v=V1.40"></script>
-<script src="js/cz-avance.js?v=V1.40"></script>
-<script src="../../shared/chat/chat-gestos.js?v=V1.40"></script>
-<script src="js/cz-app.js?v=V1.40"></script>
-<script src="js/cz-version.js?v=V1.40"></script>
-<script>window.CzApp.arrancar().then(function () { if (window.CzVersion) window.CzVersion.iniciar(); });</script>
+<script src="../../shared/chat/chat-firma.js?v=V1.41"></script>
+<script src="js/cz-cliente.js?v=V1.41"></script>
+<script src="js/cz-medios.js?v=V1.41"></script>
+<script src="js/cz-grabadora.js?v=V1.41"></script>
+<script src="js/cz-archivos.js?v=V1.41"></script>
+<script src="js/cz-ciudad.js?v=V1.41"></script>
+<script src="js/cz-cola.js?v=V1.41"></script>
+<script src="js/cz-acciones.js?v=V1.41"></script>
+<script src="js/cz-avance.js?v=V1.41"></script>
+<script src="../../shared/chat/chat-gestos.js?v=V1.41"></script>
+<script src="js/cz-push.js?v=V1.41"></script>
+<script src="js/cz-app.js?v=V1.41"></script>
+<script src="js/cz-version.js?v=V1.41"></script>
+<script>window.CzApp.arrancar().then(function () { if (window.CzVersion) window.CzVersion.iniciar(); if (window.CzPush) window.CzPush.iniciar(); });</script>
 </body>
 </html>

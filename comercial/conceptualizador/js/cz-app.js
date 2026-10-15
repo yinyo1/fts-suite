@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.40';
+  var VERSION = 'V1.41';
   /* V1.32 (0006) · empresa y moneda de la sesión: la base acepta estas tres claves. */
   var EMPRESAS = { mx_mxn: { n: 'FTS México · MXN', s: 'Empresa 1 · pesos', id: 1, m: 'MXN', pais: 'mx' },
                    mx_usd: { n: 'FTS México · USD', s: 'Empresa 1 · dólares', id: 1, m: 'USD', pais: 'mx' },
@@ -345,8 +345,9 @@
     $$('[data-a]', v).forEach(function (b) { b.onclick = function () { cerrarVelo(); hacerSesion(b.dataset.a, c); }; });
   }
   function menuLista(btn) {
-    var v = enMenu(btn, '<button data-a="aprendio">' + ico('libro', 's') + '<span>Lo que aprendió</span></button>');
-    $('[data-a]', v).onclick = function () { cerrarVelo(); verAprendio(); };
+    // V1.41 · Permisos, Recordatorios, No molestar y (admins) Avisos del equipo: los pone cz-push.js.
+    var v = enMenu(btn, '<button data-a="aprendio">' + ico('libro', 's') + '<span>Lo que aprendió</span></button>' + (G.CzPush ? G.CzPush.menuHtml('lista') : ''));
+    $$('[data-a]', v).forEach(function (b) { b.onclick = function () { cerrarVelo(); var a = b.dataset.a; if (a.indexOf('push:') === 0) return G.CzPush.accion(a.slice(5)); verAprendio(); }; });
   }
   function menuUsuario(btn) {
     var L = [{ actor: 'todos', n: 'Todos' }].concat(personas());
@@ -922,10 +923,12 @@
       (A.length ? '<hr>' : '') +
       ((ST.sel || {}).menu ? '' : '<button data-a="detalles">' + ico('info', 's') + '<span>Detalles y línea de tiempo</span></button>') +
       (abierta && c.id ? '<button data-a="cierre">' + ico('candado', 's') + '<span>Cerrar con /cierre</span></button>' : '') +
+      (G.CzPush ? G.CzPush.menuHtml('chat') : '') +   // V1.41 · «Permisos y avisos» (cz-push.js)
       '<button data-a="aprendio">' + ico('libro', 's') + '<span>Lo que aprendió</span></button>';
     var v = enMenu(btn, h);
     $$('[data-a]', v).forEach(function (b) { b.onclick = function () {
       cerrarVelo(); var a = b.dataset.a;
+      if (a.indexOf('push:') === 0) return G.CzPush.accion(a.slice(5));
       if (a === 'disparo') return confirmarDisparo(md);
       if (a === 'falta') return queFalta(null);
       if (a === 'ciudad') return cambiarCiudad();
@@ -2014,7 +2017,8 @@
     ST.sel = sel; guardarSel(); ST.hilo = null; ST.vistos = null; ST.bandeja = []; ST.irAbajo = true;
     $('#app').classList.remove('en-menu'); $('#app').classList.add('ver-chat'); pintarLista(); pintarChat(); pintarComposer();
     await cargarHilo(); sondear();
-    try { if (G.Notification && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {}
+    // V1.41 · ya NO se pide el permiso de notificaciones al abrir un chat: sin gesto, iPhone lo ignora y Chrome lo
+    // marca como molesto. Se pide solo desde la pantalla de permisos (cz-push.js), cuando la persona toca «Activar».
   }
 
   G.CzApp = { VERSION: VERSION, arrancar: async function () {
@@ -2047,5 +2051,9 @@
     if (ST.sel) abrir(ST.sel);
     sondear();
     revisarAlActualizar().catch(function () {});
-  }, _st: ST };
+  },
+  // V1.41 (cz-push.js) · al tocar un aviso: abrir ese caso, y «Cotiza ya» con la confirmación de siempre (nunca dispara solo).
+  abrirCaso: function (id) { return abrir({ id: id }); },
+  disparo: function () { var m = modoDisparo(); if (!m) return toast('Esta sesión ya arrancó: no hay nada que confirmar.'); confirmarDisparo(m); },
+  _st: ST };
 })(window);
