@@ -117,12 +117,22 @@
           "fecha": "2026-10-12T23:40:55.530Z",
           "hora_propuesta_cst": "17:10",
           "comentario": "Se me  olvido checar al salir"
+        },
+        {
+          "paso": 2,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-10-15T18:10:50.792Z",
+          "hora_propuesta_cst": "17:10",
+          "comentario": "Incidencia confirmada",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_rh",
+      "status": "aprobada_con_ajuste",
       "hora_final_aplicada_utc": "2026-10-12 23:10:00",
       "aplicado_en_odoo": true,
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "creada_por_modulo": "kiosk",
       "creada_por_build": "20261008-kiosk-zona-usa"
     },
