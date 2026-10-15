@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>FTS Suite · Marketing · Prospectador</title>
 <link rel="stylesheet" href="../../shared/fts-styles.css" />
-<link rel="stylesheet" href="../../shared/chat/chat.css?v=20261014-mkt-prospectador-mvp" />
+<link rel="stylesheet" href="../../shared/chat/chat.css?v=20261015-mkt-prospectador-lanzamiento" />
 <!-- Gate ANTES de pintar (patrón de la suite). La app no arranca si el gate negó. -->
 <script src="../../shared/auth-jwt.js"></script>
 <script>if (!window.SuiteAuth.requerir('marketing:usar', '../../shared/login.html')) { throw new Error('sin sesion'); }</script>
@@ -22,18 +22,18 @@
   <main id="vista"></main>
   <p class="ver" id="ver"></p>
 </div>
-<script src="../../shared/chat/chat-firma.js?v=20261014-mkt-prospectador-mvp"></script>
-<script src="../../shared/chat/chat-cliente.js?v=20261014-mkt-prospectador-mvp"></script>
-<script src="../../shared/chat/chat-medios.js?v=20261014-mkt-prospectador-mvp"></script>
-<script src="../../shared/chat/chat-cola.js?v=20261014-mkt-prospectador-mvp"></script>
-<script src="../../shared/chat/chat-shell.js?v=20261014-mkt-prospectador-mvp"></script>
-<script src="../../shared/chat/chat-archivos.js?v=20261014-mkt-prospectador-mvp"></script>
-<script src="../../shared/chat/chat-grabadora.js?v=20261014-mkt-prospectador-mvp"></script>
+<script src="../../shared/chat/chat-firma.js?v=20261015-mkt-prospectador-lanzamiento"></script>
+<script src="../../shared/chat/chat-cliente.js?v=20261015-mkt-prospectador-lanzamiento"></script>
+<script src="../../shared/chat/chat-medios.js?v=20261015-mkt-prospectador-lanzamiento"></script>
+<script src="../../shared/chat/chat-cola.js?v=20261015-mkt-prospectador-lanzamiento"></script>
+<script src="../../shared/chat/chat-shell.js?v=20261015-mkt-prospectador-lanzamiento"></script>
+<script src="../../shared/chat/chat-archivos.js?v=20261015-mkt-prospectador-lanzamiento"></script>
+<script src="../../shared/chat/chat-grabadora.js?v=20261015-mkt-prospectador-lanzamiento"></script>
 <script src="../../shared/version-check.js"></script>
-<script src="../js/mkt-comun.js?v=20261014-mkt-prospectador-mvp"></script>
-<script src="../js/prospectador.js?v=20261014-mkt-prospectador-mvp"></script>
+<script src="../js/mkt-comun.js?v=20261015-mkt-prospectador-lanzamiento"></script>
+<script src="../js/prospectador.js?v=20261015-mkt-prospectador-lanzamiento"></script>
 <script>
-  var MKT_BUILD = '20261014-mkt-prospectador-mvp';
+  var MKT_BUILD = '20261015-mkt-prospectador-lanzamiento';
   document.getElementById('ver').textContent = 'Marketing · Prospectador · ' + MKT_BUILD;
   try { FTSVersionCheck.run({ versionUrl: 'version.json', localBuild: MKT_BUILD, tag: 'mkt-prospectador' }); } catch (e) {}
   if (!window.__ftsSinAcceso) window.MktProspectador.arrancar();

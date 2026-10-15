@@ -33,7 +33,8 @@
     if (u.ok) { est.uso = u.uso; $('#uso').innerHTML = M.usoHtml(u.uso); }
     var L = $('#lista');
     if (!r.ok) { L.innerHTML = '<div class="ch-hall amar"><div class="ic">⚠️</div><div>' + esc(r.mensaje || r.error) + (r.clase === 'red' ? '<br>Lo que captures sin señal se guarda en el teléfono.' : '') + '</div></div>'; }
-    est.sesiones = r.ok ? r.sesiones.filter(function (s) { return s.tipo !== 'lead' || true; }) : [];
+    // Las tarjetas de Seguimiento y la de «traer de Odoo» viven en su propia estación.
+    est.sesiones = r.ok ? r.sesiones.filter(function (s) { return s.tipo !== 'seguimiento' && s.tipo !== 'odoo_traer'; }) : [];
     est.motor = r.motor;
     var filas = locales.map(function (s) {
       return '<button class="ch-ses" data-ir="#/s/l-' + esc(s.local_id) + '"><div class="av">' + (s.tipo === 'lista' ? '≡' : '…') + '</div><div class="t"><b>' + esc(s.titulo) + '</b><span>' +
@@ -161,14 +162,18 @@
   async function vFicha(id) {
     parar(); var f = await cargarFicha(id); if (!f) return;
     M.cab(f.empresa, 'Ficha · v' + f.version + ' · ' + f.consultas + ' consultas', function () { history.back(); });
-    var t = est.fichaTab, d = f.datos || {};
-    var tabs = [['resumen', 'Resumen'], ['contactos', 'Contactos'], ['tecnica', 'Pestaña técnica']].map(function (x) {
+    var d = f.datos || {}, v2 = Number(d.v) >= 2;
+    if (est.fichaDe !== f.id) { est.fichaDe = f.id; est.fichaTab = v2 ? 'cuenta' : 'resumen'; }
+    var t = est.fichaTab;
+    var tabs = (v2 ? [['cuenta', 'Cuenta']] : []).concat([['resumen', 'Resumen'], ['contactos', v2 ? 'Decisores' : 'Contactos'], ['tecnica', 'Pestaña técnica']]).map(function (x) {
       return '<button class="ch-tab' + (t === x[0] ? ' on' : '') + '" data-tab="' + x[0] + '">' + x[1] + '</button>'; }).join('');
     var c = '';
     var filtro = f.filtro && f.filtro.tipo ? '<div class="ch-hall ' + (f.filtro.tipo === 'limpio' ? 'verde' : f.filtro.tipo === 'tibia' ? 'amar' : 'rojo') + '"><div class="ic">' +
       (f.filtro.tipo === 'limpio' ? '✅' : f.filtro.tipo === 'tibia' ? '🟡' : '⛔') + '</div><div><b>Filtro barato: ' + esc(f.filtro.tipo) + '</b> · ' + esc(f.filtro.razon || '') +
       (f.filtro.penetracion ? '<br>Ya hay relación: esto es <b>penetración de cuenta</b>, no prospección en frío.' : '') + '</div></div>' : '';
-    if (t === 'resumen') {
+    if (t === 'cuenta') {
+      c = filtro + cuentaHtml(f, d);
+    } else if (t === 'resumen') {
       var g = val(f, 'grupo');
       c = filtro + '<div class="ch-card"><h3>Empresa</h3><dl class="ch-kv"><dt>Empresa</dt><dd>' + esc(val(f, 'razon_social') || f.empresa) + '</dd>' +
         (g ? '<dt>Grupo</dt><dd>' + esc(g.grupo || g) + '</dd>' : '') + '<dt>Planta</dt><dd>' + esc(val(f, 'planta') || f.ciudad || '—') + '</dd>' +
@@ -181,7 +186,7 @@
         '<div class="ch-card"><h3>Qué tan completa quedó</h3>' + ((d.pendientes || []).map(function (p) { return '<div class="ch-nota" style="margin-top:6px">⏳ ' + esc(p) + '</div>'; }).join('') || '<p class="ch-nota">Sin pendientes declarados.</p>') +
         '<div class="ch-nota" style="margin-top:6px">📭 Buzón pendiente: M0b y M0c se declaran sin acceso en esta versión.</div></div>';
     } else if (t === 'contactos') {
-      var cs = d.contactos || [];
+      var cs = (v2 && Array.isArray(d.decisores) ? d.decisores : d.contactos) || [];
       c = '<div class="ch-card"><h3>Contactos (' + cs.length + ')</h3>' + (cs.map(function (x, i) {
         var pu = val(f, 'contactos.' + i + '.puesto') || x.puesto;
         return '<div style="border-top:1px solid var(--border);padding:10px 0;font-size:13px"><b>' + esc(x.nombre || 'Contacto ' + (i + 1)) + '</b> ' +
@@ -203,11 +208,50 @@
     V.innerHTML = '<div class="ch-tabs">' + tabs + '</div><div class="ch-wrap">' + c +
       '<div class="ch-fila"><button class="ch-btn ch-btn-s" data-ir="#/e/' + esc(f.id) + '">✏️ Editar y rebuscar</button>' +
       '<button class="ch-btn ch-btn-p" data-ir="#/crm/' + esc(f.id) + '"' + (f.estado === 'descartada' ? ' disabled' : '') + '>📤 Enviar a CRM</button></div>' +
+      (f.envios && f.envios.some(function (e) { return e.decision !== 'nada'; }) ? '<button class="ch-btn ch-btn-s full" data-seg="' + esc(f.id) + '">📈 Abrir su tarjeta de seguimiento</button>' : '') +
       (cerrada ? '' : '<button class="ch-btn ch-btn-r full" id="desc">Descartar…</button>') + '</div>';
     V.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { est.fichaTab = b.getAttribute('data-tab'); vFicha(id); }; });
     U.enlazar(V, C, Q);
     if ($('#copiaLi')) $('#copiaLi').onclick = function () { try { navigator.clipboard.writeText(d.linkedin_busqueda); U.toast('Copiada'); } catch (e) {} };
     if ($('#desc')) $('#desc').onclick = function () { descartar(f); };
+    V.querySelectorAll('[data-copia]').forEach(function (b) { b.onclick = function () { try { navigator.clipboard.writeText(b.getAttribute('data-copia')); U.toast('Copiado'); } catch (e) {} }; });
+  }
+  /** Ficha v2 (cuenta primero): por qué esta planta, cómo se entra, conmutador, decisores, mensaje y Sales Navigator. */
+  var PLAT = { sap_ariba: 'SAP Ariba', coupa: 'Coupa', portal_propio: 'Portal propio', otro: 'Otro', no_encontrado: 'No encontrado', sin_dato: 'Sin dato',
+               avetta: 'Avetta', isnetworld: 'ISNetworld', veriforce: 'Veriforce', propio: 'Propio' };
+  var TIPO = { usuario_final: 'Usuario final', epc: 'EPC de alimentos (subcontrata eléctrico y automatización)', otro_partner: 'Otro partner' };
+  function plataformaHtml(nombre, x) {
+    if (!x) return '<dt>' + nombre + '</dt><dd>—</dd>';
+    if (typeof x === 'string') x = { plataforma: x };
+    var conf = x.confianza === 'confirmado' ? 'g' : x.confianza === 'indicio' ? 'a' : '';
+    return '<dt>' + nombre + '</dt><dd><b>' + esc(PLAT[x.plataforma] || x.plataforma || '—') + '</b>' + (x.confianza ? ' <span class="ch-pill ' + conf + '">' + esc(x.confianza) + '</span>' : '') +
+      (x.alcance ? ' <span class="ch-pill">' + esc({ mexico: 'México', eua: 'EUA', global: 'global' }[x.alcance] || x.alcance) + '</span>' : '') +
+      (x.liga ? '<br><a href="' + esc(x.liga) + '" target="_blank" rel="noopener noreferrer">evidencia ↗</a>' + (x.metodo ? ' · ' + esc(x.metodo) : '') : '') +
+      (x.siguiente ? '<br><span style="color:var(--muted2)">Siguiente paso de alta: ' + esc(x.siguiente) + '</span>' : '') + '</dd>';
+  }
+  function cuentaHtml(f, d) {
+    var pq = d.por_que || [], acc = d.acceso || {}, cm = d.conmutador || null, dec = d.decisores || [], cas = d.cascada || {};
+    return '<div class="ch-card"><h3>Tipo de prospecto</h3><p style="font-size:14px;margin:0">' + esc(TIPO[d.tipo_prospecto] || d.tipo_prospecto || 'sin clasificar') + '</p></div>' +
+      '<div class="ch-card"><h3>Por qué esta planta</h3>' + (pq.length ? pq.map(function (x) {
+        return '<div style="border-top:1px solid var(--border);padding:8px 0;font-size:13px"><span class="ch-pill o">' + esc({ inversion: 'inversión', expansion: 'expansión', vacantes: 'vacantes', urgencia: 'urgencia de alta' }[x.tipo] || x.tipo || 'señal') + '</span> ' +
+          esc(x.texto) + '<div style="font-size:12px;color:var(--muted2)">' + esc(x.fecha || '') + (x.fuente ? ' · ' + esc(x.fuente) : '') + (x.liga ? ' · <a href="' + esc(x.liga) + '" target="_blank" rel="noopener noreferrer">fuente ↗</a>' : '') + '</div></div>'; }).join('')
+        : '<p class="ch-nota">Sin señal con fuente todavía.</p>') + '</div>' +
+      '<div class="ch-card"><h3>Cómo se entra a la cuenta</h3><dl class="ch-kv">' + plataformaHtml('Compras', acc.compras) + plataformaHtml('Contratistas', acc.contratistas) + '</dl>' +
+        '<p class="ch-nota" style="margin-top:8px">Es un atributo de la cuenta, no una fuente de oportunidades. Ninguna plataforma se registra sin una liga que la respalde.</p></div>' +
+      '<div class="ch-card"><h3>Conmutador de planta</h3>' + (cm && cm.numero ? '<p style="font-size:16px;margin:0"><b>' + esc(cm.numero) + '</b> ' +
+        (cm.verificado ? '<span class="ch-pill g">verificado</span>' : '<span class="ch-pill a">sin verificar</span>') + '</p>' +
+        '<p style="font-size:12px;color:var(--muted2);margin:6px 0 0">' + (cm.verificado ? 'Google Maps y el sitio oficial dan el mismo número.' : 'Solo se marca verificado si Google Maps coincide con el sitio oficial.') +
+        (cm.fuente_sitio ? ' · <a href="' + esc(cm.fuente_sitio) + '" target="_blank" rel="noopener noreferrer">sitio ↗</a>' : '') + (cm.fuente_maps ? ' · <a href="' + esc(cm.fuente_maps) + '" target="_blank" rel="noopener noreferrer">mapa ↗</a>' : '') + '</p>'
+        : '<p class="ch-nota">Sin conmutador todavía.</p>') + '<p class="ch-nota" style="margin-top:8px">Canal principal: se llama al conmutador y se pide por el área, no por la persona.</p></div>' +
+      '<div class="ch-card"><h3>Decisores (' + dec.length + ' de 5)</h3>' + (dec.map(function (x) {
+        return '<div style="border-top:1px solid var(--border);padding:8px 0;font-size:13px"><b>' + esc(x.puesto || 'Puesto') + '</b>' + (x.area ? ' <span class="ch-pill">' + esc(x.area) + '</span>' : '') +
+          '<div style="font-size:12px;color:var(--muted2)">' + esc(x.nombre ? x.nombre + ' · ' : '') + 'correo: ' + (x.correo_verificado ? 'verificado' : x.correo_candidato ? 'candidato, sin verificar' : 'sin patrón') + (x.fuente ? ' · ' + esc(x.fuente) : '') + '</div></div>'; }).join('') || '<p class="ch-nota">Sin decisores por puesto todavía.</p>') + '</div>' +
+      (d.mensaje ? '<div class="ch-card"><h3>Mensaje propuesto</h3><pre class="ch-diff">' + esc(d.mensaje) + '</pre><p class="ch-nota" style="margin-top:6px">Quien da seguimiento decide si invita, llama o escribe desde su bandeja. La herramienta no manda nada.</p>' +
+        '<button class="ch-btn ch-btn-s" data-copia="' + esc(d.mensaje) + '">Copiar</button></div>' : '') +
+      (d.sales_navigator ? '<div class="ch-card"><h3>Búsqueda para Sales Navigator (pegar)</h3><pre class="ch-diff">' + esc(d.sales_navigator) + '</pre><button class="ch-btn ch-btn-s" data-copia="' + esc(d.sales_navigator) + '">Copiar</button></div>' : '') +
+      '<div class="ch-card"><h3>Lo que costó</h3><dl class="ch-kv"><dt>Consultas web</dt><dd>' + esc(f.consultas) + '</dd>' +
+        (cas.bloques_secos != null ? '<dt>Bloques secos</dt><dd>' + esc(cas.bloques_secos) + (cas.cortada ? ' · cascada cortada' : '') + '</dd>' : '') +
+        (cas.orden ? '<dt>Orden</dt><dd>' + esc(cas.orden.join(' → ')) + '</dd>' : '') + '</dl></div>';
   }
   function descartar(f) {
     var cap = document.createElement('div'); cap.className = 'ch-visor';
@@ -280,7 +324,7 @@
     if (c.decision === 'nada') return 'Nada. Se registra en la ficha que se decidió no escribir.';
     var nota = 'mail.message  (nota en el chatter)\n  «' + origen + ' · desde la FTS Suite» · hecha por ' + (ses.nombre || ses.actor) + '\n  gancho, señal y contactos de valor por puesto, con su fuente\n  correos candidatos SOLO en la nota, marcados «sin verificar»\nmail.activity  (obligatoria)\n  ' + c.actividad.tipo + ' · ' + c.actividad.fecha + ' · ' + (c.actividad.resumen || '…');
     if (c.decision === 'crear_lead') return 'crm.lead  (create)\n  name:        ' + f.empresa + (f.ciudad ? ' · ' + f.ciudad : '') + '\n  partner_id:  ' + (b.partner_destino || '(ninguno: va partner_name)') +
-      '\n  stage_id:    17 · Prospecto Lead\n  etiqueta:    Origen · ' + origen + '\n  NO se crea ningún partner ni contacto\n' + nota;
+      '\n  stage_id:    17 · Prospecto Lead\n  user_id:     Sales FTS (o el de tu usuario, si está configurado)\n  creado por:  usuario de integraciones de Odoo (no hay usuario de Odoo por persona)\n  etiqueta:    Origen · ' + origen + '\n  NO se crea ningún partner ni contacto\n' + nota;
     if (c.decision === 'nota_lead') return 'En el lead abierto #' + (b.lead_destino || '?') + ' (no se mueve de etapa):\n' + nota;
     return 'En el partner #' + (b.partner_destino || '?') + ' (cuenta viva):\n' + nota;
   }
@@ -321,7 +365,8 @@
       $('#atr').onclick = function () { c.paso = 1; pintarCrm(); };
       $('#env').onclick = enviarCrm;
     } else {
-      V.innerHTML = '<div class="ch-wrap">' + pasos(3) + c.resultado + '<button class="ch-btn ch-btn-s full" data-ir="#/f/' + esc(f.id) + '">Volver a la ficha</button></div>';
+      V.innerHTML = '<div class="ch-wrap">' + pasos(3) + c.resultado + (c.decision !== 'nada' ? '<button class="ch-btn ch-btn-p full" data-seg="' + esc(f.id) + '">📈 Darle seguimiento en su tarjeta</button>' : '') +
+        '<button class="ch-btn ch-btn-s full" data-ir="#/f/' + esc(f.id) + '">Volver a la ficha</button></div>';
     }
   }
   async function enviarCrm() {
@@ -360,6 +405,11 @@
     if (k === 'crm' && a) return vCrm(a);
     return vLista();
   }
+  document.addEventListener('click', async function (e) {
+    var sg = e.target.closest('[data-seg]'); if (sg) { e.preventDefault(); sg.disabled = true;
+      var r = await C.pedir('tarjeta_abrir', { ficha_id: sg.getAttribute('data-seg') });
+      if (r.ok) location.href = '../seguimiento/index.html#/t/' + r.tarjeta.id; else { sg.disabled = false; U.toast(r.mensaje || r.error); } return; }
+  });
   document.addEventListener('click', function (e) { var t = e.target.closest('[data-ir]'); if (t && !t.disabled) { e.preventDefault(); ir(t.getAttribute('data-ir')); } });
   window.addEventListener('hashchange', ruta);
   Q.oir(function (x) { if (location.hash.startsWith('#/s/')) { if (!est.sesionId && x && x.sesion) { parar(); refrescar(); } else pintarChat(); } else if (!location.hash || location.hash === '#/') { if (x && (x.sesion || x.errorSesion)) vLista(); } });

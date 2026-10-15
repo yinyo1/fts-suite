@@ -10,6 +10,23 @@
   'use strict';
   var M = G.Mkt, U = G.ChatUI, esc = U.esc, C = M.cliente, $ = function (s) { return document.querySelector(s); };
   var V = $('#vista'), filtro = 'activas', datos = null;
+  // Clasificación (Lanzamiento 15-oct): origen, tipo de prospecto, región y plataforma. Se filtra aquí: la base manda todo lo vivo.
+  var sel = { origen: '', tipo: '', region: '', plataforma: '' };
+  var ORIGEN = { radar: 'Radar automático', manual: 'Manual', investigacion: 'Investigación' };
+  var TIPO = { usuario_final: 'Usuario final', epc: 'EPC', otro_partner: 'Otro partner' };
+  var PLAT = { sap_ariba: 'SAP Ariba', coupa: 'Coupa', portal_propio: 'Portal propio', avetta: 'Avetta', isnetworld: 'ISNetworld', veriforce: 'Veriforce', propio: 'Propio', otro: 'Otro', no_encontrado: 'No encontrado' };
+  function plats(x) { var a = x.acceso || {}, out = []; ['compras', 'contratistas'].forEach(function (k) { var v = a[k]; if (!v) return; v = typeof v === 'string' ? { plataforma: v } : v; if (v.plataforma) out.push({ k: k, p: v.plataforma, c: v.confianza, l: v.liga }); }); return out; }
+  function pasa(x) {
+    if (sel.origen && (x.origen || 'radar') !== sel.origen) return false;
+    if (sel.tipo && (x.tipo_prospecto || '') !== sel.tipo) return false;
+    if (sel.region && (x.region || '') !== sel.region) return false;
+    if (sel.plataforma) { var p = plats(x).map(function (y) { return y.p; }); if (sel.plataforma === 'sin_dato' ? p.length : p.indexOf(sel.plataforma) < 0) return false; }
+    return true;
+  }
+  function opciones(nombre, mapa, actual, etiqueta) {
+    return '<label class="ch-campo" style="flex:1;min-width:140px">' + etiqueta + '<select data-sel="' + nombre + '"><option value="">Todos</option>' +
+      Object.keys(mapa).map(function (k) { return '<option value="' + esc(k) + '"' + (actual === k ? ' selected' : '') + '>' + esc(mapa[k]) + '</option>'; }).join('') + '</select></label>';
+  }
   var ETQ = { nueva: ['nueva', 'o'], en_trabajo: ['en trabajo', 'b'], enviada_crm: ['enviada a CRM', 'g'], descartada: ['descartada', ''] };
 
   async function cargar() {
@@ -23,14 +40,18 @@
     datos = r; pintar();
   }
   function pintar() {
-    var s = datos.senales, venc = s.filter(function (x) { return x.vencida; }).length;
+    var s = datos.senales.filter(pasa), venc = s.filter(function (x) { return x.vencida; }).length;
+    var regiones = {}; datos.senales.forEach(function (x) { if (x.region) regiones[x.region] = x.region; });
+    var plataformas = Object.assign({ sin_dato: 'Sin dato' }, PLAT);
     var cuenta = function (e) { return s.filter(function (x) { return e === 'activas' ? (x.estado === 'nueva' || x.estado === 'en_trabajo') : x.estado === e; }).length; };
     var F = [['activas', 'Por atender'], ['nueva', 'Nuevas'], ['en_trabajo', 'En trabajo'], ['enviada_crm', 'Enviadas'], ['descartada', 'Descartadas']];
     var lista = s.filter(function (x) { return filtro === 'activas' ? (x.estado === 'nueva' || x.estado === 'en_trabajo') : x.estado === filtro; });
-    V.innerHTML = '<div class="ch-tabs">' + F.map(function (f) { return '<button class="ch-tab' + (filtro === f[0] ? ' on' : '') + '" data-f="' + f[0] + '">' + f[1] + ' (' + cuenta(f[0]) + ')</button>'; }).join('') + '</div><div class="ch-wrap">' +
+    V.innerHTML = '<div class="ch-tabs">' + F.map(function (f) { return '<button class="ch-tab' + (filtro === f[0] ? ' on' : '') + '" data-f="' + f[0] + '">' + f[1] + ' (' + cuenta(f[0]) + ')</button>'; }).join('') + '</div><div class="ch-wrap"><div class="ch-fila" style="gap:8px">' + opciones('origen', ORIGEN, sel.origen, 'Origen') + opciones('tipo', TIPO, sel.tipo, 'Tipo') +
+      opciones('region', regiones, sel.region, 'Región') + opciones('plataforma', plataformas, sel.plataforma, 'Plataforma') + '</div>' +
       (venc ? '<div class="ch-hall rojo"><div class="ic">⏰</div><div><b>' + venc + ' señal' + (venc === 1 ? '' : 'es') + ' nueva' + (venc === 1 ? '' : 's') + ' con más de ' + datos.aviso_horas + ' horas hábiles sin atender.</b> Trabájala o descártala con motivo.</div></div>' : '') +
       (lista.map(tarjeta).join('') || '<div class="ch-vacio"><div class="ic">📥</div><h2>Nada aquí</h2><p>Las corridas del radar escriben en esta bandeja; tú decides qué se trabaja.</p></div>') + '</div>';
     V.querySelectorAll('[data-f]').forEach(function (b) { b.onclick = function () { filtro = b.getAttribute('data-f'); pintar(); }; });
+    V.querySelectorAll('[data-sel]').forEach(function (x) { x.onchange = function () { sel[x.getAttribute('data-sel')] = x.value; pintar(); }; });
     V.querySelectorAll('[data-trab]').forEach(function (b) { b.onclick = function () { trabajar(b.getAttribute('data-trab'), b); }; });
     V.querySelectorAll('[data-desc]').forEach(function (b) { b.onclick = function () { descartar(b.getAttribute('data-desc')); }; });
   }
@@ -43,6 +64,10 @@
       '<div class="ch-fila" style="gap:6px;align-items:center"><span class="ch-pill ' + e[1] + '">' + esc(e[0]) + '</span>' + (x.vencida ? '<span class="ch-pill r">' + esc(x.horas_habiles) + ' h hábiles</span>' : '') +
       (ev.fecha ? '<span class="ch-pill">' + esc(ev.fecha) + '</span>' : '') + (ev.nota ? '<span class="ch-pill a">' + esc(ev.nota) + '</span>' : '') +
       (x.responsable ? '<span class="ch-pill">' + esc(x.responsable) + '</span>' : '') + '</div>' +
+      '<div class="ch-fila" style="gap:6px;align-items:center;margin-top:6px"><span class="ch-pill ' + (x.origen === 'investigacion' ? 'b' : x.origen === 'manual' ? 'a' : '') + '">' + esc(ORIGEN[x.origen || 'radar']) + '</span>' +
+      (x.tipo_prospecto ? '<span class="ch-pill">' + esc(TIPO[x.tipo_prospecto] || x.tipo_prospecto) + '</span>' : '') + (x.region ? '<span class="ch-pill">' + esc(x.region) + '</span>' : '') +
+      plats(x).map(function (y) { return '<span class="ch-pill ' + (y.c === 'confirmado' ? 'g' : 'a') + '">' + (y.k === 'compras' ? '🧾 ' : '🦺 ') + esc(PLAT[y.p] || y.p) + (y.c ? ' · ' + esc(y.c) : '') + '</span>'; }).join('') +
+      (x.estatus_comercial ? '<span class="ch-pill">' + esc(x.estatus_comercial) + '</span>' : '') + '</div>' +
       (x.motivo ? '<p class="ch-nota" style="margin-top:8px">Motivo: ' + esc(x.motivo) + '</p>' : '') +
       '<div class="ch-fila" style="margin-top:10px">' + (ev.liga ? '<a class="ch-btn ch-btn-s" href="' + esc(ev.liga) + '" target="_blank" rel="noopener noreferrer">Fuente ↗</a>' : '') +
       (x.estado === 'nueva' || x.estado === 'en_trabajo' ? '<button class="ch-btn ch-btn-p" data-trab="' + esc(x.id) + '">' + (x.sesion_id ? 'Abrir sesión' : 'Trabajar') + '</button><button class="ch-btn ch-btn-r" data-desc="' + esc(x.id) + '">Descartar</button>' : '') +

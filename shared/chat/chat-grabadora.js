@@ -9,7 +9,7 @@
       '<button class="ch-redondo claro" data-b="clip" aria-label="Adjuntar foto o archivo" title="Foto o archivo">📎</button>' +
       '<textarea rows="1" aria-label="Mensaje" placeholder="' + esc(opc.placeholder || 'Mensaje') + '"></textarea>' +
       '<button class="ch-redondo" data-b="mic" aria-label="Grabar nota de voz" title="Nota de voz">🎙️</button>' +
-      '<input type="file" class="ch-oculto" multiple accept="image/*,audio/*,application/pdf,.pdf,.txt,.csv,.xlsx,.docx"></div>';
+      '<input type="file" class="ch-oculto" multiple accept="image/*,audio/*,application/pdf,.pdf,.txt,.md,.csv,.xlsx,.docx"></div>';
     var ta = cont.querySelector('textarea'), mic = cont.querySelector('[data-b="mic"]'), clip = cont.querySelector('[data-b="clip"]'),
         inp = cont.querySelector('input[type=file]'), rec = null, escrito = null, reloj = null;
     function modo() { mic.textContent = ta.value.trim() ? '➤' : '🎙️'; mic.setAttribute('aria-label', ta.value.trim() ? 'Enviar' : 'Grabar nota de voz'); }
