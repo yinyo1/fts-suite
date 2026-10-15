@@ -208,7 +208,7 @@
     V.innerHTML = '<div class="ch-tabs">' + tabs + '</div><div class="ch-wrap">' + c +
       '<div class="ch-fila"><button class="ch-btn ch-btn-s" data-ir="#/e/' + esc(f.id) + '">✏️ Editar y rebuscar</button>' +
       '<button class="ch-btn ch-btn-p" data-ir="#/crm/' + esc(f.id) + '"' + (f.estado === 'descartada' ? ' disabled' : '') + '>📤 Enviar a CRM</button></div>' +
-      (f.envios && f.envios.some(function (e) { return e.decision !== 'nada'; }) ? '<button class="ch-btn ch-btn-s full" data-seg="' + esc(f.id) + '">📈 Abrir su tarjeta de seguimiento</button>' : '') +
+      (G.MktConv || (f.envios && f.envios.some(function (e) { return e.decision !== 'nada'; })) ? '<button class="ch-btn ch-btn-s full" data-seg="' + esc(f.id) + '">' + (G.MktConv ? '💬 Volver a la conversación' : '📈 Abrir su tarjeta de seguimiento') + '</button>' : '') +
       (cerrada ? '' : '<button class="ch-btn ch-btn-r full" id="desc">Descartar…</button>') + '</div>';
     V.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { est.fichaTab = b.getAttribute('data-tab'); vFicha(id); }; });
     U.enlazar(V, C, Q);
@@ -365,7 +365,7 @@
       $('#atr').onclick = function () { c.paso = 1; pintarCrm(); };
       $('#env').onclick = enviarCrm;
     } else {
-      V.innerHTML = '<div class="ch-wrap">' + pasos(3) + c.resultado + (c.decision !== 'nada' ? '<button class="ch-btn ch-btn-p full" data-seg="' + esc(f.id) + '">📈 Darle seguimiento en su tarjeta</button>' : '') +
+      V.innerHTML = '<div class="ch-wrap">' + pasos(3) + c.resultado + (c.decision !== 'nada' ? '<button class="ch-btn ch-btn-p full" data-seg="' + esc(f.id) + '">' + (G.MktConv ? '💬 Volver a la conversación' : '📈 Darle seguimiento en su tarjeta') + '</button>' : '') +
         '<button class="ch-btn ch-btn-s full" data-ir="#/f/' + esc(f.id) + '">Volver a la ficha</button></div>';
     }
   }
@@ -397,6 +397,7 @@
   // ── Ruteo ────────────────────────────────────────────────────────────────
   function ruta() {
     parar(); V.oninput = null;
+    if (G.MktConv) { G.MktConv.parar(); if (G.MktConv.ruta()) return; }   // v3 (#421): lista, conversación, nueva y tablero
     var h = (location.hash || '#/').slice(2).split('/'), k = h[0], a = h[1];
     if (k === 'nueva') return vNueva(a);
     if (k === 's' && a) return vSesion(a);
@@ -406,7 +407,8 @@
     return vLista();
   }
   document.addEventListener('click', async function (e) {
-    var sg = e.target.closest('[data-seg]'); if (sg) { e.preventDefault(); sg.disabled = true;
+    var sg = e.target.closest('[data-seg]'); if (sg && G.MktConv) { e.preventDefault(); G.MktConv.abrirDe({ ficha_id: sg.getAttribute('data-seg') }); return; }
+    if (sg) { e.preventDefault(); sg.disabled = true;
       var r = await C.pedir('tarjeta_abrir', { ficha_id: sg.getAttribute('data-seg') });
       if (r.ok) location.href = '../seguimiento/index.html#/t/' + r.tarjeta.id; else { sg.disabled = false; U.toast(r.mensaje || r.error); } return; }
   });
