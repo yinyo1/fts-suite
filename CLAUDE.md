@@ -1410,6 +1410,13 @@ fuente única (`comercial/prototipos/e3/sellar.js`), no copiado a mano. Es la mi
 familia del §20 #10 —el archivo bien y el camino mal— y de §20 #12: **verificar
 que el archivo servido es idéntico al tuyo NO es lo mismo que verlo pintado.**
 
+### 24. `shared/chat` es del núcleo, no de un producto (Marketing v3, #421)
+El chat lo usan **dos productos** (conceptualizador y Marketing). Por eso:
+- **Lo genérico va en `shared/chat`; lo del producto va en su módulo.** Lista de conversaciones (`chat-lista.js`), panel de archivos y exportar (`chat-panel.js`), gestos, grabadora y adjuntos son del núcleo. Etapas, niveles y fichas son de Marketing.
+- **No se copia código entre módulos.** Si dos productos necesitan lo mismo, se sube a `shared/chat` o se **genera** desde una sola fuente con un `--revisar` que falle si divergen (ej. `marketing/js/toque-base.js`, generado de `seguimiento.js` del conceptualizador).
+- **Los cambios a `shared/chat` son aditivos** y se prueban corriendo, **sin tocar su código**, las pruebas de pantalla del OTRO producto contra el cambio y contra `main`. Tienen que dar lo mismo en los dos.
+- **Una sola sesión a la vez trabaja `shared/chat`.** Antes de tocarlo, buscar PRs abiertos y ramas recientes que lo toquen.
+
 ---
 
 ---
