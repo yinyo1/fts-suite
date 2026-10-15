@@ -36,7 +36,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.35';
+  var VERSION = 'V1.36';
   /* V1.32 (0006) · empresa y moneda de la sesión: la base acepta estas tres claves. */
   var EMPRESAS = { mx_mxn: { n: 'FTS México · MXN', s: 'Empresa 1 · pesos', id: 1, m: 'MXN', pais: 'mx' },
                    mx_usd: { n: 'FTS México · USD', s: 'Empresa 1 · dólares', id: 1, m: 'USD', pais: 'mx' },
@@ -580,11 +580,16 @@
     var cm = A.filter(function (x) { return x.tipo === 'crear_machote'; }), prop = cm.filter(function (x) { return x.estado === 'propuesta'; }).pop();
     var hecho = cm.filter(function (x) { return x.estado === 'hecha'; }).pop();
     var abierta = ['abierto', 'enviada'].indexOf(c.estado) >= 0, h = '';
-    if (abierta && prop && !pendC && !hecho) h = '<button id="bFijo" type="button" data-fijo="crear">' + ico('disparo', 's') + 'Todo listo, crear machote</button>';
+    // V1.36 · el machote se crea CON pendientes; la cotización en Odoo espera a cero (decisión de Esteban, #4).
+    var np = prop ? Number((prop.datos || {}).n_pendientes) || 0 : 0, pend = G.CzAcciones ? G.CzAcciones.pendientes(ST.hilo) : { n: 0 };
+    var actualiza = prop && (prop.datos || {}).actualiza;
+    if (abierta && prop && !pendC && (!hecho || actualiza)) h = '<button id="bFijo" type="button" data-fijo="crear">' + ico('disparo', 's') +
+      (actualiza ? 'Actualizar ' + esc(actualiza.folio || 'machote') : np ? 'Crear machote' : 'Todo listo, crear machote') + (np ? ' · ' + np + ' pendiente' + (np === 1 ? '' : 's') : '') + '</button>';
     else if (abierta && hecho) h = '<button type="button" data-fijo="abrir">' + ico('ext', 's') + 'Abrir ' + esc((hecho.resultado || {}).folio || c.machote_folio || 'machote') + '</button>' +
-      '<button type="button" data-fijo="cotiza">' + ico('pagina', 's') + 'Haz la cotización</button>';
+      (pend.n ? '<span class="fijo-falta" title="' + esc(G.CzAcciones.textoPendientes(pend)) + '">Faltan ' + pend.n + ' para cotizar en Odoo</span>'
+        : '<button type="button" data-fijo="cotiza">' + ico('pagina', 's') + 'Haz la cotización</button>');
     el.style.display = h ? 'flex' : 'none'; el.innerHTML = h;
-    var b1 = $('[data-fijo="crear"]', el); if (b1) b1.onclick = function () { b1.disabled = true; b1.innerHTML = GIRO + 'creando…'; hacer(prop.id, b1).then(function () { pintarFijo(); }); };
+    var b1 = $('[data-fijo="crear"]', el); if (b1) b1.onclick = function () { b1.disabled = true; b1.innerHTML = GIRO + (actualiza ? 'actualizando…' : 'creando…'); hacer(prop.id, b1).then(function () { pintarFijo(); }); };
     var b2 = $('[data-fijo="abrir"]', el); if (b2) b2.onclick = function () { abrirEditor(hecho); };
     var b3 = $('[data-fijo="cotiza"]', el); if (b3) b3.onclick = function () { b3.disabled = true; mandar('Haz la cotización').then(function () { b3.disabled = false; }); };
   }
@@ -1047,11 +1052,17 @@
     }
     // Un machote o un borrador con suposiciones sin contestar saldría con números viejos.
     var pendientes = ((ST.hilo && ST.hilo.acciones) || []).some(function (x) { return x.tipo === 'conjetura' && x.estado === 'propuesta'; });
+    // V1.36 · solo el machote más nuevo dice lo que falta: el de antes de actualizar ya no cuenta.
+    var ultimoCm = (((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado !== 'descartada'; }).pop() || {}).id;
     otras.forEach(function (a) {
       var d = a.datos || {}, r = a.resultado || {}, manejador = G.CzAcciones && G.CzAcciones[a.tipo];
       var espera = pendientes && (a.tipo === 'crear_machote' || a.tipo === 'crear_borrador');
       h += '<div class="carta"><h4>' + ({ alta_contacto: '👤', crear_machote: '📐', crear_borrador: '🧾', enviada: '📨', cerrar: '🔒' }[a.tipo] || '•') + ' ' + esc(a.titulo) + '</h4>' +
         (d.detalle ? '<div class="odoo">' + md(d.detalle) + '</div>' : '') +
+        // V1.36 · lo que falta para cotizar en Odoo, con su número y renglón por renglón.
+        (a.tipo === 'crear_machote' && Number(d.n_pendientes) > 0 && a.estado !== 'descartada' && a.id === ultimoCm ? '<div class="pend-cot"><b>' + esc(G.CzAcciones.textoPendientes({ n: Number(d.n_pendientes), lista: d.pendientes || [] })) + '</b>' +
+          '<ul>' + (d.pendientes || []).map(function (hh) { return (hh.items && hh.items.length ? hh.items : [hh.titulo]).map(function (it) { return '<li>' + esc(it) + '</li>'; }).join(''); }).join('') + '</ul>' +
+          '<span class="nota">El machote sí se crea: esos renglones van sin precio y marcados. Nunca se estima un precio.</span></div>' : '') +
         (a.estado === 'hecha' ? '<span class="hecho">✓ ' + esc(r.texto || 'Hecho') + '</span>' :
          a.estado === 'descartada' ? '<span class="hecho gris">' + ((r.reemplazada_por_trabajo) ? 'Reemplazado por una propuesta más nueva' : 'Descartado') + '</span>' :
          espera ? '<p class="nota">Contesta primero las suposiciones pendientes: el machote se arma con lo que confirmes.</p>' :

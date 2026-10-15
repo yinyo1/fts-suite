@@ -45,10 +45,33 @@
     return D.proponer({ empresa_id: caso.pais === 'usa' ? 6 : 1 }, secs, datos.tipo || 'instalacion').bloques;
   }
 
+  // ── V1.36 · lo que falta para cotizar en Odoo ───────────────────────────
+  /** Pendientes del machote vigente: los del último «crear/actualizar machote» que se hizo.
+   *  El machote se crea CON pendientes (renglones sin precio, diagnóstico, tarifa, viaje);
+   *  la cotización en Odoo, el PDF y el envío esperan a que no quede ninguno. */
+  function pendientes(H) {
+    var hecho = ((H && H.acciones) || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'hecha'; }).pop();
+    var d = (hecho && hecho.datos) || {};
+    return { n: Number(d.n_pendientes) || 0, lista: d.pendientes || [], hay_machote: !!hecho };
+  }
+  /** «Faltan 6 para cotizar en Odoo: 6 precios de proveedor». */
+  var NOMBRE = { 'partida-sin-precio': ['precio de proveedor', 'precios de proveedor'], 'mo-sin-tarifa': ['tarifa de mano de obra', 'tarifas de mano de obra'],
+    'sin-tipo-proyecto': ['tipo de proyecto', 'tipo de proyecto'], 'criticas-sin-responder': ['respuesta del diagnóstico', 'respuestas del diagnóstico'],
+    'viaje-sin-resolver': ['concepto de viaje', 'conceptos de viaje'], 'sin-lugar-ejecucion': ['lugar de ejecución', 'lugar de ejecución'],
+    'budget-no-cuadra': ['reparto de venta', 'reparto de venta'], 'reparto-descuadrado': ['reparto de comisiones', 'reparto de comisiones'],
+    'margen-bajo-duro': ['margen abajo del piso', 'margen abajo del piso'] };
+  function textoPendientes(p) {
+    if (!p.n) return '';
+    var partes = p.lista.map(function (h) { var k = Math.max(1, (h.items || []).length), nm = NOMBRE[h.id] || [h.titulo, h.titulo];
+      return k + ' ' + (k === 1 ? nm[0] : nm[1]); });
+    return 'Faltan ' + p.n + ' para cotizar en Odoo' + (partes.length ? ': ' + partes.join(', ') : '') + '.';
+  }
+
   // ── crear machote ───────────────────────────────────────────────────────
   async function crearMachote(a, ctx) {
     var d = a.datos || {}, caso = ctx.caso;
     if (!d.documento) return { ok: false, mensaje: 'El motor no mandó el machote. Pídele que lo arme otra vez.' };
+    if (d.actualiza) return actualizarMachote(a, ctx);
     var S = G.SuiteAuth.getSession() || {};
     var m = JSON.parse(JSON.stringify(d.documento));
     /* Id de la forma que genera la aplicación (`M-<epoch>`): así se distingue
@@ -70,8 +93,53 @@
       res.ligado = !!l.ok;
       ligado = l.ok ? ' y ligado a la oportunidad ' + caso.oportunidad_id : ' (no se pudo ligar a la oportunidad: ' + (l.mensaje || l.error) + '; lígala desde el machote)';
     }
-    res.texto = 'Machote ' + (res.folio || '') + ' creado a tu nombre' + ligado + '. Ábrelo en Comercial → Machote.';
+    var tp = textoPendientes({ n: Number(d.n_pendientes) || 0, lista: d.pendientes || [] });
+    res.texto = 'Machote ' + (res.folio || '') + ' creado a tu nombre' + ligado + '. Ábrelo en Comercial → Machote.' + (tp ? ' ' + tp : '');
     return { ok: true, resultado: res };
+  }
+
+  /* V1.36 · el precio que llega actualiza el MISMO machote (decisión de Esteban, #4): versión nueva, mismo
+   * id_local, mismo folio. Si nadie lo tocó desde que se creó (la versión del servidor es la que guardó el
+   * conceptualizador), sube el machote recalculado entero. Si alguien lo editó en el editor, NO pisa nada:
+   * solo llena los renglones que seguían sin precio y que en el nuevo ya traen uno (misma sección y
+   * descripción), y dice cuáles no encontró. */
+  async function actualizarMachote(a, ctx) {
+    var d = a.datos || {}, u = d.actualiza || {};
+    var l = await C.suite('/webhook/comercial/machotes-leer', {});
+    if (!l.ok || !Array.isArray(l.machotes)) return { ok: false, mensaje: l.mensaje || ('No se pudo leer el machote: ' + (l.error || 'error')) };
+    var fila = l.machotes.filter(function (f) { return f && !f.ajeno && ((u.machote_id && f.id === u.machote_id) || (u.id_local && f.id_local === u.id_local)); })[0];
+    if (!fila || !fila.documento) return { ok: false, mensaje: 'No encontré el machote ' + (u.folio || '') + ' entre los tuyos. Si es de otra persona, que lo actualice ella.' };
+    var actual = fila.documento, nuevo = JSON.parse(JSON.stringify(d.documento)), doc, llenos = [], sinLugar = [];
+    var intacto = u.version && Number(fila.version) === Number(u.version);
+    if (intacto) {
+      doc = nuevo;
+      ['id', 'nombre', 'cliente', 'cliente_id', 'creado_por', 'creado_por_nombre', 'origen', 'oportunidad'].forEach(function (k) { if (actual[k] !== undefined) doc[k] = actual[k]; });
+    } else {
+      doc = JSON.parse(JSON.stringify(actual));
+      var clave = function (sec, l) { return String(sec.nombre || '').trim().toLowerCase() + '|' + String(l.descripcion || '').trim().toLowerCase(); };
+      var conPrecio = {};
+      (nuevo.secciones || []).forEach(function (sec) { (sec.partidas || []).forEach(function (l) { if (l.pu !== null && l.pu !== undefined && l.pu !== '') conPrecio[clave(sec, l)] = l; }); });
+      (doc.secciones || []).forEach(function (sec) { (sec.partidas || []).forEach(function (l) {
+        if (l.pu !== null && l.pu !== undefined && l.pu !== '') return;
+        var n = conPrecio[clave(sec, l)]; if (!n) return;
+        ['pu', 'moneda', 'link', 'comentario'].forEach(function (k) { if (n[k] !== undefined) l[k] = n[k]; });
+        llenos.push(l.descripcion); delete conPrecio[clave(sec, l)];
+      }); });
+      // Precios nuevos que el editor ya no tiene igual (alguien cambió la descripción o la sección).
+      Object.keys(conPrecio).forEach(function (k) { var p = conPrecio[k];
+        (actual.secciones || []).some(function (sec) { return (sec.partidas || []).some(function (l) { return clave(sec, l) === k; }); }) || sinLugar.push(p.descripcion); });
+    }
+    var r = await C.suite('/webhook/comercial/machote-guardar', { id_local: fila.id_local, cliente_odoo_id: doc.cliente_id || null, version_leida: Number(fila.version) || 0,
+      estado: fila.estado || 'borrador', motivo: 'Actualizado desde el conceptualizador', documento: doc, resumen: intacto ? (d.resumen || null) : null });
+    if (!r.ok) return { ok: false, mensaje: r.error === 'CONFLICTO_DE_VERSION' ? 'Alguien guardó el machote en este momento. Vuelve a tocar «Actualizar machote».' : (r.mensaje || ('No se actualizó el machote: ' + (r.error || 'error'))) };
+    var tp = textoPendientes({ n: Number(d.n_pendientes) || 0, lista: d.pendientes || [] });
+    var folio = r.folio_txt || fila.folio_txt || u.folio || '';
+    return { ok: true, resultado: { machote_id: r.machote_id || fila.id, folio: folio, version: r.version, id_local: fila.id_local, actualizado: true, intacto: !!intacto,
+      llenos: intacto ? undefined : llenos.length,
+      sin_lugar: intacto ? undefined : sinLugar,
+      texto: 'Machote ' + folio + ' actualizado (versión ' + r.version + ')' + (intacto ? '' : ': ' + llenos.length + ' precio' + (llenos.length === 1 ? '' : 's') + ' en renglones que seguían sin precio; lo que editaste a mano no se tocó') +
+        '.' + (sinLugar.length ? ' No encontré en el machote (¿le cambiaste el nombre?): ' + sinLugar.join('; ') + '. Captúralo a mano.' : '') +
+        (tp ? ' ' + tp : ' Ya no falta nada para cotizar en Odoo.') } };
   }
 
   // ── crear borrador en Odoo ──────────────────────────────────────────────
@@ -79,6 +147,9 @@
     var caso = ctx.caso, H = ctx.hilo;
     var cm = (H.acciones || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'hecha'; }).pop();
     if (!caso.machote_id || !cm) return { ok: false, mensaje: 'Primero crea el machote: el borrador sale de él.' };
+    // V1.36 · la cotización en Odoo espera a que no quede ninguna regla dura (precio, diagnóstico, tarifa).
+    var pend = pendientes(H);
+    if (pend.n) return { ok: false, mensaje: textoPendientes(pend) + ' Nunca se estima un precio: cuando lleguen, se actualiza el machote y aquí se enciende.' };
     if (!EMITIR_ENCENDIDO) {
       return { ok: false, mensaje: 'Crear la orden en Odoo está apagado a propósito, igual que en el machote (issue #387). ' +
         'El borrador está listo: cuando se encienda, este botón lo crea. Mientras, ábrelo desde el machote.' };
@@ -146,5 +217,6 @@
   }
 
   G.CzAcciones = { crear_machote: crearMachote, crear_borrador: crearBorrador, alta_contacto: altaContacto,
+    pendientes: pendientes, textoPendientes: textoPendientes,
     _pdfCliente: pdfCliente, _bloques: bloques, EMITIR_ENCENDIDO: EMITIR_ENCENDIDO };
 })(window);
