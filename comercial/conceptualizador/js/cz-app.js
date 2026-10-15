@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.44';
+  var VERSION = 'V1.45';
   /* V1.32 (0006) · empresa y moneda de la sesión: la base acepta estas tres claves. */
   var EMPRESAS = { mx_mxn: { n: 'FTS México · MXN', s: 'Empresa 1 · pesos', id: 1, m: 'MXN', pais: 'mx' },
                    mx_usd: { n: 'FTS México · USD', s: 'Empresa 1 · dólares', id: 1, m: 'USD', pais: 'mx' },
@@ -692,11 +692,14 @@
     var AV = G.CzAvance, L = AV.linea(H), av = L.av, R = L.R, a = av.actual, P = AV.PASOS, abierto = !!ST.franjaAbierta;
     var x = ciudadDe(c), folio = av.machote && ((av.machote.resultado || {}).folio || c.machote_folio);
     el.style.display = 'block'; el.classList.toggle('abierta', abierto); if (app) app.classList.add('con-lado');
-    var cab = (L.pct !== null ? '<b>' + L.pct + ' %</b>' : '<b>' + esc(L.paso) + '</b>') +
+    // V1.45 (#4 punto 13) · con machote, el avance y los precios por separado: «Rubros 7/7 · Precios 46/46 (62 % referencia, 19 alertas)».
+    var cab = L.P ? '<b>' + esc(L.rubrosTxt) + '</b> · <span class="avl-pre' + (L.P.alertas ? ' alerta' : '') + '">' + esc(L.preciosTxt) + '</span>' :
+      (L.pct !== null ? '<b>' + L.pct + ' %</b>' : '<b>' + esc(L.paso) + '</b>') +
       (L.sig ? ' · Siguiente: ' + (L.rojo ? '<span class="avl-rojo">' + esc(L.sig) + '</span>' : esc(L.sig)) : '');
-    var h = '<button type="button" class="avl-top" id="avTop" aria-expanded="' + (abierto || lateral()) + '" aria-controls="avDet"><span class="avl-l">' + cab + '</span>' + ico('abajo', 's avl-chev') + '</button>';
+    var h = '<button type="button" class="avl-top' + (L.P ? ' con-precios' : '') + '" id="avTop" aria-expanded="' + (abierto || lateral()) + '" aria-controls="avDet"><span class="avl-l">' + cab + '</span>' + ico('abajo', 's avl-chev') + '</button>';
     h += '<div class="avl-det" id="avDet"><div class="avl-tit">Paso ' + (a + 1) + ' de 7 · ' + esc(P[a]) + (av.det[a] ? ' · ' + esc(av.det[a].replace(/\.$/, '')) : '') +
-      (L.pct !== null ? ' · <b>Llevas ' + L.pct + ' %</b>' : '') + (R ? ' · ' + R.lista.length + ' rubros' : '') + '</div>';
+      (L.P ? ' · <b>' + esc(L.rubrosTxt) + ' cerrados</b>' : L.pct !== null ? ' · <b>Llevas ' + L.pct + ' %</b>' : '') + (R && !L.P ? ' · ' + R.lista.length + ' rubros' : '') + '</div>';
+    if (L.P) h += preciosFranja(L.P, L.sig);
     if (!av.ciudad) h += '<div class="avl-ciu"><b>Ciudad del proyecto' + (x ? ': ' + esc(CI.nombre(x)) + ' (sin confirmar)' : '') + '</b> Sin ella no se buscan precios: tiendas, fletes y viáticos se miden contra ella.' +
       (mia(c) ? ' <button type="button" class="link" id="avCiudad">' + (x ? 'Cambiar' : 'Elegir') + '</button>' : '') + '</div>';
     h += '<ol class="avl-pasos">' + P.map(function (p, i) { var e = av.e[i]; return '<li class="' + e + '" title="' + esc(av.det[i]) + '">' + (e === 'hecho' ? '✓ ' : '') + (i + 1) + ' ' + esc(p) + '</li>'; }).join('') + '</ol>';
@@ -712,6 +715,14 @@
     el.innerHTML = h + '</div>';
     if ($('#avCiudad')) $('#avCiudad').onclick = function () { cambiarCiudad(); };
     if ($('#avAbrir')) $('#avAbrir').onclick = function () { abrirEditor(av.machote); };
+  }
+  /** V1.45 · el renglón de precios del detalle de la franja: con precio, % de referencia, alertas N3 y de sensatez. */
+  function preciosFranja(P, sig) {
+    var S = P.sensatez || [];
+    return '<div class="avl-precios"><b>Precios</b> ' + esc(P.con_precio + ' de ' + P.total + ' renglones con precio') +
+      (P.pct ? ' · ' + esc(P.pct + ' % del costo es referencia (N3/N4)') : '') + (P.n3 ? ' · <span class="alerta">⚠ ' + esc(P.n3 + (P.n3 === 1 ? ' alerta N3' : ' alertas N3')) + '</span>' : '') +
+      S.map(function (x) { return '<span class="avl-sens">⚠ ALERTA ' + esc(x.seccion) + ': ' + esc(x.cuenta).replace(/ %/g, '&nbsp;%') + '</span>'; }).join('') +
+      (sig ? '<span class="avl-sig">Siguiente: ' + esc(sig) + '</span>' : '') + '</div>';
   }
   /** La barrita de un rubro: el % que mandó el motor (cerrado = lleno). Sin % no hay barra. */
   function barraRubro(r) {
@@ -752,8 +763,10 @@
   function rubroDe(id) { var R = G.CzAvance.rubros(ST.hilo); return R ? R.lista.filter(function (r) { return r.id === id; })[0] || null : null; }
   function rubEnviado(id) { var e = (ST.rubEnv || {})[id], u = ST.hilo && ST.hilo.ultima; return e && (!u || u.trabajo_id === e.base) ? e : null; }
   function tarjetaRubros(R) {
-    var h = '<div class="carta rub-carta"><h4>Resumen por rubro para confirmar <span class="rub-tot">Llevas ' + esc(R.total_pct) + ' %</span></h4>' +
-      '<p class="nota">' + (R.con_bom ? 'Con BOM: % de renglones con precio; el total pesa cada rubro por su costo.' : 'Antes del BOM: preguntas contestadas y conceptos palomeados.') + ' Toca un rubro para cerrarlo.</p>';
+    var P = G.CzAvance.precios(ST.hilo), cerr = R.lista.filter(function (r) { return r.estado === 'cerrado'; }).length;
+    var h = '<div class="carta rub-carta"><h4>Resumen por rubro para confirmar <span class="rub-tot">' + (P ? esc('Rubros ' + cerr + '/' + R.lista.length + ' · ' + G.CzAvance.textoPrecios(P)) : 'Llevas ' + esc(R.total_pct) + ' %') + '</span></h4>' +
+      '<p class="nota">' + (P ? 'Rubros: cerrados de los que hay (el motor cierra solo el que ya no tiene nada abierto). Precios: aparte, del machote.' :
+        R.con_bom ? 'Con BOM: % de renglones con precio; el total pesa cada rubro por su costo.' : 'Antes del BOM: preguntas contestadas y conceptos palomeados.') + ' Toca un rubro para cerrarlo.</p>';
     R.lista.forEach(function (r) {
       var d = G.CzAvance.delRubro(ST.hilo, r.id), env = rubEnviado(r.id), sub;
       if (r.estado === 'cerrado') sub = 'Cerrado';
@@ -1331,8 +1344,15 @@
     var lista = conLista ? (R.lista || []).map(function (x) { return '<li class="' + (x.nivel === 'N3' ? 'n3' : '') + '"><span class="niv niv-' + esc(x.nivel) + '">' + esc(x.nivel) + '</span> ' +
       esc(x.descripcion) + ' · ' + din(x.importe) + (x.riesgo ? '<small> ⚠ ' + esc(x.riesgo) + '</small>' : '') + '</li>'; }).join('') : '';
     return '<div class="ref-cot"><b>' + esc(R.pct) + ' % del costo es referencia (N3/N4)</b>' + (R.n3 ? ' · <span class="alerta">⚠ ' + R.n3 + (R.n3 === 1 ? ' alerta N3' : ' alertas N3') + '</span>' : '') +
-      '<span class="nota">Precio de referencia, no de proveedor; ya lleva su holgura. Puede variar el precio en México, la entrega, la importación o la garantía.</span>' +
+      '<span class="nota">Precio de referencia, no de proveedor: N3 es la lista × 1.10 de internación (o × lo que de verdad pagamos, si hay compras); N4 lleva 15 % de holgura. Puede variar el precio en México, la entrega, la importación o la garantía.</span>' +
       (lista ? '<ul>' + lista + '</ul>' : '') + '</div>';
+  }
+  /** V1.45 (#4 punto 7) · la prueba de sensatez por sección contra la venta parecida ya escalada. Solo las que tienen parecido. */
+  function sensatezHtml(S) {
+    var con = (S || []).filter(function (x) { return x.parecido; }); if (!con.length) return '';
+    return '<div class="sens-cot">' + con.map(function (x) {
+      return '<div class="' + (x.alerta ? 'sens-al' : 'sens-ok') + '">' + (x.alerta ? '⚠ <b>ALERTA</b> ' : '✓ ') + '<b>' + esc(x.seccion) + '</b>: ' + esc(x.cuenta).replace(/ %/g, '&nbsp;%') + '</div>'; }).join('') +
+      '<span class="nota">Contra la venta parecida ya escalada; más de 50 % arriba o abajo es alerta.</span></div>';
   }
   function tarjetaSupuestos(L) {
     var puede = mia(ST.hilo && ST.hilo.caso);
@@ -1436,7 +1456,7 @@
           '<ul>' + (d.pendientes || []).map(function (hh) { return (hh.items && hh.items.length ? hh.items : [hh.titulo]).map(function (it) { return '<li>' + esc(it) + '</li>'; }).join(''); }).join('') + '</ul>' +
           '<span class="nota">El machote sí se crea: esos renglones van sin precio y marcados (N5).</span></div>' : '') +
         // V1.43 · qué parte del costo es referencia (N3/N4), con las alertas N3 arriba.
-        ((a.tipo === 'crear_machote' && a.id === ultimoCm) || a.tipo === 'crear_borrador' ? referenciasHtml(d.referencias, a.tipo === 'crear_borrador' && a.estado === 'propuesta') : '') +
+        ((a.tipo === 'crear_machote' && a.id === ultimoCm) || a.tipo === 'crear_borrador' ? referenciasHtml(d.referencias, a.tipo === 'crear_borrador' && a.estado === 'propuesta') + sensatezHtml(d.sensatez) : '') +
         (a.estado === 'hecha' ? '<span class="hecho">✓ ' + esc(r.texto || 'Hecho') + '</span>' + releidoOdoo(r) :
          a.estado === 'descartada' ? '<span class="hecho gris">' + ((r.reemplazada_por_trabajo) ? 'Reemplazado por una propuesta más nueva' : 'Descartado') + '</span>' :
          espera ? '<p class="nota">Contesta primero las suposiciones pendientes: el machote se arma con lo que confirmes.</p>' :

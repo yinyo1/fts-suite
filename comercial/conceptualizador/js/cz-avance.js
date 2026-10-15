@@ -125,6 +125,24 @@
     }
     return null;
   }
+  /* V1.45 (#4 punto 13) · los precios del machote, APARTE del avance: {con_precio, total, pct, n3, n4, alertas, sensatez}.
+   * Los manda el motor en `verifica.precios` (y dentro de `verifica.rubros.precios`) cuando ya hay machote. */
+  function precios(H) {
+    var L = [H && H.ultima, H && H.propuesta];
+    for (var i = 0; i < L.length; i++) {
+      var v = L[i] && L[i].verifica, p = v && (v.precios || (v.rubros && v.rubros.precios));
+      if (p && p.total) return p;
+    }
+    return null;
+  }
+  /** «Precios 46/46 (62 % referencia, 19 alertas)»: corto, para que quepa a 380 px. */
+  function textoPrecios(P) {
+    if (!P || !P.total) return '';
+    var d = [];
+    if (P.pct) d.push(Math.round(P.pct) + ' % referencia');
+    if (P.n3 || P.alertas) d.push(((P.n3 || 0) + (P.alertas || 0)) + ((P.n3 || 0) + (P.alertas || 0) === 1 ? ' alerta' : ' alertas'));
+    return 'Precios ' + P.con_precio + '/' + P.total + (d.length ? ' (' + d.join(', ') + ')' : '');
+  }
   /** La respuesta que trae el BOM (la más nueva con BOM o machote). */
   function conBom(H) { return [H && H.ultima, H && H.propuesta].filter(function (x) { return x && ((x.bom && Object.keys(x.bom).length) || x.machote); })[0] || {}; }
   /** Lo que la pantalla tiene de UN rubro: sus preguntas (conjeturas), sus conceptos con la decisión y sus renglones. */
@@ -156,9 +174,11 @@
       if (!c.disparado_at && of && of.estado === 'ofrecida') sig = 'Contestar la oferta';
       else if (ab) sig = 'Cerrar ' + corto(ab.nombre);
     }
-    return { pct: typeof R.total_pct === 'number' ? R.total_pct : null, paso: PASOS[av.actual], sig: sig, rojo: rojo, av: av, R: R };
+    var P = precios(H), cerr = R.lista.filter(function (r) { return r.estado === 'cerrado'; }).length;
+    return { pct: typeof R.total_pct === 'number' ? R.total_pct : null, paso: PASOS[av.actual], sig: sig, rojo: rojo, av: av, R: R,
+             P: P, rubrosTxt: 'Rubros ' + cerr + '/' + R.lista.length, preciosTxt: textoPrecios(P) };
   }
 
   G.CzAvance = { PASOS: PASOS, avance: avance, retomamos: retomamos, faltantes: faltantes, textoFaltantes: textoFaltantes, ultimaActividad: ultimaActividad,
-                 rubros: rubros, delRubro: delRubro, linea: linea, corto: corto };
+                 rubros: rubros, delRubro: delRubro, linea: linea, corto: corto, precios: precios, textoPrecios: textoPrecios };
 })(window);
