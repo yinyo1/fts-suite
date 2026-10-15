@@ -36,7 +36,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.39';
+  var VERSION = 'V1.39.1';
   /* V1.32 (0006) · empresa y moneda de la sesión: la base acepta estas tres claves. */
   var EMPRESAS = { mx_mxn: { n: 'FTS México · MXN', s: 'Empresa 1 · pesos', id: 1, m: 'MXN', pais: 'mx' },
                    mx_usd: { n: 'FTS México · USD', s: 'Empresa 1 · dólares', id: 1, m: 'USD', pais: 'mx' },
@@ -54,6 +54,10 @@
   // Igual que es_disparador() de la base: «cotiza» sí, «cotización…» no.
   var DISPARO = /^\s*(ya\s+es\s+todo|es\s+todo|ya\s+termin|cotiza(?![a-záéíóúñ]))/i;
   var C = G.CzCliente, Q = G.CzCola, Me = G.CzMedios, GR = G.CzGrabadora, AR = G.CzArchivos, CI = G.CzCiudad;
+  /* V1.39 (#4 punto 11) · gestos del chat (shared/chat/chat-gestos.js): copiar, responder deslizando y reenviar
+   * (deshabilitado aquí). GZ es el control enganchado al chat; CG el componente (marcador y cita). */
+  var CG = G.ChatGestos, GZ = null;
+  var RAZON_REENVIAR = 'Reenviar todavía no está en los chats de machote. Se enciende cuando existan los chats de grupo y del prospectador.';
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -232,7 +236,7 @@
     L.forEach(function (c) {
       var u = c.ultimo, on = (c.id && sel.id === c.id) || (c.local && sel.local === c.local);
       var prev = c.estado === 'local' ? 'Se da de alta al volver la señal' : !u ? 'Sin mensajes' :
-        (u.texto ? u.texto : (u.adjuntos ? u.adjuntos + ' adjunto' + (u.adjuntos > 1 ? 's' : '') : ''));
+        (sinMarca(u.texto) ? sinMarca(u.texto) : (u.adjuntos ? u.adjuntos + ' adjunto' + (u.adjuntos > 1 ? 's' : '') : ''));
       var pre = !u ? '' : (u.rol === 'usuario' ? '<span class="tk" title="En el servidor">' + palomita(false) + '</span>' : '') +
         (u.adjuntos && !u.texto ? ico('clip', 'xs') : '');
       var nAcc = Number(c.acciones) || 0;
@@ -798,7 +802,7 @@
     // Una burbuja; la primera de cada racha lleva la colita y, si es del motor, quién habla.
     var burbuja = function (lado, cls, quien, cuerpo, id) {
       var sig = prev !== lado; prev = lado;
-      h += '<div class="fila ' + lado + (sig ? ' sig' : '') + '"' + (id ? ' data-msg="' + esc(id) + '"' : '') + '><div class="b ' + lado + (cls ? ' ' + cls : '') + '">' +
+      h += '<div class="fila ' + lado + (sig ? ' sig' : '') + '"' + (id ? ' data-msg="' + esc(id) + '"' : '') + '><div class="b ' + lado + (cls ? ' ' + cls : '') + '"' + (id ? ' data-chg-id="' + esc(id) + '"' : '') + '>' +
         (lado === 'el' && sig && quien ? '<div class="quien">' + esc(quien) + '</div>' : '') + cuerpo + '</div></div>';
     };
     var meta = adjuntosPorId();
@@ -815,8 +819,9 @@
       // Sin trabajo en modo «ya tengo el levantamiento»: guardado; el motor lo lee todo junto al disparar.
       var tk = mio ? (!m.trabajo_id && modo === 'levantamiento' ? '<span class="tk leido" title="Guardado; lo reviso todo junto cuando toques «Ya es todo»">' + palomita(true) + '</span>' : tick(tr)) : '';
       burbuja(mio ? 'yo' : 'el', '', 'Conceptualizador' + (/respaldo/.test(m.autor) ? ' · respaldo' : ''),
+        citaDe(m.responde_a, m.texto) +
         adjuntosHtml((m.adjuntos || []).map(function (a) { return Object.assign({}, a, meta[a.id] || {}); }), false) +
-        (m.texto ? '<div class="txt">' + (mio ? esc(m.texto) : md(m.texto)) + '</div>' : '') +
+        (sinMarca(m.texto) ? '<div class="txt">' + (mio ? esc(sinMarca(m.texto)) : md(sinMarca(m.texto))) + '</div>' : '') +
         '<span class="hora">' + (m.escrito_at && Math.abs(new Date(m.created_at) - new Date(m.escrito_at)) > 120000 ? '<i title="Escrito sin señal; llegó ' + esc(hora(m.created_at)) + '">⟲</i> ' : '') +
         esc(hora(t)) + tk + '</span><div style="clear:both"></div>', m.id);
       if (mio && tr && tr.estado === 'error') aparte('<div class="sis"><span class="mal">El motor no pudo con este mensaje: ' + esc(tr.error || '') + '. Escríbelo de otra forma o vuelve a intentar.</span></div>');
@@ -839,8 +844,9 @@
         x.estado === 'subiendo' && total ? '<span class="cola">' + reloj + 'subiendo ' + (subidos + (actual ? 1 : 0)) + '/' + total + (actual ? ' · ' + Math.round(Q.progreso(actual.local) * 100) + '%' : '') + '</span>' :
         x.estado === 'enviando' ? '<span class="pend-env">' + reloj + 'enviando…</span>' :
         '<span class="pend-env" title="Guardado en el teléfono con su hora real; se manda solo al volver la señal">' + reloj + 'pendiente de enviar</span>';
-      burbuja('yo', 'pend', '', adjuntosHtml(x.archivos.map(function (a) { return { local: a.local, blob: a.blob, nombre: a.nombre, clase: a.clase, bytes: a.bytes, duracion_s: a.duracion_s, subido: !!a.adjunto_id }; }), true) +
-        (x.texto ? '<div class="txt">' + esc(x.texto) + '</div>' : '') +
+      burbuja('yo', 'pend', '', citaDe(x.datos && x.datos.responde_a, x.texto) +
+        adjuntosHtml(x.archivos.map(function (a) { return { local: a.local, blob: a.blob, nombre: a.nombre, clase: a.clase, bytes: a.bytes, duracion_s: a.duracion_s, subido: !!a.adjunto_id }; }), true) +
+        (sinMarca(x.texto) ? '<div class="txt">' + esc(sinMarca(x.texto)) + '</div>' : '') +
         (total && x.estado === 'subiendo' ? '<div class="barra"><i style="width:' + Math.round(100 * (subidos + (actual ? Q.progreso(actual.local) : 0)) / total) + '%"></i></div>' : '') +
         '<span class="hora">' + esc(hora(x.escrito_at)) + ' ' + est + '</span><div style="clear:both"></div>' +
         (x.estado === 'error' ? '<div class="corr"><span class="err">' + esc(x.error) + '</span><button class="boton" data-reint="' + esc(x.cliente_id) + '">Reintentar</button><button class="boton" data-desc="' + esc(x.cliente_id) + '">Descartar</button></div>' : ''));
@@ -861,6 +867,7 @@
     ST.nMotor = nMotor; ST.nMotorCaso = (ST.sel || {}).id;
     M.innerHTML = h;
     enlazarChat(M);
+    if (GZ) GZ.decorar();
     if (foco) { var t = $('[data-borr="' + foco.k + '"]'); if (t) { t.focus(); try { t.setSelectionRange(foco.a, foco.b); } catch (e) {} } }
     if (abajo || ST.irAbajo) { M.scrollTop = M.scrollHeight; ST.irAbajo = false; ST.abajoN = 0; }
     else { M.scrollTop = arriba0; ST.abajoN += nuevas; }
@@ -893,7 +900,7 @@
     if (!arriba) ST.abajoN = 0;
     b.classList.toggle('on', arriba);
     var c = $('.compose'), f = $('#fijo'), bj = $('#bandeja');
-    b.style.bottom = ((c ? c.offsetHeight : 56) + (f && f.style.display !== 'none' ? f.offsetHeight : 0) + (bj && bj.style.display !== 'none' ? bj.offsetHeight : 0) + 10) + 'px';
+    b.style.bottom = ((c ? c.offsetHeight : 56) + (f && f.style.display !== 'none' ? f.offsetHeight : 0) + (bj && bj.style.display !== 'none' ? bj.offsetHeight : 0) + (GZ ? GZ.alto() : 0) + 10) + 'px';
     var n = $('#nAbajo'); n.style.display = ST.abajoN ? 'flex' : 'none'; n.textContent = ST.abajoN;
   }
   function tick(tr) {
@@ -1458,14 +1465,51 @@
   async function enviar() {
     var t = $('#in').value.trim();
     if (!t && !ST.bandeja.length) return grabar();
-    if (/^\/cierre\b/i.test(t)) return confirmarCierre(function () { return mandar(t); });
-    return mandar(t);
+    var r = GZ ? GZ.respondiendo() : null;
+    if (/^\/cierre\b/i.test(t)) return confirmarCierre(function () { if (GZ) GZ.enviada(); return mandar(t, r); });
+    if (GZ) GZ.enviada();
+    return mandar(t, r);
   }
-  async function mandar(t) {
+  /** `resp` = id del mensaje citado (deslizar a la derecha). Viaja en `datos.responde_a`, que ya va firmado.
+   *  Con un servidor que todavía no guarda `responde_a` (sin la migración 0009), además se antepone al texto la
+   *  línea marcador de shared/chat/chat-gestos.js — salvo en «/cierre» y en el disparador («ya es todo»…), que la
+   *  base reconoce por cómo EMPIEZA el texto: ahí solo viaja `datos`. */
+  async function mandar(t, resp) {
     var arch = ST.bandeja.slice(); ST.bandeja = [];
     $('#in').value = ''; autoAlto(); pintarComposer();
-    await Q.encolar(destino(), t, arch); ST.irAbajo = true; await refrescarSalida();
+    var datos = null;
+    if (resp !== null && resp !== undefined) {
+      datos = { responde_a: resp };
+      if (CG && !servidorConCitas() && !/^\s*\//.test(t) && !DISPARO.test(t)) { var d = gestoDe(resp); t = CG.marcador.armar(resp, d ? d.texto : '', t); }
+    }
+    await Q.encolar(destino(), t, arch, undefined, datos); ST.irAbajo = true; await refrescarSalida();
     return true;
+  }
+  /* ── V1.39 · citas ────────────────────────────────────────────────────
+   * Servidor nuevo = el hilo trae la llave `responde_a` en sus mensajes (migración 0009). Sin ella, la cita
+   * se reconstruye del marcador al principio del texto. Con ella, de la columna (y si un mensaje viejo trae
+   * marcador, también se respeta). */
+  function servidorConCitas() { return ((ST.hilo && ST.hilo.mensajes) || []).some(function (m) { return Object.prototype.hasOwnProperty.call(m, 'responde_a'); }); }
+  function sinMarca(t) { return CG ? CG.marcador.quitar(t) : (t || ''); }
+  function msgPorId(id) { return ((ST.hilo && ST.hilo.mensajes) || []).filter(function (m) { return String(m.id) === String(id); })[0] || null; }
+  /** Lo que el componente necesita de un mensaje: quién lo dijo, su texto (o la transcripción si es nota de voz). */
+  function gestoDe(id) {
+    var m = msgPorId(id); if (!m) return null;
+    var t = sinMarca(m.texto).trim(), meta = adjuntosPorId(), voz = null;
+    (m.adjuntos || []).forEach(function (a) { var x = Object.assign({}, a, meta[a.id] || {}); if (!voz && x.clase === 'audio') voz = x; });
+    var quien = m.rol === 'usuario' ? (m.autor && m.autor === yo() ? 'Tú' : nombreCorto(m.autor)) : 'Conceptualizador';
+    if (t) return { quien: quien, texto: t, voz: false };
+    if (voz) return { quien: quien, texto: voz.transcripcion || '', voz: true };
+    var f = (m.adjuntos || []).length;
+    return { quien: quien, texto: f ? (f === 1 ? '1 archivo' : f + ' archivos') : '', voz: false };
+  }
+  function citaDe(ref, texto) {
+    if (!CG) return '';
+    var mk = CG.marcador.leer(texto);
+    if ((ref === null || ref === undefined) && mk) ref = mk.id;
+    if (ref === null || ref === undefined) return '';
+    var d = gestoDe(ref);
+    return CG.citaHtml(ref, d ? d.quien : 'Mensaje', d ? (d.voz ? '🎤 ' : '') + (d.texto || (d.voz ? 'Nota de voz' : 'Mensaje')) : (mk ? mk.extracto : 'Mensaje'));
   }
   function confirmarCierre(fn) {
     modal('<h3>Cerrar la cotización</h3><p class="sub">Te voy a pedir lo que de verdad salió: el machote final, y si ya se ejecutó, cuánta gente y cuántos días. Comparo contra lo propuesto y guardo lo aprendido.</p>' +
@@ -1782,7 +1826,10 @@
     }, ST.sondeoMs);
   }
   async function abrir(sel) {
-    if (!ST.sel || ST.sel.id !== sel.id || ST.sel.local !== sel.local) pararVoz();
+    if (!ST.sel || ST.sel.id !== sel.id || ST.sel.local !== sel.local) {
+      pararVoz();
+      if (GZ) { GZ.quitarSeleccion(); GZ.enviada(); }   // la cita y la selección son del caso que se deja
+    }
     ST.sel = sel; guardarSel(); ST.hilo = null; ST.vistos = null; ST.bandeja = []; ST.irAbajo = true;
     $('#app').classList.remove('en-menu'); $('#app').classList.add('ver-chat'); pintarLista(); pintarChat(); pintarComposer();
     await cargarHilo(); sondear();
@@ -1795,6 +1842,12 @@
     $('#in').oninput = function () { autoAlto(); pintarComposer(); };
     $('#in').onkeydown = function (e) { if (e.key === 'Enter' && !e.shiftKey && innerWidth >= 900) { e.preventDefault(); enviar(); } };
     $('#bEnviar').onclick = enviar;
+    if (CG) GZ = CG.enganchar({
+      contenedor: $('#msgs'), cabecera: $('#ch'), antesDe: $('.compose'),
+      mensaje: gestoDe, puedeReenviar: function () { return false; }, razonReenviar: RAZON_REENVIAR,
+      onResponder: function () { try { $('#in').focus(); } catch (e) {} actualizarAbajo(); },
+      alCambiar: actualizarAbajo, aviso: function (t) { toast(t); }
+    });
     $('#fArch').onchange = function () { agregarArchivos(this.files); this.value = ''; };
     $('#fCam').onchange = function () { agregarArchivos(this.files); this.value = ''; };
     G.addEventListener('online', function () { pintarSenal(); pintarCabecera(); revisarDictados(); });
