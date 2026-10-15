@@ -3,40 +3,15 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>FTS Suite · Marketing · Seguimiento</title>
-<link rel="stylesheet" href="../../shared/fts-styles.css" />
-<link rel="stylesheet" href="../../shared/chat/chat.css?v=20261015-mkt-seguimiento-lanzamiento" />
-<!-- Gate ANTES de pintar (patrón de la suite). La app no arranca si el gate negó. -->
-<script src="../../shared/auth-jwt.js"></script>
-<script>if (!window.SuiteAuth.requerir('marketing:usar', '../../shared/login.html')) { throw new Error('sin sesion'); }</script>
-<style>body{background:var(--dark)} .topbar{position:sticky;top:0;z-index:20} .ver{font-size:10px;color:var(--muted);text-align:center;padding:6px 0 18px}</style>
+<title>FTS Suite · Marketing</title>
+<!-- Marketing v3 (#421): esta pantalla dejó de ser aparte. La liga vieja lleva al Prospectador (Comercial → Marketing).
+     Se puede borrar cuando nadie tenga la liga guardada. -->
+<meta http-equiv="refresh" content="0; url=../prospectador/index.html">
+<link rel="canonical" href="../prospectador/index.html">
+<script>location.replace('../prospectador/index.html');</script>
+<style>body{font-family:system-ui,sans-serif;background:#fff;color:#111b21;padding:24px 16px}a{color:#008069}</style>
 </head>
 <body>
-<div class="ch-app">
-  <div class="topbar">
-    <button class="tb-back" id="atras" aria-label="Volver">&#8249;</button>
-    <div class="tb-logo" role="img" aria-label="FTS"></div>
-    <div class="tb-info"><strong id="tit">Mis tarjetas</strong><span id="sub">Marketing · Seguimiento</span></div>
-    <span class="ch-red on" id="red">● en línea</span>
-  </div>
-  <main id="vista"></main>
-  <p class="ver" id="ver"></p>
-</div>
-<script src="../../shared/chat/chat-firma.js?v=20261015-mkt-seguimiento-lanzamiento"></script>
-<script src="../../shared/chat/chat-cliente.js?v=20261015-mkt-seguimiento-lanzamiento"></script>
-<script src="../../shared/chat/chat-medios.js?v=20261015-mkt-seguimiento-lanzamiento"></script>
-<script src="../../shared/chat/chat-cola.js?v=20261015-mkt-seguimiento-lanzamiento"></script>
-<script src="../../shared/chat/chat-shell.js?v=20261015-mkt-seguimiento-lanzamiento"></script>
-<script src="../../shared/chat/chat-archivos.js?v=20261015-mkt-seguimiento-lanzamiento"></script>
-<script src="../../shared/chat/chat-grabadora.js?v=20261015-mkt-seguimiento-lanzamiento"></script>
-<script src="../../shared/version-check.js"></script>
-<script src="../js/mkt-comun.js?v=20261015-mkt-seguimiento-lanzamiento"></script>
-<script src="../js/seguimiento.js?v=20261015-mkt-seguimiento-lanzamiento"></script>
-<script>
-  var MKT_BUILD = '20261015-mkt-seguimiento-lanzamiento';
-  document.getElementById('ver').textContent = 'Marketing · Seguimiento · ' + MKT_BUILD;
-  try { FTSVersionCheck.run({ versionUrl: 'version.json', localBuild: MKT_BUILD, tag: 'mkt-seguimiento' }); } catch (e) {}
-  if (!window.__ftsSinAcceso) window.MktSeguimiento.arrancar();
-</script>
+<p>Seguimiento ahora vive dentro de cada conversación del Prospectador. <a href="../prospectador/index.html">Ir al Prospectador</a></p>
 </body>
 </html>

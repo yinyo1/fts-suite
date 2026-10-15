@@ -58,16 +58,15 @@ const MODULES_REGISTRY = [
     id:         'marketing',
     label:      '🔎 Marketing',
     path:       'marketing/',
-    cardId:     'card-marketing',
+    cardId:     'card-marketing',   // v3 (#421): ya no hay tarjeta en el lanzador; se entra por Comercial → Marketing
+    parent:     'comercial',
     auth:       'suite',   // marketing:usar · marketing:crm · marketing:bandeja · marketing:equipo
     status:     'active',
-    version:    'M0.1.0',
+    version:    'M3.0.0',
     submodulos: [
       { id:'prospectador', label:'Prospectador' },
-      { id:'lead',         label:'Lead rápido' },
-      { id:'bandeja',      label:'Bandeja del radar' },
-      { id:'seguimiento',  label:'Seguimiento (reservado)' },
-      { id:'radar',        label:'Radar en vivo (reservado)' }
+      { id:'lead',         label:'Nuevo lead' },
+      { id:'tablero',      label:'Tablero del equipo (⋮, marketing:equipo)' }
     ]
   },
   {

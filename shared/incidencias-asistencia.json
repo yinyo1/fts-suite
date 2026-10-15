@@ -2,6 +2,94 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-98-2026-10-15T19-43-13-601Z",
+      "odoo_incidencia_id": null,
+      "tipo": "olvido_entrada",
+      "empleado_id": 98,
+      "empleado_nombre": "Ricardo Alán Hernández González",
+      "fecha_creacion": "2026-10-15T19:43:13.601Z",
+      "attendance_id": 16092,
+      "hora_real_checkin_utc": "2026-10-15T19:43:08.719Z",
+      "geolocation": {
+        "lat": 25.6890818,
+        "lng": -100.2916953,
+        "sitio_detectado": "FTS Monterrey"
+      },
+      "foto_base64": "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",
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "user_id": 98,
+          "usuario": "Ricardo Alán Hernández González",
+          "timestamp": "2026-10-15T19:43:13.601Z",
+          "hora_propuesta_cst": "2026-10-15 09:58:00",
+          "comentario": "Olvido checar entrada y salida de ayer",
+          "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-10-15T20:44:07.593Z",
+          "hora_propuesta_cst": "09:58",
+          "comentario": "Incidencia confirmada",
+          "accion": "aprobado"
+        }
+      ],
+      "status": "aprobada_tal_cual",
+      "hora_final_aplicada_utc": null,
+      "aplicado_en_odoo": false,
+      "department_id": 6,
+      "department_name": "Comercial",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": null,
+      "supervisor_name": null,
+      "supervisor_email": "rich@fts.mx",
+      "supervisor_phone": "+52 81 2584 7837",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": true,
+      "sin_supervisor": false,
+      "tag_disputa_activo": false
+    },
+    {
+      "id_interno": "INC-AUTO-CIERRE-98-2026-10-15T15-57-58-249Z",
+      "tipo": "auto_cierre_pendiente",
+      "status": "aprobada_con_ajuste",
+      "fecha_creacion": "2026-10-15T15:57:59.824Z",
+      "empleado_id": 98,
+      "empleado_nombre": "Ricardo Alán Hernández González",
+      "attendance_id_cerrado": 16062,
+      "attendance_id_nuevo": 16090,
+      "check_in_original_utc": "2026-10-14 15:53:15",
+      "check_out_aplicado_utc": "2026-10-15 01:29:15",
+      "horas_originales": "24.08",
+      "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
+      "tag_disputa_activo": false,
+      "autoincidencia": true,
+      "rh_aprobo": null,
+      "rh_fecha": null,
+      "department_id": null,
+      "department_name": null,
+      "supervisor_id": null,
+      "supervisor_name": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 63,
+          "usuario": "Magaly Estefanía Pérez García",
+          "timestamp": "2026-10-15T18:44:13.594Z",
+          "hora_propuesta_cst": "18:00",
+          "comentario": "olvido registrar salida.",
+          "accion": "ajustado"
+        }
+      ]
+    },
+    {
       "id_interno": "INC-OLV-CHK-62-2026-10-13T13-21-20-295Z",
       "tipo": "olvido_checkout",
       "empleado_id": 62,
@@ -48,12 +136,22 @@
           "hora_propuesta_cst": null,
           "comentario": "Aprobada salida",
           "accion": "aprobado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-10-15T18:11:09.902Z",
+          "hora_propuesta_cst": "05:32",
+          "comentario": "Incidencia confirmada",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_rh",
+      "status": "aprobada_con_ajuste",
       "hora_final_aplicada_utc": "2026-10-13 11:32:00",
       "aplicado_en_odoo": true,
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "creada_por_modulo": "kiosk",
       "creada_por_build": "20261008-kiosk-zona-usa"
     },
@@ -94,12 +192,22 @@
           "fecha": "2026-10-12T23:40:55.530Z",
           "hora_propuesta_cst": "17:10",
           "comentario": "Se me  olvido checar al salir"
+        },
+        {
+          "paso": 2,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-10-15T18:10:50.792Z",
+          "hora_propuesta_cst": "17:10",
+          "comentario": "Incidencia confirmada",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_rh",
+      "status": "aprobada_con_ajuste",
       "hora_final_aplicada_utc": "2026-10-12 23:10:00",
       "aplicado_en_odoo": true,
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "creada_por_modulo": "kiosk",
       "creada_por_build": "20261008-kiosk-zona-usa"
     },

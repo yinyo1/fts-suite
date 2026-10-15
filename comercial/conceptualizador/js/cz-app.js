@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.41';
+  var VERSION = 'V1.44';
   /* V1.32 (0006) · empresa y moneda de la sesión: la base acepta estas tres claves. */
   var EMPRESAS = { mx_mxn: { n: 'FTS México · MXN', s: 'Empresa 1 · pesos', id: 1, m: 'MXN', pais: 'mx' },
                    mx_usd: { n: 'FTS México · USD', s: 'Empresa 1 · dólares', id: 1, m: 'USD', pais: 'mx' },
@@ -75,7 +75,11 @@
              empresa: 'mx_mxn', borr: {}, env: {}, errBt: {}, listo: false, pasos: {}, abiertoReg: null, abajoN: 0,
              nMotor: null, panel: null,
              // V1.34 · ciudad: lo que el teléfono dedujo (geo) y la del proyecto elegida en el menú (ciuNueva)
-             geo: null, ciuNueva: null, qf: null };
+             geo: null, ciuNueva: null, qf: null,
+             // V1.42 · renglones reabiertos con «↺ Cambiar» (clave j:<id> o c:<id>) y permiso de Odoo
+             reab: {}, permOdoo: null,
+             // V1.43 · correcciones por voz que ya salieron a la cola (clave j:/c:/s:) y aceptación de referencias
+             vozCorr: {}, refAcepta: {} };
   try { var g = JSON.parse(sessionStorage.getItem('cz_sel') || 'null'); if (g && (g.id || g.local)) ST.sel = g; } catch (e) {}
 
   // ── iconos de línea (genéricos, los del prototipo) ─────────────────────
@@ -781,10 +785,12 @@
     if (d.K.length) {
       h += '<div class="rub-sec">Conceptos</div><div class="carta rub-in conceptos">';
       d.K.forEach(function (x) {
-        var k = x.k, dd = x.d, kk = 'c:' + k.id, e = ST.env[kk], b = ST.borr[kk] || {}, corr = dd && dd.tipo === 'aceptar' && dd.datos && dd.datos.corregido;
+        var k = x.k, kk = 'c:' + k.id, reab = !!ST.reab[kk] && !!x.d, dd = reab ? null : x.d, e = ST.env[kk], b = ST.borr[kk] || {}, corr = dd && dd.tipo === 'aceptar' && dd.datos && dd.datos.corregido;
         h += '<div class="cn" data-con="' + esc(k.id) + '"><div class="fil"><span class="n">' + esc(k.id) + '</span><div class="d">' + esc(k.concepto) + '<small>origen: ' + esc(k.origen || '') + '</small>' +
           (dd && dd.razon ? '<small class="' + (corr ? 'corr' : 'mal') + '">' + (corr ? '✎ ' : '') + esc(dd.razon) + '</small>' : '') + '</div>' +
           (dd ? '<span class="hecho' + (dd.tipo === 'rechazar' ? ' mal' : corr ? ' corr' : '') + '">' + (corr ? '✎ corregido' : dd.tipo === 'aceptar' ? '✓ va' : 'rechazado') + '</span>' : '') + '</div>' +
+          (reab ? '<p class="nota reab">↺ Reabierto: vale tu última decisión.</p>' : '') +
+          (dd && puede && !b.abierto ? '<div class="decide">' + botonCambiar(kk) + '</div>' : '') +
           (dd || b.abierto || !puede ? '' : '<div class="decide">' + (e === 'aceptar' ? '<button class="si enviando" disabled aria-label="Enviando">' + GIRO + 'enviando…</button>' : '<button class="si" data-acepta="' + esc(k.id) + '">✓ Va</button>') +
             '<button data-corrige="' + esc(k.id) + '"' + (e ? ' disabled' : '') + '>✎ Corregir</button></div>') +
           (ST.errBt[kk] && !b.abierto ? '<span class="err-bt">' + esc(ST.errBt[kk]) + '</span>' : '') +
@@ -1006,6 +1012,9 @@
         if (OFR && Number(OFR.trabajo_id) === Number(m.trabajo_id)) aparte(tarjetaOferta(OFR));
         // V1.40 · el resumen por rubro, una sola vez: bajo la respuesta más nueva del motor (trae el % al día).
         if (RUB && H.ultima && Number(H.ultima.trabajo_id) === Number(m.trabajo_id)) aparte(tarjetaRubros(RUB));
+        // V1.43 · «Supuse esto»: lo deducible se asume con su fuente (viaja en cada respuesta); bajo la más nueva.
+        var SUP = (H.ultima && H.ultima.verifica && H.ultima.verifica.supuestos) || [];
+        if (SUP.length && Number(H.ultima.trabajo_id) === Number(m.trabajo_id)) aparte(tarjetaSupuestos(SUP));
         if (acc[m.trabajo_id]) { aparte(tarjetaAcciones(acc[m.trabajo_id].filter(function (a) { return a.tipo !== 'conjetura'; }))); pintadas[m.trabajo_id] = 1; }
       }
     });
@@ -1238,14 +1247,17 @@
       var lotes = (H.eventos || []).filter(function (e) { return e.tipo === 'palomeada' && e.datos && Number(e.datos.propuesta_trabajo_id) === Number(U.trabajo_id); });
       var enLote = lotes.reduce(function (n, e) { return n + ((e.datos.decisiones || []).length); }, 0);
       h += '<div class="carta conceptos"><h4>🧩 Conceptos propuestos' + (faltan ? ' · <span class="gris">' + faltan + ' por decidir</span>' : '') + '</h4>';
+      var puedeC = mia(H.caso);
       U.conceptos.forEach(function (k) {
-        var d = decididos[k.id], kk = 'c:' + k.id, e = ST.env[kk], b = ST.borr[kk] || {};
+        var kk = 'c:' + k.id, reab = !!ST.reab[kk] && !!decididos[k.id], d = reab ? null : decididos[k.id], e = ST.env[kk], b = ST.borr[kk] || {};
         // V1.34 · sin ✕: «✓ Va» y «✎ Corregir». Corregir abre la cajita (texto o voz); la corrección viaja en el
         // lote como `aceptar` con su razón y `datos.corregido` (el motor la interpreta: si dice que no va, es rechazo).
         var corr = d && d.tipo === 'aceptar' && d.datos && d.datos.corregido;
         h += '<div class="cn" data-con="' + esc(k.id) + '"><div class="fil"><span class="n">' + esc(k.id) + '</span><div class="d">' + esc(k.concepto) + '<small>origen: ' + esc(k.origen || '') + '</small>' +
           (d && d.razon ? '<small class="' + (corr ? 'corr' : 'mal') + '">' + (corr ? '✎ ' : '') + esc(d.razon) + '</small>' : '') + '</div>' +
           (d ? '<span class="hecho' + (d.tipo === 'rechazar' ? ' mal' : corr ? ' corr' : '') + '">' + (corr ? '✎ corregido' : d.tipo === 'aceptar' ? '✓ va' : 'rechazado') + '</span>' : '') + '</div>' +
+          (reab ? '<p class="nota reab">↺ Reabierto: vale tu última decisión.</p>' : '') +
+          (d && puedeC && !b.abierto ? '<div class="decide">' + botonCambiar(kk) + '</div>' : '') +
           (d || b.abierto ? '' : '<div class="decide">' +
                (e === 'aceptar' ? '<button class="si enviando" disabled aria-label="Enviando">' + GIRO + 'enviando…</button>' : '<button class="si" data-acepta="' + esc(k.id) + '">✓ Va</button>') +
                '<button data-corrige="' + esc(k.id) + '"' + (e ? ' disabled' : '') + '>✎ Corregir</button></div>') +
@@ -1278,13 +1290,17 @@
     }
     var B = U.bom || {}, mat = B.materiales || [], mo = B.mano_obra || [];
     if (mat.length || mo.length) {
-      h += '<details class="carta"><summary><b>BOM a costo</b> · ' + mat.length + ' renglones + ' + mo.length + ' de mano de obra</summary>';
+      h += '<details class="carta"' + (nivelesDe(mat).n.N3 ? ' open' : '') + '><summary><b>BOM a costo</b> · ' + mat.length + ' renglones + ' + mo.length + ' de mano de obra</summary>';
+      var NIV = nivelesDe(mat);
+      if (NIV.con) h += '<div class="niv-res">' + ['N1', 'N2', 'N3', 'N4', 'N5'].filter(function (k) { return NIV.n[k]; }).map(function (k) {
+        return '<span class="niv niv-' + k + '" title="' + esc(NIVEL[k][1]) + '">' + k + ' ' + esc(NIVEL[k][0]) + ' · ' + NIV.n[k] + '</span>'; }).join('') + '</div>';
       mat.forEach(function (r) {
-        var te = r.tienda_existencia || r.tienda || '', sin = /sin existencia|solo (hay )?en|otra ciudad/i.test(te);
-        h += '<div class="bom"><div><b>' + esc(r.descripcion) + '</b>' + (r.sku ? ' <span class="sku">' + esc(r.sku) + '</span>' : '') + '</div><div>' + esc(r.qty) + ' ' + esc(r.unidad) + ' · ' + esc(r.tipo) + ' · <b>' + dinero(r.importe, r.moneda) + '</b></div>' +
+        var te = r.tienda_existencia || r.tienda || '', sin = /sin existencia|solo (hay )?en|otra ciudad/i.test(te), nv = nivelDe(r);
+        h += '<div class="bom' + (nv === 'N3' ? ' alerta-n3' : '') + '"><div>' + (NIV.con ? '<span class="niv niv-' + nv + '">' + nv + '</span> ' : '') + '<b>' + esc(r.descripcion) + '</b>' + (r.sku ? ' <span class="sku">' + esc(r.sku) + '</span>' : '') + '</div><div>' + esc(r.qty) + ' ' + esc(r.unidad) + ' · ' + esc(r.tipo) + ' · <b>' + dinero(r.importe, r.moneda) + '</b></div>' +
           '<div class="org">' + [r.formula ? esc(r.formula) : '', r.liga && /^https?:/.test(r.liga) ? '<a href="' + esc(r.liga) + '" target="_blank" rel="noopener">' + esc(r.fuente) + '</a>' :
             /pendiente/i.test(r.fuente || '') ? '<b class="mal">' + esc(r.fuente) + '</b>' : esc(r.fuente || 'sin fuente')].filter(Boolean).join(' · ') + '</div>' +
-          (te ? '<span class="tienda' + (sin ? ' sin' : '') + '">' + esc(te) + '</span>' : '') + '</div>';
+          (te ? '<span class="tienda' + (sin ? ' sin' : '') + '">' + esc(te) + '</span>' : '') +
+          (NIV.con && (nv === 'N3' || nv === 'N4') && r.riesgo ? '<div class="riesgo">⚠ ' + esc(r.riesgo) + '</div>' : '') + '</div>';
       });
       mo.forEach(function (r) {
         h += '<div class="bom"><div><b>MO · ' + esc(r.rol) + '</b></div><div>' + esc(r.personas) + ' pers × ' + esc(r.dias) + ' d × ' + esc(r.horas_dia) + ' h · <b>' + dinero(r.importe, r.moneda) + '</b></div><div class="org">' + esc(r.origen || '') + '</div></div>';
@@ -1296,18 +1312,111 @@
     return h;
   }
 
+  /* ── V1.43 · niveles de precio (decisión de Esteban, 15-oct; herramientas/motor/niveles.js del motor) ───────────
+   * N1 Proveedor · N2 Web MX · N3 Lista de referencia ⚠ · N4 Paramétrico ⚠ · N5 Pendiente. N1–N4 cuentan como precio;
+   * solo N5 frena la cotización. Un BOM de antes (sin `nivel`) se pinta como antes, sin insignias. */
+  var NIVEL = { N1: ['Proveedor', 'Folio, cotización o lo pagado en Odoo del mismo material'], N2: ['Web MX', 'Distribuidor mexicano con liga al producto'],
+    N3: ['Referencia', 'Distribuidor de otro país: USD × FIX × internación × 15 % de holgura. Puede variar el precio en México, la entrega, la importación o la garantía.'],
+    N4: ['Paramétrico', 'Precio unitario publicado × cantidad calculada por ingeniería, con holgura'], N5: ['Pendiente', 'Sin ninguna referencia pública: falta el precio del proveedor'] };
+  function nivelDe(r) {
+    var n = String(r.nivel || '').toUpperCase(); if (NIVEL[n]) return n;
+    if (r.pu === null || r.pu === undefined || r.pu === '') return 'N5';
+    return /odoo|P0\d{3,}|BILL\d|pagado|cotizaci[oó]n|folio|dato (dictado )?de/i.test(r.fuente || '') ? 'N1' : 'N2';
+  }
+  function nivelesDe(mat) { var n = {}, con = (mat || []).some(function (r) { return !!r.nivel; }); (mat || []).forEach(function (r) { var k = nivelDe(r); n[k] = (n[k] || 0) + 1; }); return { con: con, n: n }; }
+  /** «18.4 % del costo es referencia (N3/N4)», con las alertas N3 arriba. `R` = datos.referencias del motor. */
+  function referenciasHtml(R, conLista) {
+    if (!R || !R.n) return '';
+    var din = function (x) { return '$' + Number(x || 0).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); };
+    var lista = conLista ? (R.lista || []).map(function (x) { return '<li class="' + (x.nivel === 'N3' ? 'n3' : '') + '"><span class="niv niv-' + esc(x.nivel) + '">' + esc(x.nivel) + '</span> ' +
+      esc(x.descripcion) + ' · ' + din(x.importe) + (x.riesgo ? '<small> ⚠ ' + esc(x.riesgo) + '</small>' : '') + '</li>'; }).join('') : '';
+    return '<div class="ref-cot"><b>' + esc(R.pct) + ' % del costo es referencia (N3/N4)</b>' + (R.n3 ? ' · <span class="alerta">⚠ ' + R.n3 + (R.n3 === 1 ? ' alerta N3' : ' alertas N3') + '</span>' : '') +
+      '<span class="nota">Precio de referencia, no de proveedor; ya lleva su holgura. Puede variar el precio en México, la entrega, la importación o la garantía.</span>' +
+      (lista ? '<ul>' + lista + '</ul>' : '') + '</div>';
+  }
+  function tarjetaSupuestos(L) {
+    var puede = mia(ST.hilo && ST.hilo.caso);
+    return '<div class="carta sup-carta"><h4>💡 Supuse esto · con su fuente</h4><p class="nota">No te lo pregunto: lo deduje. Si algo no va, cámbialo.</p>' + L.map(function (x) {
+      var kk = 's:' + x.id, b = ST.borr[kk] || {}, e = ST.env[kk], vz = ST.vozCorr[kk];
+      return '<div class="sup" data-sup="' + esc(x.id) + '"><div class="sup-t">' + (x.cambiado ? '<s>' + esc(x.texto) + '</s> ' : '') + esc(x.vigente || x.texto) +
+        '<small> · ' + esc(x.fuente || '') + '</small></div>' +
+        (vz ? '<span class="hecho corr">🎤 Cambio por voz ' + (vz.decidido ? 'enviado' : 'en cola') + ' · se transcribe</span>' :
+         e ? '<span class="hecho corr">' + GIRO + 'enviando…</span>' :
+         x.cambiado ? '<span class="hecho repl">↺ Cambiado ' + esc(VIA[x.via] || '') + '</span>' : '') +
+        (b.abierto ? cajaRazon(kk, '¿Qué es lo correcto?', 'Cambiar', false) : (puede && !e && !vz ? '<div class="decide"><button type="button" class="cambiar" data-supc="' + esc(x.id) + '">↺ Cambiar</button></div>' : '')) +
+        (ST.errBt[kk] && !b.abierto ? '<span class="err-bt">' + esc(ST.errBt[kk]) + '</span>' : '') + '</div>';
+    }).join('') + '</div>';
+  }
+
   var ETIQ = { alta_contacto: 'Sí, dar de alta', crear_machote: 'Crear machote', crear_borrador: 'Crear borrador en Odoo',
-               enviada: 'Ya la mandé al cliente', cerrar: 'Sí, ciérrala' };
+               enviada: 'Ya la mandé', cerrar: 'Sí, ciérrala' };
+
+  /* ── V1.42 · qué gana (#4, correcciones del ingeniero de campo) ───────────────────────────────────────────────
+   * La última decisión del AUTOR sobre la misma pregunta gana, venga del botón, del texto o de la voz. Lo vigente lo
+   * manda el motor en cada respuesta (`verifica.reemplazos`, de reemplazos.json); un «↺ Cambiar» que el motor todavía
+   * no contesta se pinta ya con el valor nuevo y «enviando al motor». La pregunta reemplazada se ve reemplazada:
+   * el historial no enseña lo viejo como vigente. */
+  function reemplazosDe(H) {
+    var m = {}, U = H && H.ultima, t0 = U && U.created_at ? Date.parse(U.created_at) : 0;
+    (((U && U.verifica) || {}).reemplazos || []).forEach(function (r) { m[r.objetivo] = { vigente: r.vigente, antes: r.antes, via: r.via, autor: r.autor, at: r.at, veces: r.veces || 1 }; });
+    ((H && H.eventos) || []).forEach(function (e) {
+      var d = e.datos || {};
+      if (e.tipo === 'correccion' && e.concepto === 'cambia' && d.objetivo && Date.parse(e.created_at) > t0)
+        m[d.objetivo] = { vigente: d.despues, antes: (m[d.objetivo] || {}).vigente || d.antes, via: d.via, autor: e.autor, at: e.created_at, pendiente: true };
+    });
+    return m;
+  }
+  var VIA = { boton: 'con el botón', texto: 'por texto', voz: 'por voz' };
+  function lineaReemplazo(rp) {
+    return '<span class="hecho repl">↺ Vigente: ' + esc(rp.vigente) + '</span><small class="antes">Reemplazada' + (rp.antes ? ' · antes: ' + esc(rp.antes) : '') +
+      ' · ' + esc(VIA[rp.via] || rp.via || '') + (rp.pendiente ? ' · esperando al motor' : '') + '</small>';
+  }
+  /* V1.42 · quién crea la cotización en Odoo lo dice el SERVIDOR (modo permiso); aquí solo se pinta la leyenda. */
+  function leyendaOdoo(tipo) {
+    if (!G.CzAcciones || !G.CzAcciones.permiso) return '';
+    if (ST.permOdoo === null) { ST.permOdoo = 'cargando'; G.CzAcciones.permiso().then(function (p) { ST.permOdoo = p; pintarChat(); }); return ''; }
+    var p = ST.permOdoo; if (!p || p === 'cargando' || p.habilitado) return '';
+    if (tipo === 'enviada') return '<p class="nota">En Odoo la marca quien tiene la emisión habilitada: crear y mover la cotización en Odoo todavía no está habilitado para tu usuario.</p>';
+    return '<p class="nota">' + esc(p.mensaje || 'Crear la cotización en Odoo todavía no está habilitado para tu usuario.') + '</p>';
+  }
+  /** Lo releído de Odoo (no el 200): renglón por renglón, la suma y los opcionales fuera del total. */
+  function releidoOdoo(r) {
+    if (!r || !r.orden_id || !(r.renglones || []).length) return '';
+    var din = function (n) { return '$' + Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+    return '<div class="odoo-rb">' + r.renglones.map(function (x) { return esc(String(x.texto || '').slice(0, 70)) + ' · ' + din(x.precio); }).join('<br>') +
+      '<br><b>' + r.renglones.map(function (x) { return Number(x.precio || 0).toLocaleString('es-MX'); }).join(' + ') + ' = ' + din(r.subtotal) + ' ' + esc(r.moneda || '') + '</b>' +
+      ((r.opcionales || []).length ? '<br>Fuera del total: ' + r.opcionales.map(function (o) { return esc(String(o).slice(0, 60)); }).join(' · ') : '') +
+      (r.estado ? '<br>Estado en Odoo: ' + esc(r.estado === 'sent' ? 'Cotización enviada' : r.estado === 'draft' ? 'Borrador' : r.estado) : '') + '</div>';
+  }
+  /* V1.43 · «Cotizar con referencias»: un toque acepta las referencias (N3/N4) y crea el borrador. Solo se ofrece si el
+   * SERVIDOR exige la aceptación (permiso → `referencias: true`); con el workflow viejo, la pantalla no promete nada. */
+  function botonReferencias(a) {
+    if (ST.permOdoo === null) { leyendaOdoo('crear_borrador'); return '<p class="nota">' + GIRO + 'revisando el permiso…</p>'; }
+    var p = ST.permOdoo; if (!p || p === 'cargando') return '<p class="nota">' + GIRO + 'revisando el permiso…</p>';
+    if (!p.habilitado) return '<div class="acc"><button class="si" data-hacer="' + a.id + '">Cotizar con referencias</button><button data-descartar="' + a.id + '">No</button></div>' + leyendaOdoo('crear_borrador');
+    if (!p.referencias) return '<p class="nota mal">El servidor de Odoo todavía no acepta cotizar con referencias: falta publicar el workflow nuevo. Por ahora este borrador no se crea; el machote sí está al día.</p>' +
+      '<div class="acc"><button data-descartar="' + a.id + '">No</button></div>';
+    return '<div class="acc"><button class="si" data-refok="' + a.id + '">Cotizar con referencias</button><button data-descartar="' + a.id + '">No</button></div>' +
+      '<p class="nota">Al tocarlo aceptas las referencias de arriba; queda registrado en el hilo.</p>';
+  }
+  function botonCambiar(kk) { return '<button type="button" class="cambiar" data-cambia="' + esc(kk) + '" aria-label="Cambiar esta respuesta">↺ Cambiar</button>'; }
   function tarjetaAcciones(L) {
     var conj = L.filter(function (a) { return a.tipo === 'conjetura'; }), otras = L.filter(function (a) { return a.tipo !== 'conjetura'; }), h = '';
     if (conj.length) {
       var pend = conj.filter(function (a) { return a.estado === 'propuesta'; }).length;
       h += '<div class="carta"><h4>❓ Lo que supongo · confírmalo o corrígelo' + (pend ? ' · <span class="gris">faltan ' + pend + '</span>' : '') + '</h4>';
+      var REP = reemplazosDe(ST.hilo), puede = mia(ST.hilo && ST.hilo.caso);
       conj.forEach(function (a) {
         var d = a.datos || {}, r = a.resultado || {}, kk = 'j:' + a.id, e = ST.env[kk], b = ST.borr[kk] || {};
-        h += '<div class="preg"><p>' + esc(d.pregunta || a.titulo) + '</p>' + (d.conjetura ? '<div class="conj">Supongo: ' + esc(d.conjetura) + (d.porque ? '<small> · ' + esc(d.porque) + '</small>' : '') + '</div>' : '') +
-          (a.estado === 'hecha' ? '<span class="hecho">✓ Confirmado</span>' : a.estado === 'descartada' ? '<span class="hecho corr">✎ Corregido: ' + esc(r.correccion || '') + '</span>' :
+        var rp = REP['conjetura:' + a.id], reab = !!ST.reab[kk] && a.estado !== 'propuesta', decidida = a.estado !== 'propuesta' && !reab;
+        h += '<div class="preg' + (rp ? ' reemplazada' : '') + (reab ? ' reabierta' : '') + '" data-preg="' + a.id + '"><p>' + esc(d.pregunta || a.titulo) + '</p>' + (d.conjetura ? '<div class="conj">Supongo: ' + (rp ? '<s>' + esc(d.conjetura) + '</s>' : esc(d.conjetura)) + (d.porque ? '<small> · ' + esc(d.porque) + '</small>' : '') + '</div>' : '') +
+          (d.mueve ? '<div class="mueve">' + (/no mueve|sin estimar/i.test(d.mueve) ? '' : 'mueve ') + esc(d.mueve) + '</div>' : '') +
+          (ST.vozCorr[kk] && a.estado === 'propuesta' ? '<span class="hecho corr">🎤 Corrección por voz ' + (ST.vozCorr[kk].decidido ? 'enviada' : 'en cola') + ' · se transcribe</span>' : '') +
+          (reab ? '<p class="nota reab">↺ Reabierta: vale tu última decisión.' + (rp ? ' Hoy está: ' + esc(rp.vigente) + '.' : '') + '</p>' : '') +
+          (decidida && rp ? lineaReemplazo(rp) + (puede ? botonCambiar(kk) : '') :
+           decidida ? (a.estado === 'hecha' ? '<span class="hecho">✓ Confirmado</span>' : '<span class="hecho corr">✎ Corregido: ' + esc(r.correccion || '') + '</span>') + (puede ? botonCambiar(kk) : '') :
            b.abierto ? cajaRazon(kk, '¿Qué es lo correcto?', 'Mandar', false) :
+           ST.vozCorr[kk] ? '' :
            '<div class="acc" data-acc="' + a.id + '">' + (e === 'confirma' ? '<button class="si enviando" disabled>' + GIRO + 'enviando…</button>' : '<button class="si" data-conf="' + a.id + '">✓ Va</button>') +
            '<button data-corr="' + a.id + '"' + (e ? ' disabled' : '') + '>✎ Corregir</button></div>' + (ST.errBt[kk] ? '<span class="err-bt">' + esc(ST.errBt[kk]) + '</span>' : '')) + '</div>';
       });
@@ -1325,12 +1434,16 @@
         // V1.36 · lo que falta para cotizar en Odoo, con su número y renglón por renglón.
         (a.tipo === 'crear_machote' && Number(d.n_pendientes) > 0 && a.estado !== 'descartada' && a.id === ultimoCm ? '<div class="pend-cot"><b>' + esc(G.CzAcciones.textoPendientes({ n: Number(d.n_pendientes), lista: d.pendientes || [] })) + '</b>' +
           '<ul>' + (d.pendientes || []).map(function (hh) { return (hh.items && hh.items.length ? hh.items : [hh.titulo]).map(function (it) { return '<li>' + esc(it) + '</li>'; }).join(''); }).join('') + '</ul>' +
-          '<span class="nota">El machote sí se crea: esos renglones van sin precio y marcados. Nunca se estima un precio.</span></div>' : '') +
-        (a.estado === 'hecha' ? '<span class="hecho">✓ ' + esc(r.texto || 'Hecho') + '</span>' :
+          '<span class="nota">El machote sí se crea: esos renglones van sin precio y marcados (N5).</span></div>' : '') +
+        // V1.43 · qué parte del costo es referencia (N3/N4), con las alertas N3 arriba.
+        ((a.tipo === 'crear_machote' && a.id === ultimoCm) || a.tipo === 'crear_borrador' ? referenciasHtml(d.referencias, a.tipo === 'crear_borrador' && a.estado === 'propuesta') : '') +
+        (a.estado === 'hecha' ? '<span class="hecho">✓ ' + esc(r.texto || 'Hecho') + '</span>' + releidoOdoo(r) :
          a.estado === 'descartada' ? '<span class="hecho gris">' + ((r.reemplazada_por_trabajo) ? 'Reemplazado por una propuesta más nueva' : 'Descartado') + '</span>' :
          espera ? '<p class="nota">Contesta primero las suposiciones pendientes: el machote se arma con lo que confirmes.</p>' :
          (a.tipo === 'enviada' || a.tipo === 'cerrar' || manejador) ?
-           '<div class="acc"><button class="si" data-hacer="' + a.id + '">' + esc(d.boton || ETIQ[a.tipo] || 'Hacer') + '</button><button data-descartar="' + a.id + '">' + (a.tipo === 'cerrar' ? 'Todavía no' : 'No') + '</button></div>' :
+           (a.tipo === 'crear_borrador' && d.referencias && d.referencias.n ? botonReferencias(a) :
+           '<div class="acc"><button class="si" data-hacer="' + a.id + '">' + esc(d.boton || ETIQ[a.tipo] || 'Hacer') + '</button><button data-descartar="' + a.id + '">' + (a.tipo === 'cerrar' ? 'Todavía no' : 'No') + '</button></div>') +
+           (a.tipo === 'crear_borrador' || a.tipo === 'enviada' ? leyendaOdoo(a.tipo) : '') :
            '<p class="nota">Este botón se enciende cuando se active la escritura a Odoo correspondiente.</p>') + '</div>';
     });
     return h;
@@ -1417,8 +1530,15 @@
     $$('[data-desc]', M).forEach(function (b) { b.onclick = function () { if (confirm('¿Descartar este mensaje? No se manda.')) Q.descartar(b.dataset.desc); }; });
     $$('[data-acepta]', M).forEach(function (b) { b.onclick = function () { decidirConcepto(b.dataset.acepta, 'aceptar'); }; });
     $$('[data-corrige]', M).forEach(function (b) { b.onclick = function () { abrirCaja('c:' + b.dataset.corrige); }; });
-    $$('[data-conf]', M).forEach(function (b) { b.onclick = function () { responder('j:' + b.dataset.conf, b.dataset.conf, 'hecha', { confirma: true }, 'confirma'); }; });
+    $$('[data-conf]', M).forEach(function (b) { b.onclick = function () {
+      var k = 'j:' + b.dataset.conf;
+      if (ST.reab[k]) { var a = accionPorId(b.dataset.conf); return cambiar(k, 'conjetura:' + b.dataset.conf, ((a && a.datos) || {}).conjetura || 'lo que supuse', 'boton'); }
+      responder(k, b.dataset.conf, 'hecha', { confirma: true }, 'confirma'); }; });
     $$('[data-corr]', M).forEach(function (b) { b.onclick = function () { abrirCaja('j:' + b.dataset.corr); }; });
+    // V1.42 · «↺ Cambiar» reabre el renglón con «✓ Va / ✎ Corregir». No manda nada hasta que decidas.
+    $$('[data-cambia]', M).forEach(function (b) { b.onclick = function () { ST.reab[b.dataset.cambia] = true; delete ST.borr[b.dataset.cambia]; pintarChat(); if (ST.rubHoja) pintarHojaRubro(); }; });
+    $$('[data-supc]', M).forEach(function (b) { b.onclick = function () { abrirCaja('s:' + b.dataset.supc); }; });   // V1.43
+    $$('[data-refok]', M).forEach(function (b) { b.onclick = function () { ST.refAcepta[b.dataset.refok] = true; hacer(b.dataset.refok, b); }; });
     $$('[data-borr]', M).forEach(function (t) { t.oninput = function () { (ST.borr[t.dataset.borr] = ST.borr[t.dataset.borr] || { abierto: true }).texto = t.value; }; });
     $$('[data-cancela]', M).forEach(function (b) { b.onclick = function () { var k = b.dataset.cancela; if (GR.activa('d-' + k)) GR.basura('d-' + k); delete ST.borr[k]; delete ST.errBt[k]; pintarChat(); }; });
     $$('[data-manda]', M).forEach(function (b) { b.onclick = function () { mandarCaja(b.dataset.manda); }; });
@@ -1466,7 +1586,27 @@
     }
     if (txt.length < 3) { b.err = 'Escribe o dicta ' + (k.indexOf('c:') === 0 ? 'qué cambia' : 'lo correcto') + ' (3 letras mínimo).'; return pintarChat(); }
     if (k.indexOf('c:') === 0) return decidirConcepto(k.slice(2), 'aceptar', txt, { corregido: true });
+    if (k.indexOf('s:') === 0) return cambiar(k, 'supuesto:' + k.slice(2), txt, b.voz ? 'voz' : 'texto');   // V1.43
+    if (ST.reab[k]) return cambiar(k, 'conjetura:' + k.slice(2), txt, b.voz ? 'voz' : 'texto');
     return responder(k, k.slice(2), 'descartada', { correccion: txt }, 'corrige');
+  }
+  function accionPorId(id) { return ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return String(x.id) === String(id); })[0] || null; }
+  /** V1.42 · el valor vigente de una pregunta: el último reemplazo, o lo que se decidió con el botón. */
+  function vigenteDe(objetivo) {
+    var rp = reemplazosDe(ST.hilo)[objetivo]; if (rp) return rp.vigente;
+    var ms = /^supuesto:(.+)$/.exec(objetivo);
+    if (ms) { var sp = ((ST.hilo && ST.hilo.ultima && ST.hilo.ultima.verifica && ST.hilo.ultima.verifica.supuestos) || []).filter(function (x) { return x.id === ms[1]; })[0]; return sp ? sp.vigente || sp.texto : ''; }
+    var m = /^conjetura:(.+)$/.exec(objetivo), a = m && accionPorId(m[1]); if (!a) return '';
+    return a.estado === 'descartada' ? ((a.resultado || {}).correccion || '') : ((a.datos || {}).conjetura || '');
+  }
+  /** «↺ Cambiar» de una conjetura: evento `correccion`/`cambia` (la base ya lo acepta y le da trabajo al motor). */
+  async function cambiar(k, objetivo, despues, via) {
+    ST.env[k] = 'cambia'; delete ST.errBt[k]; pintarChat();
+    var r = await C.evento({ caso_id: ST.hilo.caso.id, tipo: 'correccion', concepto: 'cambia', razon: '',
+      datos: { objetivo: objetivo, antes: vigenteDe(objetivo), despues: String(despues).trim(), via: via } });
+    delete ST.env[k];
+    if (!r.ok) { ST.errBt[k] = sinSenal(r); pintarChat(); return false; }
+    delete ST.reab[k]; delete ST.borr[k]; ST.irAbajo = true; await cargarHilo(); return true;
   }
   /** Confirmar o corregir una conjetura: el botón dice «enviando…» hasta que el servidor contesta. */
   async function responder(k, id, decision, resultado, que) {
@@ -1488,11 +1628,56 @@
   function dictar(k) {
     var b = ST.borr[k] = ST.borr[k] || { abierto: true, texto: '' }; b.err = null;
     if (!GR.puede()) { b.err = 'Este navegador no deja grabar: escríbelo.'; return pintarChat(); }
-    GR.iniciar('d-' + k, { chico: true, etiquetaEnviar: 'Terminar y transcribir', alCambiar: function () { pintarChat(); },
+    GR.iniciar('d-' + k, { chico: true, etiquetaEnviar: /^[jcs]:/.test(k) ? 'Enviar' : 'Terminar y transcribir', alCambiar: function () { pintarChat(); },
       alTerminar: function (nota) {
         if (!nota || nota.duracion_s < 1) { b.err = 'Muy corta: mantén grabando al menos un segundo.'; return pintarChat(); }
+        // V1.43 (#4 punto 10) · en «✎ Corregir» de una conjetura, un concepto o un supuesto, la nota se MANDA tal cual
+        // (como en el chat principal, por la cola: sin señal espera en el teléfono) y la transcripción va en segundo plano.
+        if (/^[jcs]:/.test(k)) return corregirPorVoz(k, nota);
         return subirDictado(k, nota);
       } }).catch(function (e) { b.err = e && e.name === 'NotAllowedError' ? 'Da permiso al micrófono para dictar.' : 'No se pudo grabar: ' + (e.message || e); pintarChat(); });
+  }
+  /* V1.43 · corrección por voz sin esperar a la transcripción. La nota entra a la cola como mensaje del caso con una
+   * primera línea que la liga a su pregunta («✎ Corrección por voz · conjetura:63 · «…»»): el motor la lee en hilo.md,
+   * la transcribe y la toma como la corrección de ESA pregunta (PROCESAR §3i). La decisión (✎ en la conjetura, el
+   * concepto o el «↺ Cambiar») se registra en cuanto hay señal; sin señal queda pendiente y sale sola al volver. */
+  function objetivoDe(k) { var t = k.slice(0, 1), id = k.slice(2); return t === 'j' ? 'conjetura:' + id : t === 'c' ? 'concepto:' + id : 'supuesto:' + id; }
+  function preguntaDe(k) {
+    var t = k.slice(0, 1), id = k.slice(2);
+    if (t === 'j') { var a = accionPorId(id); return a ? ((a.datos || {}).pregunta || a.titulo) : ''; }
+    if (t === 's') return vigenteDe('supuesto:' + id);
+    var U = ST.hilo && ST.hilo.ultima, c = ((U && U.conceptos) || []).filter(function (x) { return String(x.id) === id; })[0]; return c ? c.concepto : id;
+  }
+  var PEND_VOZ = 'cz_corr_voz_pend';
+  function pendVoz() { try { return JSON.parse(localStorage.getItem(PEND_VOZ) || '[]'); } catch (e) { return []; } }
+  function ponPendVoz(L) { try { localStorage.setItem(PEND_VOZ, JSON.stringify(L.slice(-50))); } catch (e) {} }
+  async function corregirPorVoz(k, nota) {
+    var caso = ST.hilo && ST.hilo.caso && ST.hilo.caso.id; if (!caso) return;
+    var obj = objetivoDe(k), preg = String(preguntaDe(k) || '').replace(/\s+/g, ' ').slice(0, 90);
+    await Q.encolar(destino(), '✎ Corrección por voz · ' + obj + ' · «' + preg + '»', [nota], nota.escrito_at);
+    delete ST.borr[k]; ST.vozCorr[k] = { at: Date.now(), decidido: false }; ST.irAbajo = true;
+    var L = pendVoz(); L.push({ k: k, caso: caso, obj: obj, reab: !!ST.reab[k] }); ponPendVoz(L);
+    await refrescarSalida(); pintarChat();
+    decidirVozPendientes();
+  }
+  var decidiendoVoz = false;
+  async function decidirVozPendientes() {
+    if (decidiendoVoz || !navigator.onLine || !ST.hilo) return;
+    decidiendoVoz = true;
+    try {
+      var L = pendVoz(), quedan = [];
+      for (var i = 0; i < L.length; i++) {
+        var x = L[i]; if (x.caso !== ST.hilo.caso.id) { quedan.push(x); continue; }
+        var txt = '🎤 Por voz: va en la nota de voz (se transcribe)', t = x.k.slice(0, 1), id = x.k.slice(2), r;
+        if (t === 's' || x.reab) r = await C.evento({ caso_id: x.caso, tipo: 'correccion', concepto: 'cambia', razon: '', datos: { objetivo: x.obj, antes: vigenteDe(x.obj), despues: txt, via: 'voz' } });
+        else if (t === 'j') { var a = accionPorId(id); r = a && a.estado !== 'propuesta' ? { ok: true } : await C.accion({ accion_id: String(id), decision: 'descartada', resultado: { correccion: txt, voz: true } }); }
+        else r = await C.evento({ caso_id: x.caso, tipo: 'aceptar', concepto: id, razon: txt, datos: { corregido: true, voz: true } });
+        if (r && r.ok) { if (ST.vozCorr[x.k]) ST.vozCorr[x.k].decidido = true; delete ST.reab[x.k]; }
+        else if (r && r.clase === 'red') quedan.push(x);
+      }
+      ponPendVoz(quedan);
+    } finally { decidiendoVoz = false; }
+    await cargarHilo();
   }
   async function subirDictado(k, nota) {
     var b = ST.borr[k] = ST.borr[k] || { abierto: true, texto: '' }, caso = ST.hilo && ST.hilo.caso && ST.hilo.caso.id;
@@ -1511,10 +1696,11 @@
     Object.keys(ST.borr).forEach(function (k) {
       var b = ST.borr[k]; if (!b.adjunto) return;
       var a = meta[b.adjunto];
-      if (a && a.transcripcion) { b.texto = (b.texto ? b.texto.replace(/\s+$/, '') + ' ' : '') + a.transcripcion.trim(); b.transcribiendo = false; delete b.adjunto; }
+      if (a && a.transcripcion) { b.texto = (b.texto ? b.texto.replace(/\s+$/, '') + ' ' : '') + a.transcripcion.trim(); b.transcribiendo = false; b.voz = true; delete b.adjunto; }
       else if (Date.now() - b.desde > 120000 && !b.tarda) { b.tarda = true; b.err = 'La transcripción está tardando: puedes escribirlo mientras.'; }
     });
     if (!navigator.onLine || !ST.hilo) return;
+    if (pendVoz().length) decidirVozPendientes();
     Q.dictados().then(function (L) { L.filter(function (d) { return d.caso_id === ST.hilo.caso.id && !ST.subiendoDictado; }).forEach(function (d) {
       ST.subiendoDictado = true; ST.borr[d.k] = ST.borr[d.k] || { abierto: true, texto: '' };
       subirDictado(d.k, d.nota).then(function () { ST.subiendoDictado = false; }); }); });
@@ -1531,8 +1717,15 @@
     var U = ST.hilo && (ST.hilo.propuesta || ST.hilo.ultima), k = U && (U.conceptos || []).filter(function (x) { return x.id === id; })[0]; if (!k) return;
     var kk = 'c:' + id;
     ST.env[kk] = tipo; delete ST.errBt[kk]; pintarChat();
-    var r = await C.evento({ caso_id: ST.hilo.caso.id, tipo: tipo, concepto: k.id, razon: razon || '', datos: Object.assign({ concepto: k.concepto, origen: k.origen }, extra || {}) });
+    var cambio = null;
+    if (ST.reab[kk]) {   // V1.42 · concepto reabierto: la decisión nueva gana; lleva lo de antes para el rastro.
+      var prev = ((ST.hilo.eventos || []).filter(function (x) { return x.concepto === id && (x.tipo === 'aceptar' || x.tipo === 'rechazar'); }).pop()) || null;
+      cambio = { cambio: true, antes: prev ? (prev.tipo === 'rechazar' ? 'rechazado: ' + (prev.razon || '') : prev.datos && prev.datos.corregido ? prev.razon : 'va') : '',
+                 via: razon ? ((ST.borr[kk] || {}).voz ? 'voz' : 'texto') : 'boton' };
+    }
+    var r = await C.evento({ caso_id: ST.hilo.caso.id, tipo: tipo, concepto: k.id, razon: razon || '', datos: Object.assign({ concepto: k.concepto, origen: k.origen }, extra || {}, cambio || {}) });
     delete ST.env[kk];
+    if (r.ok) delete ST.reab[kk];
     if (!r.ok) { ST.errBt[kk] = sinSenal(r); pintarChat(); return false; }
     delete ST.borr[kk];
     if (r.trabajo_id) ST.irAbajo = true;     // el último decidió el lote: el motor arma el BOM
@@ -1546,14 +1739,15 @@
   }
   async function hacer(id, b) {
     var a = ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return String(x.id) === String(id); })[0]; if (!a) return;
-    if (a.tipo === 'enviada') return resolver(id, 'hecha', { texto: 'Marcada como enviada al cliente' }, b);
+    if (a.tipo === 'enviada' && !(G.CzAcciones && G.CzAcciones.enviada)) return resolver(id, 'hecha', { texto: 'Marcada como enviada al cliente' }, b);
     if (a.tipo === 'cerrar') return confirmarCierre(function () { return resolver(id, 'hecha', { texto: 'Cerrada a mano' }, b); });
     var m = G.CzAcciones && G.CzAcciones[a.tipo]; if (!m) return;
     b.disabled = true;
     try {
       // El manejador hace la escritura con su propio endpoint (machote-guardar,
       // orden-crear-v2, odoo-alta) y devuelve {ok, resultado} o {ok:false, mensaje}.
-      var r = await m(a, { caso: ST.hilo.caso, hilo: ST.hilo, toast: toast, modal: modal, cerrarModal: cerrarModal });
+      var r = await m(a, { caso: ST.hilo.caso, hilo: ST.hilo, toast: toast, modal: modal, cerrarModal: cerrarModal, aceptaReferencias: !!ST.refAcepta[id] });
+      delete ST.refAcepta[id];
       if (!r || !r.ok) { if (r && r.mensaje) toast(r.mensaje); b.disabled = false; return; }
       await resolver(id, 'hecha', r.resultado || {}, null);
     } catch (e) { toast('No se pudo: ' + (e && e.message || e)); b.disabled = false; }
@@ -2021,11 +2215,49 @@
     // marca como molesto. Se pide solo desde la pantalla de permisos (cz-push.js), cuando la persona toca «Activar».
   }
 
+  function esCompu() { try { return !G.matchMedia('(pointer: coarse)').matches; } catch (e) { return innerWidth >= 900; } }
   G.CzApp = { VERSION: VERSION, arrancar: async function () {
     if (G.__ftsSinAcceso) return;
     $('#lArch').insertAdjacentHTML('afterbegin', ico('clip')); $('#lCam').insertAdjacentHTML('afterbegin', ico('camara'));
     $('#in').oninput = function () { autoAlto(); pintarComposer(); };
-    $('#in').onkeydown = function (e) { if (e.key === 'Enter' && !e.shiftKey && innerWidth >= 900) { e.preventDefault(); enviar(); } };
+    /* V1.43 (#4 punto 9) · en compu: Enter envía; Shift+Enter y Alt+Enter hacen salto de línea. En teléfono (puntero
+     * grueso) Enter sigue siendo salto de línea y se envía con el botón. */
+    $('#in').onkeydown = function (e) {
+      if (e.key !== 'Enter' || e.isComposing || !esCompu()) return;
+      if (e.altKey && !e.shiftKey) { e.preventDefault(); var t = this, a = t.selectionStart, z = t.selectionEnd; t.value = t.value.slice(0, a) + '\n' + t.value.slice(z); t.selectionStart = t.selectionEnd = a + 1; autoAlto(); pintarComposer(); return; }
+      if (e.shiftKey) return;
+      e.preventDefault(); enviar();
+    };
+    /* V1.43 (#4 punto 8) · ráfaga de fotos dentro de la app; sin cámara en vivo, el <input capture> de siempre. */
+    $('#lCam').addEventListener('click', function (e) {
+      if (e.target && e.target.id === 'fCam') return;            // el clic sintético del respaldo
+      if (!G.CzCamara || !G.CzCamara.puede()) return;
+      e.preventDefault();
+      G.CzCamara.abrir({ alAceptar: function (L) { agregarArchivos(L); }, aviso: toast,
+        alFallar: function () { $('#fCam').click(); } });
+    });
+    /* V1.43 (#4 punto 11) · con MOUSE se selecciona y copia texto; deslizar-para-responder es solo con el dedo.
+     * shared/chat/chat-gestos.js no se toca (lo comparten Marketing y el núcleo de WhatsApp). Aquí, en captura: si el
+     * mouse ARRASTRA sobre una burbuja, su pointermove no llega a los gestos y se les manda un pointercancel (sueltan la
+     * burbuja y su temporizador), así el navegador selecciona texto. Mantener presionado sin mover sigue seleccionando
+     * el mensaje como antes, y «Responder» queda en el menú ⌄ y el clic derecho. */
+    var ratonG = null;
+    $('#msgs').parentNode.addEventListener('pointerdown', function (e) {
+      ratonG = null;
+      if (e.pointerType !== 'mouse' || e.button !== 0) return;
+      var b = e.target.closest && e.target.closest('#msgs [data-chg-id]'); if (!b) return;
+      if (e.target.closest('button, a, input, textarea, select, [data-onda], [role="slider"], .chg-cita, .chg-chev')) return;
+      ratonG = { x: e.clientX, y: e.clientY, cancelado: false };
+    }, true);
+    G.addEventListener('pointermove', function (e) {
+      if (!ratonG || e.pointerType !== 'mouse') return;
+      e.stopPropagation();
+      if (!ratonG.cancelado && Math.abs(e.clientX - ratonG.x) + Math.abs(e.clientY - ratonG.y) > 6) {
+        ratonG.cancelado = true;
+        G.dispatchEvent(new PointerEvent('pointercancel', { pointerType: 'mouse', bubbles: true }));
+      }
+    }, true);
+    G.addEventListener('pointerup', function () { ratonG = null; }, true);
     $('#bEnviar').onclick = enviar;
     if (CG) GZ = CG.enganchar({
       contenedor: $('#msgs'), cabecera: $('#ch'), antesDe: $('.compose'),

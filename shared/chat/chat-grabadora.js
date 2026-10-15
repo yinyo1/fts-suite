@@ -31,12 +31,24 @@
       var env = document.createElement('button'); env.className = 'ch-redondo'; env.textContent = '➤'; env.setAttribute('aria-label', 'Enviar nota');
       ta.classList.add('ch-oculto'); mic.classList.add('ch-oculto'); clip.classList.add('ch-oculto');
       var b = cont.querySelector('.ch-barra'); b.insertBefore(bas, b.firstChild); b.insertBefore(caja, inp); b.insertBefore(env, inp);
-      var inicio = rec.inicio; reloj = setInterval(function () { caja.querySelector('[data-r]').textContent = dur((Date.now() - inicio) / 1000); }, 500);
-      function fin() { clearInterval(reloj); bas.remove(); env.remove(); caja.remove(); ta.classList.remove('ch-oculto'); mic.classList.remove('ch-oculto'); clip.classList.remove('ch-oculto'); }
+      var inicio = rec.inicio; reloj = setInterval(function () { caja.querySelector('[data-r]').textContent = dur((rec.transcurrido ? rec.transcurrido() : Date.now() - inicio) / 1000); }, 500);
+      // v3 (#421): pausa como WhatsApp (solo si el navegador la soporta).
+      var pau = null;
+      if (rec.puedePausar) {
+        pau = document.createElement('button'); pau.className = 'ch-redondo claro'; pau.textContent = '⏸'; pau.setAttribute('aria-label', 'Pausar la nota');
+        b.insertBefore(pau, env);
+        pau.onclick = function () {
+          if (pau.textContent === '⏸') { if (rec.pausar()) { pau.textContent = '⏺'; pau.setAttribute('aria-label', 'Seguir grabando'); caja.classList.add('pausa'); } }
+          else if (rec.reanudar()) { pau.textContent = '⏸'; pau.setAttribute('aria-label', 'Pausar la nota'); caja.classList.remove('pausa'); }
+        };
+      }
+      function fin() { clearInterval(reloj); bas.remove(); env.remove(); caja.remove(); if (pau) pau.remove(); ta.classList.remove('ch-oculto'); mic.classList.remove('ch-oculto'); clip.classList.remove('ch-oculto'); }
       bas.onclick = function () { rec.cancelar(); rec = null; fin(); };
       env.onclick = async function () { var n = await rec.detener(); rec = null; fin(); if (n && n.bytes) opc.onEnviar('', [n], inicio); };
     };
-    return { foco: function () { ta.focus(); } };
+    // v3 (#421): grabar() abre el micrófono sin tocar el botón (corregir por voz); escribir(t) prellena la caja.
+    return { foco: function () { ta.focus(); }, grabar: function () { if (!ta.value.trim()) mic.click(); else ta.focus(); },
+             escribir: function (t) { ta.value = t || ''; ta.dispatchEvent(new Event('input')); ta.focus(); } };
   }
   G.ChatUI.barra = barra;
 })(window);

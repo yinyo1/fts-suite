@@ -14,7 +14,7 @@
   var V = $('#vista'), arch = [], escrito = null, rec = null, reloj = null;
 
   function pintar() {
-    M.cab('Lead rápido', navigator.onLine ? 'En línea' : 'Sin señal: se guarda en el teléfono', '../index.html');
+    M.cab('Nuevo lead', navigator.onLine ? 'En línea' : 'Sin señal: se guarda en el teléfono', '../index.html');
     V.innerHTML = '<div class="ch-wrap">' +
       '<div class="ch-fila"><button class="ch-btn ch-btn-p" id="cam">📷 Foto de gafete o tarjeta</button><button class="ch-btn ch-btn-s" id="gal">🖼️ De la galería</button></div>' +
       '<input type="file" id="fcam" class="ch-oculto" accept="image/*" capture="environment"><input type="file" id="fgal" class="ch-oculto" accept="image/*,application/pdf" multiple>' +
@@ -22,6 +22,8 @@
       '<div id="adjs"></div>' +
       '<label class="ch-campo">O pega el texto (WhatsApp, LinkedIn, una nota)<textarea id="txt" rows="4" placeholder="Ej. Conocí a la jefa de mantenimiento de una planta en la expo; quieren cotizar una subestación."></textarea></label>' +
       '<label class="ch-campo">Empresa (si la sabes)<input id="emp" autocomplete="off"></label>' +
+      '<label class="ch-campo">Ciudad de la planta (si la sabes)<input id="ciu" autocomplete="off" placeholder="Ej. Apodaca, NL"></label>' +
+      '<p class="ch-nota">Con la empresa, el lead se agrega a su conversación del Prospectador (o la abre si no existe). Sin empresa, el motor la deduce de la foto o el audio.</p>' +
       '<label class="ch-campo">Dónde fue<select id="don"><option value="visita">Visita a planta</option><option value="evento">Evento o expo</option><option value="referencia">Referencia</option><option value="otro">Otro</option></select></label>' +
       '<button class="ch-btn ch-btn-p full" id="guardar">Guardar lead</button>' +
       '<div class="ch-nota">🔒 <b>Aviso de privacidad — texto pendiente de Legal.</b> Las fotos de gafetes y tarjetas son datos personales: se usan solo para dar seguimiento comercial, se guardan 12 meses y después se borran. Si la persona pide que no se guarde, no la captures.</div>' +
@@ -53,11 +55,11 @@
     reloj = setInterval(function () { b.textContent = '■ Detener · ' + U.dur((Date.now() - ini) / 1000); }, 500);
   }
   async function guardar() {
-    var t = $('#txt').value.trim(), emp = $('#emp').value.trim(), don = $('#don').value;
+    var t = $('#txt').value.trim(), emp = $('#emp').value.trim(), ciu = ($('#ciu') ? $('#ciu').value.trim() : ''), don = $('#don').value;
     if (!arch.length && !t) { U.toast('Pon al menos una foto, un audio o un texto.'); return; }
     if (rec) { U.toast('Detén la grabación primero.'); return; }
     var hoy = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
-    var s = await Q.nuevaSesion({ tipo: 'lead', titulo: ('Lead · ' + (emp || 'sin empresa') + ' · ' + hoy).slice(0, 120), datos: { donde: don, empresa: emp || null } });
+    var s = await Q.nuevaSesion({ tipo: 'lead', titulo: ('Lead · ' + (emp || 'sin empresa') + ' · ' + hoy).slice(0, 120), datos: { donde: don, empresa: emp || null, ciudad: ciu || null, resumen: t.slice(0, 200) || null } });
     await Q.encolar({ local_id: s.local_id }, 'lead rápido (' + don + ')' + (emp ? ' · ' + emp : '') + (t ? '\n\n' + t : ''), arch, escrito || Date.now());
     arch = []; escrito = null;
     U.toast(navigator.onLine ? 'Guardado. Se sube y el motor arma la ficha corta.' : 'Guardado en el teléfono: pendiente de enviar.');
@@ -78,7 +80,16 @@
       return '<a class="ch-ses" href="../prospectador/index.html#/s/' + esc(s.id) + '"><div class="av">📇</div><div class="t"><b>' + esc(s.titulo) + '</b><span>' + esc(s.ultimo ? s.ultimo.texto : '') + '</span></div><div class="m">' + U.fecha(s.updated_at) +
         (s.trabajo ? '<span class="ch-pill b">' + (s.trabajo.estado === 'tomado' ? 'trabajando' : 'en cola') + '</span>' : '') + '</div></a>'; }).join('') + '</div></div>' : '';
   }
-  Q.oir(function () { if ($('#tel')) listas(); });
+  Q.oir(function (x) {
+    // v3 (#421): en cuanto la captura sube, se liga a la conversación de su empresa (o la abre). Si esta pantalla ya no
+    // está abierta cuando suba, el motor la liga al procesarla (marketing/PROCESAR.md, conv_ligar).
+    if (x && x.sesion && x.sesion.tipo === 'lead' && x.sesion.sesion_id && x.sesion.datos && x.sesion.datos.empresa) {
+      C.pedir('conv_ligar', { sesion_id: x.sesion.sesion_id, datos: { empresa: x.sesion.datos.empresa, ciudad: x.sesion.datos.ciudad || '', resumen: x.sesion.datos.resumen || '' } }).then(function (r) {
+        if (r.ok) U.toast('Agregado a la conversación de ' + r.conversacion.empresa + '.', 4000);
+      });
+    }
+    if ($('#tel')) listas();
+  });
   G.addEventListener('online', pintar); G.addEventListener('offline', function () { M.cab('Lead rápido', 'Sin señal: se guarda en el teléfono', '../index.html'); });
   G.MktLead = { arrancar: async function () { U.red(document.getElementById('red')); var ok = await Q.iniciar(); if (!ok) U.toast('Este navegador no guarda la cola: no cierres la pestaña sin señal.', 5000); pintar(); } };
 })(window);
