@@ -36,11 +36,11 @@
     if (!u) return '<p class="ch-nota">Sin datos de uso todavía: se calculan al conectar.</p>';
     var c = n * u.consultas_por_ficha, tk = n * Number(u.tokens_por_ficha || 0);
     var quedanC = u.tope_consultas - u.consultas_hoy, quedanF = u.tope_fichas - u.fichas_hoy;
-    var malo = n > quedanF || c > quedanC;
+    var malo = n > quedanF || c > quedanC || (u.tope_tokens_dia && Number(u.tokens_hoy || 0) + tk > u.tope_tokens_dia);
     return '<div class="ch-hall ' + (malo ? 'rojo' : 'verde') + '"><div class="ic">' + (malo ? '⛔' : '🧮') + '</div><div>' +
       '<b>Presupuesto estimado: ' + n + ' ficha' + (n === 1 ? '' : 's') + ' · hasta ' + c + ' consultas web · ~' + (tk / 1e6).toFixed(1) + ' M tokens</b><br>' +
       'Por ficha: hasta ' + u.consultas_por_ficha + ' consultas y ~' + (u.tokens_por_ficha / 1e6).toFixed(1) + ' M tokens ' + (u.tokens_medidos ? '(promedio medido)' : '(estimado: todavía no hay fichas medidas)') + '.<br>' +
-      'Te quedan hoy ' + quedanF + ' fichas y ' + quedanC + ' consultas.' + (malo ? '<br><b>No alcanza: reduce la lista o espera a mañana.</b>' : '') +
+      'Te quedan hoy ' + quedanF + ' fichas y ' + quedanC + ' consultas' + (u.tope_tokens_dia ? ' · ~' + (Math.max(0, u.tope_tokens_dia - Number(u.tokens_hoy || 0)) / 1e6).toFixed(1) + ' M tokens de tu tope diario' : '') + '.' + (malo ? '<br><b>No alcanza: reduce la lista o espera a mañana.</b>' : '') +
       '<br><span style="color:var(--muted2)">Antes de gastar una sola consulta web, el motor revisa Odoo y la lista negra: si ya es cliente, competidor o duplicado, esa empresa no gasta.</span></div></div>';
   }
   function hoyISO() { var d = new Date(Date.now() - 6 * 3600e3); return d.toISOString().slice(0, 10); }

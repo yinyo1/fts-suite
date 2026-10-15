@@ -15,7 +15,7 @@
   var ORIGEN = { radar: 'Radar automático', manual: 'Manual', investigacion: 'Investigación' };
   var TIPO = { usuario_final: 'Usuario final', epc: 'EPC', otro_partner: 'Otro partner' };
   var PLAT = { sap_ariba: 'SAP Ariba', coupa: 'Coupa', portal_propio: 'Portal propio', avetta: 'Avetta', isnetworld: 'ISNetworld', veriforce: 'Veriforce', propio: 'Propio', otro: 'Otro', no_encontrado: 'No encontrado' };
-  function plats(x) { var a = x.acceso || {}, out = []; ['compras', 'contratistas'].forEach(function (k) { var v = a[k]; if (!v) return; v = typeof v === 'string' ? { plataforma: v } : v; if (v.plataforma) out.push({ k: k, p: v.plataforma, c: v.confianza, l: v.liga }); }); return out; }
+  function plats(x) { var a = x.acceso || {}, out = []; ['compras', 'contratistas'].forEach(function (k) { var v = a[k]; if (!v) return; v = typeof v === 'string' ? { plataforma: v } : v; if (v.plataforma && v.plataforma !== 'sin_dato' && v.plataforma !== 'no_encontrado') out.push({ k: k, p: v.plataforma, c: v.confianza, l: v.liga }); }); return out; }
   function pasa(x) {
     if (sel.origen && (x.origen || 'radar') !== sel.origen) return false;
     if (sel.tipo && (x.tipo_prospecto || '') !== sel.tipo) return false;
