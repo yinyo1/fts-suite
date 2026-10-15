@@ -427,9 +427,17 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
   .cd-busca input{flex:1;min-width:0;border:0!important;outline:0;font:inherit;font-size:16px;background:transparent;padding:0!important}
   .cd-lista{overflow:auto;min-height:120px;flex:1 1 auto;border-top:1px solid var(--linea)}
   .cd-g{font-size:11.5px;font-weight:700;color:var(--ter);text-transform:uppercase;letter-spacing:.03em;padding:10px 4px 4px}
-  .cd-op{display:flex;justify-content:space-between;align-items:baseline;gap:10px;width:100%;padding:10px 6px;border-bottom:1px solid #f0f0f0;text-align:left;font-size:14.5px;background:#fff;min-height:44px}
+  .cd-op{display:flex;align-items:center;gap:8px;width:100%;padding:8px 6px;border-bottom:1px solid #f0f0f0;text-align:left;font-size:14.5px;background:#fff;min-height:46px}
   .cd-op span{min-width:0}.cd-op small{color:var(--sec);font-size:12px;flex-shrink:0}
-  .cd-op.on{background:#f0faf4;font-weight:600}.cd-op.otra{color:var(--acento-osc)}
+  .cd-op.on{background:#f0faf4}.cd-op.on .cd-n1{font-weight:600}.cd-op.otra .cd-n1{color:var(--acento-osc)}
+  /* V1.39 · catálogo completo: «Ciudad, Edo.» arriba, alias · estado · habitantes abajo, país a la derecha */
+  .cd-n{flex:1;min-width:0;display:block}
+  .cd-n1{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--texto)}
+  .cd-n2{display:block;font-size:12px;color:var(--sec);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cd-op mark{background:#fff0a8;color:inherit;border-radius:2px}
+  .cd-pa{font-size:11px;color:var(--sec);border:1px solid var(--linea);border-radius:6px;padding:0 5px;flex-shrink:0}
+  .cd-op.on .cd-n2{color:var(--acento-osc)}
+  .cd-mas{font-size:12.5px;color:var(--sec);padding:8px 4px}
   .cd-otra{padding:8px 0 0;flex-shrink:0}
   .cd-pais{display:flex;gap:6px;margin-top:8px}
   .cd-pais button{height:32px;padding:0 14px;border-radius:16px;border:1px solid var(--linea);font-size:13px}
@@ -457,6 +465,15 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
   .err-bt{display:block;font-size:12px;color:var(--red);margin:4px 0 0 34px}
   .preg .err-bt{margin-left:0}
   .caja-razon{margin:8px 0 2px 34px;background:var(--sup2);border-radius:12px;padding:8px}
+  /* V1.39 · punto 7: la oferta «¿me permites…?» (prototipo aprobado) */
+  .of-carta .of-tiene{font-size:13px;color:var(--sec);line-height:1.45}.of-carta .of-tiene b{color:var(--tx,#111)}
+  .of-carta .of-bt{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .of-carta .bt.of-gris{border-color:#c9cdd3;color:#555}
+  .of-carta .of-est{margin-top:8px;font-size:13px;font-weight:600;color:var(--acento-osc)}.of-carta .of-est.of-esp{color:#8a5a00}
+  .of-carta .caja-razon{margin-left:0}
+  .of-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .of-chips button{border:1px solid #c9cdd3;background:#fff;border-radius:16px;padding:5px 10px;font:inherit;font-size:12.5px;color:#444}
+  .of-chips button.on{background:var(--acento-osc);border-color:var(--acento-osc);color:#fff}
   .preg .caja-razon{margin-left:0}
   .caja-razon label{display:block;font-size:12px;font-weight:600;color:var(--sec);margin-bottom:4px}
   .caja-razon .lin{display:flex;gap:6px;align-items:flex-end}
@@ -561,17 +578,17 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <div class="cz-toast" id="toast" role="status" aria-live="polite"></div>
 <div class="modal" id="modal"></div>
 <div class="panel" id="panel"></div>
-<script src="../../shared/chat/chat-firma.js?v=V1.38"></script>
-<script src="js/cz-cliente.js?v=V1.38"></script>
-<script src="js/cz-medios.js?v=V1.38"></script>
-<script src="js/cz-grabadora.js?v=V1.38"></script>
-<script src="js/cz-archivos.js?v=V1.38"></script>
-<script src="js/cz-ciudad.js?v=V1.38"></script>
-<script src="js/cz-cola.js?v=V1.38"></script>
-<script src="js/cz-acciones.js?v=V1.38"></script>
-<script src="js/cz-avance.js?v=V1.38"></script>
-<script src="js/cz-app.js?v=V1.38"></script>
-<script src="js/cz-version.js?v=V1.38"></script>
+<script src="../../shared/chat/chat-firma.js?v=V1.39"></script>
+<script src="js/cz-cliente.js?v=V1.39"></script>
+<script src="js/cz-medios.js?v=V1.39"></script>
+<script src="js/cz-grabadora.js?v=V1.39"></script>
+<script src="js/cz-archivos.js?v=V1.39"></script>
+<script src="js/cz-ciudad.js?v=V1.39"></script>
+<script src="js/cz-cola.js?v=V1.39"></script>
+<script src="js/cz-acciones.js?v=V1.39"></script>
+<script src="js/cz-avance.js?v=V1.39"></script>
+<script src="js/cz-app.js?v=V1.39"></script>
+<script src="js/cz-version.js?v=V1.39"></script>
 <script>window.CzApp.arrancar().then(function () { if (window.CzVersion) window.CzVersion.iniciar(); });</script>
 </body>
 </html>
