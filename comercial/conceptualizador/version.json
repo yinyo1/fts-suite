@@ -1,6 +1,10 @@
 {
-  "version": "V1.39",
+  "version": "V1.39.1",
   "historial": [
+    {
+      "version": "V1.39.1",
+      "nota": "Gestos tipo WhatsApp (#4 punto 11, prototipo aprobado): toque largo selecciona el mensaje y arriba sale Responder · Reenviar · ⋮ (Copiar, o Copiar transcripción en notas de voz); en escritorio, ⌄ o clic derecho con Responder. Deslizar a la derecha responde a ESE mensaje: la cita va arriba de la caja y el mensaje lleva la referencia (responde_a), así el motor sabe a qué pregunta contestas; tocar la cita lleva al original. Reenviar todavía no está en los chats de machote (se enciende cuando existan los de grupo y del prospectador). El componente vive en shared/chat/ para que Marketing lo use igual. Con el servidor sin la migración 0009, la referencia viaja también como una línea al inicio del texto."
+    },
     {
       "version": "V1.39",
       "nota": "Oferta «¿me permites…?» (#4 punto 7, prototipo aprobado): cuando el motor ya tiene concepto sólido (ciudad confirmada, alcance y medidas principales) pregunta por tu apodo si puede ir armando el machote y analizando precios con proveedores; debajo, «Ya tengo / Falta» y tres botones: «Adelante» (con su confirmación «Arranco con el machote y los precios de los materiales principales»), «Editar respuesta» (cajita para escribir o dictar) y «Esperar más» (porqué opcional con lo que falta). Lo ofrece a lo más una vez, más otra si llega mucho nuevo o lo que pediste esperar. Al actualizar de versión, cada caso que podría estar listo le pide al motor que lo revise una sola vez (punto 8, nivel 2). Del lado del motor (fts-conceptualizador), el disparador ya contesta por rubros con su %."
