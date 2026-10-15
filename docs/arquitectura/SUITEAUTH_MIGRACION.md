@@ -89,7 +89,7 @@ VEREDICTO: PARIDAD 100% · 480/480 celdas · 40 objetivos × 12 personas
 | Felipe | felipe.perez | `suite:clasico`, `seguridad:{acceso,instructor,empleado,iperc}`, `operaciones:{acceso,kiosk,dashboard,planeacion,incidencias,supervisor}`, `ingenieria:{acceso,analisis_estructural}`, `operaciones:planeacion_editar`, `operaciones:confirmar_horas` |
 | Ana | ana.acevedo | `suite:clasico`, `operaciones:{acceso,kiosk,dashboard,planeacion,incidencias,supervisor}`, `rh:{acceso,visor_checkins,visor_incidencias}` |
 | Montalvo | francisco.montalvo | `suite:clasico`, `seguridad:{acceso,instructor,empleado,iperc}`, `operaciones:{acceso,kiosk,dashboard,planeacion}`, `ingenieria:{acceso,analisis_estructural}` |
-| Tere, Carolina | **sin cuenta Suite** | `suite:clasico`, `operaciones:{acceso,kiosk}` — sólo usan el kiosko, que está fuera de alcance. **Se quedan en el clásico** hasta el plan del kiosko. |
+| Tere, Carolina | **sin cuenta Suite** | `suite:clasico`, `operaciones:{acceso,kiosk}` — sólo tienen permiso del kiosko, que está fuera de alcance. **Se quedan en el clásico** hasta el plan del kiosko. |
 | Magaly, Pablo, Ricardo, Rissia, Erick, Aldo | — | nada |
 
 Notas de la matriz:
@@ -243,6 +243,6 @@ Cada sesión es un PR, con bump de build donde haya `version.json`, la matriz y 
 ## 8 · Decisiones que necesito de Esteban
 
 1. **¿`ftsmaster` lo usa sólo Esteban?** Si hay alguien más, necesita cuenta Suite antes de C.
-2. **Tere y Carolina** sólo usan el kiosko. ¿Se quedan en el clásico hasta el plan del kiosko (mi recomendación) o se les crea cuenta Suite desde ahora?
-3. **¿Apruebo A1 (pruebas de navegador) como siguiente sesión?** Es la única que no toca producción y sin ella las demás no se pueden verificar.
+2. **Tere y Carolina** sólo tienen permiso del kiosko (no medí qué usan de verdad). ¿Se quedan en el clásico hasta el plan del kiosko (mi recomendación) o se les crea cuenta Suite desde ahora?
+3. **¿Arranco con A1 (pruebas de navegador) como siguiente sesión?** Es la única que no toca producción y sin ella las demás no se pueden verificar.
 4. **A4 escribe a `suite_usuarios`.** ¿La hago yo por MCP con read-back, o prefieres hacerla tú en la UI?
