@@ -1,0 +1,93 @@
+/* ═══ shared/chat · el look tipo WhatsApp del conceptualizador, para cualquier producto (#407) ═══
+ * Todo lleva prefijo ch- para no chocar con fts-styles.css (ahí ya existen .toast, .card, .tab…). */
+:root{
+  --ch-fondo:#efeae2; --ch-sale:#d9fdd3; --ch-entra:#ffffff; --ch-teal:#008069; --ch-amar:#8a6100; --ch-amar-suave:#fff3c4;
+  --ch-o-suave:#fff3ee; --ch-o-borde:#f3c4b0; --ch-verde-suave:#eaf6ea; --ch-rojo-suave:#fdeced; --ch-azul-suave:#e8f2fc;
+}
+.ch-app{max-width:640px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--dark)}
+.ch-red{font-size:11px;font-weight:700;border-radius:20px;padding:3px 9px;border:1px solid var(--border);background:var(--d3);white-space:nowrap}
+.ch-red.on{color:var(--green)} .ch-red.off{color:var(--red);background:var(--ch-rojo-suave)}
+.ch-wrap{padding:16px;display:flex;flex-direction:column;gap:12px}
+.ch-lead{color:var(--muted2);font-size:13px}
+.ch-pill{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:20px;border:1px solid var(--border);color:var(--muted2);background:var(--d3);text-transform:uppercase;white-space:nowrap}
+.ch-pill.o{color:var(--o);border-color:var(--ch-o-borde);background:var(--ch-o-suave)}
+.ch-pill.g{color:var(--green);background:var(--ch-verde-suave);border-color:transparent}
+.ch-pill.r{color:var(--red);background:var(--ch-rojo-suave);border-color:transparent}
+.ch-pill.b{color:var(--blue);background:var(--ch-azul-suave);border-color:transparent}
+.ch-pill.a{color:var(--ch-amar);background:var(--ch-amar-suave);border-color:transparent}
+.ch-btn{border:0;border-radius:8px;padding:11px 14px;font-weight:600;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-family:inherit;text-decoration:none}
+.ch-btn-p{background:var(--o);color:#fff} .ch-btn-s{background:var(--d2);border:1px solid var(--border);color:var(--muted2)}
+.ch-btn-g{background:var(--green);color:#fff} .ch-btn-r{background:var(--d2);border:1px solid var(--red);color:var(--red)}
+.ch-btn[disabled]{opacity:.45;cursor:not-allowed}
+.ch-btn.full{width:100%}
+.ch-fila{display:flex;gap:8px;flex-wrap:wrap}
+.ch-fila .ch-btn{flex:1;min-width:130px}
+.ch-card{background:var(--d2);border:1px solid var(--border);border-radius:12px;padding:14px;min-width:0}
+.ch-card h3{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted2);margin:0 0 8px}
+.ch-nota{font-size:12px;color:var(--muted2);background:var(--d3);border-radius:8px;padding:8px 10px;line-height:1.5}
+.ch-err{color:var(--red);font-size:12px;font-weight:600}
+.ch-vacio{text-align:center;padding:36px 16px;color:var(--muted2)}
+.ch-vacio .ic{font-size:40px}
+.ch-vacio h2{font-size:17px;color:var(--text);margin:8px 0}
+.ch-vacio p{font-size:13px;max-width:420px;margin:6px auto}
+/* lista de sesiones */
+.ch-lista{display:flex;flex-direction:column;background:var(--d2);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.ch-ses{display:flex;gap:12px;padding:12px 14px;border:0;border-bottom:1px solid var(--border);cursor:pointer;align-items:center;background:none;text-align:left;width:100%;font-family:inherit;color:inherit}
+.ch-ses:last-child{border-bottom:0}
+.ch-ses .av{width:40px;height:40px;border-radius:50%;background:var(--d4);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--muted2);flex-shrink:0}
+.ch-ses .t{flex:1;min-width:0}
+.ch-ses .t b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-ses .t span{display:block;font-size:12px;color:var(--muted2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-ses .m{font-size:11px;color:var(--muted);text-align:right;display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0}
+/* chat */
+.ch-chat{flex:1;background:var(--ch-fondo);padding:12px;display:flex;flex-direction:column;gap:8px;min-height:55vh}
+.ch-msg{max-width:86%;padding:8px 10px 6px;border-radius:10px;font-size:14px;box-shadow:0 1px .5px rgba(0,0,0,.13);white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.45}
+.ch-msg.yo{align-self:flex-end;background:var(--ch-sale)}
+.ch-msg.el{align-self:flex-start;background:var(--ch-entra)}
+.ch-msg .hora{display:block;text-align:right;font-size:10px;color:var(--muted);margin-top:3px}
+.ch-msg .hora.pend{color:var(--ch-amar)}
+.ch-msg .hora.malo{color:var(--red)}
+.ch-msg img.ch-mini{display:block;max-width:220px;max-height:200px;border-radius:6px;margin:2px 0 4px;cursor:pointer}
+.ch-msg .ch-adj{display:flex;gap:6px;align-items:center;font-size:12px;background:rgba(0,0,0,.04);border-radius:6px;padding:6px 8px;margin:2px 0 4px;cursor:pointer}
+.ch-msg .ch-transc{font-size:12px;color:var(--muted2);font-style:italic;margin-top:4px}
+.ch-msg audio{max-width:230px;height:34px}
+.ch-tarjeta{margin-top:8px;border:1px solid var(--border);border-radius:8px;padding:9px 10px;background:var(--d2);cursor:pointer;display:block;width:100%;text-align:left;font-family:inherit;color:inherit;font-size:13px}
+.ch-tarjeta b{color:var(--o)}
+.ch-sistema{align-self:center;font-size:11px;background:var(--d2);color:var(--muted2);padding:3px 10px;border-radius:8px;text-align:center;max-width:90%}
+.ch-escribiendo{align-self:flex-start;font-size:12px;color:var(--muted2);background:var(--ch-entra);border-radius:10px;padding:6px 10px}
+.ch-chips{display:flex;gap:6px;flex-wrap:wrap;padding:8px 12px;background:var(--d3);border-top:1px solid var(--border)}
+.ch-chip{border:1px solid var(--border);background:var(--d2);border-radius:16px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;color:inherit}
+.ch-barra{display:flex;gap:6px;padding:8px;background:var(--d3);border-top:1px solid var(--border);position:sticky;bottom:0;align-items:flex-end}
+.ch-barra textarea{flex:1;border:1px solid var(--border);border-radius:20px;padding:10px 14px;background:var(--d2);min-width:0;font-family:inherit;font-size:14px;resize:none;max-height:120px;color:var(--text)}
+.ch-redondo{width:42px;height:42px;border-radius:50%;border:0;background:var(--ch-teal);color:#fff;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.ch-redondo.claro{background:var(--d2);color:var(--muted2);border:1px solid var(--border)}
+.ch-grabando{flex:1;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--red);padding:0 6px}
+.ch-grabando .punto{width:10px;height:10px;border-radius:50%;background:var(--red);animation:chLat 1s infinite}
+@keyframes chLat{50%{opacity:.25}}
+/* formularios */
+label.ch-campo{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted2)}
+label.ch-campo input,label.ch-campo select,label.ch-campo textarea{border:1px solid var(--border);border-radius:8px;padding:9px 10px;background:var(--d2);font-size:14px;color:var(--text);font-family:inherit;width:100%}
+.ch-kv{display:grid;grid-template-columns:minmax(90px,130px) 1fr;gap:4px 10px;font-size:13px;margin:0}
+.ch-kv dt{color:var(--muted2)} .ch-kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.ch-tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);background:var(--d2);padding:0 12px;overflow-x:auto}
+.ch-tab{background:none;border:0;padding:10px;font-size:13px;font-weight:600;color:var(--muted2);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;font-family:inherit}
+.ch-tab.on{color:var(--o);border-color:var(--o)}
+.ch-hall{border:1px solid var(--border);border-radius:10px;padding:10px;font-size:13px;display:flex;gap:10px;align-items:flex-start;min-width:0}
+.ch-hall>div{min-width:0;overflow-wrap:anywhere}
+.ch-hall .ic{font-size:18px;flex-shrink:0}
+.ch-hall.rojo{border-color:var(--red);background:var(--ch-rojo-suave)}
+.ch-hall.amar{background:var(--ch-amar-suave)}
+.ch-hall.verde{background:var(--ch-verde-suave)}
+.ch-diff{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background:var(--d3);border-radius:8px;padding:10px;white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+.ch-pasos{display:flex;gap:6px;font-size:11px;font-weight:700;color:var(--muted)}
+.ch-pasos span{flex:1;text-align:center;padding:6px 0;border-bottom:3px solid var(--d4)}
+.ch-pasos span.on{color:var(--o);border-color:var(--o)}
+.ch-medidor{height:6px;background:var(--d4);border-radius:3px;overflow:hidden;margin-top:4px}
+.ch-medidor>i{display:block;height:100%;background:var(--green)}
+.ch-medidor>i.alto{background:var(--ch-amar)} .ch-medidor>i.lleno{background:var(--red)}
+.ch-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;color:#fff;font-size:13px;padding:9px 14px;border-radius:8px;max-width:90vw;z-index:99}
+.ch-oculto{display:none!important}
+.ch-visor{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:10px}
+.ch-visor img{max-width:100%;max-height:80vh;border-radius:6px}
+.ch-visor iframe{width:100%;max-width:900px;height:80vh;background:#fff;border:0;border-radius:6px}
+@media (max-width:420px){ .ch-kv{grid-template-columns:1fr} .ch-kv dt{margin-top:6px} }

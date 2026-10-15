@@ -36,8 +36,9 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, RAIZ)
 
 from flujo.estado import Corrida, comparar_subida
+from flujo import rutas as _rutas  # noqa: E402  (#407: datos privados)
 
-REGISTRO = os.path.join(RAIZ, "datos", "entregas-fuera-de-corrida.json")
+REGISTRO = _rutas.datos("entregas-fuera-de-corrida.json")
 
 ROTULOS = {
     "identico": "✓ contenido VERIFICADO por sha256 del conector: identico al local",

@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.join(RAIZ, "herramientas"))
 import enlazar_ficha as ef                                          # noqa: E402
 import cargar_del_radar as cdr                                      # noqa: E402
 from flujo.estado import Corrida                                    # noqa: E402
+from flujo import rutas as _rutas  # noqa: E402  (#407: datos privados)
 
 
 def _corrida(tmp_path, empresa, ciudad, con_entrega=True):
@@ -104,7 +105,7 @@ def test_la_que_esta_fuera_NO_esta_entre_las_del_radar():
 def test_el_estado_de_la_desmentida_es_UNO_DE_LOS_DECLARADOS():
     """El CHECK del esquema solo acepta tres. Un estado nuevo en el archivo sin
     el estado nuevo en el esquema haria fallar la carga en vez del archivo."""
-    with open(os.path.join(RAIZ, "datos", "no-son-prospectos.json"),
+    with open(_rutas.o_saltar("no-son-prospectos.json"),
               encoding="utf-8") as fh:
         declarados = set(json.load(fh)["estados"])
     with open(os.path.join(RAIZ, "datos", "esquema-motor3.sql"),

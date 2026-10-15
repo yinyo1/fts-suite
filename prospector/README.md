@@ -26,6 +26,14 @@ La guía completa está en **[`USO.md`](USO.md)**. Antes de usarla de trabajo,
 
 ---
 
+## Los datos comerciales viven en el repo privado (#407)
+
+`datos/` de esta carpeta ya solo trae lo público (esquema, fuentes, consultas, padrón).
+Catálogo de proyectos, cuentas, relación de grupo, señales y corridas del radar viven en
+`fts-conceptualizador/marketing/datos/`; `flujo/rutas.py` los busca en `PROSPECTOR_DATOS` o
+en el clon hermano. Sin ellos, las pruebas que dependen de su contenido se **saltan** con la
+razón escrita (912 pasan, 195 saltadas); con ellos corren las 1265.
+
 ## Regla de arquitectura: los contactos NUNCA viven en el repo
 
 > **`fts-suite` es un repositorio PÚBLICO.** Los datos de contactos y personas

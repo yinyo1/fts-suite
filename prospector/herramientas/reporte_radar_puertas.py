@@ -15,8 +15,9 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, RAIZ)
 from flujo.sello import version                                   # noqa: E402
 from flujo.radar import plano                                    # noqa: E402
+from flujo import rutas as _rutas  # noqa: E402  (#407: datos privados)
 
-CORRIDA = os.path.join(RAIZ, "datos", "radar-2026-10-05-puertas.json")
+CORRIDA = _rutas.datos("radar-2026-10-05-puertas.json")
 SALIDA = os.environ.get("SALIDA_RADAR", "/tmp/")
 C = json.load(open(CORRIDA, encoding="utf-8"))
 HOY = date.fromisoformat(C["hoy"])

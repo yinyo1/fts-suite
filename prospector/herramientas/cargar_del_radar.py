@@ -40,6 +40,7 @@ from flujo import puertas as P                                      # noqa: E402
 from flujo.base_motor3 import Base, SinPostgres, resumen_del_piloto  # noqa: E402
 
 from sellar_constancia_puertas import CONSTANCIA                    # noqa: E402
+from flujo import rutas as _rutas  # noqa: E402  (#407: datos privados)
 
 PUERTA_QUE_ENTRA = P.PUERTA_USUARIO
 
@@ -55,7 +56,7 @@ PUERTA_QUE_ENTRA = P.PUERTA_USUARIO
 # siguiente va a aparecer, y cuando aparezca lo que hay que escribir es su razon,
 # no una linea de codigo. Y el lazo 2 lee el mismo archivo para corregir el
 # evaluador, que es donde el defecto de verdad esta.
-NO_SON_PROSPECTOS = os.path.join(RAIZ, "datos", "no-son-prospectos.json")
+NO_SON_PROSPECTOS = _rutas.datos("no-son-prospectos.json")
 
 
 def desmentidas(ruta: str | None = None) -> dict[str, dict]:

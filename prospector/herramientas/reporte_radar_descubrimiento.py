@@ -13,8 +13,9 @@ from flujo.sello import version
 from datetime import date
 
 import os
+from flujo import rutas as _rutas  # noqa: E402  (#407: datos privados)
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CORRIDA = os.path.join(RAIZ, "datos", "radar-2026-10-05-descubrimiento.json")
+CORRIDA = _rutas.datos("radar-2026-10-05-descubrimiento.json")
 D = os.environ.get("SALIDA_RADAR", "/tmp/")
 _c = json.load(open(CORRIDA, encoding="utf-8"))
 HOY = date.fromisoformat(_c["hoy"])

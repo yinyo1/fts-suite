@@ -16,6 +16,8 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, RAIZ)
 sys.path.insert(0, os.path.join(RAIZ, "herramientas"))
 
+from flujo import rutas as _rutas_g  # noqa: E402
+_rutas_g.o_saltar("catalogo-de-proyectos-fts.json")  # #407: el radar carga el catalogo privado al importar
 from flujo import radar
 from flujo.catalogo_proyectos import UNIDADES_DE_DINERO, magnitudes
 

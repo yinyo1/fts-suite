@@ -1,7 +1,10 @@
 // ═══ FTS Suite — Registry de módulos ═══
-// Agregar un módulo nuevo aquí lo hace visible automáticamente
-// en el panel admin y en el launcher raíz. No hay que tocar
-// nada más cuando se agregan submódulos.
+// OJO (corregido en #407): agregar un módulo aquí NO lo hace visible solo.
+// Este arreglo solo ATENÚA las tarjetas del lanzador según modulos[id].acceso de
+// FTSAuth. La tarjeta HTML se escribe aparte en index.html (id = cardId) y el árbol
+// de permisos del panel admin es otra lista (USERS_MODULES_TREE en
+// shared/admin/config-master.html). Un módulo con auth:'suite' lo decide SuiteAuth
+// (scopes del JWT) en su propia pantalla y el lanzador no lo atenúa.
 
 const MODULES_REGISTRY = [
   {
@@ -50,6 +53,22 @@ const MODULES_REGISTRY = [
     path:       'comercial/',
     cardId:     'card-comercial',
     submodulos: []
+  },
+  {
+    id:         'marketing',
+    label:      '🔎 Marketing',
+    path:       'marketing/',
+    cardId:     'card-marketing',
+    auth:       'suite',   // marketing:usar · marketing:crm · marketing:bandeja · marketing:equipo
+    status:     'active',
+    version:    'M0.1.0',
+    submodulos: [
+      { id:'prospectador', label:'Prospectador' },
+      { id:'lead',         label:'Lead rápido' },
+      { id:'bandeja',      label:'Bandeja del radar' },
+      { id:'seguimiento',  label:'Seguimiento (reservado)' },
+      { id:'radar',        label:'Radar en vivo (reservado)' }
+    ]
   },
   {
     id:         'finanzas',

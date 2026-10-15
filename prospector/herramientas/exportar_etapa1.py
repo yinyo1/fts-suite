@@ -33,6 +33,7 @@ from flujo.paquete import CANALES_QUE_NO_EMITE, CONMUTADOR, CORREO_DIRECTO, LINK
 
 import linea_base_radar as lb
 import tarjeta_hershey as th
+from flujo import rutas as _rutas  # noqa: E402  (#407: datos privados)
 
 #: Los contactos que tenemos documentados por cuenta. Solo Hershey los tiene, y
 #: **por puesto, sin nombres** -- ver `tarjeta_hershey.py`--. Las demas van sin
@@ -147,7 +148,7 @@ def ya_vencida(caduca: str, hoy: date) -> bool:
 # Y LA CONSTANCIA VENCE. Un archivo de hace un mes es peor que ninguno: da
 # confianza sin tenerla. Pasada su vigencia cada fila sale marcada
 # `SIN_CONSULTAR_A_ODOO`, que es el marcador de NO SUBIR.
-RUTA_ODOO_DECLARADO = os.path.join(RAIZ, "datos", "odoo-declarado.json")
+RUTA_ODOO_DECLARADO = _rutas.datos("odoo-declarado.json")
 
 NUEVA = "nueva"
 CON_OPORTUNIDAD = "ya tiene oportunidad abierta (no subir, enlazar)"
@@ -367,7 +368,7 @@ def exportar(destino: str, hoy: date | None = None) -> dict:
                          "bytes": len(texto.encode("utf-8-sig")),
                          "tarjetas": len(filas), "que_es": que_es})
 
-    _inv = json.load(open(os.path.join(RAIZ, "datos", "senales-documentadas.json"),
+    _inv = json.load(open(_rutas.datos("senales-documentadas.json"),
                          encoding="utf-8"))["cuentas"]
     _total_cuentas = len(_inv)
     _con_senal = sum(1 for c in _inv if c.get("fuente"))

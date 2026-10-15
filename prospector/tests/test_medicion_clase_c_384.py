@@ -13,11 +13,13 @@ import json
 import re
 import sys
 from pathlib import Path
+from flujo import rutas as _rutas  # noqa: E402  (#407: datos privados)
+from pathlib import Path as _Path  # noqa: E402
 
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 
-MEDICION = RAIZ / "datos" / "medicion-limite-clase-c-2026-10-06.json"
+MEDICION = _Path(_rutas.o_saltar("medicion-limite-clase-c-2026-10-06.json"))
 DOC = RAIZ / "metodo" / "limite-de-clase-c.md"
 
 

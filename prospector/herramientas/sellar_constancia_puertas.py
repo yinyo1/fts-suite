@@ -32,8 +32,9 @@ sys.path.insert(0, RAIZ)
 from flujo import puertas as P                                     # noqa: E402
 from flujo.radar import cargar_catalogo, evaluar, tipo_de_senal_de  # noqa: E402
 from flujo.sello import version                                     # noqa: E402
+from flujo import rutas as _rutas  # noqa: E402  (#407: datos privados)
 
-CONSTANCIA = os.path.join(RAIZ, "datos", "radar-2026-10-05-puertas.json")
+CONSTANCIA = _rutas.datos("radar-2026-10-05-puertas.json")
 
 # Lo que el recalculo PRODUCE. Todo lo demas de cada entrada es dato de campo.
 DERIVADAS = ("eval", "puertas", "tipo_de_senal", "dias")

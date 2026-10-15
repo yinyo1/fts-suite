@@ -17,6 +17,8 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from flujo import rutas as _rutas_g  # noqa: E402
+_rutas_g.o_saltar("catalogo-de-proyectos-fts.json")  # #407: el radar carga el catalogo privado al importar
 from flujo import aprendizaje as ap
 from flujo import radar
 from flujo.catalogo_proyectos import proceso_de

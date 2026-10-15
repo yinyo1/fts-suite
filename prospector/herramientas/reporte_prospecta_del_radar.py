@@ -13,9 +13,9 @@ import sys
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, RAIZ)
 from flujo.sello import version                                    # noqa: E402
+from flujo import rutas as _rutas  # noqa: E402  (#407: datos privados)
 
-CORRIDA = os.path.join(RAIZ, "datos",
-                       "prospecta-2026-10-06-seis-puertas-de-usuario.json")
+CORRIDA = _rutas.datos("prospecta-2026-10-06-seis-puertas-de-usuario.json")
 SALIDA = os.environ.get("SALIDA_RADAR", "/tmp/")
 C = json.load(open(CORRIDA, encoding="utf-8"))
 L = C["la_lectura"]

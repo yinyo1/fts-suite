@@ -42,22 +42,23 @@ import json
 import os
 import unicodedata
 from datetime import date
+from . import rutas as _rutas  # #407: datos privados
 
 _DATOS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                       "datos")
-RUTA = os.path.join(_DATOS, "ubicacion-de-proyectos.json")
+RUTA = _rutas.datos("ubicacion-de-proyectos.json")
 
 # El DENOMINADOR: las cuentas de Odoo con trabajo de tamano de proyecto. Sin el,
 # "cuantas cuentas tienen su planta declarada" no se puede contestar -- solo se
 # sabe cuantas SI, nunca cuantas faltan--.
-RUTA_CUENTAS = os.path.join(_DATOS, "cuentas-con-proyecto.json")
+RUTA_CUENTAS = _rutas.datos("cuentas-con-proyecto.json")
 # RELACION CON UN GRUPO (#355, tarea 7). Otro archivo porque es otro eje: este
 # contesta «en que planta se hizo cada proyecto» y aquel «que relacion hay con el
 # grupo». Un alta de proveedor en el portal de un corporativo es una PUERTA --
 # ahorra el tramite y da interlocutor en compras-- y no es una venta a la planta.
 # Mezclarlos repetiria el error de #310 con otra cara, y con una cara peor: un
 # alta da confianza de cliente sin ser una.
-RUTA_GRUPOS = os.path.join(_DATOS, "relacion-de-grupo.json")
+RUTA_GRUPOS = _rutas.datos("relacion-de-grupo.json")
 
 # La unica fuente que hay, y por eso se escribe: que el dato venga de la cabeza
 # del dueno no lo hace menos cierto, lo hace NO AUDITABLE. Escrito, al menos se

@@ -38,9 +38,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from flujo import radar
 from flujo import catalogo_proyectos as cp
+from flujo import rutas as _rutas  # noqa: E402  (#407: datos privados)
 
-RUTA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                    "datos", "senales-documentadas.json")
+RUTA = _rutas.datos("senales-documentadas.json")  # #407: vive en el repo privado
 
 #: Los terminos que D3 agrego. Se quitan para medir el "antes".
 TERMINOS_DE_D3 = {t for t, tipo in radar.TERMINOS_DE_TIPO.items()

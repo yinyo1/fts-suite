@@ -136,6 +136,13 @@
       <div class="mod-icon">📋</div>
       <div class="mod-name">COMERCIAL</div>
     </a>
+    <!-- Marketing (#407): primer nivel. Su permiso es de SuiteAuth (marketing:usar), no de FTSAuth:
+         la tarjeta se ve siempre y la propia pantalla manda al login si falta el permiso. -->
+    <a id="card-marketing" href="marketing/index.html" class="mod-card active">
+      <div class="mod-badge">MVP</div>
+      <div class="mod-icon">🔎</div>
+      <div class="mod-name">MARKETING</div>
+    </a>
     <div id="card-odoo" class="mod-card disabled">
       <div class="mod-badge">Próximamente</div>
       <div class="mod-icon">⚙️</div>
@@ -366,6 +373,8 @@ function applyModuleAccess(userOrSession){
   MODULES_REGISTRY.forEach(function(mod){
     const card = document.getElementById(mod.cardId);
     if(!card) return;
+    // Los módulos con auth:'suite' los decide SuiteAuth (scopes del JWT) en su propia pantalla.
+    if(mod.auth === 'suite') return;
     const tieneAcceso = modulos && modulos[mod.id] && modulos[mod.id].acceso === true;
     if(!tieneAcceso){
       card.style.opacity = '0.4';

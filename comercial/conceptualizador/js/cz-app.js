@@ -36,7 +36,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.36';
+  var VERSION = 'V1.36.1';
   /* V1.32 (0006) · empresa y moneda de la sesión: la base acepta estas tres claves. */
   var EMPRESAS = { mx_mxn: { n: 'FTS México · MXN', s: 'Empresa 1 · pesos', id: 1, m: 'MXN', pais: 'mx' },
                    mx_usd: { n: 'FTS México · USD', s: 'Empresa 1 · dólares', id: 1, m: 'USD', pais: 'mx' },
