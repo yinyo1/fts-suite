@@ -1,0 +1,19 @@
+{
+  "_meta": {
+    "fuente": "n8n Data Table suite_usuarios (YWCP0KoVmgxX2RzL), get_data_table_rows",
+    "leido_utc": "2026-10-15T05:2x UTC (= 23:2x CST del 14-oct)",
+    "nota": "Solo username, activo y scopes. NUNCA salt ni hash. Re-leer antes de cada fase: una medicion es de un momento (CLAUDE.md §20 #19b)."
+  },
+  "usuarios": [
+    { "username": "ana.acevedo",        "activo": true,  "scopes": "nomina:write,rh:read,retardos:read,retardos:write" },
+    { "username": "magaly.perez",       "activo": true,  "scopes": "nomina:write,rh:read,retardos:read,retardos:write" },
+    { "username": "aldo.mendez",        "activo": false, "scopes": "comercial:read" },
+    { "username": "francisco.montalvo", "activo": true,  "scopes": "comercial:read,conceptualizador:usar" },
+    { "username": "pablo.bayly",        "activo": true,  "scopes": "comercial:read,marketing:usar,marketing:crm,marketing:bandeja" },
+    { "username": "ricardo.hernandez",  "activo": true,  "scopes": "comercial:read,conceptualizador:usar" },
+    { "username": "rissia.araujo",      "activo": true,  "scopes": "comercial:read,marketing:usar,marketing:crm" },
+    { "username": "esteban.delacruz",   "activo": true,  "scopes": "comercial:read,comercial:admin,rentabilidad:read,bancos_data:read,conceptualizador:usar,marketing:usar,marketing:crm,marketing:bandeja,marketing:equipo" },
+    { "username": "erick.belmont",      "activo": true,  "scopes": "bancos_data:read" },
+    { "username": "felipe.perez",       "activo": true,  "scopes": "rentabilidad:read" }
+  ]
+}
