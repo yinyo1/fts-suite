@@ -36,11 +36,14 @@
 <div class="wrap">
   <p class="lead">Elige la estación con la que vas a trabajar.</p>
 
-  <a class="mode-card" href="leads.html">
-    <div class="ic">📋</div>
+  <!-- Marketing v3 (#421): primera tarjeta de Comercial, en el lugar de Pipeline. Su permiso es de
+       SuiteAuth (marketing:usar): la tarjeta se ve siempre y la pantalla manda al login si falta.
+       Pipeline (leads.html) sale de este menú y queda en el ⋮ del Prospectador. -->
+  <a class="mode-card" href="../marketing/index.html">
+    <div class="ic">🔎</div>
     <div class="tx">
-      <div class="tt">Pipeline <span class="pill">MVP</span></div>
-      <div class="ds">Captura de oportunidades y seguimiento del pipeline vivo. (Antes se llamaba «Marketing»: el módulo nuevo de Marketing está en el menú principal.)</div>
+      <div class="tt">Marketing</div>
+      <div class="ds">Prospectador y Nuevo lead. Una conversación por empresa, de la ficha a «Por cotizar».</div>
     </div>
     <div class="ch">&#8250;</div>
   </a>
@@ -62,7 +65,7 @@
   <a class="mode-card" href="machote/index.html#/ordenes">
     <div class="ic">📑</div>
     <div class="tx">
-      <div class="tt">Órdenes de venta</div>
+      <div class="tt">Sales Orders</div>
       <div class="ds">Las órdenes de Odoo con su cotización al lado. Ligar, revisar y confirmar.</div>
     </div>
     <div class="ch">&#8250;</div>
@@ -81,8 +84,8 @@
   </a>
 
   <p class="foot">
-    <b>Pipeline</b> habla con Odoo.<br>
-    <b>Machotes</b> y <b>Órdenes de venta</b> guardan de verdad —en el servidor de la
+    <b>Marketing</b> escribe en Odoo solo lo de su lista blanca (leads en «Prospecto Lead», notas y actividades).<br>
+    <b>Machotes</b> y <b>Sales Orders</b> guardan de verdad —en el servidor de la
     suite— y leen de Odoo. Lo que todavía no está encendido lo dice cada pantalla.
   </p>
 </div>
