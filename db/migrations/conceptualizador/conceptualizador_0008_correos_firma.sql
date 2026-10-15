@@ -99,6 +99,26 @@ ALTER TABLE conceptualizador.aviso ADD CONSTRAINT aviso_tipo_check
 DROP INDEX IF EXISTS conceptualizador.aviso_uno_por_dia;
 CREATE UNIQUE INDEX IF NOT EXISTS aviso_uno_por_dia ON conceptualizador.aviso (tipo, actor, dia)
   WHERE tipo IN ('tope_mensajes','tope_sesiones','fuera_de_tema');
+-- V1.35 · con el índice PARCIAL, un `ON CONFLICT (tipo, actor, dia)` sin predicado ya no encuentra índice y
+-- truena («no unique or exclusion constraint matching the ON CONFLICT specification»): la persona que llegara
+-- a su tope recibiría un error en vez del acuse. Lo usan aviso_tope (0005) y el «fuera de tema» de
+-- api_motor_0005. Se les agrega el MISMO predicado, reescribiendo su definición viva (pg_get_functiondef)
+-- para no copiar a mano funciones de cientos de líneas. Idempotente: si ya lo tiene, no toca nada.
+DO $fix_aviso$
+DECLARE
+  v_pred text := 'ON CONFLICT (tipo, actor, dia) WHERE tipo IN (''tope_mensajes'',''tope_sesiones'',''fuera_de_tema'')';
+  v_fn   text;
+  v_def  text;
+BEGIN
+  FOREACH v_fn IN ARRAY ARRAY['conceptualizador.aviso_tope(text,text,jsonb)', 'conceptualizador.api_motor_0005(jsonb)'] LOOP
+    IF to_regprocedure(v_fn) IS NULL THEN CONTINUE; END IF;
+    v_def := pg_get_functiondef(to_regprocedure(v_fn));
+    IF position('ON CONFLICT (tipo, actor, dia) DO' IN v_def) > 0 THEN
+      EXECUTE replace(v_def, 'ON CONFLICT (tipo, actor, dia) DO', v_pred || ' DO');
+    END IF;
+  END LOOP;
+END
+$fix_aviso$;
 
 INSERT INTO conceptualizador.config (clave, valor) VALUES
   ('tope_correos_caso', '10'),
