@@ -185,6 +185,36 @@
   #fijo{padding:6px 10px 0;display:none;justify-content:center;flex-shrink:0}
   #fijo button{height:40px;border-radius:20px;padding:0 18px;background:var(--sup);color:var(--acento-osc);font-weight:600;font-size:14.5px;box-shadow:var(--sombra);border:1px solid #cfe9db;display:flex;align-items:center;gap:8px}
   #fijo button:disabled{opacity:.6}
+
+  /* V1.37 · franja de avance (prototipo aprobado, #4): fija bajo el encabezado, igual para todos */
+  #avance{display:none;background:var(--sup);border-bottom:1px solid var(--linea);flex-shrink:0;position:relative;z-index:3}
+  #avance .av-top{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:6px 8px 4px 16px;text-align:left}
+  #avance .av-tx{flex:1;min-width:0}
+  #avance .av-paso{display:block;font-size:11.5px;color:var(--sec)}
+  #avance .av-tx b{display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #avance .av-cnt{color:#8a6400}#avance .av-rojo{color:var(--rojo)}
+  #avance .av-top .ico{color:var(--sec);transition:transform .15s;flex-shrink:0}#avance.abierta .av-top .ico{transform:rotate(180deg)}
+  #avance .av-barras{display:flex;gap:3px;padding:0 16px 7px}
+  #avance .av-barras i{flex:1;height:5px;border-radius:3px;background:#d9d5cf}
+  #avance .av-barras i.hecho{background:var(--acento)}#avance .av-barras i.actual{background:#e0a800}#avance .av-barras i.falta{background:var(--rojo)}
+  #avance .av-etiq{display:none}
+  #avance .av-panel{display:none;padding:0 16px 10px;max-height:55vh;overflow-y:auto}#avance.abierta .av-panel{display:block}
+  #avance .av-pp{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-top:1px solid var(--linea)}#avance .av-pp:first-child{border-top:0}
+  #avance .av-pt{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;background:#d9d5cf;color:#fff;margin-top:1px}
+  #avance .av-pp.hecho .av-pt{background:var(--acento)}#avance .av-pp.actual .av-pt{background:#e0a800}#avance .av-pp.falta .av-pt{background:var(--rojo)}
+  #avance .av-px{flex:1;min-width:0}#avance .av-px b{display:block;font-size:13.5px;font-weight:600}#avance .av-px span{display:block;font-size:12.5px;color:var(--sec);overflow-wrap:anywhere}
+  #avance .av-pp.futuro .av-px b{color:var(--sec);font-weight:500}
+  #avance .link,.falta-disp .link{color:var(--acento-osc);font-weight:600;font-size:inherit;display:inline;padding:0;min-height:0;text-decoration:underline}
+  @media(min-width:760px){#avance .av-barras{padding-bottom:2px}#avance .av-etiq{display:flex;gap:3px;padding:0 16px 7px}
+    #avance .av-etiq span{flex:1;min-width:0;font-size:11px;color:var(--sec);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #avance .av-etiq span.actual{color:#8a6400;font-weight:600}#avance .av-etiq span.hecho{color:var(--acento-osc)}#avance .av-etiq span.falta{color:var(--rojo);font-weight:600}}
+  #fijo button.espera{background:var(--sup);color:var(--sec)}#fijo button .fx{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  #fijo button{max-width:100%}
+  .reto{align-self:center;margin:8px auto;max-width:520px;width:calc(100% - 8px);background:var(--aviso);border:1px solid #f0dc8c;border-radius:12px;padding:10px 12px;font-size:14px;box-shadow:var(--sombra)}
+  .reto .rt{display:flex;align-items:center;gap:6px;font-weight:700;color:#6b4e00;font-size:13px;margin-bottom:4px}.reto p{margin:2px 0}.reto p b{font-weight:600}
+  .falta-disp{background:var(--aviso);border:1px solid #f0dc8c;border-radius:10px;padding:8px 10px;margin:4px 0 10px;font-size:13.5px}
+  .falta-disp ul{margin:4px 0 4px 18px}.falta-disp span{color:#5c4400;font-size:12.5px}
+  .carta.resalta,.resalta{box-shadow:0 0 0 3px #e0a800;transition:box-shadow .3s}
   /* V1.36 · lo que falta para cotizar en Odoo */
   #fijo .fijo-falta{height:40px;border-radius:20px;padding:0 14px;display:flex;align-items:center;background:var(--aviso);color:#6b4e00;font-weight:600;font-size:13.5px;border:1px solid #f0dc8c}
   .pend-cot{border:1px solid #f0dc8c;background:var(--aviso);border-radius:8px;padding:8px 10px;margin:6px 0;font-size:13px;color:#5c4400}
@@ -509,6 +539,7 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
     <header class="cab" id="ch"></header>
     <div id="senal"></div>
     <div id="ciuF" role="status"></div>
+    <div id="avance" role="region" aria-label="Avance de la cotización"></div>
     <div id="msgs"></div>
     <button class="abajo" id="bAbajo" type="button" aria-label="Ir al último mensaje"><span class="badge" id="nAbajo" style="display:none"></span></button>
     <div id="bandeja"></div>
@@ -530,16 +561,17 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <div class="cz-toast" id="toast" role="status" aria-live="polite"></div>
 <div class="modal" id="modal"></div>
 <div class="panel" id="panel"></div>
-<script src="../../shared/chat/chat-firma.js?v=V1.36.1"></script>
-<script src="js/cz-cliente.js?v=V1.36.1"></script>
-<script src="js/cz-medios.js?v=V1.36.1"></script>
-<script src="js/cz-grabadora.js?v=V1.36.1"></script>
-<script src="js/cz-archivos.js?v=V1.36.1"></script>
-<script src="js/cz-ciudad.js?v=V1.36.1"></script>
-<script src="js/cz-cola.js?v=V1.36.1"></script>
-<script src="js/cz-acciones.js?v=V1.36.1"></script>
-<script src="js/cz-app.js?v=V1.36.1"></script>
-<script src="js/cz-version.js?v=V1.36.1"></script>
+<script src="../../shared/chat/chat-firma.js?v=V1.37"></script>
+<script src="js/cz-cliente.js?v=V1.37"></script>
+<script src="js/cz-medios.js?v=V1.37"></script>
+<script src="js/cz-grabadora.js?v=V1.37"></script>
+<script src="js/cz-archivos.js?v=V1.37"></script>
+<script src="js/cz-ciudad.js?v=V1.37"></script>
+<script src="js/cz-cola.js?v=V1.37"></script>
+<script src="js/cz-acciones.js?v=V1.37"></script>
+<script src="js/cz-avance.js?v=V1.37"></script>
+<script src="js/cz-app.js?v=V1.37"></script>
+<script src="js/cz-version.js?v=V1.37"></script>
 <script>window.CzApp.arrancar().then(function () { if (window.CzVersion) window.CzVersion.iniciar(); });</script>
 </body>
 </html>
