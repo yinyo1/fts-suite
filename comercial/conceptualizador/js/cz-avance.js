@@ -88,10 +88,13 @@
     var t = 0; ((H && H.mensajes) || []).forEach(function (m) { var x = Date.parse(m.created_at || m.escrito_at || ''); if (x > t) t = x; });
     return t || null;
   }
-  /** «Retomamos: vas en X, falta Y, siguiente: Z». Solo con 2 h o más sin actividad. Lo arma la pantalla. */
-  function retomamos(H, ahora) {
+  /** «Retomamos: vas en X, falta Y, siguiente: Z». Solo con 2 h o más sin actividad. Lo arma la pantalla.
+   *  V1.38 (#4 punto 8): `op.version` = la versión nueva cuando la persona acaba de actualizar; entonces sale
+   *  aunque no hayan pasado 2 h (la pantalla decide que sea UNA vez por caso y por versión). */
+  function retomamos(H, ahora, op) {
     var t = ultimaActividad(H); if (!t) return null;
-    var h = ((ahora || Date.now()) - t) / 3600000; if (h < 2) return null;
+    var h = ((ahora || Date.now()) - t) / 3600000, porVersion = !!(op && op.version) && h < 2;
+    if (h < 2 && !porVersion) return null;
     var c = (H && H.caso) || {}, av = avance(H), falta = [];
     if (!av.ciudad && !av.machote && !av.pendCot && av.actual < 4) falta.push('la ciudad del proyecto');
     if (!c.cliente && !c.cliente_odoo_id) falta.push('el cliente');
@@ -99,7 +102,8 @@
     if (av.conjAb) falta.push(plural(av.conjAb, 'pregunta', 'preguntas'));
     if (av.sinDec) falta.push(plural(av.sinDec, 'concepto por palomear', 'conceptos por palomear'));
     if (av.pendCot) falta.push(plural(av.pendCot, 'pendiente', 'pendientes') + ' para cotizar en Odoo');
-    return { hace: h < 24 ? 'hace ' + Math.round(h) + ' h' : 'hace ' + Math.round(h / 24) + ' d', vas: PASOS[av.actual], falta: falta, sig: av.sig ? av.sig.txt : null };
+    return { hace: h < 24 ? 'hace ' + Math.round(h) + ' h' : 'hace ' + Math.round(h / 24) + ' d', vas: PASOS[av.actual], falta: falta, sig: av.sig ? av.sig.txt : null,
+             version: porVersion ? op.version : null };
   }
 
   G.CzAvance = { PASOS: PASOS, avance: avance, retomamos: retomamos, faltantes: faltantes, textoFaltantes: textoFaltantes, ultimaActividad: ultimaActividad };

@@ -36,7 +36,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.37';
+  var VERSION = 'V1.38';
   /* V1.32 (0006) · empresa y moneda de la sesión: la base acepta estas tres claves. */
   var EMPRESAS = { mx_mxn: { n: 'FTS México · MXN', s: 'Empresa 1 · pesos', id: 1, m: 'MXN', pais: 'mx' },
                    mx_usd: { n: 'FTS México · USD', s: 'Empresa 1 · dólares', id: 1, m: 'USD', pais: 'mx' },
@@ -795,7 +795,7 @@
     var RT = ST.retoma;
     if (RT && RT.id === (ST.sel || {}).id && G.CzAvance && G.CzAvance.ultimaActividad(H) === RT.t && !salidaDelCaso().length) {
       dia(new Date().toISOString());
-      aparte('<div class="reto" role="status"><div class="rt">' + ico('reloj', 'xs') + 'Retomamos · tu último mensaje fue ' + esc(RT.hace) + '</div>' +
+      aparte('<div class="reto" role="status"><div class="rt">' + ico('reloj', 'xs') + (RT.version ? 'Retomamos · actualizaste a ' + esc(RT.version) : 'Retomamos · tu último mensaje fue ' + esc(RT.hace)) + '</div>' +
         '<p>Vas en <b>' + esc(RT.vas) + '</b>.</p>' + (RT.falta.length ? '<p>Falta: ' + esc(RT.falta.join(', ')) + '.</p>' : '') +
         (RT.sig ? '<p>Siguiente: <b>' + esc(RT.sig) + '</b> (el botón de abajo).</p>' : '') + '</div>');
     }
@@ -1601,12 +1601,22 @@
     ST.vistos = { id: s.id, n: n };
     // V1.37 · «Retomamos»: se calcula UNA vez al abrir el caso; se va sola en cuanto hay actividad nueva.
     if (ST.retomaPara !== s.id && G.CzAvance) {
-      ST.retomaPara = s.id; var rt = G.CzAvance.retomamos(r.hilo, Date.now());
+      ST.retomaPara = s.id; var rt = G.CzAvance.retomamos(r.hilo, Date.now(), { version: tocaRetomarPorVersion(r.hilo) });
       ST.retoma = rt ? Object.assign({ id: s.id, t: G.CzAvance.ultimaActividad(r.hilo) }, rt) : null;
     }
     ST.hilo = r.hilo; registrarPasos(r.hilo); revisarDictados(); pintarChat();
     // Recién mandado: si el motor ya tiene trabajo, la siguiente consulta no espera los 20 s.
     if (enCurso() && ST.sondeoMs > 2500) sondear();
+  }
+  /* V1.38 (#4 punto 8, nivel 1) · Recién actualizado (botón «Actualizar» o recarga dura con versión nueva), cada caso
+   * abierto muestra su paso SIN que la persona escriba: «Retomamos» sale aunque no hayan pasado 2 h, UNA vez por caso y
+   * por versión (se anota en el teléfono). Todo sale de Postgres; no hay trabajo del motor. Devuelve la versión o null. */
+  function tocaRetomarPorVersion(H) {
+    var sv = G.CzVersion && G.CzVersion.salto ? G.CzVersion.salto() : null, c = (H && H.caso) || {};
+    if (!sv || !c.id || (c.estado && c.estado !== 'abierto')) return null;
+    var k = 'cz_retoma_v_' + c.id;
+    try { if (localStorage.getItem(k) === VERSION) return null; localStorage.setItem(k, VERSION); } catch (e) {}
+    return VERSION;
   }
   async function refrescarSalida() {
     ST.salida = await Q.salida(); ST.locales = await Q.casosLocales();
