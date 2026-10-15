@@ -569,6 +569,8 @@
     }
     var sg = abierta && !(ST.sel || {}).menu ? G.CzAvance.avance(H).sig : null;
     if (sg && (sg.acc === 'ciudad' || sg.acc === 'confirma_ciudad') && !mia(c)) sg = null;
+    // Ya se dijo «ya es todo» (en la cola o recién llegado) y la base todavía no marca `disparado_at`: no se ofrece otra vez.
+    if (sg && sg.acc === 'disparo' && yaDisparo()) sg = { txt: 'Armando las preguntas…', espera: true };
     if (!sg) { el.style.display = 'none'; el.innerHTML = ''; return; }
     var e = ST.env.fijo || (ST.env.ciudad ? 'guardando la ciudad…' : null), ic = sg.acc === 'ciudad' || sg.acc === 'confirma_ciudad' ? 'mapa' : sg.acc === 'machote' || sg.acc === 'disparo' ? 'disparo' : 'pagina';
     el.style.display = 'flex';
