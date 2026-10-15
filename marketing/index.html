@@ -27,55 +27,34 @@
 </head>
 <body>
 <div class="topbar">
-  <button class="tb-back" onclick="location.href='../index.html'" aria-label="Volver a la suite">&#8249;</button>
+  <button class="tb-back" onclick="location.href='../comercial/index.html'" aria-label="Volver a Comercial">&#8249;</button>
   <div class="tb-logo" role="img" aria-label="FTS"></div>
-  <div class="tb-info"><strong>Marketing</strong><span>FTS Suite</span></div>
-  <div class="tb-badge">15-OCT</div>
+  <div class="tb-info"><strong>Marketing</strong><span>Comercial</span></div>
+  <div class="tb-badge">V3</div>
 </div>
 <div class="wrap">
-  <p class="lead">Elige la estación con la que vas a trabajar.</p>
+  <p class="lead">Una conversación por empresa: de la ficha a «Por cotizar», en el mismo hilo.</p>
   <a class="mode-card" href="prospectador/index.html">
-    <div class="ic">🔎</div>
-    <div class="tx"><div class="tt">Prospectador <span class="pill o">MVP</span></div>
-      <div class="ds">Prospecta una empresa o una lista de hasta 10, por sesiones tipo WhatsApp. Ficha, editar, rebuscar y enviar a CRM.</div></div>
+    <div class="ic">💬</div>
+    <div class="tx"><div class="tt">Prospectador</div>
+      <div class="ds">Tus conversaciones, una por empresa: ficha, Enviar a CRM, toques, reasignación, cuarentena y cierre. Las señales del radar llegan aquí como conversaciones nuevas.</div></div>
     <div class="ch">&#8250;</div>
   </a>
   <a class="mode-card" href="lead/index.html">
-    <div class="ic">📇</div>
-    <div class="tx"><div class="tt">Lead rápido <span class="pill o">MVP</span></div>
-      <div class="ds">En planta o en un evento: foto de gafete o tarjeta, audio o texto pegado. Funciona sin señal.</div></div>
+    <div class="ic">⚡</div>
+    <div class="tx"><div class="tt">Nuevo lead</div>
+      <div class="ds">En planta o en un evento: foto de gafete o tarjeta, audio o texto pegado. Abre la conversación de la empresa o se agrega a la que ya existe. Funciona sin señal.</div></div>
     <div class="ch">&#8250;</div>
   </a>
-  <a class="mode-card" href="bandeja/index.html" id="card-bandeja">
-    <div class="ic">📥</div>
-    <div class="tx"><div class="tt">Bandeja del radar <span class="pill o">MVP</span> <span class="pill r" id="vencidas" hidden></span></div>
-      <div class="ds">Señales del radar con estado: nueva, en trabajo, enviada a CRM o descartada con motivo.</div></div>
-    <div class="ch">&#8250;</div>
-  </a>
-  <a class="mode-card" href="seguimiento/index.html" id="card-seg">
-    <div class="ic">📈</div>
-    <div class="tx"><div class="tt">Seguimiento <span class="pill o">nuevo</span></div>
-      <div class="ds">Cada prospecto enviado a CRM es una tarjeta con su chat: cuenta qué pasó, el motor propone el siguiente paso y con un toque queda en Odoo. Hoy, vencidas y sin toque.</div></div>
-    <div class="ch">&#8250;</div>
-  </a>
-  <a class="mode-card reservado" href="radar/index.html">
-    <div class="ic">📡</div>
-    <div class="tx"><div class="tt">Radar en vivo <span class="pill">reservado</span></div>
-      <div class="ds">Las señales conforme llegan. Espera a que el radar corra solo en el servidor.</div></div>
-    <div class="ch">&#8250;</div>
-  </a>
-  <p class="foot">Entrar pide <b>marketing:usar</b>. Enviar a CRM y Seguimiento piden <b>marketing:crm</b>; la bandeja, <b>marketing:bandeja</b>.<br>
+  <p class="foot">Entrar pide <b>marketing:usar</b>. Enviar a CRM, reasignar y los toques en Odoo piden <b>marketing:crm</b>; el tablero del equipo (⋮ del Prospectador), <b>marketing:equipo</b>.<br>
     Lo que llega a Odoo pasa siempre por «Enviar a CRM»: primero enseña lo que ya existe y después lo que escribiría.</p>
   <p class="ver" id="ver"></p>
 </div>
 <script src="../shared/version-check.js"></script>
 <script>
-  var MKT_BUILD = '20261015-marketing-lanzamiento';
+  var MKT_BUILD = '20261015-marketing-v3';
   document.getElementById('ver').textContent = 'Marketing · ' + MKT_BUILD;
   try { FTSVersionCheck.run({ versionUrl: 'version.json', localBuild: MKT_BUILD, tag: 'marketing' }); } catch (e) {}
-  // La bandeja no se esconde: si falta el permiso, la propia bandeja lo dice.
-  if (!window.SuiteAuth.tieneScope('marketing:bandeja')) document.getElementById('card-bandeja').classList.add('reservado');
-  if (!window.SuiteAuth.tieneScope('marketing:crm')) document.getElementById('card-seg').classList.add('reservado');
 </script>
 </body>
 </html>
