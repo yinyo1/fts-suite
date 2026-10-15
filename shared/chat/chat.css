@@ -91,3 +91,5 @@ label.ch-campo input,label.ch-campo select,label.ch-campo textarea{border:1px so
 .ch-visor img{max-width:100%;max-height:80vh;border-radius:6px}
 .ch-visor iframe{width:100%;max-width:900px;height:80vh;background:#fff;border:0;border-radius:6px}
 @media (max-width:420px){ .ch-kv{grid-template-columns:1fr} .ch-kv dt{margin-top:6px} }
+/* v3 (#421): nota de voz en pausa */
+.ch-grabando.pausa{color:var(--muted2)}.ch-grabando.pausa .punto{animation:none;background:var(--muted2)}

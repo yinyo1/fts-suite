@@ -78,7 +78,7 @@
     if (tipo === null) throw new Error('Este navegador no puede grabar audio.');
     var flujo = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
     var rec = new MediaRecorder(flujo, tipo ? { mimeType: tipo, audioBitsPerSecond: 32000 } : undefined);
-    var partes = [], inicio = Date.now(), cancelado = false;
+    var partes = [], inicio = Date.now(), cancelado = false, pausado = 0, pausaDesde = 0;
     rec.ondataavailable = function (e) { if (e.data && e.data.size) partes.push(e.data); };
     rec.start(1000);
     function soltar() { flujo.getTracks().forEach(function (t) { t.stop(); }); }
@@ -92,12 +92,17 @@
             var ext = /mp4/.test(mime) ? 'm4a' : /ogg/.test(mime) ? 'ogg' : 'webm';
             var blob = new Blob(partes, { type: mime });
             ok(cancelado ? null : { blob: blob, mime: mime, clase: 'audio', bytes: blob.size,
-              duracion_s: Math.round((Date.now() - inicio) / 1000), nombre: 'nota-de-voz-' + new Date(inicio).toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.' + ext });
+              duracion_s: Math.round((Date.now() - inicio - pausado - (pausaDesde ? Date.now() - pausaDesde : 0)) / 1000), nombre: 'nota-de-voz-' + new Date(inicio).toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.' + ext });
           };
           try { rec.stop(); } catch (e) { soltar(); ok(null); }
         });
       },
-      cancelar: function () { cancelado = true; try { rec.stop(); } catch (e) {} soltar(); }
+      cancelar: function () { cancelado = true; try { rec.stop(); } catch (e) {} soltar(); },
+      // v3 (#421): pausa y reanuda como WhatsApp. Si el navegador no puede, `pausar` devuelve false y la barra no ofrece el botón.
+      puedePausar: typeof rec.pause === 'function',
+      pausar: function () { if (rec.state !== 'recording' || typeof rec.pause !== 'function') return false; rec.pause(); pausaDesde = Date.now(); return true; },
+      reanudar: function () { if (rec.state !== 'paused') return false; rec.resume(); pausado += Date.now() - pausaDesde; pausaDesde = 0; return true; },
+      transcurrido: function () { return Date.now() - inicio - pausado - (pausaDesde ? Date.now() - pausaDesde : 0); }
     };
   }
 
