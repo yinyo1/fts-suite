@@ -76,7 +76,26 @@
     Object.keys(guardado.borr || {}).forEach(function (k) { st.borr[k] = { abierto: true, texto: guardado.borr[k] }; });
   }
 
+  /* V1.38 (#4 punto 8) · ¿Este teléfono acaba de pasar a esta versión? Sí, si vino del botón «Actualizar» (guardado.de)
+   * o si la última versión que vio es otra. La primera vez que un teléfono trae esta marca (de V1.37 a V1.38) cuenta
+   * como salto si ya había usado el conceptualizador (hay llaves cz_ suyas); un teléfono nuevo, no. El salto se GUARDA
+   * (cz_salto_de / cz_salto_a) para toda la versión: una segunda recarga no debe dejar sin ponerse al día los casos
+   * que todavía no se abren. Cada caso lo muestra una sola vez (cz-app.js). */
+  var VISTA = 'cz_version_vista', salto = null;
+  try {
+    var antes = localStorage.getItem(VISTA), usado = false, de = null;
+    for (var i = 0; i < localStorage.length; i++) { var kk = localStorage.key(i); if (kk && kk.indexOf('cz_') === 0 && kk !== VISTA) { usado = true; break; } }
+    if (guardado && guardado.de && guardado.de !== actual()) de = guardado.de;
+    else if (antes && antes !== actual()) de = antes;
+    else if (!antes && usado) de = 'anterior';
+    if (de && actual()) { localStorage.setItem('cz_salto_de', de); localStorage.setItem('cz_salto_a', actual()); }
+    if (actual()) localStorage.setItem(VISTA, actual());
+    if (actual() && localStorage.getItem('cz_salto_a') === actual()) salto = localStorage.getItem('cz_salto_de') || 'anterior';
+  } catch (e) {}
+
   G.CzVersion = {
+    /** La versión de la que venía, si esta carga es un salto; si no, null. */
+    salto: function () { return salto; },
     /** Después de CzApp.arrancar(): repone la caja de mensaje y empieza a revisar. */
     iniciar: function () {
       if (guardado && guardado.texto) {

@@ -1,6 +1,10 @@
 {
-  "version": "V1.37",
+  "version": "V1.38",
   "historial": [
+    {
+      "version": "V1.38",
+      "nota": "Al actualizar de versión (botón «Actualizar» o recarga dura con versión nueva), cada caso abierto muestra su paso sin que la persona escriba: «Retomamos · actualizaste a V1.38 · Vas en X, falta Y, siguiente: Z» sale aunque no hayan pasado 2 h, una vez por caso y por versión, con lo que ya está en Postgres (sin trabajo del motor). Del lado del motor (fts-conceptualizador), el botón «Armar el machote» ya no gasta un trabajo con modelo cuando el caso tiene su spec guardada."
+    },
     {
       "version": "V1.37",
       "nota": "Franja de avance (prototipo aprobado, #4): fija bajo el encabezado e igual para todos, «Paso N de 7 · <paso> · <conteo>» con 7 barritas (Levantamiento → Cotiza → Preguntas → Conceptos → BOM y precios → Machote → Cotización Odoo); en el teléfono un toque la abre con el detalle de cada paso y desde 760 px se ven las 7 etiquetas. Un solo botón con el siguiente paso: primero la ciudad si falta; en acompañamiento «Ya terminé, cotiza» con la confirmación de siempre, que ahora muestra lo que falta («faltan 11 · 6 sin nada · 5 a medias», contado por el motor sin modelo); «¿Qué me falta?» queda en ⋮. Al reabrir un caso con 2 h o más sin actividad, «Retomamos: vas en X, falta Y, siguiente: Z», armado por la pantalla con lo que ya está guardado. La franja de la ciudad de V1.34 se integra a la de avance."
