@@ -79,10 +79,12 @@
     return c;
   }
 
-  /** Encola un mensaje con texto y/o archivos ya preparados por CzMedios. */
-  async function encolar(destino, texto, archivos, escritoAt) {
+  /** Encola un mensaje con texto y/o archivos ya preparados por CzMedios. `datos` (V1.39) viaja tal cual en el
+   *  pedido `enviar` (firmado: json:datos); hoy solo lleva `responde_a` cuando el mensaje responde citando. */
+  async function encolar(destino, texto, archivos, escritoAt, datos) {
     var it = { cliente_id: id('msg'), actor: actor(), caso_id: destino.caso_id || null, caso_local: destino.local_id || null,
                texto: texto || '', escrito_at: escritoAt || Date.now(), estado: 'pendiente', error: null, intentos: 0,
+               datos: datos && typeof datos === 'object' ? datos : null,
                archivos: (archivos || []).map(function (a) { return { local: id('adj'), nombre: a.nombre, mime: a.mime, clase: a.clase,
                  bytes: a.bytes, duracion_s: a.duracion_s || null, blob: a.blob, sha256: null, adjunto_id: null }; }) };
     await poner('salida', it); avisar(); correr();
@@ -135,8 +137,10 @@
         }
         if (!fallo) {
           it.estado = 'enviando'; await poner('salida', it); avisar();
-          var re = await C.enviar({ caso_id: it.caso_id, texto: it.texto, cliente_id: it.cliente_id, escrito_at: String(it.escrito_at),
-            adjuntos: it.archivos.map(function (a) { return a.adjunto_id; }) });
+          var pe = { caso_id: it.caso_id, texto: it.texto, cliente_id: it.cliente_id, escrito_at: String(it.escrito_at),
+            adjuntos: it.archivos.map(function (a) { return a.adjunto_id; }) };
+          if (it.datos) pe.datos = it.datos;   // sin datos el pedido queda idéntico al de antes (firma: json:datos = null)
+          var re = await C.enviar(pe);
           if (re.ok) { await quitar('salida', it.cliente_id); avisar(); oyentes.forEach(function (f) { try { f({ enviado: re }); } catch (e) {} }); continue; }
           fallo = re;
         }
