@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.46';
+  var VERSION = 'V1.48';
   // V1.46 (#4) · lo que contesta el motor a un «revisa» cuando no hay aviso pendiente (procesa.js, SIN_AVISO): no se pinta.
   var SIN_AVISO = 'Sin cambios pendientes en este caso.';
   /* V1.32 (0006) · empresa y moneda de la sesión: la base acepta estas tres claves. */
@@ -677,13 +677,34 @@
    *  · ≥900 px: panel lateral de 300 px a la derecha, siempre abierto y sin cerrarse solo (el chat conserva su alto).
    * Integra la ciudad (sin confirmar sale en rojo y el botón de abajo la pide primero) y el «Abrir M-xxxx». */
   var CIERRE_MS = 6000;
+  /* V1.47 (#4) · el ciclo del análisis y el presupuesto, de la última respuesta del motor (verifica.analisis, verifica.presupuesto). */
+  var BOTON_CIERRE = 'Ya está todo ok, ya no muevas nada';
+  function verUlt() { return (ST.hilo && ST.hilo.ultima && ST.hilo.ultima.verifica) || {}; }
+  function analisis() { return verUlt().analisis || null; }
+  function analisisCerrado() { var a = analisis(); return !!(a && a.estado === 'cerrado'); }
+  function presupuesto() { return verUlt().presupuesto || null; }
   function lateral() { return G.matchMedia && G.matchMedia('(min-width:900px)').matches; }
   function abrirFranja(v) {
     ST.franjaAbierta = !!v; var el = $('#avance');
     if (el) { el.classList.toggle('abierta', ST.franjaAbierta); var t = $('#avTop'); if (t) t.setAttribute('aria-expanded', String(ST.franjaAbierta || lateral())); }
     clearTimeout(ST.tFranja); if (ST.franjaAbierta && !lateral()) armarCierre();
   }
-  function armarCierre() { clearTimeout(ST.tFranja); ST.tFranja = setTimeout(function () { abrirFranja(false); }, CIERRE_MS); }
+  function armarCierre() { clearTimeout(ST.tFranja); ST.tFranja = setTimeout(function () { if (!ST.razonAg) abrirFranja(false); }, CIERRE_MS); }
+  /* V1.47.1 (#4) · pausa del agente por caso y reabrir el análisis: con razón obligatoria; viajan como mensaje del dueño (o de
+   * Esteban) que el motor resuelve sin modelo. La franja dice «⏸ Agente en pausa · quién · razón · desde» con «Reanudar». */
+  var FRASE_PAUSA = '⏸ Pausa al agente: ', FRASE_REANUDA = '▶ Reanuda al agente', FRASE_REABRE = '🔓 Reabre el análisis: ';
+  function nombreAgente(a) { return String(a || '').split('.').filter(Boolean).map(function (x) { return x.charAt(0).toUpperCase() + x.slice(1); }).join(' ') || '—'; }
+  function horaDe(iso) {
+    var d = new Date(iso); if (isNaN(d)) return '';
+    var hm = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2), hoy = new Date();
+    return d.toDateString() === hoy.toDateString() ? hm : ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'][d.getDay()] + ' ' + d.getDate() + ' · ' + hm;
+  }
+  function pedirRazonAg(tipo) { ST.razonAg = tipo; ST.razonErr = ''; abrirFranja(true); pintarFranja(); var i = $('#avRazon'); if (i) i.focus(); }
+  function mandarRazonAg() {
+    var i = $('#avRazon'), r = i ? String(i.value || '').replace(/\s+/g, ' ').trim() : '';
+    if (r.length < 8 || !/[A-Za-zÁÉÍÓÚáéíóúÑñ]{2,}.*\s.*[A-Za-zÁÉÍÓÚáéíóúÑñ]{2,}/.test(r)) { ST.razonErr = 'Escribe la razón en una línea (por ejemplo: «muevo yo los precios hoy»).'; pintarFranja(); var j = $('#avRazon'); if (j) { j.value = r; j.focus(); } return; }
+    var t = ST.razonAg === 'reabre' ? FRASE_REABRE + r : FRASE_PAUSA + r; ST.razonAg = null; ST.razonErr = ''; pintarFranja(); mandar(t);
+  }
   function pintarFranja() {
     var el = $('#avance'), viejo = $('#ciuF'); if (viejo) { viejo.style.display = 'none'; viejo.innerHTML = ''; }
     if (!el) return;
@@ -693,15 +714,40 @@
     }
     var AV = G.CzAvance, L = AV.linea(H), av = L.av, R = L.R, a = av.actual, P = AV.PASOS, abierto = !!ST.franjaAbierta;
     var x = ciudadDe(c), folio = av.machote && ((av.machote.resultado || {}).folio || c.machote_folio);
-    el.style.display = 'block'; el.classList.toggle('abierta', abierto); if (app) app.classList.add('con-lado');
+    el.style.display = 'block'; el.classList.toggle('abierta', abierto); if (app) { app.classList.add('con-lado'); app.classList.toggle('lado-col', ladoColapsado()); }
     // V1.45 (#4 punto 13) · con machote, el avance y los precios por separado: «Rubros 7/7 · Precios 46/46 (62 % referencia, 19 alertas)».
-    var cab = L.P ? '<b>' + esc(L.rubrosTxt) + '</b> · <span class="avl-pre' + (L.P.alertas ? ' alerta' : '') + '">' + esc(L.preciosTxt) + '</span>' :
+    var AN0 = analisis();
+    // V1.48 · con el % hacia el 100, las referencias y alertas viven adentro: la línea de arriba ya no se pinta de naranja.
+    var cab = L.P ? '<b>' + esc(L.rubrosTxt) + '</b> · <span class="avl-pre' + (L.P.alertas && !(AN0 && typeof AN0.pct === 'number') ? ' alerta' : '') + '">' + esc(L.preciosTxt) + '</span>' :
       (L.pct !== null ? '<b>' + L.pct + ' %</b>' : '<b>' + esc(L.paso) + '</b>') +
       (L.sig ? ' · Siguiente: ' + (L.rojo ? '<span class="avl-rojo">' + esc(L.sig) + '</span>' : esc(L.sig)) : '');
-    var h = '<button type="button" class="avl-top' + (L.P ? ' con-precios' : '') + '" id="avTop" aria-expanded="' + (abierto || lateral()) + '" aria-controls="avDet"><span class="avl-l">' + cab + '</span>' + ico('abajo', 's avl-chev') + '</button>';
+    var AN = analisis();
+    if (AN && AN.pausa && AN.estado !== 'cerrado') cab = '<b class="avl-pausa">⏸ En pausa</b> · ' + cab;
+    if (AN && AN.estado === 'cerrado') cab = '<b class="avl-cerrado">🔒 Análisis cerrado</b> · ' + cab;
+    else if (AN && AN.estado === 'listo') cab = '<b class="avl-listo">Listo para cerrar</b> · ' + cab;
+    else if (AN && typeof AN.pct === 'number') cab = '<b class="avl-pct ' + colorAvance(AN, L.P) + '">' + AN.pct + ' % hacia el 100</b> · ' + cab;
+    // V1.48 · UN indicador con color que significa algo: rojo = todavía no se puede cotizar (un N5), ámbar = en camino, verde = 100 %.
+    if (AN) cab = anillo(AN, L.P) + cab;
+    var h = AN && AN.pausa && AN.estado !== 'cerrado' ? '<div class="avl-pausa-fr" role="status"><span>⏸ <b>Agente en pausa</b> · ' + esc(nombreAgente(AN.pausa.por)) + ' · «' + esc(AN.pausa.razon) + '» · desde ' + esc(horaDe(AN.pausa.desde)) + '</span>' +
+      (mia(c) ? '<button type="button" class="bt" id="avReanudar">Reanudar</button>' : '') + '</div>' : '';
+    h += '<button type="button" class="avl-top' + (L.P ? ' con-precios' : '') + '" id="avTop" aria-expanded="' + (abierto || lateral()) + '" aria-controls="avDet"><span class="avl-l">' + cab + '</span>' + ico('abajo', 's avl-chev') + '</button>';
+    // V1.48 · en PC el panel se colapsa hacia la derecha y se recuerda por persona (en este navegador).
+    h += '<button type="button" class="avl-col" id="avCol" aria-label="' + (ladoColapsado() ? 'Abrir el panel de progreso' : 'Colapsar el panel de progreso') + '" title="' + (ladoColapsado() ? 'Abrir el panel' : 'Colapsar el panel') + '"><span class="avl-col-i' + (ladoColapsado() ? ' abre' : '') + '" aria-hidden="true"></span></button>';
     h += '<div class="avl-det" id="avDet"><div class="avl-tit">Paso ' + (a + 1) + ' de 7 · ' + esc(P[a]) + (av.det[a] ? ' · ' + esc(av.det[a].replace(/\.$/, '')) : '') +
       (L.P ? ' · <b>' + esc(L.rubrosTxt) + ' cerrados</b>' : L.pct !== null ? ' · <b>Llevas ' + L.pct + ' %</b>' : '') + (R && !L.P ? ' · ' + R.lista.length + ' rubros' : '') + '</div>';
     if (L.P) h += preciosFranja(L.P, L.sig);
+    if (AN) h += '<div class="avl-analisis">' + (AN.estado === 'cerrado' ? '<b>🔒 Análisis cerrado' + (AN.cerrado && AN.cerrado.folio ? ' · ' + esc(AN.cerrado.folio) + (AN.cerrado.version ? ' v' + esc(AN.cerrado.version) : '') : '') + '.</b> El agente ya no mueve nada; si pides algo nuevo, se reabre.' :
+      '<b>' + (AN.estado === 'listo' ? 'Listo para cerrar' : AN.pct + ' % hacia el 100') + '</b>' + (AN.falta && AN.falta.length ? ' · Falta: ' + esc(AN.falta.join('; ')) : '') +
+      (mia(c) ? ' <button type="button" class="link" id="avCerrarAn">' + esc(BOTON_CIERRE) + '</button>' : '') +
+      (mia(c) && !AN.pausa ? ' <button type="button" class="link" id="avPausar">Pausar al agente</button>' : '') +
+      (AN.congelado_ref && AN.congelado_ref.folio ? '<span class="avl-cong">Versión congelada de referencia: ' + esc(AN.congelado_ref.folio) + (AN.congelado_ref.version ? ' v' + esc(AN.congelado_ref.version) : '') + '</span>' : '')) +
+      (AN.estado === 'cerrado' && mia(c) ? ' <button type="button" class="link" id="avReabrir">Reabrir el análisis</button>' : '') +
+      (ST.razonAg && mia(c) ? '<div class="caja-razon avl-razon"><label for="avRazon">' + (ST.razonAg === 'reabre' ? '¿Qué cambió para reabrirlo?' : '¿Por qué pausas al agente?') + '</label>' +
+        '<input id="avRazon" maxlength="300" autocomplete="off" placeholder="' + (ST.razonAg === 'reabre' ? 'el cliente pidió 2 chillers más' : 'muevo yo los precios hoy') + '">' +
+        (ST.razonErr ? '<span class="nota mal">' + esc(ST.razonErr) + '</span>' : '') +
+        '<span class="avl-razon-bt"><button type="button" class="bt" id="avRazonOk">' + (ST.razonAg === 'reabre' ? 'Reabrir' : 'Pausar') + '</button><button type="button" class="link" id="avRazonNo">Cancelar</button></span></div>' : '') + '</div>';
+    var PR = presupuesto();
+    if (PR && yo() === 'esteban.delacruz') h += '<div class="avl-pres">' + esc(PR.linea) + ' <button type="button" class="link" id="avAvance">' + (PR.apagado ? 'Prender el avance' : 'Apagar el avance') + '</button></div>';
     if (!av.ciudad) h += '<div class="avl-ciu"><b>Ciudad del proyecto' + (x ? ': ' + esc(CI.nombre(x)) + ' (sin confirmar)' : '') + '</b> Sin ella no se buscan precios: tiendas, fletes y viáticos se miden contra ella.' +
       (mia(c) ? ' <button type="button" class="link" id="avCiudad">' + (x ? 'Cambiar' : 'Elegir') + '</button>' : '') + '</div>';
     h += '<ol class="avl-pasos">' + P.map(function (p, i) { var e = av.e[i]; return '<li class="' + e + '" title="' + esc(av.det[i]) + '">' + (e === 'hecho' ? '✓ ' : '') + (i + 1) + ' ' + esc(p) + '</li>'; }).join('') + '</ol>';
@@ -715,9 +761,38 @@
       }).join('');
     } else h += '<div class="avl-nada">' + (av.oferta && av.oferta.estado === 'ofrecida' ? 'Los rubros salen cuando contestes la oferta.' : 'Los rubros salen cuando arranque con el machote.') + '</div>';
     el.innerHTML = h + '</div>';
+    if ($('#avCol')) $('#avCol').onclick = function (e) { e.stopPropagation(); ponLadoColapsado(!ladoColapsado()); pintarFranja(); };
     if ($('#avCiudad')) $('#avCiudad').onclick = function () { cambiarCiudad(); };
     if ($('#avAbrir')) $('#avAbrir').onclick = function () { abrirEditor(av.machote); };
+    if ($('#avCerrarAn')) $('#avCerrarAn').onclick = function () { if (confirm('¿Cerrar el análisis? El machote vigente queda congelado y el agente deja de moverlo.')) mandar(BOTON_CIERRE); };
+    if ($('#avAvance')) $('#avAvance').onclick = function () { mandar(PR && PR.apagado ? 'prende el avance' : 'apaga el avance'); };
+    if ($('#avPausar')) $('#avPausar').onclick = function () { pedirRazonAg('pausa'); };
+    if ($('#avReabrir')) $('#avReabrir').onclick = function () { pedirRazonAg('reabre'); };
+    if ($('#avReanudar')) $('#avReanudar').onclick = function (e) { e.stopPropagation(); mandar(FRASE_REANUDA); };
+    if ($('#avRazonOk')) $('#avRazonOk').onclick = mandarRazonAg;
+    if ($('#avRazonNo')) $('#avRazonNo').onclick = function () { ST.razonAg = null; ST.razonErr = ''; pintarFranja(); armarCierre(); };
+    if ($('#avRazon')) $('#avRazon').oninput = function () { if (ST.razonErr) { ST.razonErr = ''; var m = $('.avl-razon .nota.mal'); if (m) m.remove(); } };
+    if ($('#avRazon')) $('#avRazon').onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); mandarRazonAg(); } else if (e.key === 'Escape') { ST.razonAg = null; pintarFranja(); } };
   }
+  /** V1.48 · rojo si algo impide cotizar (un renglón sin precio, N5), ámbar en camino (referencias, alertas, lo que falte), verde al 100 %. */
+  function colorAvance(AN, P) {
+    if (AN.estado === 'cerrado' || AN.estado === 'listo' || AN.pct >= 100) return 'verde';
+    if (P && P.total && P.con_precio < P.total) return 'rojo';
+    // Sin el bloque de precios (antes de guardar el machote): el machote de la última respuesta o lo que el motor dice que falta.
+    var M = ((ST.hilo && (ST.hilo.propuesta || ST.hilo.ultima)) || {}).machote;
+    if (M && (M.secciones || []).some(function (x) { return x.sin_precio > 0; })) return 'rojo';
+    if ((AN.falta || []).some(function (f) { return /sin precio|\bN5\b/i.test(f); })) return 'rojo';
+    return 'ambar';
+  }
+  function anillo(AN, P) {
+    var pct = AN.estado === 'cerrado' || AN.estado === 'listo' ? 100 : Math.max(0, Math.min(100, Number(AN.pct) || 0)), col = colorAvance(AN, P);
+    var cl = { verde: '#1daa61', ambar: '#b7791f', rojo: '#d13438' }[col];
+    return '<svg class="avl-anillo" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="#e7e3dd" stroke-width="3"/>' +
+      '<circle cx="10" cy="10" r="8" fill="none" stroke="' + cl + '" stroke-width="3" stroke-linecap="round" transform="rotate(-90 10 10)" stroke-dasharray="50.27" stroke-dashoffset="' + (50.27 * (1 - pct / 100)).toFixed(2) + '"/></svg>';
+  }
+  var LADO_KEY = function () { return 'cz_lado_colapsado:' + (yo() || 'anon'); };
+  function ladoColapsado() { try { return localStorage.getItem(LADO_KEY()) === '1'; } catch (e) { return false; } }
+  function ponLadoColapsado(v) { try { localStorage.setItem(LADO_KEY(), v ? '1' : '0'); } catch (e) {} var a = $('#app'); if (a) a.classList.toggle('lado-col', !!v); }
   /** V1.45 · el renglón de precios del detalle de la franja: con precio, % de referencia, alertas N3 y de sensatez. */
   function preciosFranja(P, sig) {
     var S = P.sensatez || [];
@@ -915,10 +990,47 @@
       '<div class="av" style="background:' + color(c.titulo) + '">' + esc(iniciales(c.cliente || c.titulo)) + '</div>' +
       '<div class="tx"><b><span>' + esc(c.titulo) + '</span>' + (((H && H.caso) || c).demo ? '<span class="chip-prueba" title="No enseña">PRUEBA</span>' : '') +
       '<span class="ver" title="Build del módulo">' + VERSION + '</span></b><small class="' + (vivo ? 'vivo' : '') + '">' + esc(sub) + '</small></div>' +
+      // V1.48 · el globito del agente (prototipo aprobado, #4): su estado y, al tocarlo, explicación y botones.
+      globitoHtml() +
       // V1.37 · «Ya terminé, cotiza» es el botón del siguiente paso (abajo) y «¿Qué me falta?» vive en ⋮ (decisión de Esteban, #4).
       '<button class="btn-ic" id="bMenu" aria-label="Opciones">' + ico('mas') + '</button>';
     $('#bVuelve').onclick = volverALista;
+    if ($('#bAgente')) $('#bAgente').onclick = function (e) { popAgente(e.currentTarget); };
     $('#bMenu').onclick = function (e) { menuChat(e.currentTarget); };
+  }
+  /* V1.48 · el globito del agente: 🤖 trabajando · ⏸️ en pausa · 🔒 cerrado · 💤 fuera de horario o tope · 🧪 modo prueba.
+   * Todo sale de la última respuesta del motor (verifica.analisis y verifica.presupuesto): sin pedirle nada al servidor. */
+  function estadoAgente() {
+    var H = ST.hilo, c = H && H.caso; if (!c || ['abierto', 'enviada'].indexOf(c.estado) < 0 || archivada(c) || (ST.sel || {}).menu) return null;
+    var AN = analisis(), PR = presupuesto();
+    if (AN && AN.estado === 'cerrado') return { k: 'cerrado', e: '🔒', l: 'cerrado', t: 'Análisis cerrado', p: 'Se cerró con «' + BOTON_CIERRE + '». El agente no toca este caso. Si necesitas cambiar algo, reábrelo.' };
+    if (AN && AN.pausa) return { k: 'pausa', e: '⏸️', l: 'en pausa', t: 'El agente está en pausa', p: 'Lo pausó ' + nombreAgente(AN.pausa.por) + ' ' + horaDe(AN.pausa.desde) + ': «' + AN.pausa.razon + '». No mueve nada en este caso hasta que lo reanudes; si le pides algo, hace eso y solo eso.' };
+    if (PR && (PR.apagado || PR.en_horario === false)) return { k: 'dormido', e: '💤', l: PR.apagado ? 'en tope' : 'fuera de horario', t: PR.apagado ? 'El agente llegó a su tope' : 'El agente descansa',
+      p: (PR.apagado ? 'El trabajo por su cuenta está apagado' + (PR.apagado.motivo ? ' (' + String(PR.apagado.motivo).replace(/_/g, ' ') + ')' : '') + (PR.apagado.hasta ? ' hasta ' + horaDe(PR.apagado.hasta) : '') + '.' :
+        'Trabaja por su cuenta L–V de 7:00 a 21:00 de quien cotiza.') + ' Tus mensajes sí se contestan.' };
+    if (PR && PR.modo_prueba) return { k: 'prueba', e: '🧪', l: 'modo prueba', t: 'Modo prueba (hasta ' + horaDe(PR.modo_prueba.hasta) + ')', p: 'Esta semana el agente trabaja con más margen para probarlo, con un vigilante de código que lo corta si gasta de más o no avanza. Nunca cambia lo que tú decidiste.' };
+    return { k: 'trabajando', e: '🤖', l: 'trabajando', t: 'El agente está trabajando', p: 'Avanza solo hacia el 100 %: completa precios, revisa alertas y sube versión nueva del mismo machote. Nunca cambia lo que tú decidiste.' };
+  }
+  function globitoHtml() {
+    var x = estadoAgente(); if (!x) return '';
+    return '<button type="button" class="bot-ag ' + x.k + '" id="bAgente" aria-haspopup="dialog" aria-label="Agente: ' + esc(x.l) + '"><span class="e">' + x.e + '</span><span class="lbl">' + esc(x.l) + '</span></button>';
+  }
+  function popAgente(btn) {
+    var x = estadoAgente(); if (!x) return;
+    var c = (ST.hilo && ST.hilo.caso) || {}, puede = mia(c), b = [];
+    if (x.k === 'pausa') b.push('<button type="button" class="bt si" data-ag="reanuda">▶ Reanudar</button>');
+    else if (x.k !== 'cerrado') b.push('<button type="button" class="bt" data-ag="pausa">⏸️ Pausar</button>');
+    if (x.k !== 'cerrado') b.push('<button type="button" class="bt" data-ag="cierra">🔒 Ya está todo ok</button>');
+    else b.push('<button type="button" class="bt si" data-ag="reabre">↺ Reabrir</button>');
+    var v = enMenu(btn, '<div class="pop-ag"><b>' + x.e + ' ' + esc(x.t) + '</b><p>' + esc(x.p) + '</p><div class="acc">' + b.join('').replace(/<button /g, puede ? '<button ' : '<button disabled ') + '</div>' +
+      '<small>' + (puede ? 'Solo el dueño del caso o Esteban ven estos botones activos.' : 'Solo el dueño del caso (' + esc(nombreAgente(c.autor)) + ') o Esteban pueden cambiar esto.') + '</small></div>');
+    $$('[data-ag]', v).forEach(function (bt) { bt.onclick = function () {
+      cerrarVelo(); var a = bt.dataset.ag;
+      if (a === 'pausa') return pedirRazonAg('pausa');
+      if (a === 'reabre') return pedirRazonAg('reabre');
+      if (a === 'reanuda') return mandar(FRASE_REANUDA);
+      if (a === 'cierra' && confirm('¿Cerrar el análisis? El machote vigente queda congelado y el agente deja de moverlo.')) return mandar(BOTON_CIERRE);
+    }; });
   }
   /** ⋮ del chat: lo de la sesión (fijar, renombrar, archivar) y, abajo, detalles y lo aprendido. */
   function menuChat(btn) {
@@ -943,6 +1055,15 @@
     var h = V + A.map(function (a) { return '<button data-a="' + a.k + '"' + (a.ok ? '' : ' disabled') + '>' + ico(a.ic, 's') + '<span>' + a.t + a.sub + '</span></button>'; }).join('') +
       (A.length ? '<hr>' : '') +
       ((ST.sel || {}).menu ? '' : '<button data-a="detalles">' + ico('info', 's') + '<span>Detalles y línea de tiempo</span></button>') +
+      // V1.47 (#4 Parte H) · el análisis lo cierra SOLO el dueño (o Esteban), de forma explícita; el botón está aunque no llegue al 100 %.
+      // V1.47.1 · pausa del agente en este caso (con razón), reanudar y reabrir el análisis: dueño o Esteban.
+      (abierta && c.id && mia && !analisisCerrado() ? (analisis() && analisis().pausa ? '<button data-a="reanuda_agente">' + ico('info', 's') + '<span>Reanudar al agente<small>En pausa desde ' + esc(horaDe(analisis().pausa.desde)) + ': «' + esc(analisis().pausa.razon) + '»</small></span></button>'
+        : '<button data-a="pausa_agente">' + ico('info', 's') + '<span>Pausar al agente<small>Con razón: deja de mover el caso por su cuenta; sí contesta lo que pidas</small></span></button>') : '') +
+      (abierta && c.id && mia && analisisCerrado() ? '<button data-a="reabre_analisis">' + ico('candado', 's') + '<span>Reabrir el análisis<small>Con razón: guarda la versión congelada y vuelve a trabajar</small></span></button>' : '') +
+      (abierta && c.id && mia && !analisisCerrado() ? '<button data-a="cierra_analisis">' + ico('candado', 's') + '<span>' + esc(BOTON_CIERRE) + '<small>Congela el machote vigente; el agente deja de moverlo</small></span></button>' : '') +
+      // V1.47 (#4 Parte T) · el interruptor del modo avance, solo para Esteban.
+      (yo() === 'esteban.delacruz' && c.id ? '<button data-a="avance_toggle">' + ico('info', 's') + '<span>' + (presupuesto() && presupuesto().apagado ? 'Prender el avance' : 'Apagar el avance') +
+        '<small>' + esc(presupuesto() ? presupuesto().linea : 'El trabajo proactivo del motor (sin presupuesto leído todavía)') + '</small></span></button>' : '') +
       (abierta && c.id ? '<button data-a="cierre">' + ico('candado', 's') + '<span>Cerrar con /cierre</span></button>' : '') +
       (G.CzPush ? G.CzPush.menuHtml('chat') : '') +   // V1.41 · «Permisos y avisos» (cz-push.js)
       '<button data-a="aprendio">' + ico('libro', 's') + '<span>Lo que aprendió</span></button>';
@@ -952,6 +1073,11 @@
       if (a.indexOf('push:') === 0) return G.CzPush.accion(a.slice(5));
       if (a === 'disparo') return confirmarDisparo(md);
       if (a === 'falta') return queFalta(null);
+      if (a === 'cierra_analisis') return mandar(BOTON_CIERRE);
+      if (a === 'pausa_agente') return pedirRazonAg('pausa');
+      if (a === 'reabre_analisis') return pedirRazonAg('reabre');
+      if (a === 'reanuda_agente') return mandar(FRASE_REANUDA);
+      if (a === 'avance_toggle') return mandar(presupuesto() && presupuesto().apagado ? 'prende el avance' : 'apaga el avance');
       if (a === 'ciudad') return cambiarCiudad();
       if (a === 'detalles') return menuSesion();
       if (a === 'aprendio') return verAprendio();
@@ -1012,12 +1138,15 @@
       if (m.rol === 'sistema') return aparte('<div class="sis"><span>' + esc(m.texto) + '</span></div>');
       if (m.rol === 'motor' && m.texto === SIN_AVISO) return;          // V1.46 · el «revisa» sin aviso no se pinta
       var mio = m.rol === 'usuario', tr = m.trabajo_id && porTrabajo[m.trabajo_id];
+      // V1.48 · el mensaje del agente que trae la tabla del machote se queda corto (4 líneas) con «Ver todo»: la tabla es el resumen.
+      var corto = !mio && U && U.machote && U.machote.tabla && Number(U.trabajo_id) === Number(m.trabajo_id) && String(sinMarca(m.texto) || '').length > 280 && !(ST.verTodo || {})[m.id];
       // Sin trabajo en modo «ya tengo el levantamiento»: guardado; el motor lo lee todo junto al disparar.
       var tk = mio ? (!m.trabajo_id && modo === 'levantamiento' ? '<span class="tk leido" title="Guardado; lo reviso todo junto cuando toques «Ya es todo»">' + palomita(true) + '</span>' : tick(tr)) : '';
       burbuja(mio ? 'yo' : 'el', '', 'Conceptualizador' + (/respaldo/.test(m.autor) ? ' · respaldo' : ''),
         citaDe(m.responde_a, m.texto) +
         adjuntosHtml((m.adjuntos || []).map(function (a) { return Object.assign({}, a, meta[a.id] || {}); }), false) +
-        (sinMarca(m.texto) ? '<div class="txt">' + (mio ? esc(sinMarca(m.texto)) : md(sinMarca(m.texto))) + '</div>' : '') +
+        (sinMarca(m.texto) ? '<div class="txt' + (corto ? ' txt-corto' : '') + '">' + (mio ? esc(sinMarca(m.texto)) : md(sinMarca(m.texto))) + '</div>' +
+          (corto ? '<button type="button" class="link ver-todo" data-vertodo="' + esc(m.id) + '">Ver todo</button>' : '') : '') +
         '<span class="hora">' + (m.escrito_at && Math.abs(new Date(m.created_at) - new Date(m.escrito_at)) > 120000 ? '<i title="Escrito sin señal; llegó ' + esc(hora(m.created_at)) + '">⟲</i> ' : '') +
         esc(hora(t)) + tk + '</span><div style="clear:both"></div>', m.id);
       if (mio && tr && tr.estado === 'error') aparte('<div class="sis"><span class="mal">El motor no pudo con este mensaje: ' + esc(tr.error || '') + '. Escríbelo de otra forma o vuelve a intentar.</span></div>');
@@ -1289,8 +1418,10 @@
       if (ST.errBt.listo) h += '<span class="err-bt">' + esc(ST.errBt.listo) + '</span>';
       h += '</div>';
     }
-    var Mq = U.machote;
-    if (Mq && (Mq.secciones || []).length) {
+    var Mq = U.machote, TB = Mq && Mq.tabla && G.CzTabla;
+    // V1.48 · la tabla del machote (prototipo aprobado, #4): secciones → subgrupos → renglones, al peso con calc.js de la suite.
+    if (TB && (Mq.secciones || []).length) h += G.CzTabla.tabla(Mq, { analisis: analisis(), folio: folioCaso(), puede: mia(H.caso) });
+    else if (Mq && (Mq.secciones || []).length) {
       h += '<div class="carta"><h4>📐 Machote propuesto · ' + (Mq.margen_objetivo ? Math.round(Mq.margen_objetivo * 100) + '%' : '40%') + ' con comisión FTS ' + ((Mq.comision_fts || 0.055) * 100).toFixed(1) + '% por sección</h4>' +
         '<table class="tabla"><tr><th>Sección</th><th class="r">Costo</th><th class="r">Precio</th><th class="r">Margen</th></tr>' +
         Mq.secciones.map(function (s) { return '<tr><td>' + esc(s.nombre) + (s.sin_precio ? ' <span class="mal" title="Renglones sin precio">· ' + s.sin_precio + ' sin precio</span>' : '') +
@@ -1307,18 +1438,25 @@
         '<div class="acc"><button class="si" data-copia="1">Copiar correo</button></div></div>';
     }
     var B = U.bom || {}, mat = B.materiales || [], mo = B.mano_obra || [];
-    if (mat.length || mo.length) {
+    // V1.48 · con la tabla, el BOM va abajo, colapsado y con filtros combinables (origen Y estado).
+    if (TB && (Mq.secciones || []).some(function (s) { return (s.grupos || []).length; })) h += G.CzTabla.bom(Mq, { puede: mia(H.caso) });
+    else if (mat.length || mo.length) {
       h += '<details class="carta"' + (nivelesDe(mat).n.N3 ? ' open' : '') + '><summary><b>BOM a costo</b> · ' + mat.length + ' renglones + ' + mo.length + ' de mano de obra</summary>';
       var NIV = nivelesDe(mat);
       if (NIV.con) h += '<div class="niv-res">' + ['N1', 'N2', 'N3', 'N4', 'N5'].filter(function (k) { return NIV.n[k]; }).map(function (k) {
         return '<span class="niv niv-' + k + '" title="' + esc(NIVEL[k][1]) + '">' + k + ' ' + esc(NIVEL[k][0]) + ' · ' + NIV.n[k] + '</span>'; }).join('') + '</div>';
+      // V1.47 (#4 regla de oro 1) · los renglones que la persona decidió: «lo dijiste tú», con el mensaje de donde salió.
+      // `propuesta` (la del BOM) no trae `verifica`: los decretos vigentes salen de la última respuesta que los mandó.
+      var DEC = ((U.verifica && U.verifica.decretos) || verUlt().decretos || {}).renglones || [];
+      var decDe = function (d) { var k = String(d || '').slice(0, 60); return DEC.filter(function (x) { return x.descripcion && String(x.descripcion).slice(0, 60) === k; })[0]; };
       mat.forEach(function (r) {
-        var te = r.tienda_existencia || r.tienda || '', sin = /sin existencia|solo (hay )?en|otra ciudad/i.test(te), nv = nivelDe(r);
+        var te = r.tienda_existencia || r.tienda || '', sin = /sin existencia|solo (hay )?en|otra ciudad/i.test(te), nv = nivelDe(r), dj = decDe(r.descripcion);
         h += '<div class="bom' + (nv === 'N3' ? ' alerta-n3' : '') + '"><div>' + (NIV.con ? '<span class="niv niv-' + nv + '">' + nv + '</span> ' : '') + '<b>' + esc(r.descripcion) + '</b>' + (r.sku ? ' <span class="sku">' + esc(r.sku) + '</span>' : '') + '</div><div>' + esc(r.qty) + ' ' + esc(r.unidad) + ' · ' + esc(r.tipo) + ' · <b>' + dinero(r.importe, r.moneda) + '</b></div>' +
           '<div class="org">' + [r.formula ? esc(r.formula) : '', r.liga && /^https?:/.test(r.liga) ? '<a href="' + esc(r.liga) + '" target="_blank" rel="noopener">' + esc(r.fuente) + '</a>' :
             /pendiente/i.test(r.fuente || '') ? '<b class="mal">' + esc(r.fuente) + '</b>' : esc(r.fuente || 'sin fuente')].filter(Boolean).join(' · ') + '</div>' +
           (te ? '<span class="tienda' + (sin ? ' sin' : '') + '">' + esc(te) + '</span>' : '') +
-          (NIV.con && (nv === 'N3' || nv === 'N4') && r.riesgo ? '<div class="riesgo">⚠ ' + esc(r.riesgo) + '</div>' : '') + '</div>';
+          (NIV.con && (nv === 'N3' || nv === 'N4') && r.riesgo ? '<div class="riesgo">⚠ ' + esc(r.riesgo) + '</div>' : '') +
+          (dj ? '<div class="dijiste" title="' + esc(dj.decretos.map(function (x) { return x.texto; }).join(' · ')) + '">🔒 lo dijiste tú · ' + esc(dj.decretos.map(function (x) { return x.origen; }).join(', ')) + ': «' + esc(String(dj.decretos[0].texto).replace(/^[«"\s]+|[»"\s]+$/g, '').slice(0, 90)) + '»</div>' : '') + '</div>';
       });
       mo.forEach(function (r) {
         h += '<div class="bom"><div><b>MO · ' + esc(r.rol) + '</b></div><div>' + esc(r.personas) + ' pers × ' + esc(r.dias) + ' d × ' + esc(r.horas_dia) + ' h · <b>' + dinero(r.importe, r.moneda) + '</b></div><div class="org">' + esc(r.origen || '') + '</div></div>';
@@ -1457,7 +1595,11 @@
       var espera = pendientes && (a.tipo === 'crear_machote' || a.tipo === 'crear_borrador');
       // V1.46 · un borrador propuesto ANTES de la versión del machote que falta guardar es de la versión anterior.
       var viejo = a.tipo === 'crear_borrador' && a.estado === 'propuesta' && cmPend && cmPend.id > a.id;
-      h += '<div class="carta"><h4>' + ({ alta_contacto: '👤', crear_machote: '📐', crear_borrador: '🧾', enviada: '📨', cerrar: '🔒' }[a.tipo] || '•') + ' ' + esc(a.titulo) + '</h4>' +
+      // V1.48 · «Actualizar COT-XXXX» que se entienda: «El agente tiene una versión nueva (total, diferencia) · Guardar en el machote».
+      var nueva = a.tipo === 'crear_machote' && a.estado === 'propuesta' && d.actualiza && a.id === ultimoCm ? versionNueva() : null;
+      h += '<div class="carta' + (nueva ? ' tb-nueva' : '') + '"><h4>' + ({ alta_contacto: '👤', crear_machote: '📐', crear_borrador: '🧾', enviada: '📨', cerrar: '🔒' }[a.tipo] || '•') + ' ' +
+        (nueva ? 'El agente tiene una versión nueva de ' + esc(folioCaso() || 'tu machote') : esc(a.titulo)) + '</h4>' +
+        (nueva ? '<p class="tb-dif">' + esc(nueva) + '</p><p class="nota">Tu machote guardado sigue en la versión anterior. Cuando el machote acepte al agente, esto se guarda solo y la tarjeta desaparece.</p>' : '') +
         (d.detalle ? '<div class="odoo">' + md(d.detalle) + '</div>' : '') +
         // V1.36 · lo que falta para cotizar en Odoo, con su número y renglón por renglón.
         (a.tipo === 'crear_machote' && Number(d.n_pendientes) > 0 && a.estado !== 'descartada' && a.id === ultimoCm ? '<div class="pend-cot"><b>' + esc(G.CzAcciones.textoPendientes({ n: Number(d.n_pendientes), lista: d.pendientes || [] })) + '</b>' +
@@ -1471,13 +1613,24 @@
          viejo ? '<p class="nota">Es de la versión anterior del machote: primero toca «' + esc(cmPend.titulo) + '».</p>' :
          (a.tipo === 'enviada' || a.tipo === 'cerrar' || manejador) ?
            (a.tipo === 'crear_borrador' && d.referencias && d.referencias.n ? botonReferencias(a) :
-           '<div class="acc"><button class="si" data-hacer="' + a.id + '">' + esc(d.boton || ETIQ[a.tipo] || 'Hacer') + '</button><button data-descartar="' + a.id + '">' + (a.tipo === 'cerrar' ? 'Todavía no' : 'No') + '</button></div>') +
+           '<div class="acc"><button class="si" data-hacer="' + a.id + '">' + esc(nueva ? 'Guardar en el machote' : (d.boton || ETIQ[a.tipo] || 'Hacer')) + '</button><button data-descartar="' + a.id + '">' + (a.tipo === 'cerrar' ? 'Todavía no' : 'No') + '</button></div>') +
            (a.tipo === 'crear_borrador' || a.tipo === 'enviada' ? leyendaOdoo(a.tipo) : '') :
            '<p class="nota">Este botón se enciende cuando se active la escritura a Odoo correspondiente.</p>') + '</div>';
     });
     return h;
   }
 
+  /** V1.48 · «$7,761,174.29 · diferencia +$0.00 · +1 renglón» de la versión nueva que el agente propone guardar. */
+  function versionNueva() {
+    var H = ST.hilo, M = ((H && (H.propuesta || H.ultima)) || {}).machote; if (!M || typeof M.precio !== 'number') return '';
+    var c = M.cambio || {}, n = c.n || {}, p = [dinero(M.precio)];
+    if (typeof c.dif === 'number') p.push('diferencia ' + (c.dif >= 0 ? '+' : '−') + dinero(Math.abs(c.dif)));
+    if (n.nuevos) p.push('+' + n.nuevos + (n.nuevos === 1 ? ' renglón' : ' renglones'));
+    if (n.quitados) p.push('−' + n.quitados + (n.quitados === 1 ? ' renglón' : ' renglones'));
+    if (n.precio) p.push(n.precio + (n.precio === 1 ? ' precio nuevo' : ' precios nuevos'));
+    if (M.n_pendientes) p.push(M.n_pendientes + (M.n_pendientes === 1 ? ' pendiente' : ' pendientes'));
+    return p.join(' · ');
+  }
   // ── V1.39 · punto 7 (#4): «¿me permites ir analizando precios…?» ─────────
   /* La oferta la escribe el motor (procesa.js, con el apodo de motor/apodos.json) y su estado llega en cada respuesta
    * en `ultima.verifica.oferta` (sin migración). Aquí solo los tres botones del prototipo aprobado. En este paso las
@@ -1586,12 +1739,26 @@
       L = L.indexOf(f) >= 0 ? L.filter(function (x) { return x !== f; }) : L.concat(f);
       bb.texto = L.length ? 'falta: ' + L.join(', ') : ''; pintarChat(); }; });
     GR.enlazar(M);
+    if (G.CzTabla) G.CzTabla.enlazar(M, cambiarRenglon, pintarChat);   // V1.48
+    $$('[data-vertodo]', M).forEach(function (b) { b.onclick = function () { (ST.verTodo = ST.verTodo || {})[b.dataset.vertodo] = true; pintarChat(); }; });
     var bl = $('#bListo', M); if (bl) bl.onclick = listoSigue;
     var be = $('#bEscribe', M); if (be) be.onclick = function () { var tq = trabajoQueContesta(); ST.abiertoReg = ST.abiertoReg === (tq && tq.id) ? null : (tq && tq.id); pintarChat(); };
     $$('[data-hacer]', M).forEach(function (b) { b.onclick = function () { hacer(b.dataset.hacer, b); }; });
     $$('[data-pdf]', M).forEach(function (b) { b.onclick = verPdf; });
     $$('[data-copia]', M).forEach(function (b) { b.onclick = function () { copiar(b.closest('.carta').querySelector('textarea.copia').value, b); }; });
     $$('[data-descartar]', M).forEach(function (b) { b.onclick = function () { resolver(b.dataset.descartar, 'descartada', {}, b); }; });
+  }
+  /** V1.48 · «↺ Cambiar» de un renglón que supuso el agente: abre la caja de abajo con el renglón citado; lo que la persona
+   *  escriba (o dicte) es su decisión y gana (regla de oro 1: queda como decreto). */
+  function cambiarRenglon(desc) {
+    var i = $('#in'); if (!i) return;
+    i.value = 'Sobre el renglón «' + String(desc || '').split(' — ')[0].slice(0, 90) + '»: '; autoAlto(); pintarComposer(); i.focus();
+    try { i.setSelectionRange(i.value.length, i.value.length); } catch (e) {}
+  }
+  /** El folio del machote del caso (COT-XXXX), si ya se guardó. */
+  function folioCaso() {
+    var c = (ST.hilo && ST.hilo.caso) || {}, hecho = ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'hecha'; }).pop();
+    return (hecho && hecho.resultado && hecho.resultado.folio) || c.machote_folio || null;
   }
   // ── V1.32 · cajita de corregir / rechazar: debajo del renglón, con su borrador en el estado ──
   function cajaRazon(k, etiqueta, boton, rechazo) {
@@ -2245,6 +2412,7 @@
       cerrarHojaRubro(); ST.rubEnv = {}; ST.franjaAbierta = false;   // V1.40: la hoja y los envíos de rubro son del caso que se deja
     }
     ST.sel = sel; guardarSel(); ST.hilo = null; ST.vistos = null; ST.bandeja = []; ST.irAbajo = true;
+    if (G.CzTabla) G.CzTabla.reiniciar();   // V1.48 · lo abierto y los filtros de la tabla y del BOM son de cada caso
     $('#app').classList.remove('en-menu'); $('#app').classList.add('ver-chat'); pintarLista(); pintarChat(); pintarComposer();
     await cargarHilo(); sondear();
     // V1.41 · ya NO se pide el permiso de notificaciones al abrir un chat: sin gesto, iPhone lo ignora y Chrome lo

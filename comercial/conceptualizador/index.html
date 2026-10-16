@@ -535,6 +535,19 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
   #avance .avl-pre.alerta{color:#a33a00}@media (max-width:419px){#avance .avl-top.con-precios{font-size:12px;padding-left:12px}}#avance .avl-precios{font-size:12.5px;color:var(--sec);background:#fffbea;border:1px solid #e3d3a5;border-radius:8px;padding:6px 8px;margin:0 0 8px;overflow-wrap:anywhere}
   #avance .avl-precios b{color:var(--texto)}#avance .avl-precios .alerta{color:#a33a00;font-weight:600}
   #avance .avl-sens{display:block;color:#8a2a00;margin-top:3px}#avance .avl-sig{display:block;margin-top:3px}
+  /* V1.47 (#4) · lo que decidió la persona («lo dijiste tú»), el ciclo del análisis y el presupuesto (solo Esteban) */
+  .dijiste{font-size:11.5px;color:#0b5a3c;background:#eaf7f0;border:1px solid #b9e2cc;border-radius:6px;padding:2px 6px;margin-top:3px;display:inline-block;overflow-wrap:anywhere}
+  #avance .avl-analisis{font-size:12.5px;color:var(--sec);background:#eef4ff;border:1px solid #c9d8f5;border-radius:8px;padding:6px 8px;margin:0 0 8px;overflow-wrap:anywhere}
+  #avance .avl-analisis b{color:var(--texto)}#avance .avl-cerrado{color:#0b5a3c}#avance .avl-listo{color:#1d4ed8}
+  /* V1.47.1 (#4) · pausa del agente por caso y reabrir el análisis */
+  #avance .avl-pausa-fr{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:#5c4400;background:#fff4d6;border:1px solid #f0d58a;border-radius:8px;padding:6px 8px;margin:6px 10px 0;overflow-wrap:anywhere}
+  #avance .avl-pausa-fr span{flex:1 1 200px;min-width:0}#avance .avl-pausa-fr .bt{flex:0 0 auto;padding:4px 12px;font-size:13px}
+  #avance .avl-pausa{color:#8a5a00}#avance .avl-cong{display:block;margin-top:3px;color:#355}
+  #avance .avl-razon{margin:8px 0 0;display:flex;flex-direction:column;gap:6px}#avance .avl-razon label{font-size:12.5px;color:var(--texto);font-weight:600}
+  #avance .avl-razon input{font:inherit;font-size:14px;padding:7px 9px;border:1px solid #c9cdd3;border-radius:8px;width:100%;box-sizing:border-box;min-width:0}
+  #avance .avl-razon-bt{display:flex;gap:10px;align-items:center}
+  @media (min-width:900px){#avance .avl-pausa-fr{margin:0 0 8px}}
+  #avance .avl-pres{font-size:11.5px;color:var(--sec);border-top:1px dashed #d8d8d8;padding-top:6px;margin:0 0 8px;overflow-wrap:anywhere}
   .ref-cot ul{margin:4px 0 2px 0;padding:0;list-style:none}.ref-cot li{margin:3px 0}.ref-cot li.n3{font-weight:600}.ref-cot li small{display:block;font-weight:400;color:#8a3b00}
   .mueve{font-size:12px;color:#5c4400;margin:2px 0}
   .sup-carta .sup{border-top:1px solid #eee;padding:6px 0}.sup-carta .sup:first-of-type{border-top:0}
@@ -627,6 +640,89 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
     .app:not(.ver-chat) .chat>*{display:none}
     .app:not(.ver-chat) .chat::before{content:'Elige una cotización o abre una nueva.';margin:auto;color:var(--sec);font-size:14px}
   }
+
+  /* ═══ V1.48 (#4, prototipo aprobado el 16-oct): tabla del machote, BOM con filtros, globito del agente, anillo del avance ═══
+   * Prefijos tb- (cz-tabla.js), bot-ag/pop-ag (globito), avl-anillo/avl-col (franja). La tabla y el BOM no usan .tabla ni .bom
+   * (ya existen con otro significado, §20 #12). */
+  .tb-carta{max-width:min(100%,760px)}
+  .tb-arriba{font-size:13px;color:#3b4a54;margin:0 0 8px}
+  .tb{width:100%;border-collapse:collapse;font-size:13px}
+  .tb th{font-size:11.5px;font-weight:600;color:var(--sec);text-align:right;padding:4px 6px;border-bottom:1px solid var(--linea);white-space:nowrap}
+  .tb th:first-child{text-align:left}
+  .tb td{padding:6px;border-bottom:1px solid var(--linea);vertical-align:top}
+  .tb td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .tb .tb-ex{display:flex;gap:6px;align-items:flex-start;text-align:left;font-weight:600;font-size:13px;width:100%;color:var(--texto)}
+  .tb .tb-ex[disabled]{cursor:default}.tb .tb-ex[disabled] .tb-chev{visibility:hidden}
+  .tb .tb-ex.g{font-weight:500;padding-left:14px;color:#3b4a54}
+  .tb .tb-ex small{color:var(--ter);font-weight:400}
+  .tb-chev{color:var(--sec);font-size:11px;line-height:19px;display:inline-block;flex-shrink:0}
+  .tb .tb-ex[aria-expanded="true"] .tb-chev{transform:rotate(90deg)}
+  .tb tr.tb-g td,.tb tr.tb-rs td{background:var(--sup2)}
+  .tb tr.tb-rs td{padding:0 4px 4px 18px}
+  .tb tfoot td{font-weight:700;border-bottom:0;border-top:2px solid var(--texto);padding-top:8px}
+  .tb .mg{display:none;font-size:11px;color:var(--sec);font-weight:500}
+  @media (max-width:520px){ .tb .mg4{display:none} .tb .mg{display:block} .tb{font-size:12.5px} .tb .tb-ex{font-size:12.5px} .tb td{padding:6px 4px} }
+  .tb-r{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;padding:8px 6px;border-top:1px dashed var(--linea)}
+  .tb-r:first-child{border-top:0}
+  .tb-d{font-size:13px;min-width:0;overflow-wrap:anywhere}.tb-d small{display:block;font-size:12px;color:var(--sec);margin-top:2px}
+  .tb-i{text-align:right;font-size:13px;white-space:nowrap;font-variant-numeric:tabular-nums}.tb-i small{display:block;font-size:11.5px;color:var(--sec)}
+  .tb-meta{grid-column:1 / 3;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .tb-tag{font-size:11.5px;padding:1px 7px;border-radius:9px;font-weight:600;white-space:nowrap}
+  .tb-tag.tu{background:var(--sup2);color:#3b4a54;border:1px solid var(--linea)}.tb-tag.ag{background:#eef1f3;color:#3b4a54}
+  .tb-tag.n3{background:#fff3d6;color:#8a5a00}.tb-tag.n4{background:#e6f0fa;color:#2f6fb3}.tb-tag.n5{background:#fde7e7;color:var(--rojo)}
+  .tb-tag.n1,.tb-tag.n2{background:#e3f6ea;color:#0b6b45}
+  .tb-al{font-size:12px;color:#8a5a00;padding:2px 6px;border-radius:6px}
+  .tb-cam{font-size:12.5px;font-weight:600;color:var(--acento-osc);padding:2px 6px;border-radius:6px}
+  .tb-alerta{grid-column:1 / 3;display:none;font-size:12px;color:#8a5a00;background:#fff3d6;border-radius:6px;padding:4px 8px}
+  .tb-r.ver-alerta .tb-alerta{display:block}
+  .tb-bom{padding:0;overflow:hidden;max-width:min(100%,760px)}
+  .tb-bh{display:flex;align-items:center;gap:10px;padding:10px 12px;width:100%;text-align:left}
+  .tb-bt{flex:1;min-width:0}.tb-bt b{display:block;font-size:14px}.tb-bt span{display:block;font-size:12.5px;color:var(--sec)}
+  .tb-bom.abierta .tb-bh .tb-chev{transform:rotate(180deg)}
+  .tb-filtros{padding:8px 12px;border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);background:var(--sup2)}
+  .tb-chips{display:flex;gap:6px;flex-wrap:wrap}
+  .tb-chip{height:30px;padding:0 11px;border-radius:15px;border:1px solid var(--linea);background:#fff;font-size:12.5px;font-weight:500}
+  .tb-chip small{opacity:.75;margin-left:2px}.tb-chip.on{background:var(--acento-osc);border-color:var(--acento-osc);color:#fff}
+  .tb-frow{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12.5px;color:var(--sec)}.tb-frow>span{flex:1}
+  .tb-quitar{font-size:12.5px;font-weight:600;color:var(--rojo);padding:4px 8px;border-radius:6px}
+  .tb-ley{font-size:12px;color:var(--sec);padding:6px 12px 0}
+  .tb-sec{border-bottom:1px solid var(--linea)}.tb-sec:last-child{border-bottom:0}
+  .tb-sh{display:flex;align-items:center;gap:8px;padding:10px 12px;width:100%;text-align:left}
+  .tb-sn{flex:1;min-width:0}.tb-sn b{display:block;font-size:13.5px}.tb-sn>span{display:block;font-size:12px;color:var(--sec)}
+  .tb-st{text-align:right;flex-shrink:0}.tb-st b{display:block;font-size:13.5px}.tb-st span{display:block;font-size:11.5px;color:var(--sec)}
+  .tb-sec.abierta .tb-sh .tb-chev{transform:rotate(180deg)}.tb-sec.apagada .tb-sh{opacity:.5}
+  .tb-cumplen{color:var(--acento-osc)}
+  .tb-srs{padding:0 8px 8px}.tb-mo{font-size:12.5px;color:var(--sec);padding:6px 6px 2px;border-top:1px dashed var(--linea)}
+  .tb-nueva{border:1px solid #bfe5cd}.tb-dif{font-size:13px;margin:2px 0 4px;font-variant-numeric:tabular-nums}
+  .txt-corto{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+  .ver-todo{font-size:12.5px;margin:2px 0 0}
+  /* el globito del agente */
+  .bot-ag{display:flex;align-items:center;gap:4px;height:30px;padding:0 9px 0 6px;border-radius:15px;font-size:12px;font-weight:600;flex-shrink:0;border:1px solid transparent;margin-left:2px}
+  .bot-ag .e{font-size:15px;line-height:1}
+  .bot-ag.trabajando{background:#e3f6ea;color:#0b6b45;border-color:#bfe5cd}.bot-ag.trabajando .e{animation:latido-ag 1.6s ease-in-out infinite}
+  .bot-ag.pausa{background:#fff4d6;color:#8a5a00;border-color:#f0dc8c}
+  .bot-ag.cerrado,.bot-ag.dormido{background:#f6f5f3;color:#3b4a54;border-color:var(--linea)}
+  .bot-ag.prueba{background:#efeafb;color:#6b4fbb;border-color:#d8cdf4}
+  @keyframes latido-ag{50%{opacity:.45}}
+  @media (max-width:479px){ .bot-ag{padding:0 7px} .bot-ag .lbl{display:none} }
+  .pop-ag{padding:10px 14px 12px;max-width:min(340px,calc(100vw - 32px));white-space:normal}
+  .pop-ag b{display:block;font-size:14.5px;margin-bottom:4px}.pop-ag p{font-size:13.5px;color:var(--sec);margin:0 0 10px}
+  .pop-ag .acc{display:flex;flex-wrap:wrap;gap:8px}.pop-ag .bt[disabled]{opacity:.4}
+  .pop-ag small{display:block;font-size:12px;color:var(--ter);margin-top:10px}
+  /* el anillo del avance y el colapso del panel (PC) */
+  #avance .avl-anillo{width:18px;height:18px;display:inline-block;vertical-align:-4px;margin-right:6px}
+  #avance .avl-pct.rojo{color:var(--rojo)}#avance .avl-pct.ambar{color:#8a5a00}#avance .avl-pct.verde{color:#0b6b45}
+  #avance .avl-col{display:none}
+  @media (min-width:900px){
+    #avance .avl-col{display:flex;position:absolute;top:6px;right:6px;width:32px;height:32px;border-radius:50%;align-items:center;justify-content:center;color:#3b4a54;font-size:16px;z-index:2}
+    #avance .avl-col:hover{background:rgba(11,20,26,.06)}
+    #avance .avl-col-i::before{content:'⇥'}#avance .avl-col-i.abre::before{content:'⇤'}
+    .app.con-lado #avance .avl-top{padding-right:40px}
+    .app.con-lado.lado-col .chat>*:not(#ch):not(.chg-barra):not(#avance):not(.abajo){margin-right:44px}
+    .app.con-lado.lado-col #avance{width:44px;overflow:hidden}
+    .app.con-lado.lado-col #avance>*:not(.avl-col){display:none!important}
+    .app.con-lado.lado-col .abajo{right:56px}
+  }
 </style>
 </head>
 <body>
@@ -659,20 +755,21 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <div class="rub-velo" id="rubHoja"></div>
 <div class="modal" id="modal"></div>
 <div class="panel" id="panel"></div>
-<script src="../../shared/chat/chat-firma.js?v=V1.46"></script>
-<script src="js/cz-cliente.js?v=V1.46"></script>
-<script src="js/cz-medios.js?v=V1.46"></script>
-<script src="js/cz-grabadora.js?v=V1.46"></script>
-<script src="js/cz-archivos.js?v=V1.46"></script>
-<script src="js/cz-ciudad.js?v=V1.46"></script>
-<script src="js/cz-cola.js?v=V1.46"></script>
-<script src="js/cz-acciones.js?v=V1.46"></script>
-<script src="js/cz-avance.js?v=V1.46"></script>
-<script src="js/cz-camara.js?v=V1.46"></script>
-<script src="../../shared/chat/chat-gestos.js?v=V1.46"></script>
-<script src="js/cz-push.js?v=V1.46"></script>
-<script src="js/cz-app.js?v=V1.46"></script>
-<script src="js/cz-version.js?v=V1.46"></script>
+<script src="../../shared/chat/chat-firma.js?v=V1.48"></script>
+<script src="js/cz-cliente.js?v=V1.48"></script>
+<script src="js/cz-medios.js?v=V1.48"></script>
+<script src="js/cz-grabadora.js?v=V1.48"></script>
+<script src="js/cz-archivos.js?v=V1.48"></script>
+<script src="js/cz-ciudad.js?v=V1.48"></script>
+<script src="js/cz-cola.js?v=V1.48"></script>
+<script src="js/cz-acciones.js?v=V1.48"></script>
+<script src="js/cz-avance.js?v=V1.48"></script>
+<script src="js/cz-tabla.js?v=V1.48"></script>
+<script src="js/cz-camara.js?v=V1.48"></script>
+<script src="../../shared/chat/chat-gestos.js?v=V1.48"></script>
+<script src="js/cz-push.js?v=V1.48"></script>
+<script src="js/cz-app.js?v=V1.48"></script>
+<script src="js/cz-version.js?v=V1.48"></script>
 <script>window.CzApp.arrancar().then(function () { if (window.CzVersion) window.CzVersion.iniciar(); if (window.CzPush) window.CzPush.iniciar(); });</script>
 </body>
 </html>
