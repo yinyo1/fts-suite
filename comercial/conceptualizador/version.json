@@ -1,6 +1,10 @@
 {
-  "version": "V1.47.1",
+  "version": "V1.48",
   "historial": [
+    {
+      "version": "V1.48",
+      "nota": "Pantalla ordenada (#4, prototipo aprobado por Esteban). El último mensaje del agente ahora trae la TABLA del machote, igual a la del machote final: una fila por sección con costo, precio al 40 % (después de la comisión FTS) y margen, y el total; toca una sección para ver materiales, servicios, mano de obra y viaje, y de ahí cada renglón. Arriba dice el % hacia el 100 y qué cambió desde la versión anterior. Abajo, el BOM colapsado con filtros que se combinan: 🔒 lo que dije yo, 🤖 lo que supuso el agente, ⚠ con alerta, 🔎 precio de referencia y ⛔ sin precio (origen Y estado); cada sección dice cuántos renglones cumplen y se abre sola. El % hacia el 100 lleva un anillo de color: rojo si todavía no se puede cotizar (un renglón sin precio), ámbar en camino, verde al 100 %. En el encabezado, el globito del agente (🤖 trabajando · ⏸️ en pausa · 🔒 cerrado · 💤 fuera de horario o tope · 🧪 modo prueba) con Pausar, Reanudar, Ya está todo ok y Reabrir. «El agente tiene una versión nueva de COT-…» dice el total y la diferencia, con «Guardar en el machote». En PC el panel de progreso se colapsa a la derecha y se recuerda."
+    },
     {
       "version": "V1.47.1",
       "nota": "Pausar al agente y reabrir el análisis (#4). En la franja (o en ⋮) está «Pausar al agente»: pide la razón en una línea y, mientras esté en pausa, el agente no mueve nada por su cuenta en ese caso; si le pides algo, hace eso y solo eso. Arriba sale «⏸ Agente en pausa · quién · razón · desde» con el botón «Reanudar»; al reanudar dice qué tiene pendiente. También se pausa o reanuda escribiendo o con voz («pausa, …», «para de mover esto, …», «reanuda»); un «ok», «va» o «gracias» no pausa ni reanuda. A las 24 h en pausa no se reanuda solo: te deja una línea en el chat y Esteban recibe un correo. Con el análisis cerrado, «Reabrir el análisis» (con razón) lo regresa a «Trabajando»: guarda la versión congelada con fecha como referencia y te dice cuál era y qué va a revisar."
