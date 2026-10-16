@@ -1337,7 +1337,8 @@
       if (NIV.con) h += '<div class="niv-res">' + ['N1', 'N2', 'N3', 'N4', 'N5'].filter(function (k) { return NIV.n[k]; }).map(function (k) {
         return '<span class="niv niv-' + k + '" title="' + esc(NIVEL[k][1]) + '">' + k + ' ' + esc(NIVEL[k][0]) + ' · ' + NIV.n[k] + '</span>'; }).join('') + '</div>';
       // V1.47 (#4 regla de oro 1) · los renglones que la persona decidió: «lo dijiste tú», con el mensaje de donde salió.
-      var DEC = ((U.verifica && U.verifica.decretos && U.verifica.decretos.renglones) || []);
+      // `propuesta` (la del BOM) no trae `verifica`: los decretos vigentes salen de la última respuesta que los mandó.
+      var DEC = ((U.verifica && U.verifica.decretos) || verUlt().decretos || {}).renglones || [];
       var decDe = function (d) { var k = String(d || '').slice(0, 60); return DEC.filter(function (x) { return x.descripcion && String(x.descripcion).slice(0, 60) === k; })[0]; };
       mat.forEach(function (r) {
         var te = r.tienda_existencia || r.tienda || '', sin = /sin existencia|solo (hay )?en|otra ciudad/i.test(te), nv = nivelDe(r), dj = decDe(r.descripcion);
@@ -1346,7 +1347,7 @@
             /pendiente/i.test(r.fuente || '') ? '<b class="mal">' + esc(r.fuente) + '</b>' : esc(r.fuente || 'sin fuente')].filter(Boolean).join(' · ') + '</div>' +
           (te ? '<span class="tienda' + (sin ? ' sin' : '') + '">' + esc(te) + '</span>' : '') +
           (NIV.con && (nv === 'N3' || nv === 'N4') && r.riesgo ? '<div class="riesgo">⚠ ' + esc(r.riesgo) + '</div>' : '') +
-          (dj ? '<div class="dijiste" title="' + esc(dj.decretos.map(function (x) { return x.texto; }).join(' · ')) + '">🔒 lo dijiste tú · ' + esc(dj.decretos.map(function (x) { return x.origen; }).join(', ')) + ': «' + esc(String(dj.decretos[0].texto).slice(0, 90)) + '»</div>' : '') + '</div>';
+          (dj ? '<div class="dijiste" title="' + esc(dj.decretos.map(function (x) { return x.texto; }).join(' · ')) + '">🔒 lo dijiste tú · ' + esc(dj.decretos.map(function (x) { return x.origen; }).join(', ')) + ': «' + esc(String(dj.decretos[0].texto).replace(/^[«"\s]+|[»"\s]+$/g, '').slice(0, 90)) + '»</div>' : '') + '</div>';
       });
       mo.forEach(function (r) {
         h += '<div class="bom"><div><b>MO · ' + esc(r.rol) + '</b></div><div>' + esc(r.personas) + ' pers × ' + esc(r.dias) + ' d × ' + esc(r.horas_dia) + ' h · <b>' + dinero(r.importe, r.moneda) + '</b></div><div class="org">' + esc(r.origen || '') + '</div></div>';
