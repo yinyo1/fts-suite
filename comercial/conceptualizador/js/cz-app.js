@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.47.1';
+  var VERSION = 'V1.48';
   // V1.46 (#4) · lo que contesta el motor a un «revisa» cuando no hay aviso pendiente (procesa.js, SIN_AVISO): no se pinta.
   var SIN_AVISO = 'Sin cambios pendientes en este caso.';
   /* V1.32 (0006) · empresa y moneda de la sesión: la base acepta estas tres claves. */
@@ -714,19 +714,25 @@
     }
     var AV = G.CzAvance, L = AV.linea(H), av = L.av, R = L.R, a = av.actual, P = AV.PASOS, abierto = !!ST.franjaAbierta;
     var x = ciudadDe(c), folio = av.machote && ((av.machote.resultado || {}).folio || c.machote_folio);
-    el.style.display = 'block'; el.classList.toggle('abierta', abierto); if (app) app.classList.add('con-lado');
+    el.style.display = 'block'; el.classList.toggle('abierta', abierto); if (app) { app.classList.add('con-lado'); app.classList.toggle('lado-col', ladoColapsado()); }
     // V1.45 (#4 punto 13) · con machote, el avance y los precios por separado: «Rubros 7/7 · Precios 46/46 (62 % referencia, 19 alertas)».
-    var cab = L.P ? '<b>' + esc(L.rubrosTxt) + '</b> · <span class="avl-pre' + (L.P.alertas ? ' alerta' : '') + '">' + esc(L.preciosTxt) + '</span>' :
+    var AN0 = analisis();
+    // V1.48 · con el % hacia el 100, las referencias y alertas viven adentro: la línea de arriba ya no se pinta de naranja.
+    var cab = L.P ? '<b>' + esc(L.rubrosTxt) + '</b> · <span class="avl-pre' + (L.P.alertas && !(AN0 && typeof AN0.pct === 'number') ? ' alerta' : '') + '">' + esc(L.preciosTxt) + '</span>' :
       (L.pct !== null ? '<b>' + L.pct + ' %</b>' : '<b>' + esc(L.paso) + '</b>') +
       (L.sig ? ' · Siguiente: ' + (L.rojo ? '<span class="avl-rojo">' + esc(L.sig) + '</span>' : esc(L.sig)) : '');
     var AN = analisis();
     if (AN && AN.pausa && AN.estado !== 'cerrado') cab = '<b class="avl-pausa">⏸ En pausa</b> · ' + cab;
     if (AN && AN.estado === 'cerrado') cab = '<b class="avl-cerrado">🔒 Análisis cerrado</b> · ' + cab;
     else if (AN && AN.estado === 'listo') cab = '<b class="avl-listo">Listo para cerrar</b> · ' + cab;
-    else if (AN && typeof AN.pct === 'number') cab = '<b>' + AN.pct + ' % hacia el 100</b> · ' + cab;
+    else if (AN && typeof AN.pct === 'number') cab = '<b class="avl-pct ' + colorAvance(AN, L.P) + '">' + AN.pct + ' % hacia el 100</b> · ' + cab;
+    // V1.48 · UN indicador con color que significa algo: rojo = todavía no se puede cotizar (un N5), ámbar = en camino, verde = 100 %.
+    if (AN) cab = anillo(AN, L.P) + cab;
     var h = AN && AN.pausa && AN.estado !== 'cerrado' ? '<div class="avl-pausa-fr" role="status"><span>⏸ <b>Agente en pausa</b> · ' + esc(nombreAgente(AN.pausa.por)) + ' · «' + esc(AN.pausa.razon) + '» · desde ' + esc(horaDe(AN.pausa.desde)) + '</span>' +
       (mia(c) ? '<button type="button" class="bt" id="avReanudar">Reanudar</button>' : '') + '</div>' : '';
     h += '<button type="button" class="avl-top' + (L.P ? ' con-precios' : '') + '" id="avTop" aria-expanded="' + (abierto || lateral()) + '" aria-controls="avDet"><span class="avl-l">' + cab + '</span>' + ico('abajo', 's avl-chev') + '</button>';
+    // V1.48 · en PC el panel se colapsa hacia la derecha y se recuerda por persona (en este navegador).
+    h += '<button type="button" class="avl-col" id="avCol" aria-label="' + (ladoColapsado() ? 'Abrir el panel de progreso' : 'Colapsar el panel de progreso') + '" title="' + (ladoColapsado() ? 'Abrir el panel' : 'Colapsar el panel') + '"><span class="avl-col-i' + (ladoColapsado() ? ' abre' : '') + '" aria-hidden="true"></span></button>';
     h += '<div class="avl-det" id="avDet"><div class="avl-tit">Paso ' + (a + 1) + ' de 7 · ' + esc(P[a]) + (av.det[a] ? ' · ' + esc(av.det[a].replace(/\.$/, '')) : '') +
       (L.P ? ' · <b>' + esc(L.rubrosTxt) + ' cerrados</b>' : L.pct !== null ? ' · <b>Llevas ' + L.pct + ' %</b>' : '') + (R && !L.P ? ' · ' + R.lista.length + ' rubros' : '') + '</div>';
     if (L.P) h += preciosFranja(L.P, L.sig);
@@ -755,6 +761,7 @@
       }).join('');
     } else h += '<div class="avl-nada">' + (av.oferta && av.oferta.estado === 'ofrecida' ? 'Los rubros salen cuando contestes la oferta.' : 'Los rubros salen cuando arranque con el machote.') + '</div>';
     el.innerHTML = h + '</div>';
+    if ($('#avCol')) $('#avCol').onclick = function (e) { e.stopPropagation(); ponLadoColapsado(!ladoColapsado()); pintarFranja(); };
     if ($('#avCiudad')) $('#avCiudad').onclick = function () { cambiarCiudad(); };
     if ($('#avAbrir')) $('#avAbrir').onclick = function () { abrirEditor(av.machote); };
     if ($('#avCerrarAn')) $('#avCerrarAn').onclick = function () { if (confirm('¿Cerrar el análisis? El machote vigente queda congelado y el agente deja de moverlo.')) mandar(BOTON_CIERRE); };
@@ -767,6 +774,25 @@
     if ($('#avRazon')) $('#avRazon').oninput = function () { if (ST.razonErr) { ST.razonErr = ''; var m = $('.avl-razon .nota.mal'); if (m) m.remove(); } };
     if ($('#avRazon')) $('#avRazon').onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); mandarRazonAg(); } else if (e.key === 'Escape') { ST.razonAg = null; pintarFranja(); } };
   }
+  /** V1.48 · rojo si algo impide cotizar (un renglón sin precio, N5), ámbar en camino (referencias, alertas, lo que falte), verde al 100 %. */
+  function colorAvance(AN, P) {
+    if (AN.estado === 'cerrado' || AN.estado === 'listo' || AN.pct >= 100) return 'verde';
+    if (P && P.total && P.con_precio < P.total) return 'rojo';
+    // Sin el bloque de precios (antes de guardar el machote): el machote de la última respuesta o lo que el motor dice que falta.
+    var M = ((ST.hilo && (ST.hilo.propuesta || ST.hilo.ultima)) || {}).machote;
+    if (M && (M.secciones || []).some(function (x) { return x.sin_precio > 0; })) return 'rojo';
+    if ((AN.falta || []).some(function (f) { return /sin precio|\bN5\b/i.test(f); })) return 'rojo';
+    return 'ambar';
+  }
+  function anillo(AN, P) {
+    var pct = AN.estado === 'cerrado' || AN.estado === 'listo' ? 100 : Math.max(0, Math.min(100, Number(AN.pct) || 0)), col = colorAvance(AN, P);
+    var cl = { verde: '#1daa61', ambar: '#b7791f', rojo: '#d13438' }[col];
+    return '<svg class="avl-anillo" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="#e7e3dd" stroke-width="3"/>' +
+      '<circle cx="10" cy="10" r="8" fill="none" stroke="' + cl + '" stroke-width="3" stroke-linecap="round" transform="rotate(-90 10 10)" stroke-dasharray="50.27" stroke-dashoffset="' + (50.27 * (1 - pct / 100)).toFixed(2) + '"/></svg>';
+  }
+  var LADO_KEY = function () { return 'cz_lado_colapsado:' + (yo() || 'anon'); };
+  function ladoColapsado() { try { return localStorage.getItem(LADO_KEY()) === '1'; } catch (e) { return false; } }
+  function ponLadoColapsado(v) { try { localStorage.setItem(LADO_KEY(), v ? '1' : '0'); } catch (e) {} var a = $('#app'); if (a) a.classList.toggle('lado-col', !!v); }
   /** V1.45 · el renglón de precios del detalle de la franja: con precio, % de referencia, alertas N3 y de sensatez. */
   function preciosFranja(P, sig) {
     var S = P.sensatez || [];
@@ -964,10 +990,47 @@
       '<div class="av" style="background:' + color(c.titulo) + '">' + esc(iniciales(c.cliente || c.titulo)) + '</div>' +
       '<div class="tx"><b><span>' + esc(c.titulo) + '</span>' + (((H && H.caso) || c).demo ? '<span class="chip-prueba" title="No enseña">PRUEBA</span>' : '') +
       '<span class="ver" title="Build del módulo">' + VERSION + '</span></b><small class="' + (vivo ? 'vivo' : '') + '">' + esc(sub) + '</small></div>' +
+      // V1.48 · el globito del agente (prototipo aprobado, #4): su estado y, al tocarlo, explicación y botones.
+      globitoHtml() +
       // V1.37 · «Ya terminé, cotiza» es el botón del siguiente paso (abajo) y «¿Qué me falta?» vive en ⋮ (decisión de Esteban, #4).
       '<button class="btn-ic" id="bMenu" aria-label="Opciones">' + ico('mas') + '</button>';
     $('#bVuelve').onclick = volverALista;
+    if ($('#bAgente')) $('#bAgente').onclick = function (e) { popAgente(e.currentTarget); };
     $('#bMenu').onclick = function (e) { menuChat(e.currentTarget); };
+  }
+  /* V1.48 · el globito del agente: 🤖 trabajando · ⏸️ en pausa · 🔒 cerrado · 💤 fuera de horario o tope · 🧪 modo prueba.
+   * Todo sale de la última respuesta del motor (verifica.analisis y verifica.presupuesto): sin pedirle nada al servidor. */
+  function estadoAgente() {
+    var H = ST.hilo, c = H && H.caso; if (!c || ['abierto', 'enviada'].indexOf(c.estado) < 0 || archivada(c) || (ST.sel || {}).menu) return null;
+    var AN = analisis(), PR = presupuesto();
+    if (AN && AN.estado === 'cerrado') return { k: 'cerrado', e: '🔒', l: 'cerrado', t: 'Análisis cerrado', p: 'Se cerró con «' + BOTON_CIERRE + '». El agente no toca este caso. Si necesitas cambiar algo, reábrelo.' };
+    if (AN && AN.pausa) return { k: 'pausa', e: '⏸️', l: 'en pausa', t: 'El agente está en pausa', p: 'Lo pausó ' + nombreAgente(AN.pausa.por) + ' ' + horaDe(AN.pausa.desde) + ': «' + AN.pausa.razon + '». No mueve nada en este caso hasta que lo reanudes; si le pides algo, hace eso y solo eso.' };
+    if (PR && (PR.apagado || PR.en_horario === false)) return { k: 'dormido', e: '💤', l: PR.apagado ? 'en tope' : 'fuera de horario', t: PR.apagado ? 'El agente llegó a su tope' : 'El agente descansa',
+      p: (PR.apagado ? 'El trabajo por su cuenta está apagado' + (PR.apagado.motivo ? ' (' + String(PR.apagado.motivo).replace(/_/g, ' ') + ')' : '') + (PR.apagado.hasta ? ' hasta ' + horaDe(PR.apagado.hasta) : '') + '.' :
+        'Trabaja por su cuenta L–V de 7:00 a 21:00 de quien cotiza.') + ' Tus mensajes sí se contestan.' };
+    if (PR && PR.modo_prueba) return { k: 'prueba', e: '🧪', l: 'modo prueba', t: 'Modo prueba (hasta ' + horaDe(PR.modo_prueba.hasta) + ')', p: 'Esta semana el agente trabaja con más margen para probarlo, con un vigilante de código que lo corta si gasta de más o no avanza. Nunca cambia lo que tú decidiste.' };
+    return { k: 'trabajando', e: '🤖', l: 'trabajando', t: 'El agente está trabajando', p: 'Avanza solo hacia el 100 %: completa precios, revisa alertas y sube versión nueva del mismo machote. Nunca cambia lo que tú decidiste.' };
+  }
+  function globitoHtml() {
+    var x = estadoAgente(); if (!x) return '';
+    return '<button type="button" class="bot-ag ' + x.k + '" id="bAgente" aria-haspopup="dialog" aria-label="Agente: ' + esc(x.l) + '"><span class="e">' + x.e + '</span><span class="lbl">' + esc(x.l) + '</span></button>';
+  }
+  function popAgente(btn) {
+    var x = estadoAgente(); if (!x) return;
+    var c = (ST.hilo && ST.hilo.caso) || {}, puede = mia(c), b = [];
+    if (x.k === 'pausa') b.push('<button type="button" class="bt si" data-ag="reanuda">▶ Reanudar</button>');
+    else if (x.k !== 'cerrado') b.push('<button type="button" class="bt" data-ag="pausa">⏸️ Pausar</button>');
+    if (x.k !== 'cerrado') b.push('<button type="button" class="bt" data-ag="cierra">🔒 Ya está todo ok</button>');
+    else b.push('<button type="button" class="bt si" data-ag="reabre">↺ Reabrir</button>');
+    var v = enMenu(btn, '<div class="pop-ag"><b>' + x.e + ' ' + esc(x.t) + '</b><p>' + esc(x.p) + '</p><div class="acc">' + b.join('').replace(/<button /g, puede ? '<button ' : '<button disabled ') + '</div>' +
+      '<small>' + (puede ? 'Solo el dueño del caso o Esteban ven estos botones activos.' : 'Solo el dueño del caso (' + esc(nombreAgente(c.autor)) + ') o Esteban pueden cambiar esto.') + '</small></div>');
+    $$('[data-ag]', v).forEach(function (bt) { bt.onclick = function () {
+      cerrarVelo(); var a = bt.dataset.ag;
+      if (a === 'pausa') return pedirRazonAg('pausa');
+      if (a === 'reabre') return pedirRazonAg('reabre');
+      if (a === 'reanuda') return mandar(FRASE_REANUDA);
+      if (a === 'cierra' && confirm('¿Cerrar el análisis? El machote vigente queda congelado y el agente deja de moverlo.')) return mandar(BOTON_CIERRE);
+    }; });
   }
   /** ⋮ del chat: lo de la sesión (fijar, renombrar, archivar) y, abajo, detalles y lo aprendido. */
   function menuChat(btn) {
@@ -1075,12 +1138,15 @@
       if (m.rol === 'sistema') return aparte('<div class="sis"><span>' + esc(m.texto) + '</span></div>');
       if (m.rol === 'motor' && m.texto === SIN_AVISO) return;          // V1.46 · el «revisa» sin aviso no se pinta
       var mio = m.rol === 'usuario', tr = m.trabajo_id && porTrabajo[m.trabajo_id];
+      // V1.48 · el mensaje del agente que trae la tabla del machote se queda corto (4 líneas) con «Ver todo»: la tabla es el resumen.
+      var corto = !mio && U && U.machote && U.machote.tabla && Number(U.trabajo_id) === Number(m.trabajo_id) && String(sinMarca(m.texto) || '').length > 280 && !(ST.verTodo || {})[m.id];
       // Sin trabajo en modo «ya tengo el levantamiento»: guardado; el motor lo lee todo junto al disparar.
       var tk = mio ? (!m.trabajo_id && modo === 'levantamiento' ? '<span class="tk leido" title="Guardado; lo reviso todo junto cuando toques «Ya es todo»">' + palomita(true) + '</span>' : tick(tr)) : '';
       burbuja(mio ? 'yo' : 'el', '', 'Conceptualizador' + (/respaldo/.test(m.autor) ? ' · respaldo' : ''),
         citaDe(m.responde_a, m.texto) +
         adjuntosHtml((m.adjuntos || []).map(function (a) { return Object.assign({}, a, meta[a.id] || {}); }), false) +
-        (sinMarca(m.texto) ? '<div class="txt">' + (mio ? esc(sinMarca(m.texto)) : md(sinMarca(m.texto))) + '</div>' : '') +
+        (sinMarca(m.texto) ? '<div class="txt' + (corto ? ' txt-corto' : '') + '">' + (mio ? esc(sinMarca(m.texto)) : md(sinMarca(m.texto))) + '</div>' +
+          (corto ? '<button type="button" class="link ver-todo" data-vertodo="' + esc(m.id) + '">Ver todo</button>' : '') : '') +
         '<span class="hora">' + (m.escrito_at && Math.abs(new Date(m.created_at) - new Date(m.escrito_at)) > 120000 ? '<i title="Escrito sin señal; llegó ' + esc(hora(m.created_at)) + '">⟲</i> ' : '') +
         esc(hora(t)) + tk + '</span><div style="clear:both"></div>', m.id);
       if (mio && tr && tr.estado === 'error') aparte('<div class="sis"><span class="mal">El motor no pudo con este mensaje: ' + esc(tr.error || '') + '. Escríbelo de otra forma o vuelve a intentar.</span></div>');
@@ -1352,8 +1418,10 @@
       if (ST.errBt.listo) h += '<span class="err-bt">' + esc(ST.errBt.listo) + '</span>';
       h += '</div>';
     }
-    var Mq = U.machote;
-    if (Mq && (Mq.secciones || []).length) {
+    var Mq = U.machote, TB = Mq && Mq.tabla && G.CzTabla;
+    // V1.48 · la tabla del machote (prototipo aprobado, #4): secciones → subgrupos → renglones, al peso con calc.js de la suite.
+    if (TB && (Mq.secciones || []).length) h += G.CzTabla.tabla(Mq, { analisis: analisis(), folio: folioCaso(), puede: mia(H.caso) });
+    else if (Mq && (Mq.secciones || []).length) {
       h += '<div class="carta"><h4>📐 Machote propuesto · ' + (Mq.margen_objetivo ? Math.round(Mq.margen_objetivo * 100) + '%' : '40%') + ' con comisión FTS ' + ((Mq.comision_fts || 0.055) * 100).toFixed(1) + '% por sección</h4>' +
         '<table class="tabla"><tr><th>Sección</th><th class="r">Costo</th><th class="r">Precio</th><th class="r">Margen</th></tr>' +
         Mq.secciones.map(function (s) { return '<tr><td>' + esc(s.nombre) + (s.sin_precio ? ' <span class="mal" title="Renglones sin precio">· ' + s.sin_precio + ' sin precio</span>' : '') +
@@ -1370,7 +1438,9 @@
         '<div class="acc"><button class="si" data-copia="1">Copiar correo</button></div></div>';
     }
     var B = U.bom || {}, mat = B.materiales || [], mo = B.mano_obra || [];
-    if (mat.length || mo.length) {
+    // V1.48 · con la tabla, el BOM va abajo, colapsado y con filtros combinables (origen Y estado).
+    if (TB && (Mq.secciones || []).some(function (s) { return (s.grupos || []).length; })) h += G.CzTabla.bom(Mq, { puede: mia(H.caso) });
+    else if (mat.length || mo.length) {
       h += '<details class="carta"' + (nivelesDe(mat).n.N3 ? ' open' : '') + '><summary><b>BOM a costo</b> · ' + mat.length + ' renglones + ' + mo.length + ' de mano de obra</summary>';
       var NIV = nivelesDe(mat);
       if (NIV.con) h += '<div class="niv-res">' + ['N1', 'N2', 'N3', 'N4', 'N5'].filter(function (k) { return NIV.n[k]; }).map(function (k) {
@@ -1525,7 +1595,11 @@
       var espera = pendientes && (a.tipo === 'crear_machote' || a.tipo === 'crear_borrador');
       // V1.46 · un borrador propuesto ANTES de la versión del machote que falta guardar es de la versión anterior.
       var viejo = a.tipo === 'crear_borrador' && a.estado === 'propuesta' && cmPend && cmPend.id > a.id;
-      h += '<div class="carta"><h4>' + ({ alta_contacto: '👤', crear_machote: '📐', crear_borrador: '🧾', enviada: '📨', cerrar: '🔒' }[a.tipo] || '•') + ' ' + esc(a.titulo) + '</h4>' +
+      // V1.48 · «Actualizar COT-XXXX» que se entienda: «El agente tiene una versión nueva (total, diferencia) · Guardar en el machote».
+      var nueva = a.tipo === 'crear_machote' && a.estado === 'propuesta' && d.actualiza && a.id === ultimoCm ? versionNueva() : null;
+      h += '<div class="carta' + (nueva ? ' tb-nueva' : '') + '"><h4>' + ({ alta_contacto: '👤', crear_machote: '📐', crear_borrador: '🧾', enviada: '📨', cerrar: '🔒' }[a.tipo] || '•') + ' ' +
+        (nueva ? 'El agente tiene una versión nueva de ' + esc(folioCaso() || 'tu machote') : esc(a.titulo)) + '</h4>' +
+        (nueva ? '<p class="tb-dif">' + esc(nueva) + '</p><p class="nota">Tu machote guardado sigue en la versión anterior. Cuando el machote acepte al agente, esto se guarda solo y la tarjeta desaparece.</p>' : '') +
         (d.detalle ? '<div class="odoo">' + md(d.detalle) + '</div>' : '') +
         // V1.36 · lo que falta para cotizar en Odoo, con su número y renglón por renglón.
         (a.tipo === 'crear_machote' && Number(d.n_pendientes) > 0 && a.estado !== 'descartada' && a.id === ultimoCm ? '<div class="pend-cot"><b>' + esc(G.CzAcciones.textoPendientes({ n: Number(d.n_pendientes), lista: d.pendientes || [] })) + '</b>' +
@@ -1539,13 +1613,24 @@
          viejo ? '<p class="nota">Es de la versión anterior del machote: primero toca «' + esc(cmPend.titulo) + '».</p>' :
          (a.tipo === 'enviada' || a.tipo === 'cerrar' || manejador) ?
            (a.tipo === 'crear_borrador' && d.referencias && d.referencias.n ? botonReferencias(a) :
-           '<div class="acc"><button class="si" data-hacer="' + a.id + '">' + esc(d.boton || ETIQ[a.tipo] || 'Hacer') + '</button><button data-descartar="' + a.id + '">' + (a.tipo === 'cerrar' ? 'Todavía no' : 'No') + '</button></div>') +
+           '<div class="acc"><button class="si" data-hacer="' + a.id + '">' + esc(nueva ? 'Guardar en el machote' : (d.boton || ETIQ[a.tipo] || 'Hacer')) + '</button><button data-descartar="' + a.id + '">' + (a.tipo === 'cerrar' ? 'Todavía no' : 'No') + '</button></div>') +
            (a.tipo === 'crear_borrador' || a.tipo === 'enviada' ? leyendaOdoo(a.tipo) : '') :
            '<p class="nota">Este botón se enciende cuando se active la escritura a Odoo correspondiente.</p>') + '</div>';
     });
     return h;
   }
 
+  /** V1.48 · «$7,761,174.29 · diferencia +$0.00 · +1 renglón» de la versión nueva que el agente propone guardar. */
+  function versionNueva() {
+    var H = ST.hilo, M = ((H && (H.propuesta || H.ultima)) || {}).machote; if (!M || typeof M.precio !== 'number') return '';
+    var c = M.cambio || {}, n = c.n || {}, p = [dinero(M.precio)];
+    if (typeof c.dif === 'number') p.push('diferencia ' + (c.dif >= 0 ? '+' : '−') + dinero(Math.abs(c.dif)));
+    if (n.nuevos) p.push('+' + n.nuevos + (n.nuevos === 1 ? ' renglón' : ' renglones'));
+    if (n.quitados) p.push('−' + n.quitados + (n.quitados === 1 ? ' renglón' : ' renglones'));
+    if (n.precio) p.push(n.precio + (n.precio === 1 ? ' precio nuevo' : ' precios nuevos'));
+    if (M.n_pendientes) p.push(M.n_pendientes + (M.n_pendientes === 1 ? ' pendiente' : ' pendientes'));
+    return p.join(' · ');
+  }
   // ── V1.39 · punto 7 (#4): «¿me permites ir analizando precios…?» ─────────
   /* La oferta la escribe el motor (procesa.js, con el apodo de motor/apodos.json) y su estado llega en cada respuesta
    * en `ultima.verifica.oferta` (sin migración). Aquí solo los tres botones del prototipo aprobado. En este paso las
@@ -1654,12 +1739,26 @@
       L = L.indexOf(f) >= 0 ? L.filter(function (x) { return x !== f; }) : L.concat(f);
       bb.texto = L.length ? 'falta: ' + L.join(', ') : ''; pintarChat(); }; });
     GR.enlazar(M);
+    if (G.CzTabla) G.CzTabla.enlazar(M, cambiarRenglon, pintarChat);   // V1.48
+    $$('[data-vertodo]', M).forEach(function (b) { b.onclick = function () { (ST.verTodo = ST.verTodo || {})[b.dataset.vertodo] = true; pintarChat(); }; });
     var bl = $('#bListo', M); if (bl) bl.onclick = listoSigue;
     var be = $('#bEscribe', M); if (be) be.onclick = function () { var tq = trabajoQueContesta(); ST.abiertoReg = ST.abiertoReg === (tq && tq.id) ? null : (tq && tq.id); pintarChat(); };
     $$('[data-hacer]', M).forEach(function (b) { b.onclick = function () { hacer(b.dataset.hacer, b); }; });
     $$('[data-pdf]', M).forEach(function (b) { b.onclick = verPdf; });
     $$('[data-copia]', M).forEach(function (b) { b.onclick = function () { copiar(b.closest('.carta').querySelector('textarea.copia').value, b); }; });
     $$('[data-descartar]', M).forEach(function (b) { b.onclick = function () { resolver(b.dataset.descartar, 'descartada', {}, b); }; });
+  }
+  /** V1.48 · «↺ Cambiar» de un renglón que supuso el agente: abre la caja de abajo con el renglón citado; lo que la persona
+   *  escriba (o dicte) es su decisión y gana (regla de oro 1: queda como decreto). */
+  function cambiarRenglon(desc) {
+    var i = $('#in'); if (!i) return;
+    i.value = 'Sobre el renglón «' + String(desc || '').split(' — ')[0].slice(0, 90) + '»: '; autoAlto(); pintarComposer(); i.focus();
+    try { i.setSelectionRange(i.value.length, i.value.length); } catch (e) {}
+  }
+  /** El folio del machote del caso (COT-XXXX), si ya se guardó. */
+  function folioCaso() {
+    var c = (ST.hilo && ST.hilo.caso) || {}, hecho = ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'hecha'; }).pop();
+    return (hecho && hecho.resultado && hecho.resultado.folio) || c.machote_folio || null;
   }
   // ── V1.32 · cajita de corregir / rechazar: debajo del renglón, con su borrador en el estado ──
   function cajaRazon(k, etiqueta, boton, rechazo) {
@@ -2313,6 +2412,7 @@
       cerrarHojaRubro(); ST.rubEnv = {}; ST.franjaAbierta = false;   // V1.40: la hoja y los envíos de rubro son del caso que se deja
     }
     ST.sel = sel; guardarSel(); ST.hilo = null; ST.vistos = null; ST.bandeja = []; ST.irAbajo = true;
+    if (G.CzTabla) G.CzTabla.reiniciar();   // V1.48 · lo abierto y los filtros de la tabla y del BOM son de cada caso
     $('#app').classList.remove('en-menu'); $('#app').classList.add('ver-chat'); pintarLista(); pintarChat(); pintarComposer();
     await cargarHilo(); sondear();
     // V1.41 · ya NO se pide el permiso de notificaciones al abrir un chat: sin gesto, iPhone lo ignora y Chrome lo
