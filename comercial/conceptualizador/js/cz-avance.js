@@ -87,6 +87,10 @@
     // con lo que hay en pantalla: puede llegar una versión nueva del machote que hay que guardar primero.
     if (sig && sig.acc === 'cotiza' && ((H && H.trabajos) || []).some(function (t) { return t.estado === 'pendiente' || t.estado === 'tomado'; }))
       sig = { txt: 'Revisando si hay cambios…', espera: true };
+    // V1.47 (#4 Parte H) · al 100 % el siguiente paso es cerrar el análisis (solo el dueño, de forma explícita); cerrado, se dice.
+    var AN = H && H.ultima && H.ultima.verifica && H.ultima.verifica.analisis;
+    if (AN && AN.estado === 'listo' && (!sig || sig.acc === 'cotiza')) sig = { txt: 'Ya está todo ok, ya no muevas nada', acc: 'mandar', texto: 'Ya está todo ok, ya no muevas nada' };
+    else if (AN && AN.estado === 'cerrado' && sig && sig.espera) sig = { txt: 'Análisis cerrado', espera: true };
     return { oferta: of, e: e, det: det, actual: actual, sig: sig, ciudad: ciudad, faltan: f, pendCot: pendCot, conjAb: conjAb, sinDec: sinDec, machote: cmH || null };
   }
 

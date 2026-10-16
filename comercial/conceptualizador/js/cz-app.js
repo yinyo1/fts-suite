@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.46';
+  var VERSION = 'V1.47';
   // V1.46 (#4) · lo que contesta el motor a un «revisa» cuando no hay aviso pendiente (procesa.js, SIN_AVISO): no se pinta.
   var SIN_AVISO = 'Sin cambios pendientes en este caso.';
   /* V1.32 (0006) · empresa y moneda de la sesión: la base acepta estas tres claves. */
@@ -677,6 +677,12 @@
    *  · ≥900 px: panel lateral de 300 px a la derecha, siempre abierto y sin cerrarse solo (el chat conserva su alto).
    * Integra la ciudad (sin confirmar sale en rojo y el botón de abajo la pide primero) y el «Abrir M-xxxx». */
   var CIERRE_MS = 6000;
+  /* V1.47 (#4) · el ciclo del análisis y el presupuesto, de la última respuesta del motor (verifica.analisis, verifica.presupuesto). */
+  var BOTON_CIERRE = 'Ya está todo ok, ya no muevas nada';
+  function verUlt() { return (ST.hilo && ST.hilo.ultima && ST.hilo.ultima.verifica) || {}; }
+  function analisis() { return verUlt().analisis || null; }
+  function analisisCerrado() { var a = analisis(); return !!(a && a.estado === 'cerrado'); }
+  function presupuesto() { return verUlt().presupuesto || null; }
   function lateral() { return G.matchMedia && G.matchMedia('(min-width:900px)').matches; }
   function abrirFranja(v) {
     ST.franjaAbierta = !!v; var el = $('#avance');
@@ -698,10 +704,19 @@
     var cab = L.P ? '<b>' + esc(L.rubrosTxt) + '</b> · <span class="avl-pre' + (L.P.alertas ? ' alerta' : '') + '">' + esc(L.preciosTxt) + '</span>' :
       (L.pct !== null ? '<b>' + L.pct + ' %</b>' : '<b>' + esc(L.paso) + '</b>') +
       (L.sig ? ' · Siguiente: ' + (L.rojo ? '<span class="avl-rojo">' + esc(L.sig) + '</span>' : esc(L.sig)) : '');
+    var AN = analisis();
+    if (AN && AN.estado === 'cerrado') cab = '<b class="avl-cerrado">🔒 Análisis cerrado</b> · ' + cab;
+    else if (AN && AN.estado === 'listo') cab = '<b class="avl-listo">Listo para cerrar</b> · ' + cab;
+    else if (AN && typeof AN.pct === 'number') cab = '<b>' + AN.pct + ' % hacia el 100</b> · ' + cab;
     var h = '<button type="button" class="avl-top' + (L.P ? ' con-precios' : '') + '" id="avTop" aria-expanded="' + (abierto || lateral()) + '" aria-controls="avDet"><span class="avl-l">' + cab + '</span>' + ico('abajo', 's avl-chev') + '</button>';
     h += '<div class="avl-det" id="avDet"><div class="avl-tit">Paso ' + (a + 1) + ' de 7 · ' + esc(P[a]) + (av.det[a] ? ' · ' + esc(av.det[a].replace(/\.$/, '')) : '') +
       (L.P ? ' · <b>' + esc(L.rubrosTxt) + ' cerrados</b>' : L.pct !== null ? ' · <b>Llevas ' + L.pct + ' %</b>' : '') + (R && !L.P ? ' · ' + R.lista.length + ' rubros' : '') + '</div>';
     if (L.P) h += preciosFranja(L.P, L.sig);
+    if (AN) h += '<div class="avl-analisis">' + (AN.estado === 'cerrado' ? '<b>🔒 Análisis cerrado' + (AN.cerrado && AN.cerrado.folio ? ' · ' + esc(AN.cerrado.folio) + (AN.cerrado.version ? ' v' + esc(AN.cerrado.version) : '') : '') + '.</b> El agente ya no mueve nada; si pides algo nuevo, se reabre.' :
+      '<b>' + (AN.estado === 'listo' ? 'Listo para cerrar' : AN.pct + ' % hacia el 100') + '</b>' + (AN.falta && AN.falta.length ? ' · Falta: ' + esc(AN.falta.join('; ')) : '') +
+      (mia(c) ? ' <button type="button" class="link" id="avCerrarAn">' + esc(BOTON_CIERRE) + '</button>' : '')) + '</div>';
+    var PR = presupuesto();
+    if (PR && yo() === 'esteban.delacruz') h += '<div class="avl-pres">' + esc(PR.linea) + ' <button type="button" class="link" id="avAvance">' + (PR.apagado ? 'Prender el avance' : 'Apagar el avance') + '</button></div>';
     if (!av.ciudad) h += '<div class="avl-ciu"><b>Ciudad del proyecto' + (x ? ': ' + esc(CI.nombre(x)) + ' (sin confirmar)' : '') + '</b> Sin ella no se buscan precios: tiendas, fletes y viáticos se miden contra ella.' +
       (mia(c) ? ' <button type="button" class="link" id="avCiudad">' + (x ? 'Cambiar' : 'Elegir') + '</button>' : '') + '</div>';
     h += '<ol class="avl-pasos">' + P.map(function (p, i) { var e = av.e[i]; return '<li class="' + e + '" title="' + esc(av.det[i]) + '">' + (e === 'hecho' ? '✓ ' : '') + (i + 1) + ' ' + esc(p) + '</li>'; }).join('') + '</ol>';
@@ -717,6 +732,8 @@
     el.innerHTML = h + '</div>';
     if ($('#avCiudad')) $('#avCiudad').onclick = function () { cambiarCiudad(); };
     if ($('#avAbrir')) $('#avAbrir').onclick = function () { abrirEditor(av.machote); };
+    if ($('#avCerrarAn')) $('#avCerrarAn').onclick = function () { if (confirm('¿Cerrar el análisis? El machote vigente queda congelado y el agente deja de moverlo.')) mandar(BOTON_CIERRE); };
+    if ($('#avAvance')) $('#avAvance').onclick = function () { mandar(PR && PR.apagado ? 'prende el avance' : 'apaga el avance'); };
   }
   /** V1.45 · el renglón de precios del detalle de la franja: con precio, % de referencia, alertas N3 y de sensatez. */
   function preciosFranja(P, sig) {
@@ -943,6 +960,11 @@
     var h = V + A.map(function (a) { return '<button data-a="' + a.k + '"' + (a.ok ? '' : ' disabled') + '>' + ico(a.ic, 's') + '<span>' + a.t + a.sub + '</span></button>'; }).join('') +
       (A.length ? '<hr>' : '') +
       ((ST.sel || {}).menu ? '' : '<button data-a="detalles">' + ico('info', 's') + '<span>Detalles y línea de tiempo</span></button>') +
+      // V1.47 (#4 Parte H) · el análisis lo cierra SOLO el dueño (o Esteban), de forma explícita; el botón está aunque no llegue al 100 %.
+      (abierta && c.id && mia && !analisisCerrado() ? '<button data-a="cierra_analisis">' + ico('candado', 's') + '<span>' + esc(BOTON_CIERRE) + '<small>Congela el machote vigente; el agente deja de moverlo</small></span></button>' : '') +
+      // V1.47 (#4 Parte T) · el interruptor del modo avance, solo para Esteban.
+      (yo() === 'esteban.delacruz' && c.id ? '<button data-a="avance_toggle">' + ico('info', 's') + '<span>' + (presupuesto() && presupuesto().apagado ? 'Prender el avance' : 'Apagar el avance') +
+        '<small>' + esc(presupuesto() ? presupuesto().linea : 'El trabajo proactivo del motor (sin presupuesto leído todavía)') + '</small></span></button>' : '') +
       (abierta && c.id ? '<button data-a="cierre">' + ico('candado', 's') + '<span>Cerrar con /cierre</span></button>' : '') +
       (G.CzPush ? G.CzPush.menuHtml('chat') : '') +   // V1.41 · «Permisos y avisos» (cz-push.js)
       '<button data-a="aprendio">' + ico('libro', 's') + '<span>Lo que aprendió</span></button>';
@@ -952,6 +974,8 @@
       if (a.indexOf('push:') === 0) return G.CzPush.accion(a.slice(5));
       if (a === 'disparo') return confirmarDisparo(md);
       if (a === 'falta') return queFalta(null);
+      if (a === 'cierra_analisis') return mandar(BOTON_CIERRE);
+      if (a === 'avance_toggle') return mandar(presupuesto() && presupuesto().apagado ? 'prende el avance' : 'apaga el avance');
       if (a === 'ciudad') return cambiarCiudad();
       if (a === 'detalles') return menuSesion();
       if (a === 'aprendio') return verAprendio();
@@ -1312,13 +1336,17 @@
       var NIV = nivelesDe(mat);
       if (NIV.con) h += '<div class="niv-res">' + ['N1', 'N2', 'N3', 'N4', 'N5'].filter(function (k) { return NIV.n[k]; }).map(function (k) {
         return '<span class="niv niv-' + k + '" title="' + esc(NIVEL[k][1]) + '">' + k + ' ' + esc(NIVEL[k][0]) + ' · ' + NIV.n[k] + '</span>'; }).join('') + '</div>';
+      // V1.47 (#4 regla de oro 1) · los renglones que la persona decidió: «lo dijiste tú», con el mensaje de donde salió.
+      var DEC = ((U.verifica && U.verifica.decretos && U.verifica.decretos.renglones) || []);
+      var decDe = function (d) { var k = String(d || '').slice(0, 60); return DEC.filter(function (x) { return x.descripcion && String(x.descripcion).slice(0, 60) === k; })[0]; };
       mat.forEach(function (r) {
-        var te = r.tienda_existencia || r.tienda || '', sin = /sin existencia|solo (hay )?en|otra ciudad/i.test(te), nv = nivelDe(r);
+        var te = r.tienda_existencia || r.tienda || '', sin = /sin existencia|solo (hay )?en|otra ciudad/i.test(te), nv = nivelDe(r), dj = decDe(r.descripcion);
         h += '<div class="bom' + (nv === 'N3' ? ' alerta-n3' : '') + '"><div>' + (NIV.con ? '<span class="niv niv-' + nv + '">' + nv + '</span> ' : '') + '<b>' + esc(r.descripcion) + '</b>' + (r.sku ? ' <span class="sku">' + esc(r.sku) + '</span>' : '') + '</div><div>' + esc(r.qty) + ' ' + esc(r.unidad) + ' · ' + esc(r.tipo) + ' · <b>' + dinero(r.importe, r.moneda) + '</b></div>' +
           '<div class="org">' + [r.formula ? esc(r.formula) : '', r.liga && /^https?:/.test(r.liga) ? '<a href="' + esc(r.liga) + '" target="_blank" rel="noopener">' + esc(r.fuente) + '</a>' :
             /pendiente/i.test(r.fuente || '') ? '<b class="mal">' + esc(r.fuente) + '</b>' : esc(r.fuente || 'sin fuente')].filter(Boolean).join(' · ') + '</div>' +
           (te ? '<span class="tienda' + (sin ? ' sin' : '') + '">' + esc(te) + '</span>' : '') +
-          (NIV.con && (nv === 'N3' || nv === 'N4') && r.riesgo ? '<div class="riesgo">⚠ ' + esc(r.riesgo) + '</div>' : '') + '</div>';
+          (NIV.con && (nv === 'N3' || nv === 'N4') && r.riesgo ? '<div class="riesgo">⚠ ' + esc(r.riesgo) + '</div>' : '') +
+          (dj ? '<div class="dijiste" title="' + esc(dj.decretos.map(function (x) { return x.texto; }).join(' · ')) + '">🔒 lo dijiste tú · ' + esc(dj.decretos.map(function (x) { return x.origen; }).join(', ')) + ': «' + esc(String(dj.decretos[0].texto).slice(0, 90)) + '»</div>' : '') + '</div>';
       });
       mo.forEach(function (r) {
         h += '<div class="bom"><div><b>MO · ' + esc(r.rol) + '</b></div><div>' + esc(r.personas) + ' pers × ' + esc(r.dias) + ' d × ' + esc(r.horas_dia) + ' h · <b>' + dinero(r.importe, r.moneda) + '</b></div><div class="org">' + esc(r.origen || '') + '</div></div>';
