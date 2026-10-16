@@ -274,7 +274,7 @@
     var vivas = todas.filter(function (c) { return !archivada(c); });
     h += '<div class="chips filtros" aria-label="Filtros">' + (MP && !ST.archivadas ? MP.chipsHtml(MP.contar(vivas), { sinEnvoltura: true }) + '<span class="sep"></span>' : '') +
       '<button class="chip' + (gu ? ' on' : '') + '" id="bUsr" aria-haspopup="menu">' +
-      (gu ? '<span class="ini" style="background:' + gu.c + '">' + esc(gu.n[0]) + '</span>' + esc(gu.n) : ico('usuario', 'xs') + 'Todos') + ico('abajo', 'xs') + '</button><span class="sep"></span>';
+      (gu ? '<span class="ini" style="background:' + gu.c + '">' + esc(gu.n[0]) + '</span>' + esc(gu.n) : ico('usuario', 'xs') + 'Personas') + ico('abajo', 'xs') + '</button><span class="sep"></span>';   // V1.51: «Todos» ya es el chip de Mis proyectos
     if (!ST.archivadas) h += [['vivas', 'En curso'], ['cerradas', 'Cerradas'], ['todas', 'Todas']].map(function (f) {
       return '<button class="chip' + (ST.filtro === f[0] ? ' on' : '') + '" data-f="' + f[0] + '">' + f[1] + ' <b>' + cuenta(f[0]) + '</b></button>'; }).join('');
     h += '</div><div class="scroll">';
@@ -1091,14 +1091,14 @@
       return t.estado === 'pendiente' && !!disp && new Date(t.created_at).getTime() >= disp - 5000;
     });
   }
-  function nombreDe(actor) { return nombreCorto(actor); }
+  function nombrePersona(actor) { return nombreCorto(actor); }   // (nombreDe ya existe: es el de los archivos)
   function estadoDelServidor(ag, escriben) {
     var gente = (escriben || []).filter(function (e) { return e && e.actor && e.actor !== yo(); });
     if (ag && ag.estado === 'escribiendo') return { k: 'agente', texto: '🤖 El agente está escribiendo…', paso: ag.paso || null, trabajo_id: ag.trabajo_id };
     if (ag && ag.estado === 'detenido') return { k: 'detenido', texto: 'Se detuvo', trabajo_id: ag.trabajo_id, desde: ag.senal || ag.desde };
     if (ag && ag.estado === 'cola') return { k: 'cola', texto: '🤖 En la cola del agente', trabajo_id: ag.trabajo_id };
     if (!gente.length || !G.ChatWA) return null;
-    return G.ChatWA.estadoEscritura({ trabajos: [], escriben: gente.map(function (e) { return { actor: e.actor, nombre: nombreDe(e.actor), at: e.at }; }), yo: yo() });
+    return G.ChatWA.estadoEscritura({ trabajos: [], escriben: gente.map(function (e) { return { actor: e.actor, nombre: nombrePersona(e.actor), at: e.at }; }), yo: yo() });
   }
   function escrituraChat() {
     var H = ST.hilo; if (!H || (ST.sel || {}).menu) return null;
@@ -1335,7 +1335,7 @@
       if (mio && tr && tr.estado === 'error') aparte('<div class="sis"><span class="mal">El motor no pudo con este mensaje: ' + esc(tr.error || '') + '. Escríbelo de otra forma o vuelve a intentar.</span></div>');
       // V1.51 · B · una respuesta vieja que traía estado («Llevas N %» o «Rubros n/m») queda SUPERADA: tachada, sin botones,
       // con un toque que lleva al estado vigente. Nunca se decide sobre algo viejo.
-      if (!mio && RUB && H.ultima && Number(H.ultima.trabajo_id) !== Number(m.trabajo_id) && /\bLlevas \d{1,3} %|\bRubros \d+\/\d+/.test(String(m.texto || '')))
+      if (!mio && H.ultima && m.trabajo_id && Number(H.ultima.trabajo_id) !== Number(m.trabajo_id) && /\bLlevas \d{1,3} %|\bRubros \d+\/\d+/.test(String(m.texto || '')))
         aparte('<div class="fila el"><div class="carta superada" aria-disabled="true"><s>Estado de la cotización · ' + esc(hora(t)) + '</s>' +
           '<button type="button" class="link" data-ir-vigente="1">Reemplazado por el estado de las ' + esc(hora(H.ultima.created_at)) + ' · ver el vigente</button></div></div>');
       if (!mio && m.trabajo_id) {
@@ -1947,7 +1947,7 @@
 
   // ── eventos del chat ───────────────────────────────────────────────────
   function enlazarChat(M) {
-    $$('[data-ir-vigente]', M).forEach(function (b) { b.onclick = function () { var v = $('#estadoVigente'); if (v) { v.scrollIntoView({ block: 'center', behavior: 'smooth' }); v.classList.add('destello'); setTimeout(function () { v.classList.remove('destello'); }, 1400); } }; });
+    $$('[data-ir-vigente]', M).forEach(function (b) { b.onclick = function () { var v = $('#estadoVigente') || $$('#msgs .fila.el .b.el').pop(); if (v) { v.scrollIntoView({ block: 'center', behavior: 'smooth' }); v.classList.add('destello'); setTimeout(function () { v.classList.remove('destello'); }, 1400); } }; });
     $$('[data-cz-visor]', M).forEach(function (b) { b.onclick = function () { abrirVisor(b.dataset.czVisor || undefined); }; });   // V1.51
     $$('[data-plg-res]', M).forEach(function (b) { b.onclick = function () {
       var id = b.dataset.plgRes, ab = b.getAttribute('aria-expanded') !== 'true', c = b.parentNode.querySelector('.plg-cuerpo');
@@ -2650,7 +2650,10 @@
     clearTimeout(ST.sondeo);
     // V1.51 · H · la lista se relee cada 5 s mientras alguna fila diga «escribiendo» (el agente o una persona).
     var listaViva = ST.casos.some(function (c) { return (c.agente && c.agente.estado === 'escribiendo') || (c.escriben || []).length; });
-    ST.sondeoMs = ya ? 1200 : (enCurso() ? 2500 : listaViva ? 5000 : 20000);
+    // Con la 0013 (el servidor dice si alguien escribe) el chat abierto se relee cada 10 s en reposo, para que el
+    // «escribiendo…» aparezca pronto; sin ella, cada 20 s como antes.
+    var chatVivo = ST.sel && ST.sel.id && Object.prototype.hasOwnProperty.call(ST, 'srvAgente');
+    ST.sondeoMs = ya ? 1200 : (enCurso() ? 2500 : listaViva ? 5000 : chatVivo ? 10000 : 20000);
     ST.sondeo = setTimeout(async function () {
       if (!document.hidden) {
         await cargarCasos(); pintarLista();
