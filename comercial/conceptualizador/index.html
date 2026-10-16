@@ -725,6 +725,34 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
     .app.con-lado.lado-col #avance>*:not(.avl-col){display:none!important}
     .app.con-lado.lado-col .abajo{right:56px}
   }
+
+  /* V1.51 · colapsados por omisión (prototipo aprobado: prototipos/v150/colapsados.html) */
+  .plg{margin-top:7px;border:1px solid var(--linea);border-radius:10px;background:#f3f6f5;overflow:hidden;max-width:100%}
+  .plg-res{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:8px 10px;text-align:left}
+  .plg-ic{width:26px;height:26px;border-radius:50%;background:var(--sup);display:flex;align-items:center;justify-content:center;color:var(--acento-osc);flex-shrink:0;font-size:13px;font-weight:700}
+  .plg-tx{flex:1;min-width:0}
+  .plg-tx b{display:block;font-size:14px;font-weight:600;overflow-wrap:anywhere}
+  .plg-tx span{display:block;font-size:12.5px;color:var(--sec);overflow-wrap:anywhere}
+  .plg-res .chev{color:var(--sec);transition:transform .15s;flex-shrink:0}
+  .plg-res[aria-expanded="true"] .chev{transform:rotate(180deg)}
+  .plg-cuerpo{border-top:1px solid var(--linea);padding:4px 10px 8px;background:var(--sup)}
+  .plg-cuerpo[hidden]{display:none}
+  .carta > .plg:first-child{margin-top:0}
+  .rub-carta .plg .rub-tot{font-size:14px;color:inherit}
+  /* V1.51 · E · idioma de las respuestas */
+  .sel-idioma{width:100%;font:inherit;padding:9px 10px;border:1px solid var(--linea);border-radius:10px;background:var(--sup);margin:4px 0 8px}
+  /* V1.51 · B · estado vigente y superado */
+  .rub-carta .vig-cab{font-size:12.5px;font-weight:600;color:var(--sec);margin:0 0 6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .rub-carta .vig{background:#e7f6ee;color:#0b6b45;border:1px solid #b8e3cb;border-radius:8px;padding:0 6px;font-size:11.5px}
+  .carta.superada{opacity:.6;font-size:13px;display:flex;flex-direction:column;gap:4px;max-width:min(82%,520px)}
+  .carta.superada s{color:var(--sec)}
+  .carta.superada .link{align-self:flex-start;color:var(--acento-osc);font-weight:600;font-size:12.5px;text-align:left;opacity:1}
+  .carta.destello{outline:2px solid var(--acento);outline-offset:2px;transition:outline-color .6s}
+  /* V1.51 · barra inferior del núcleo (32 px) y la línea de «escribiendo» bajo el título */
+  body.con-barra .app{height:calc(100dvh - 32px)}
+  body.con-barra:has(.chwa-barra[hidden]) .app{height:100dvh}
+  #ch .tx small.esc-wa{min-width:0;display:block}
+  @media (min-width:900px){ body.con-barra .chwa-barra{display:none} body.con-barra .app{height:100dvh} }
 </style>
 </head>
 <body>
@@ -757,21 +785,25 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <div class="rub-velo" id="rubHoja"></div>
 <div class="modal" id="modal"></div>
 <div class="panel" id="panel"></div>
-<script src="../../shared/chat/chat-firma.js?v=V1.49"></script>
-<script src="js/cz-cliente.js?v=V1.49"></script>
-<script src="js/cz-medios.js?v=V1.49"></script>
-<script src="js/cz-grabadora.js?v=V1.49"></script>
-<script src="js/cz-archivos.js?v=V1.49"></script>
-<script src="js/cz-ciudad.js?v=V1.49"></script>
-<script src="js/cz-cola.js?v=V1.49"></script>
-<script src="js/cz-acciones.js?v=V1.49"></script>
-<script src="js/cz-avance.js?v=V1.49"></script>
-<script src="js/cz-tabla.js?v=V1.49"></script>
-<script src="js/cz-camara.js?v=V1.49"></script>
-<script src="../../shared/chat/chat-gestos.js?v=V1.49"></script>
-<script src="js/cz-push.js?v=V1.49"></script>
-<script src="js/cz-app.js?v=V1.49"></script>
-<script src="js/cz-version.js?v=V1.49"></script>
+<link rel="stylesheet" href="../../shared/chat/chat-wa.css?v=V1.51" />
+<script src="../../shared/chat/chat-wa.js?v=V1.51"></script>
+<script src="../../shared/chat/chat-firma.js?v=V1.51"></script>
+<script src="js/cz-cliente.js?v=V1.51"></script>
+<script src="js/cz-medios.js?v=V1.51"></script>
+<script src="js/cz-grabadora.js?v=V1.51"></script>
+<script src="js/cz-archivos.js?v=V1.51"></script>
+<script src="js/cz-ciudad.js?v=V1.51"></script>
+<script src="js/cz-cola.js?v=V1.51"></script>
+<script src="js/cz-acciones.js?v=V1.51"></script>
+<script src="js/cz-avance.js?v=V1.51"></script>
+<script src="js/cz-tabla.js?v=V1.51"></script>
+<script src="js/cz-visor.js?v=V1.51"></script>
+<script src="js/cz-vista.js?v=V1.51"></script>
+<script src="js/cz-camara.js?v=V1.51"></script>
+<script src="../../shared/chat/chat-gestos.js?v=V1.51"></script>
+<script src="js/cz-push.js?v=V1.51"></script>
+<script src="js/cz-app.js?v=V1.51"></script>
+<script src="js/cz-version.js?v=V1.51"></script>
 <script>window.CzApp.arrancar().then(function () { if (window.CzVersion) window.CzVersion.iniciar(); if (window.CzPush) window.CzPush.iniciar(); });</script>
 </body>
 </html>

@@ -1,0 +1,144 @@
+/* ═══ shared/chat · look WhatsApp (V1.51): estilo de las piezas de chat-wa.js ═══
+ * TODO lleva prefijo chwa- (CLAUDE.md §20 #12): ni un selector de elemento suelto, ni variables de la página.
+ * Los colores salen de las variables del producto si existen (--acento, --sup, --linea, --sec, --texto) y, si no,
+ * de los valores del prototipo v150; el modo oscuro cambia solo esos valores por omisión y solo dentro de .chwa-*. */
+[class*="chwa-"]{
+  --chwa-acento:var(--acento,#1daa61); --chwa-marca:var(--marca,#008069); --chwa-sup:var(--sup,#fff); --chwa-sup2:var(--sup2,#f0f2f5);
+  --chwa-linea:var(--linea,#e7e3dd); --chwa-sec:var(--sec,#667781); --chwa-ter:var(--ter,#8696a0); --chwa-texto:var(--texto,#111b21);
+  --chwa-badge-t:#fff; --chwa-ambar:#f6c344; --chwa-ambar-t:#5c3d00; --chwa-tip:#1f2c33; --chwa-tip-t:#fff;
+  --chwa-chip-on:#d8fdd2; --chwa-chip-on-t:#0a5c36; --chwa-menu-bg:var(--menu-bg,#fff); --chwa-sombra:0 1px .5px rgba(11,20,26,.13);
+  --chwa-menu-sombra:0 4px 18px rgba(11,20,26,.2); --chwa-velo:rgba(11,20,26,.4); --chwa-rojo:#d13438; --chwa-leido:#53bdeb; --chwa-prog:#e3e7ea; --chwa-ambar-txt:#8a4b00;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) [class*="chwa-"]{
+  --chwa-acento:var(--acento,#21c063); --chwa-marca:var(--marca,#21c063); --chwa-sup:var(--sup,#111b21); --chwa-sup2:var(--sup2,#202c33);
+  --chwa-linea:var(--linea,#222d34); --chwa-sec:var(--sec,#8696a0); --chwa-ter:var(--ter,#667781); --chwa-texto:var(--texto,#e9edef);
+  --chwa-badge-t:#111b21; --chwa-ambar:#e8b33a; --chwa-ambar-t:#1f1500; --chwa-tip:#e9edef; --chwa-tip-t:#111b21;
+  --chwa-chip-on:#103529; --chwa-chip-on-t:#d9fdd3; --chwa-menu-bg:var(--menu-bg,#233138); --chwa-sombra:0 1px .5px rgba(0,0,0,.4);
+  --chwa-menu-sombra:0 4px 18px rgba(0,0,0,.55); --chwa-velo:rgba(0,0,0,.6); --chwa-rojo:#ff6b6e; --chwa-prog:#2a3942; --chwa-ambar-txt:#ffcf75;
+}}
+:root[data-theme="dark"] [class*="chwa-"]{
+  --chwa-acento:var(--acento,#21c063); --chwa-marca:var(--marca,#21c063); --chwa-sup:var(--sup,#111b21); --chwa-sup2:var(--sup2,#202c33);
+  --chwa-linea:var(--linea,#222d34); --chwa-sec:var(--sec,#8696a0); --chwa-ter:var(--ter,#667781); --chwa-texto:var(--texto,#e9edef);
+  --chwa-badge-t:#111b21; --chwa-ambar:#e8b33a; --chwa-ambar-t:#1f1500; --chwa-tip:#e9edef; --chwa-tip-t:#111b21;
+  --chwa-chip-on:#103529; --chwa-chip-on-t:#d9fdd3; --chwa-menu-bg:var(--menu-bg,#233138); --chwa-sombra:0 1px .5px rgba(0,0,0,.4);
+  --chwa-menu-sombra:0 4px 18px rgba(0,0,0,.55); --chwa-velo:rgba(0,0,0,.6); --chwa-rojo:#ff6b6e; --chwa-prog:#2a3942; --chwa-ambar-txt:#ffcf75;
+}
+.chwa-ico{display:block;width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+
+/* A · globitos */
+.chwa-globitos{display:inline-flex;align-items:center;gap:5px;flex-shrink:0}
+.chwa-badge{min-width:20px;height:20px;border-radius:10px;background:var(--chwa-acento);color:var(--chwa-badge-t);font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 6px;flex-shrink:0;line-height:1;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.chwa-dec{display:inline-flex;align-items:center;gap:2px;height:20px;border-radius:6px;background:var(--chwa-ambar);color:var(--chwa-ambar-t);font-size:11.5px;font-weight:700;padding:0 5px 0 3px;flex-shrink:0;line-height:1;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.chwa-dec .chwa-ico{width:13px;height:13px;stroke-width:2.2}
+.chwa-dec b{font-weight:700}
+.chwa-tip{position:fixed;z-index:150;max-width:calc(100vw - 16px);background:var(--chwa-tip);color:var(--chwa-tip-t);font-size:12.5px;font-weight:500;line-height:1.35;padding:5px 9px;border-radius:7px;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.chwa-tip[hidden]{display:none}
+
+/* B · tarjeta superada */
+.chwa-superada>*:not(.chwa-reemp){opacity:.55}
+.chwa-superada .chwa-tachado{text-decoration:line-through}
+.chwa-superada button:disabled,.chwa-superada input:disabled,.chwa-superada select:disabled,.chwa-superada textarea:disabled{cursor:not-allowed}
+.chwa-reemp{display:block;width:100%;margin:0;text-align:left;font:inherit;font-size:12.5px;line-height:1.35;font-weight:600;color:var(--chwa-marca);padding:7px 12px;border:0;border-top:1px dashed var(--chwa-linea);background:rgba(127,127,127,.08)}
+button.chwa-reemp{cursor:pointer}
+button.chwa-reemp:focus-visible{outline:2px solid var(--chwa-marca);outline-offset:-2px}
+
+/* C · escribiendo y paso en curso */
+.chwa-escribe{color:var(--chwa-acento);font-weight:500;font-size:12.5px;white-space:nowrap}
+.chwa-puntos i{font-style:normal;animation:chwa-punto 1.2s infinite both}
+.chwa-puntos i:nth-child(2){animation-delay:.2s}
+.chwa-puntos i:nth-child(3){animation-delay:.4s}
+@keyframes chwa-punto{0%,80%,100%{opacity:.15}40%{opacity:1}}
+.chwa-paso{position:relative;display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;margin:0 8px;padding:6px 6px 6px 12px;border-radius:12px;background:var(--chwa-sup);color:var(--chwa-texto);box-shadow:var(--chwa-sombra);font-size:13px;line-height:1.35;min-width:0;overflow:hidden}
+.chwa-punto{width:8px;height:8px;border-radius:50%;background:var(--chwa-acento);flex-shrink:0;animation:chwa-late 1.2s infinite}
+@keyframes chwa-late{50%{opacity:.25}}
+.chwa-paso-tx{flex:1;min-width:0;color:var(--chwa-sec);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chwa-paso-tx b{color:var(--chwa-texto);font-weight:500}
+.chwa-paso-barra{position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--chwa-prog)}
+.chwa-paso-barra i{display:block;height:100%;background:var(--chwa-acento)}
+.chwa-lnk{font:inherit;font-size:13px;font-weight:600;color:var(--chwa-marca);background:none;border:0;padding:4px 8px;border-radius:14px;white-space:nowrap;flex-shrink:0;cursor:pointer}
+.chwa-lnk:hover{background:var(--chwa-sup2)}
+.chwa-lnk:focus-visible{outline:2px solid var(--chwa-marca);outline-offset:1px}
+.chwa-razon{display:flex;gap:4px;align-items:center;width:100%;min-width:0}
+.chwa-razon input{flex:1;min-width:0;height:34px;border:1px solid var(--chwa-linea);border-radius:17px;padding:0 12px;background:var(--chwa-sup2);color:var(--chwa-texto);outline:0;font:inherit;font-size:13.5px}
+.chwa-razon input:focus{border-color:var(--chwa-marca)}
+.chwa-razon input[aria-invalid="true"]{border-color:var(--chwa-rojo)}
+.chwa-razon-err{width:100%;margin:0;font-size:12px;color:var(--chwa-rojo);padding:0 4px}
+.chwa-razon-err[hidden]{display:none}
+@media (prefers-reduced-motion: reduce){
+  .chwa-puntos i,.chwa-punto{animation:none;opacity:1}
+  .chwa-menu{animation:none}
+}
+
+/* D · hora en la burbuja */
+.chwa-hora{display:inline-flex;align-items:center;gap:3px;float:right;margin:4px 0 -3px 10px;font-size:11px;line-height:1;color:var(--chwa-sec);white-space:nowrap}
+.chwa-pal .chwa-ico{width:16px;height:16px;stroke-width:2}
+.chwa-pal{color:var(--chwa-sec)}
+.chwa-pal.leido{color:var(--chwa-leido)}
+
+/* G · menú ⋮ */
+.chwa-menu{position:fixed;z-index:120;min-width:196px;max-width:min(300px,calc(100vw - 16px));overflow-y:auto;background:var(--chwa-menu-bg);color:var(--chwa-texto);border-radius:10px;box-shadow:var(--chwa-menu-sombra);padding:6px 0;transform-origin:top right;animation:chwa-sale .12s ease-out;font-size:15px;line-height:1.4}
+@keyframes chwa-sale{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+.chwa-mi{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 20px;font:inherit;font-size:15px;color:inherit;background:none;border:0;cursor:pointer}
+.chwa-mi:hover,.chwa-mi:focus-visible{background:var(--chwa-sup2);outline:0}
+.chwa-mi-ic{display:flex;color:var(--chwa-sec);flex-shrink:0}
+.chwa-mi-ic svg{width:20px;height:20px}
+.chwa-mi-tx{min-width:0;overflow-wrap:anywhere}
+.chwa-mi small{display:block;font-size:12px;color:var(--chwa-sec);margin-top:1px}
+.chwa-mi.off,.chwa-mi:disabled{color:var(--chwa-ter);opacity:.6;cursor:default}
+.chwa-mi.off:hover,.chwa-mi:disabled:hover{background:transparent}
+
+/* aviso de instalar */
+.chwa-dlg{position:fixed;inset:0;z-index:130;background:var(--chwa-velo);display:flex;align-items:center;justify-content:center;padding:16px}
+.chwa-dlg-c{width:100%;max-width:380px;background:var(--chwa-sup);color:var(--chwa-texto);border-radius:16px;padding:18px 18px 12px;box-shadow:var(--chwa-menu-sombra);font-size:14px;line-height:1.45}
+.chwa-dlg-c h2{font-size:18px;font-weight:600;margin:0 0 8px}
+.chwa-dlg-c p{color:var(--chwa-sec);margin:0 0 6px}
+.chwa-dlg-c p b{color:var(--chwa-texto);font-weight:600}
+.chwa-dlg-c .chwa-dlg-paso{font-size:16px;font-weight:600;color:var(--chwa-texto)}
+.chwa-dlg-acc{display:flex;justify-content:flex-end;margin-top:8px}
+.chwa-dlg-acc .chwa-lnk{font-size:14px;padding:8px 12px;border-radius:18px}
+
+/* barra inferior: 32 px, opcional y apagable */
+.chwa-barra{display:flex;height:32px;flex-shrink:0;border-top:1px solid var(--chwa-linea);background:var(--chwa-sup)}
+.chwa-barra[hidden]{display:none}
+.chwa-tab{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:5px;font:inherit;font-size:12.5px;color:var(--chwa-sec);position:relative;white-space:nowrap;overflow:hidden;background:none;border:0;padding:0 4px;cursor:pointer}
+.chwa-tab-ic{display:flex;flex-shrink:0}
+.chwa-tab-ic svg{width:15px;height:15px}
+.chwa-tab-tx{overflow:hidden;text-overflow:ellipsis}
+.chwa-tab-n{min-width:16px;height:16px;border-radius:8px;background:var(--chwa-acento);color:var(--chwa-badge-t);font-size:10.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0}
+.chwa-tab.on{color:var(--chwa-marca);font-weight:600}
+.chwa-tab.on::before{content:"";position:absolute;top:0;left:22%;right:22%;height:2px;border-radius:0 0 2px 2px;background:var(--chwa-marca)}
+.chwa-tab:focus-visible{outline:2px solid var(--chwa-marca);outline-offset:-2px}
+@media (max-width:420px), (min-width:900px) and (max-width:1180px){ .chwa-tab-ic{display:none} }
+
+/* Mis proyectos · Todos */
+.chwa-chips{display:inline-flex;gap:8px;flex-shrink:0}
+.chwa-chip{flex-shrink:0;height:32px;padding:0 14px;border-radius:16px;border:0;background:var(--chwa-sup2);color:var(--chwa-sec);font:inherit;font-size:14px;font-weight:500;white-space:nowrap;cursor:pointer;display:inline-flex;align-items:center}
+.chwa-chip.on{background:var(--chwa-chip-on);color:var(--chwa-chip-on-t)}
+.chwa-chip i{font-style:normal;font-size:12px;margin-left:5px;opacity:.8}
+.chwa-chip:focus-visible{outline:2px solid var(--chwa-marca);outline-offset:1px}
+
+/* fila de la lista */
+.chwa-fila{display:flex;align-items:center;gap:13px;width:100%;height:72px;padding:0 14px 0 16px;text-align:left;font:inherit;color:var(--chwa-texto);background:none;border:0;cursor:pointer;min-width:0}
+.chwa-fila:hover{background:var(--chwa-sup2)}
+.chwa-fila.on{background:var(--chwa-sup2)}
+.chwa-fila:focus-visible{outline:2px solid var(--chwa-marca);outline-offset:-2px}
+.chwa-av{width:48px;height:48px;border-radius:50%;color:#fff;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;letter-spacing:.3px}
+.chwa-fila-tx{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:center;gap:2px;border-bottom:1px solid var(--chwa-linea)}
+.chwa-l1,.chwa-l2{display:flex;align-items:center;gap:6px;min-width:0}
+.chwa-tit{flex:1;min-width:0;font-size:16.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chwa-fh{font-size:12px;color:var(--chwa-sec);flex-shrink:0}
+.chwa-fh.nuevo{color:var(--chwa-acento);font-weight:600}
+.chwa-prev{flex:1;min-width:0;font-size:14px;color:var(--chwa-sec);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chwa-dueno{font-size:11.5px;color:var(--chwa-ter);flex-shrink:0;max-width:30%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chwa-fijo{display:flex;color:var(--chwa-ter);flex-shrink:0}
+.chwa-fijo .chwa-ico{width:15px;height:15px}
+
+/* H · quién está escribiendo (fila de la lista y cabecera del chat) */
+.chwa-ef{font-style:italic;color:var(--chwa-acento)}
+.chwa-ef.chwa-ef-detenido{color:var(--chwa-rojo);font-style:normal;font-weight:500}
+.chwa-esc-cola{animation:none}
+.chwa-esc-det{display:flex;align-items:center;max-width:100%;min-width:0;font-size:12.5px;font-weight:500;color:var(--chwa-ambar-txt);white-space:nowrap}
+.chwa-esc-msg{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.chwa-esc-desde{color:var(--chwa-sec);font-weight:400}
+.chwa-reint{font:inherit;font-size:12.5px;font-weight:600;color:var(--chwa-marca);background:none;border:0;padding:0 2px;cursor:pointer;text-decoration:underline;flex-shrink:0}
+.chwa-reint:focus-visible{outline:2px solid var(--chwa-marca);outline-offset:1px}
