@@ -41,7 +41,9 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.45';
+  var VERSION = 'V1.46';
+  // V1.46 (#4) · lo que contesta el motor a un «revisa» cuando no hay aviso pendiente (procesa.js, SIN_AVISO): no se pinta.
+  var SIN_AVISO = 'Sin cambios pendientes en este caso.';
   /* V1.32 (0006) · empresa y moneda de la sesión: la base acepta estas tres claves. */
   var EMPRESAS = { mx_mxn: { n: 'FTS México · MXN', s: 'Empresa 1 · pesos', id: 1, m: 'MXN', pais: 'mx' },
                    mx_usd: { n: 'FTS México · USD', s: 'Empresa 1 · dólares', id: 1, m: 'USD', pais: 'mx' },
@@ -1008,6 +1010,7 @@
     ((H && H.mensajes) || []).forEach(function (m) {
       var t = m.escrito_at || m.created_at; dia(t);
       if (m.rol === 'sistema') return aparte('<div class="sis"><span>' + esc(m.texto) + '</span></div>');
+      if (m.rol === 'motor' && m.texto === SIN_AVISO) return;          // V1.46 · el «revisa» sin aviso no se pinta
       var mio = m.rol === 'usuario', tr = m.trabajo_id && porTrabajo[m.trabajo_id];
       // Sin trabajo en modo «ya tengo el levantamiento»: guardado; el motor lo lee todo junto al disparar.
       var tk = mio ? (!m.trabajo_id && modo === 'levantamiento' ? '<span class="tk leido" title="Guardado; lo reviso todo junto cuando toques «Ya es todo»">' + palomita(true) + '</span>' : tick(tr)) : '';
@@ -1052,9 +1055,11 @@
     var RT = ST.retoma;
     if (RT && RT.id === (ST.sel || {}).id && G.CzAvance && G.CzAvance.ultimaActividad(H) === RT.t && !salidaDelCaso().length) {
       dia(new Date().toISOString());
+      // V1.46 · el siguiente paso, el de AHORA (el mismo del botón de abajo), no el de cuando se abrió el caso.
+      var sgV = G.CzAvance.avance(H).sig, rtSig = sgV ? sgV.txt : RT.sig;
       aparte('<div class="reto" role="status"><div class="rt">' + ico('reloj', 'xs') + (RT.version ? 'Retomamos · actualizaste a ' + esc(RT.version) : 'Retomamos · tu último mensaje fue ' + esc(RT.hace)) + '</div>' +
         '<p>Vas en <b>' + esc(RT.vas) + '</b>.</p>' + (RT.falta.length ? '<p>Falta: ' + esc(RT.falta.join(', ')) + '.</p>' : '') +
-        (RT.sig ? '<p>Siguiente: <b>' + esc(RT.sig) + '</b> (el botón de abajo).</p>' : '') + '</div>');
+        (rtSig ? '<p>Siguiente: <b>' + esc(rtSig) + '</b> (el botón de abajo).</p>' : '') + '</div>');
     }
     var tq = trabajoQueContesta();
     if (tq) h += escribeHtml(tq);
@@ -1446,9 +1451,12 @@
     var pendientes = ((ST.hilo && ST.hilo.acciones) || []).some(function (x) { return x.tipo === 'conjetura' && x.estado === 'propuesta'; });
     // V1.36 · solo el machote más nuevo dice lo que falta: el de antes de actualizar ya no cuenta.
     var ultimoCm = (((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado !== 'descartada'; }).pop() || {}).id;
+    var cmPend = ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'propuesta'; }).pop();
     otras.forEach(function (a) {
       var d = a.datos || {}, r = a.resultado || {}, manejador = G.CzAcciones && G.CzAcciones[a.tipo];
       var espera = pendientes && (a.tipo === 'crear_machote' || a.tipo === 'crear_borrador');
+      // V1.46 · un borrador propuesto ANTES de la versión del machote que falta guardar es de la versión anterior.
+      var viejo = a.tipo === 'crear_borrador' && a.estado === 'propuesta' && cmPend && cmPend.id > a.id;
       h += '<div class="carta"><h4>' + ({ alta_contacto: '👤', crear_machote: '📐', crear_borrador: '🧾', enviada: '📨', cerrar: '🔒' }[a.tipo] || '•') + ' ' + esc(a.titulo) + '</h4>' +
         (d.detalle ? '<div class="odoo">' + md(d.detalle) + '</div>' : '') +
         // V1.36 · lo que falta para cotizar en Odoo, con su número y renglón por renglón.
@@ -1460,6 +1468,7 @@
         (a.estado === 'hecha' ? '<span class="hecho">✓ ' + esc(r.texto || 'Hecho') + '</span>' + releidoOdoo(r) :
          a.estado === 'descartada' ? '<span class="hecho gris">' + ((r.reemplazada_por_trabajo) ? 'Reemplazado por una propuesta más nueva' : 'Descartado') + '</span>' :
          espera ? '<p class="nota">Contesta primero las suposiciones pendientes: el machote se arma con lo que confirmes.</p>' :
+         viejo ? '<p class="nota">Es de la versión anterior del machote: primero toca «' + esc(cmPend.titulo) + '».</p>' :
          (a.tipo === 'enviada' || a.tipo === 'cerrar' || manejador) ?
            (a.tipo === 'crear_borrador' && d.referencias && d.referencias.n ? botonReferencias(a) :
            '<div class="acc"><button class="si" data-hacer="' + a.id + '">' + esc(d.boton || ETIQ[a.tipo] || 'Hacer') + '</button><button data-descartar="' + a.id + '">' + (a.tipo === 'cerrar' ? 'Todavía no' : 'No') + '</button></div>') +
@@ -1520,8 +1529,11 @@
     var sv = G.CzVersion && G.CzVersion.salto ? G.CzVersion.salto() : null; if (!sv || ST.revisado) return;
     ST.revisado = true;
     var quien = yo(), ahora = Date.now(), n = 0;
+    // V1.46 (#4) · también los casos ya disparados o con machote: ahí el «revisa» pregunta si una sesión dejó un AVISO
+    // (repricing, versión nueva del machote, regla nueva). El motor lo publica sin que la persona escriba; si no hay nada,
+    // contesta «Sin cambios pendientes en este caso.» y esa línea no se pinta (SIN_AVISO).
     var L = (ST.casos || []).filter(function (c) {
-      return c.autor === quien && c.estado === 'abierto' && !c.demo && !c.archivada && !c.disparado_at && !Number(c.pendientes || 0) &&
+      return c.autor === quien && (c.estado === 'abierto' || c.estado === 'enviada') && !c.demo && !c.archivada && !Number(c.pendientes || 0) &&
         ahora - Date.parse(c.ultima_actividad_at || c.updated_at || 0) < 14 * 864e5;
     });
     for (var i = 0; i < L.length; i++) {
@@ -1531,9 +1543,13 @@
       var H = r.hilo, hc = H.caso || {};
       if ((H.trabajos || []).some(function (t) { return t.estado === 'pendiente' || t.estado === 'tomado'; })) continue;   // en curso: en otra carga
       try { localStorage.setItem(k, VERSION); } catch (e) {}
-      if (ofertaDe(H) || hc.disparado_at || !hc.proyecto_confirmada_at) continue;
-      var rv = await C.evento({ caso_id: c.id, tipo: 'correccion', concepto: 'revisa', razon: '', datos: { revisa: true, version: VERSION } });
+      var conAviso = !!(hc.disparado_at || hc.machote_id || ofertaDe(H));
+      if (!conAviso && !hc.proyecto_confirmada_at) continue;
+      var rv = await C.evento({ caso_id: c.id, tipo: 'correccion', concepto: 'revisa', razon: '', datos: { revisa: true, aviso: true, version: VERSION } });
       if (rv && rv.ok) n++;
+      // V1.46 · el caso abierto se relee ya: con el «revisa» en curso el botón deja de ofrecer «Haz la cotización» y el
+      // sondeo pasa a rápido, así el aviso aparece en segundos y no a los 20 s.
+      if (rv && rv.ok && c.id === (ST.sel || {}).id) cargarHilo().catch(function () {});
     }
     return n;
   }

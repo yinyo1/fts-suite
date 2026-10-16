@@ -1,6 +1,10 @@
 {
-  "version": "V1.45",
+  "version": "V1.46",
   "historial": [
+    {
+      "version": "V1.46",
+      "nota": "Avisos del conceptualizador sin que escribas (#4). Cuando revisamos una cotización por fuera del chat (precios recalculados, una versión nueva del machote o una regla nueva), el conceptualizador te lo dice solo en ese chat al abrir la app: qué cambió, el total nuevo y el botón para guardarlo («Actualizar el machote COT-…», el mismo machote, versión nueva). Mientras haya una versión del machote sin guardar, el botón de abajo ofrece primero «Actualizar el machote» y ya no «Haz la cotización» con la versión anterior; si había un borrador de Odoo propuesto con la versión de antes, dice que primero se actualice el machote. Si al abrir no hay nada nuevo en un caso, no aparece ningún mensaje."
+    },
     {
       "version": "V1.45",
       "nota": "Precios y avance por separado (#4, decisión de Esteban del 15-oct). Con machote, la franja dice «Rubros 7/7 · Precios 46/46 (62 % referencia, 19 alertas)» en lugar de un % que mezclaba las dos cosas. El motor cierra solo el rubro que ya no tiene preguntas ni conceptos abiertos y lo dice en el chat; el «en espera de» lo escribe el motor, ya no se copia tu nota. La tarjeta del machote compara cada sección contra una venta parecida y marca ALERTA si queda más de 50 % arriba o abajo. Los precios de referencia (N3) ya no llevan el 15 % extra y se calibran con lo que de verdad pagamos."
