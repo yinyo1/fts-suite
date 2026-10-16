@@ -1,6 +1,10 @@
 {
-  "version": "V1.47",
+  "version": "V1.47.1",
   "historial": [
+    {
+      "version": "V1.47.1",
+      "nota": "Pausar al agente y reabrir el análisis (#4). En la franja (o en ⋮) está «Pausar al agente»: pide la razón en una línea y, mientras esté en pausa, el agente no mueve nada por su cuenta en ese caso; si le pides algo, hace eso y solo eso. Arriba sale «⏸ Agente en pausa · quién · razón · desde» con el botón «Reanudar»; al reanudar dice qué tiene pendiente. También se pausa o reanuda escribiendo o con voz («pausa, …», «para de mover esto, …», «reanuda»); un «ok», «va» o «gracias» no pausa ni reanuda. A las 24 h en pausa no se reanuda solo: te deja una línea en el chat y Esteban recibe un correo. Con el análisis cerrado, «Reabrir el análisis» (con razón) lo regresa a «Trabajando»: guarda la versión congelada con fecha como referencia y te dice cuál era y qué va a revisar."
+    },
     {
       "version": "V1.47",
       "nota": "El conceptualizador trabaja solo (#4). Ya no pregunta «¿me permites?»: con lo que tiene arma y afina la cotización, y te avisa en el chat qué hizo, de dónde salió y cuánto falta para el 100 %. Lo que tú dijiste (un precio, un Airbnb, «eso lo pone el cliente») no lo cambia nunca: en el BOM sale como «🔒 lo dijiste tú» con el mensaje de donde salió. Cuando todo está bien, toca «Ya está todo ok, ya no muevas nada» (en ⋮ o en la franja): el machote vigente queda congelado y el agente deja de moverlo; si después pides algo, se reabre. La franja dice cuánto falta para el 100 % o «Listo para cerrar». Esteban ve la línea del presupuesto de tokens de la semana y el botón «Apagar el avance»."

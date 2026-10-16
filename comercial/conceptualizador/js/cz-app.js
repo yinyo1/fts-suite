@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.47';
+  var VERSION = 'V1.47.1';
   // V1.46 (#4) · lo que contesta el motor a un «revisa» cuando no hay aviso pendiente (procesa.js, SIN_AVISO): no se pinta.
   var SIN_AVISO = 'Sin cambios pendientes en este caso.';
   /* V1.32 (0006) · empresa y moneda de la sesión: la base acepta estas tres claves. */
@@ -689,7 +689,22 @@
     if (el) { el.classList.toggle('abierta', ST.franjaAbierta); var t = $('#avTop'); if (t) t.setAttribute('aria-expanded', String(ST.franjaAbierta || lateral())); }
     clearTimeout(ST.tFranja); if (ST.franjaAbierta && !lateral()) armarCierre();
   }
-  function armarCierre() { clearTimeout(ST.tFranja); ST.tFranja = setTimeout(function () { abrirFranja(false); }, CIERRE_MS); }
+  function armarCierre() { clearTimeout(ST.tFranja); ST.tFranja = setTimeout(function () { if (!ST.razonAg) abrirFranja(false); }, CIERRE_MS); }
+  /* V1.47.1 (#4) · pausa del agente por caso y reabrir el análisis: con razón obligatoria; viajan como mensaje del dueño (o de
+   * Esteban) que el motor resuelve sin modelo. La franja dice «⏸ Agente en pausa · quién · razón · desde» con «Reanudar». */
+  var FRASE_PAUSA = '⏸ Pausa al agente: ', FRASE_REANUDA = '▶ Reanuda al agente', FRASE_REABRE = '🔓 Reabre el análisis: ';
+  function nombreAgente(a) { return String(a || '').split('.').filter(Boolean).map(function (x) { return x.charAt(0).toUpperCase() + x.slice(1); }).join(' ') || '—'; }
+  function horaDe(iso) {
+    var d = new Date(iso); if (isNaN(d)) return '';
+    var hm = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2), hoy = new Date();
+    return d.toDateString() === hoy.toDateString() ? hm : ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'][d.getDay()] + ' ' + d.getDate() + ' · ' + hm;
+  }
+  function pedirRazonAg(tipo) { ST.razonAg = tipo; ST.razonErr = ''; abrirFranja(true); pintarFranja(); var i = $('#avRazon'); if (i) i.focus(); }
+  function mandarRazonAg() {
+    var i = $('#avRazon'), r = i ? String(i.value || '').replace(/\s+/g, ' ').trim() : '';
+    if (r.length < 8 || !/[A-Za-zÁÉÍÓÚáéíóúÑñ]{2,}.*\s.*[A-Za-zÁÉÍÓÚáéíóúÑñ]{2,}/.test(r)) { ST.razonErr = 'Escribe la razón en una línea (por ejemplo: «muevo yo los precios hoy»).'; pintarFranja(); var j = $('#avRazon'); if (j) { j.value = r; j.focus(); } return; }
+    var t = ST.razonAg === 'reabre' ? FRASE_REABRE + r : FRASE_PAUSA + r; ST.razonAg = null; ST.razonErr = ''; pintarFranja(); mandar(t);
+  }
   function pintarFranja() {
     var el = $('#avance'), viejo = $('#ciuF'); if (viejo) { viejo.style.display = 'none'; viejo.innerHTML = ''; }
     if (!el) return;
@@ -705,16 +720,26 @@
       (L.pct !== null ? '<b>' + L.pct + ' %</b>' : '<b>' + esc(L.paso) + '</b>') +
       (L.sig ? ' · Siguiente: ' + (L.rojo ? '<span class="avl-rojo">' + esc(L.sig) + '</span>' : esc(L.sig)) : '');
     var AN = analisis();
+    if (AN && AN.pausa && AN.estado !== 'cerrado') cab = '<b class="avl-pausa">⏸ En pausa</b> · ' + cab;
     if (AN && AN.estado === 'cerrado') cab = '<b class="avl-cerrado">🔒 Análisis cerrado</b> · ' + cab;
     else if (AN && AN.estado === 'listo') cab = '<b class="avl-listo">Listo para cerrar</b> · ' + cab;
     else if (AN && typeof AN.pct === 'number') cab = '<b>' + AN.pct + ' % hacia el 100</b> · ' + cab;
-    var h = '<button type="button" class="avl-top' + (L.P ? ' con-precios' : '') + '" id="avTop" aria-expanded="' + (abierto || lateral()) + '" aria-controls="avDet"><span class="avl-l">' + cab + '</span>' + ico('abajo', 's avl-chev') + '</button>';
+    var h = AN && AN.pausa && AN.estado !== 'cerrado' ? '<div class="avl-pausa-fr" role="status"><span>⏸ <b>Agente en pausa</b> · ' + esc(nombreAgente(AN.pausa.por)) + ' · «' + esc(AN.pausa.razon) + '» · desde ' + esc(horaDe(AN.pausa.desde)) + '</span>' +
+      (mia(c) ? '<button type="button" class="bt" id="avReanudar">Reanudar</button>' : '') + '</div>' : '';
+    h += '<button type="button" class="avl-top' + (L.P ? ' con-precios' : '') + '" id="avTop" aria-expanded="' + (abierto || lateral()) + '" aria-controls="avDet"><span class="avl-l">' + cab + '</span>' + ico('abajo', 's avl-chev') + '</button>';
     h += '<div class="avl-det" id="avDet"><div class="avl-tit">Paso ' + (a + 1) + ' de 7 · ' + esc(P[a]) + (av.det[a] ? ' · ' + esc(av.det[a].replace(/\.$/, '')) : '') +
       (L.P ? ' · <b>' + esc(L.rubrosTxt) + ' cerrados</b>' : L.pct !== null ? ' · <b>Llevas ' + L.pct + ' %</b>' : '') + (R && !L.P ? ' · ' + R.lista.length + ' rubros' : '') + '</div>';
     if (L.P) h += preciosFranja(L.P, L.sig);
     if (AN) h += '<div class="avl-analisis">' + (AN.estado === 'cerrado' ? '<b>🔒 Análisis cerrado' + (AN.cerrado && AN.cerrado.folio ? ' · ' + esc(AN.cerrado.folio) + (AN.cerrado.version ? ' v' + esc(AN.cerrado.version) : '') : '') + '.</b> El agente ya no mueve nada; si pides algo nuevo, se reabre.' :
       '<b>' + (AN.estado === 'listo' ? 'Listo para cerrar' : AN.pct + ' % hacia el 100') + '</b>' + (AN.falta && AN.falta.length ? ' · Falta: ' + esc(AN.falta.join('; ')) : '') +
-      (mia(c) ? ' <button type="button" class="link" id="avCerrarAn">' + esc(BOTON_CIERRE) + '</button>' : '')) + '</div>';
+      (mia(c) ? ' <button type="button" class="link" id="avCerrarAn">' + esc(BOTON_CIERRE) + '</button>' : '') +
+      (mia(c) && !AN.pausa ? ' <button type="button" class="link" id="avPausar">Pausar al agente</button>' : '') +
+      (AN.congelado_ref && AN.congelado_ref.folio ? '<span class="avl-cong">Versión congelada de referencia: ' + esc(AN.congelado_ref.folio) + (AN.congelado_ref.version ? ' v' + esc(AN.congelado_ref.version) : '') + '</span>' : '')) +
+      (AN.estado === 'cerrado' && mia(c) ? ' <button type="button" class="link" id="avReabrir">Reabrir el análisis</button>' : '') +
+      (ST.razonAg && mia(c) ? '<div class="caja-razon avl-razon"><label for="avRazon">' + (ST.razonAg === 'reabre' ? '¿Qué cambió para reabrirlo?' : '¿Por qué pausas al agente?') + '</label>' +
+        '<input id="avRazon" maxlength="300" autocomplete="off" placeholder="' + (ST.razonAg === 'reabre' ? 'el cliente pidió 2 chillers más' : 'muevo yo los precios hoy') + '">' +
+        (ST.razonErr ? '<span class="nota mal">' + esc(ST.razonErr) + '</span>' : '') +
+        '<span class="avl-razon-bt"><button type="button" class="bt" id="avRazonOk">' + (ST.razonAg === 'reabre' ? 'Reabrir' : 'Pausar') + '</button><button type="button" class="link" id="avRazonNo">Cancelar</button></span></div>' : '') + '</div>';
     var PR = presupuesto();
     if (PR && yo() === 'esteban.delacruz') h += '<div class="avl-pres">' + esc(PR.linea) + ' <button type="button" class="link" id="avAvance">' + (PR.apagado ? 'Prender el avance' : 'Apagar el avance') + '</button></div>';
     if (!av.ciudad) h += '<div class="avl-ciu"><b>Ciudad del proyecto' + (x ? ': ' + esc(CI.nombre(x)) + ' (sin confirmar)' : '') + '</b> Sin ella no se buscan precios: tiendas, fletes y viáticos se miden contra ella.' +
@@ -734,6 +759,13 @@
     if ($('#avAbrir')) $('#avAbrir').onclick = function () { abrirEditor(av.machote); };
     if ($('#avCerrarAn')) $('#avCerrarAn').onclick = function () { if (confirm('¿Cerrar el análisis? El machote vigente queda congelado y el agente deja de moverlo.')) mandar(BOTON_CIERRE); };
     if ($('#avAvance')) $('#avAvance').onclick = function () { mandar(PR && PR.apagado ? 'prende el avance' : 'apaga el avance'); };
+    if ($('#avPausar')) $('#avPausar').onclick = function () { pedirRazonAg('pausa'); };
+    if ($('#avReabrir')) $('#avReabrir').onclick = function () { pedirRazonAg('reabre'); };
+    if ($('#avReanudar')) $('#avReanudar').onclick = function (e) { e.stopPropagation(); mandar(FRASE_REANUDA); };
+    if ($('#avRazonOk')) $('#avRazonOk').onclick = mandarRazonAg;
+    if ($('#avRazonNo')) $('#avRazonNo').onclick = function () { ST.razonAg = null; ST.razonErr = ''; pintarFranja(); armarCierre(); };
+    if ($('#avRazon')) $('#avRazon').oninput = function () { if (ST.razonErr) { ST.razonErr = ''; var m = $('.avl-razon .nota.mal'); if (m) m.remove(); } };
+    if ($('#avRazon')) $('#avRazon').onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); mandarRazonAg(); } else if (e.key === 'Escape') { ST.razonAg = null; pintarFranja(); } };
   }
   /** V1.45 · el renglón de precios del detalle de la franja: con precio, % de referencia, alertas N3 y de sensatez. */
   function preciosFranja(P, sig) {
@@ -961,6 +993,10 @@
       (A.length ? '<hr>' : '') +
       ((ST.sel || {}).menu ? '' : '<button data-a="detalles">' + ico('info', 's') + '<span>Detalles y línea de tiempo</span></button>') +
       // V1.47 (#4 Parte H) · el análisis lo cierra SOLO el dueño (o Esteban), de forma explícita; el botón está aunque no llegue al 100 %.
+      // V1.47.1 · pausa del agente en este caso (con razón), reanudar y reabrir el análisis: dueño o Esteban.
+      (abierta && c.id && mia && !analisisCerrado() ? (analisis() && analisis().pausa ? '<button data-a="reanuda_agente">' + ico('info', 's') + '<span>Reanudar al agente<small>En pausa desde ' + esc(horaDe(analisis().pausa.desde)) + ': «' + esc(analisis().pausa.razon) + '»</small></span></button>'
+        : '<button data-a="pausa_agente">' + ico('info', 's') + '<span>Pausar al agente<small>Con razón: deja de mover el caso por su cuenta; sí contesta lo que pidas</small></span></button>') : '') +
+      (abierta && c.id && mia && analisisCerrado() ? '<button data-a="reabre_analisis">' + ico('candado', 's') + '<span>Reabrir el análisis<small>Con razón: guarda la versión congelada y vuelve a trabajar</small></span></button>' : '') +
       (abierta && c.id && mia && !analisisCerrado() ? '<button data-a="cierra_analisis">' + ico('candado', 's') + '<span>' + esc(BOTON_CIERRE) + '<small>Congela el machote vigente; el agente deja de moverlo</small></span></button>' : '') +
       // V1.47 (#4 Parte T) · el interruptor del modo avance, solo para Esteban.
       (yo() === 'esteban.delacruz' && c.id ? '<button data-a="avance_toggle">' + ico('info', 's') + '<span>' + (presupuesto() && presupuesto().apagado ? 'Prender el avance' : 'Apagar el avance') +
@@ -975,6 +1011,9 @@
       if (a === 'disparo') return confirmarDisparo(md);
       if (a === 'falta') return queFalta(null);
       if (a === 'cierra_analisis') return mandar(BOTON_CIERRE);
+      if (a === 'pausa_agente') return pedirRazonAg('pausa');
+      if (a === 'reabre_analisis') return pedirRazonAg('reabre');
+      if (a === 'reanuda_agente') return mandar(FRASE_REANUDA);
       if (a === 'avance_toggle') return mandar(presupuesto() && presupuesto().apagado ? 'prende el avance' : 'apaga el avance');
       if (a === 'ciudad') return cambiarCiudad();
       if (a === 'detalles') return menuSesion();
