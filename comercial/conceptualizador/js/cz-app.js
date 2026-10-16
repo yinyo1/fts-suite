@@ -41,7 +41,20 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.48';
+  var VERSION = 'V1.49';
+  /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
+   * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
+   * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
+  function partirTranscripcion(t) {
+    var s = String(t || ''), m = s.match(/\n\n— (Traducción|Translation|Tradução) \(([^)]*)\) —\n([\s\S]*)$/);
+    var orig = m ? s.slice(0, m.index) : s, dud = /^⚠ Transcripción dudosa: /.test(orig);
+    return { original: orig.replace(/^⚠ Transcripción dudosa: /, ''), dudosa: dud, traduccion: m ? { titulo: m[1] + ' (' + m[2] + ')', texto: m[3] } : null };
+  }
+  function transcripcionHtml(t) {
+    var x = partirTranscripcion(t);
+    return '<div class="trans' + (x.dudosa ? ' dud' : '') + '"><span class="et">' + (x.dudosa ? '⚠ Transcripción dudosa · no se tomó como instrucción' : 'Transcripción') + '</span>' + esc(x.original) + '</div>' +
+      (x.traduccion ? '<div class="trans trad"><span class="et">' + esc(x.traduccion.titulo) + '</span>' + esc(x.traduccion.texto) + '</div>' : '');
+  }
   // V1.46 (#4) · lo que contesta el motor a un «revisa» cuando no hay aviso pendiente (procesa.js, SIN_AVISO): no se pinta.
   var SIN_AVISO = 'Sin cambios pendientes en este caso.';
   /* V1.32 (0006) · empresa y moneda de la sesión: la base acepta estas tres claves. */
@@ -1287,7 +1300,7 @@
       '<span class="perilla" style="left:' + (f * 100) + '%"></span></div>' +
       '<div class="voz-pie"><span data-t="' + sk + '">' + dur(p ? pos : D) + '</span></div></div>' +
       '<button class="vel" data-vel="' + sk + '" aria-label="Velocidad">' + ST.rate + '×</button></div>';
-    if (a.transcripcion) h += '<div class="trans"><span class="et">Transcripción</span>' + esc(a.transcripcion) + '</div>';
+    if (a.transcripcion) h += transcripcionHtml(a.transcripcion);
     else if (!local) {
       // La base no guarda la falla (el vigía reintenta solo, hasta 30 min entre intentos, durante 2 días).
       var edad = Date.now() - new Date(a.created_at || Date.now());
@@ -1899,7 +1912,7 @@
     Object.keys(ST.borr).forEach(function (k) {
       var b = ST.borr[k]; if (!b.adjunto) return;
       var a = meta[b.adjunto];
-      if (a && a.transcripcion) { b.texto = (b.texto ? b.texto.replace(/\s+$/, '') + ' ' : '') + a.transcripcion.trim(); b.transcribiendo = false; b.voz = true; delete b.adjunto; }
+      if (a && a.transcripcion) { b.texto = (b.texto ? b.texto.replace(/\s+$/, '') + ' ' : '') + partirTranscripcion(a.transcripcion).original.trim(); b.transcribiendo = false; b.voz = true; delete b.adjunto; }
       else if (Date.now() - b.desde > 120000 && !b.tarda) { b.tarda = true; b.err = 'La transcripción está tardando: puedes escribirlo mientras.'; }
     });
     if (!navigator.onLine || !ST.hilo) return;
