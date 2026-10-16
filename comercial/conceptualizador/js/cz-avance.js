@@ -83,6 +83,10 @@
     else if (cmH && !c.orden_nombre) sig = { txt: 'Haz la cotización', acc: 'cotiza' };
     // Llegó al BOM y el motor todavía no ofreció el machote (casos de antes de V1.36): se le pide con el verbo del método.
     else if (mat.length && !cmH) sig = { txt: 'Armar el machote', acc: 'mandar', texto: 'Arma el machote' };
+    // V1.46 (#4) · con el motor trabajando en el caso (p. ej. el «revisa» que busca un aviso), no se ofrece «Haz la cotización»
+    // con lo que hay en pantalla: puede llegar una versión nueva del machote que hay que guardar primero.
+    if (sig && sig.acc === 'cotiza' && ((H && H.trabajos) || []).some(function (t) { return t.estado === 'pendiente' || t.estado === 'tomado'; }))
+      sig = { txt: 'Revisando si hay cambios…', espera: true };
     return { oferta: of, e: e, det: det, actual: actual, sig: sig, ciudad: ciudad, faltan: f, pendCot: pendCot, conjAb: conjAb, sinDec: sinDec, machote: cmH || null };
   }
 
