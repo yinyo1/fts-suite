@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.49';
+  var VERSION = 'V1.51';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -94,7 +94,9 @@
              // V1.42 · renglones reabiertos con «↺ Cambiar» (clave j:<id> o c:<id>) y permiso de Odoo
              reab: {}, permOdoo: null,
              // V1.43 · correcciones por voz que ya salieron a la cola (clave j:/c:/s:) y aceptación de referencias
-             vozCorr: {}, refAcepta: {} };
+             vozCorr: {}, refAcepta: {},
+             // V1.51 · lo plegado que la persona abrió (sobrevive al sondeo); por omisión todo arranca colapsado
+             plg: {} };
   try { var g = JSON.parse(sessionStorage.getItem('cz_sel') || 'null'); if (g && (g.id || g.local)) ST.sel = g; } catch (e) {}
 
   // ── iconos de línea (genéricos, los del prototipo) ─────────────────────
@@ -186,7 +188,16 @@
       else h += x ? '<div>' + x + '</div>' : '<div class="sp"></div>';
     });
     cierraTabla();
-    return h;
+    return plegarListas(h);
+  }
+  /** V1.51 · una lista del agente de más de 6 renglones va colapsada: «Ver 12 renglones». Las de 6 o menos, completas. */
+  function plegarListas(h) {
+    return h.replace(/(?:<div class="li">(?:(?!<\/div>).)*<\/div>){7,}/g, function (bloque) {
+      var n = (bloque.match(/<div class="li">/g) || []).length, id = 'l:' + hashCorto(bloque);
+      var primero = bloque.replace(/^<div class="li">((?:(?!<\/div>).)*)<\/div>[\s\S]*$/, '$1').replace(/<[^>]+>/g, '').replace(/^[•\d]+\s*/, '');
+      // `primero` ya viene escapado (md() escapa antes de armar las filas): solo se le quitan las etiquetas, no se vuelve a escapar.
+      return plegable(id, '≡', 'Ver ' + n + ' renglones', primero.slice(0, 70).replace(/&[a-z#0-9]*$/i, '') + (primero.length > 70 ? '…' : ''), bloque);
+    });
   }
   var ESTADOS = { abierto: ['abierta', 'abierta'], enviada: ['enviada', 'enviada'], cerrado: ['cerrada', 'cerrada'], archivado: ['archivada', 'archivada'], local: ['sin enviar', 'local'] };
   function chip(est) { var e = ESTADOS[est] || [est, 'abierta']; return '<span class="est ' + e[1] + '">' + e[0] + '</span>'; }
@@ -211,10 +222,21 @@
                ultima_actividad_at: new Date(l.creado).toISOString(), ultimo: null }; });
     return loc.concat(ST.casos.map(function (c) { return Object.assign({ id: c.id }, c); }));
   }
+  /* V1.51 · «Mis proyectos» por omisión (pedido de Esteban, 16-oct): la lista abre con los casos donde eres dueño o
+   * escribiste (`participa`, 0013; sin la 0013, el dueño). «Todos» muestra el resto a quien puede verlos (hoy el servidor
+   * enseña todos a todos; Esteban y los admins siempre). La elección se recuerda por usuario (ChatWA.misProyectos). */
+  function esMio(c) { return c.estado === 'local' || c.autor === yo() || c.participa === true; }
+  function mis() {
+    if (!G.ChatWA) return null;
+    if (!ST.mis || ST.misDe !== yo()) { ST.misDe = yo(); ST.mis = G.ChatWA.misProyectos({ claveUsuario: yo() || 'anon', esMio: esMio, puedeVerTodos: true, textoMios: 'Mis proyectos', textoTodos: 'Todos' }); }
+    return ST.mis;
+  }
   function sesionesVisibles() {
-    var b = ST.busca ? sinAcento(ST.busca) : '';
+    var b = ST.busca ? sinAcento(ST.busca) : '', MP = mis();
     var L = todasLasSesiones().filter(function (c) {
       if (ST.archivadas !== archivada(c)) return false;
+      if (MP && MP.modo() === 'mios' && !esMio(c)) return false;
+      if (ST.meToca && !(Number(c.acciones) > 0 && c.puede_editar !== false)) return false;   // V1.51 · barra «Me toca»
       if (!deSesion(c)) return false;
       if (b && sinAcento((c.titulo || '') + ' ' + (c.cliente || '')).indexOf(b) < 0) return false;
       if (ST.archivadas) return true;
@@ -231,8 +253,9 @@
   }
   function pintarLista() {
     var L = sesionesVisibles(), sel = ST.sel || {}, todas = todasLasSesiones();
-    var nArch = todas.filter(function (c) { return archivada(c) && deSesion(c); }).length;
-    var cuenta = function (f) { var F = F_ESTADO[f]; return todas.filter(function (c) { return !archivada(c) && deSesion(c) && (!F || F.indexOf(c.estado) >= 0); }).length; };
+    var MP = mis(), enMis = function (c) { return !MP || MP.modo() !== 'mios' || esMio(c); };
+    var nArch = todas.filter(function (c) { return archivada(c) && deSesion(c) && enMis(c); }).length;
+    var cuenta = function (f) { var F = F_ESTADO[f]; return todas.filter(function (c) { return !archivada(c) && deSesion(c) && enMis(c) && (!F || F.indexOf(c.estado) >= 0); }).length; };
     var foco = document.activeElement && document.activeElement.id === 'bBusca' ? document.activeElement.selectionStart : null;
     var h = '<div class="cab">';
     if (ST.archivadas) {
@@ -248,8 +271,10 @@
     h += '</div>';
     // 1.7 · el filtro por usuario va PRIMERO y como desplegable (a 380 px una fila de chips se salía).
     var gu = ST.usuario !== 'todos' ? { n: nombreCorto(ST.usuario), c: color(ST.usuario) } : null;
-    h += '<div class="chips filtros" aria-label="Filtros"><button class="chip' + (gu ? ' on' : '') + '" id="bUsr" aria-haspopup="menu">' +
-      (gu ? '<span class="ini" style="background:' + gu.c + '">' + esc(gu.n[0]) + '</span>' + esc(gu.n) : ico('usuario', 'xs') + 'Todos') + ico('abajo', 'xs') + '</button><span class="sep"></span>';
+    var vivas = todas.filter(function (c) { return !archivada(c); });
+    h += '<div class="chips filtros" aria-label="Filtros">' + (MP && !ST.archivadas ? MP.chipsHtml(MP.contar(vivas), { sinEnvoltura: true }) + '<span class="sep"></span>' : '') +
+      '<button class="chip' + (gu ? ' on' : '') + '" id="bUsr" aria-haspopup="menu">' +
+      (gu ? '<span class="ini" style="background:' + gu.c + '">' + esc(gu.n[0]) + '</span>' + esc(gu.n) : ico('usuario', 'xs') + 'Personas') + ico('abajo', 'xs') + '</button><span class="sep"></span>';   // V1.51: «Todos» ya es el chip de Mis proyectos
     if (!ST.archivadas) h += [['vivas', 'En curso'], ['cerradas', 'Cerradas'], ['todas', 'Todas']].map(function (f) {
       return '<button class="chip' + (ST.filtro === f[0] ? ' on' : '') + '" data-f="' + f[0] + '">' + f[1] + ' <b>' + cuenta(f[0]) + '</b></button>'; }).join('');
     h += '</div><div class="scroll">';
@@ -265,16 +290,22 @@
       var pre = !u ? '' : (u.rol === 'usuario' ? '<span class="tk" title="En el servidor">' + palomita(false) + '</span>' : '') +
         (u.adjuntos && !u.texto ? ico('clip', 'xs') : '');
       var nAcc = Number(c.acciones) || 0;
+      // V1.51 · H · en la fila, como WhatsApp: «🤖 escribiendo…» / «Richard está escribiendo…» en vez de la vista previa.
+      var ef = (Object.prototype.hasOwnProperty.call(c, 'agente') && G.ChatWA) ? G.ChatWA.escrituraFilaHtml(estadoDelServidor(c.agente, c.escriben)) : '';
       h += '<div class="ses' + (on ? ' on' : '') + '" data-id="' + esc(c.id || '') + '" data-local="' + esc(c.local || '') + '" role="button" tabindex="0">' +
         '<div class="av" style="background:' + color(c.titulo) + '">' + esc(iniciales(c.cliente || c.titulo)) + '</div>' +
         '<div class="tx"><div class="t"><span class="n">' + esc(c.titulo) + '</span><span class="h' + (nAcc ? ' nuevo' : '') + '">' + esc(corto((u && u.created_at) || c.ultima_actividad_at)) + '</span></div>' +
-        '<div class="u">' + pre + '<span class="p">' + (u && u.rol === 'sistema' ? '⚙ ' : '') + esc(prev) + '</span><span class="meta">' +
+        '<div class="u">' + (ef ? '<span class="p">' + ef + '</span>' : pre + '<span class="p">' + (u && u.rol === 'sistema' ? '⚙ ' : '') + esc(prev) + '</span>') + '<span class="meta">' +
         (c.estado === 'enviada' ? '<span class="est enviada">enviada</span>' : c.estado === 'cerrado' ? '<span class="est cerrada">cerrada</span>' :
          c.estado === 'local' ? '<span class="est local">sin enviar</span>' : '') +
         (c.demo ? '<span class="chip-prueba">PRUEBA</span>' : '') +
         (ST.usuario === 'todos' && c.autor ? '<span class="quien-ses">' + esc(nombreCorto(c.autor, c.autor_nombre)) + '</span>' : '') +
         (c.fijado ? '<span title="Fijada arriba (solo en tu lista)" aria-label="Fijada">' + ico('fijar', 'xs') + '</span>' : '') +
-        (nAcc ? '<span class="badge" title="Botones esperando tu decisión">' + nAcc + '</span>' : '') + '</span></div></div>' +
+        // V1.51 · A · globitos: verde = mensajes del agente sin leer; ámbar con ⏳ = decisiones que te tocan (tus casos).
+        (G.ChatWA ? G.ChatWA.globitos({ sinLeer: Number(c.sin_leer) || 0, teToca: c.puede_editar === false ? 0 : nAcc,
+          explicacion: { sinLeer: function (n) { return n + ' mensaje' + (n === 1 ? '' : 's') + ' del agente que no has abierto'; },
+            teToca: function (n) { return n + ' decisi' + (n === 1 ? 'ón' : 'ones') + ' esperando tu clic (conjeturas, conceptos o botones)'; } } })
+          : (nAcc ? '<span class="badge" title="Botones esperando tu decisión">' + nAcc + '</span>' : '')) + '</span></div></div>' +
         '<button class="mas" data-mas="1" aria-label="Opciones de la sesión">' + ico('mas', 's') + '</button></div>';
     });
     h += '<p class="pie">Una sesión por cotización · <a href="#" id="bAprendio">Lo que aprendió</a> · ' + VERSION + '</p></div>';
@@ -297,6 +328,7 @@
       if (foco !== null) { bi.focus(); bi.setSelectionRange(foco, foco); }
     }
     $$('#lista [data-f]').forEach(function (b) { b.onclick = function () { ST.filtro = b.dataset.f; pintarLista(); }; });
+    $$('#lista [data-chwa-mis]').forEach(function (b) { b.onclick = function () { mis().poner(b.dataset.chwaMis); pintarLista(); }; });
     $$('#lista .ses').forEach(enlazarTarjeta);
   }
   /** Tocar abre; mantener presionado (500 ms) o el ⋮ abre la hoja de la sesión. */
@@ -304,7 +336,7 @@
     var t = null, largo = false, x0 = 0, y0 = 0;
     var sel = function () { return { id: el.dataset.id || null, local: el.dataset.local || null }; };
     el.addEventListener('pointerdown', function (e) {
-      if (e.target.closest('[data-mas]')) return;
+      if (e.target.closest('[data-mas]') || e.target.closest('[data-chwa-tip]')) return;   // V1.51 · el globito explica lo suyo
       largo = false; x0 = e.clientX; y0 = e.clientY; el.classList.add('presion');
       t = setTimeout(function () { largo = true; el.classList.remove('presion'); try { if (navigator.vibrate) navigator.vibrate(18); } catch (er) {} hojaSesion(sel()); }, 500);
     });
@@ -363,10 +395,63 @@
     var v = velo(h, true);
     $$('[data-a]', v).forEach(function (b) { b.onclick = function () { cerrarVelo(); hacerSesion(b.dataset.a, c); }; });
   }
+  /* ── V1.51 · E · idioma de las respuestas en el perfil (prototipo aprobado, look-whatsapp.html → Ajustes) ──────────
+   * El agente ya respeta la preferencia de cada persona (motor: «contéstame en inglés», V1.50 pedido E, sin modelo).
+   * El selector manda esa misma frase al caso abierto (o al más reciente tuyo): así la preferencia vive en el motor, para
+   * todos tus casos, y no en este teléfono. Aquí solo se recuerda lo último que elegiste, para pintar el selector. */
+  var IDIOMAS = { es: ['Español', 'contéstame en español'], en: ['English', 'contéstame en inglés'], pt: ['Português', 'contéstame en portugués'] };
+  var IDI_KEY = function () { return 'cz_idioma:' + (yo() || 'anon'); };
+  function idiomaElegido() { try { var v = localStorage.getItem(IDI_KEY()); return IDIOMAS[v] ? v : 'es'; } catch (e) { return 'es'; } }
+  function casoParaIdioma() {
+    if (ST.sel && ST.sel.id) return ST.sel.id;
+    var m = ST.casos.filter(function (c) { return c.autor === yo() && !archivada(c); })[0] || ST.casos.filter(function (c) { return c.participa === true; })[0];
+    return m ? m.id : null;
+  }
+  function dlgIdioma() {
+    var v = idiomaElegido(), cid = casoParaIdioma();
+    modal('<h3>Idioma de las respuestas</h3><p class="sub">El agente te contesta en este idioma en todos tus casos. La cotización, el PDF y el correo al cliente siguen en el idioma del país del cliente.</p>' +
+      '<label class="lb" for="selIdioma">El agente me contesta en:</label><select id="selIdioma" class="sel-idioma">' +
+      Object.keys(IDIOMAS).map(function (k) { return '<option value="' + k + '"' + (k === v ? ' selected' : '') + '>' + IDIOMAS[k][0] + '</option>'; }).join('') + '</select>' +
+      (cid ? '<p class="nota">Se lo digo al agente con «' + esc(IDIOMAS[v][1]) + '» en ' + (ST.sel && ST.sel.id ? 'este chat' : 'tu caso más reciente') + '; te confirma en una línea.</p>'
+        : '<p class="nota mal">Abre una cotización primero: el cambio se le dice al agente en un chat.</p>') +
+      '<div class="acc der"><button class="boton" id="iNo">Cancelar</button><button class="boton si" id="iOk"' + (cid ? '' : ' disabled') + '>Guardar</button></div>');
+    var sel = $('#selIdioma');
+    sel.onchange = function () { var n = $('#modal .nota'); if (n && cid) n.textContent = 'Se lo digo al agente con «' + IDIOMAS[sel.value][1] + '» en ' + (ST.sel && ST.sel.id ? 'este chat' : 'tu caso más reciente') + '; te confirma en una línea.'; };
+    $('#iNo').onclick = cerrarModal;
+    $('#iOk').onclick = async function () {
+      var k = sel.value; this.disabled = true;
+      try { localStorage.setItem(IDI_KEY(), k); } catch (e) {}
+      await Q.encolar({ caso_id: cid }, IDIOMAS[k][1], [], undefined, null); cerrarModal();
+      toast('Listo: ' + IDIOMAS[k][0] + '. El agente te lo confirma en el chat.'); await refrescarSalida();
+    };
+  }
+  /* V1.51 · «Instalar app» y la barra inferior delgada (opcional, se apaga por persona): ChatWA del núcleo. */
+  function itemsApp() {
+    if (!G.ChatWA) return '';
+    var ins = G.ChatWA.itemInstalar(), vb = G.ChatWA.barraVisible(yo() || 'anon');
+    return (ins ? '<button data-a="app_instalar">' + ico('bajar', 's') + '<span>Instalar app<small>En el inicio del teléfono o de la compu</small></span></button>' : '') +
+      '<button data-a="app_barra">' + ico('info', 's') + '<span>' + (vb ? 'Ocultar' : 'Mostrar') + ' barra inferior<small>Cotizaciones · Me toca · Machotes</small></span></button>';
+  }
+  function accionApp(a) {
+    if (a === 'app_instalar') { G.ChatWA.instalar.pedir({}); return true; }
+    if (a === 'app_barra') { G.ChatWA.ponBarra(yo() || 'anon', !G.ChatWA.barraVisible(yo() || 'anon')); return true; }
+    return false;
+  }
+  function montarBarra() {
+    if (!G.ChatWA || ST.barra) return;
+    ST.barra = G.ChatWA.barra({ claveUsuario: yo() || 'anon', apagable: true, activa: 'cot', etiqueta: 'Secciones del conceptualizador', items: [
+      { id: 'cot', texto: 'Cotizaciones', al: function () { ST.meToca = false; volverALista(); pintarLista(); } },
+      { id: 'toca', texto: 'Me toca', al: function () { ST.meToca = true; volverALista(); pintarLista(); } },
+      { id: 'mach', texto: 'Machotes', al: function () { location.href = '../machote/index.html'; } },
+      { id: 'apr', texto: 'Aprendió', al: function () { verAprendio(); } }] });
+    var app = $('#app'); app.parentNode.insertBefore(ST.barra, app.nextSibling); document.body.classList.add('con-barra');
+  }
+  function itemIdioma() { return '<button data-a="idioma">' + ico('info', 's') + '<span>Idioma de las respuestas<small>' + IDIOMAS[idiomaElegido()][0] + ' · en todos tus casos</small></span></button>'; }
   function menuLista(btn) {
     // V1.41 · Permisos, Recordatorios, No molestar y (admins) Avisos del equipo: los pone cz-push.js.
-    var v = enMenu(btn, '<button data-a="aprendio">' + ico('libro', 's') + '<span>Lo que aprendió</span></button>' + (G.CzPush ? G.CzPush.menuHtml('lista') : ''));
-    $$('[data-a]', v).forEach(function (b) { b.onclick = function () { cerrarVelo(); var a = b.dataset.a; if (a.indexOf('push:') === 0) return G.CzPush.accion(a.slice(5)); verAprendio(); }; });
+    var v = enMenu(btn, '<button data-a="aprendio">' + ico('libro', 's') + '<span>Lo que aprendió</span></button>' + itemIdioma() + itemsApp() + (G.CzPush ? G.CzPush.menuHtml('lista') : ''));
+    $$('[data-a]', v).forEach(function (b) { b.onclick = function () { cerrarVelo(); var a = b.dataset.a; if (a.indexOf('push:') === 0) return G.CzPush.accion(a.slice(5)); if (a === 'idioma') return dlgIdioma();
+      if (accionApp(a)) return; verAprendio(); }; });
   }
   function menuUsuario(btn) {
     var L = [{ actor: 'todos', n: 'Todos' }].concat(personas());
@@ -854,8 +939,9 @@
   function rubEnviado(id) { var e = (ST.rubEnv || {})[id], u = ST.hilo && ST.hilo.ultima; return e && (!u || u.trabajo_id === e.base) ? e : null; }
   function tarjetaRubros(R) {
     var P = G.CzAvance.precios(ST.hilo), cerr = R.lista.filter(function (r) { return r.estado === 'cerrado'; }).length;
-    var h = '<div class="carta rub-carta"><h4>Resumen por rubro para confirmar <span class="rub-tot">' + (P ? esc('Rubros ' + cerr + '/' + R.lista.length + ' · ' + G.CzAvance.textoPrecios(P)) : 'Llevas ' + esc(R.total_pct) + ' %') + '</span></h4>' +
-      '<p class="nota">' + (P ? 'Rubros: cerrados de los que hay (el motor cierra solo el que ya no tiene nada abierto). Precios: aparte, del machote.' :
+    // V1.51 · colapsado por omisión: «Rubros 2/5 · 58 %» y el siguiente paso; se abre al tocarlo.
+    var sigR = (G.CzAvance.avance(ST.hilo) || {}).sig;
+    var h = '<p class="nota">Resumen por rubro para confirmar. ' + (P ? 'Rubros: cerrados de los que hay (el motor cierra solo el que ya no tiene nada abierto). Precios: aparte, del machote.' :
         R.con_bom ? 'Con BOM: % de renglones con precio; el total pesa cada rubro por su costo.' : 'Antes del BOM: preguntas contestadas y conceptos palomeados.') + ' Toca un rubro para cerrarlo.</p>';
     R.lista.forEach(function (r) {
       var d = G.CzAvance.delRubro(ST.hilo, r.id), env = rubEnviado(r.id), sub;
@@ -870,9 +956,33 @@
         (r.estado === 'cerrado' ? '<span class="rub-tag cerr">✓ cerrado</span>' : r.estado === 'espera' ? '<span class="rub-tag esp">en espera</span>' : '') + '</b><span class="rub-sub">' + esc(sub) + '</span>' + barraRubro(r) + '</span>' +
         '<span class="rub-pct">' + (r.estado === 'cerrado' ? '✓' : typeof r.pct === 'number' ? r.pct + ' %' : '') + '</span></button>';
     });
-    return h + '</div>';
+    var tit = 'Rubros ' + cerr + '/' + R.lista.length + ' · ' + (P ? G.CzAvance.textoPrecios(P) : 'Llevas ' + R.total_pct + ' %');
+    var hv = ST.hilo && ST.hilo.ultima && ST.hilo.ultima.created_at ? hora(ST.hilo.ultima.created_at) : '';
+    // V1.51 · B · la tarjeta de estado VIGENTE (prototipo aprobado: una sola, al final y colapsada; las anteriores, superadas).
+    return '<div class="carta rub-carta vigente" id="estadoVigente"><div class="vig-cab">Estado de la cotización <span class="vig">vigente' + (hv ? ' · ' + esc(hv) : '') + '</span></div>' +
+      plegable('rub', '%', '<span class="rub-tot">' + esc(tit) + '</span>', esc(sigR && sigR.txt ? 'Siguiente: ' + sigR.txt : 'Resumen por rubro para confirmar'), h) + '</div>';
   }
   function plural(n, uno, varios) { return n + ' ' + (n === 1 ? uno : varios); }
+  /* ── V1.51 · colapsados por omisión (prototipo aprobado: fts-conceptualizador prototipos/v150/colapsados.html) ──
+   * «Supuse esto», el resumen por rubro y cualquier lista del agente de más de 6 renglones arrancan colapsados, con un
+   * resumen de una línea. Lo que la persona abre se queda abierto aunque el sondeo repinte (ST.plg). */
+  function plegable(id, ic, titulo, sub, cuerpo, forzar) {
+    var ab = !!ST.plg[id] || !!forzar;
+    return '<div class="plg" data-plg="' + esc(id) + '"><button type="button" class="plg-res" data-plg-res="' + esc(id) + '" aria-expanded="' + ab + '">' +
+      '<span class="plg-ic" aria-hidden="true">' + ic + '</span><span class="plg-tx"><b>' + titulo + '</b>' + (sub ? '<span>' + sub + '</span>' : '') + '</span>' +
+      '<svg class="ico s chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>' +
+      '<div class="plg-cuerpo"' + (ab ? '' : ' hidden') + '>' + cuerpo + '</div></div>';
+  }
+  function hashCorto(t) { var n = 0; String(t).split('').forEach(function (c) { n = (n * 31 + c.charCodeAt(0)) % 2147483647; }); return n.toString(36); }
+  var RUB_CORTO = { mat: 'materiales', mec: 'mecánica', ele: 'eléctrico', sol: 'soldadura', pru: 'pruebas', fec: 'fechas', cua: 'cuadrilla' };
+  /** «Supuse 9 cosas» · «3 de materiales, 3 de mecánica y 3 más». */
+  function resumenSupuestos(L) {
+    var c = {}, orden; L.forEach(function (x) { var k = x.rubro || 'otro'; c[k] = (c[k] || 0) + 1; });
+    orden = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; });
+    var nom = function (k) { var r = G.CzAvance && rubroDe(k); return r ? String(r.nombre || '').toLowerCase() : (RUB_CORTO[k] || 'otros'); };
+    var dos = orden.slice(0, 2).map(function (k) { return c[k] + ' de ' + nom(k); }), resto = orden.slice(2).reduce(function (a, k) { return a + c[k]; }, 0);
+    return { t: 'Supuse ' + plural(L.length, 'cosa', 'cosas'), s: (orden.length === 1 && orden[0] === 'otro' ? '' : dos.join(', ') + (resto ? ' y ' + resto + ' más' : '') + ' · ') + 'toca para ver su fuente' };
+  }
   function abrirRubro(id) { if (!rubroDe(id)) return; ST.rubHoja = id; ST.rubPorque = false; pintarHojaRubro(); }
   function cerrarHojaRubro() { ST.rubHoja = null; var h = $('#rubHoja'); h.className = 'rub-velo'; h.innerHTML = ''; }
   function pintarHojaRubro() {
@@ -964,7 +1074,44 @@
    *  · «Ya tengo el levantamiento» antes del disparador: no. Lo que corre es guardar y transcribir.
    *  · Después de «Ya es todo» / «Ya terminé, cotiza»: sí, desde que el trabajo entra a la cola.
    *  · Acompañamiento (y sesiones sin modo): solo con un trabajo TOMADO por un motor. */
+  /* ── V1.51 · H · «escribiendo…» que no miente (pedido de Esteban, 16-oct 16:50; hallazgo: f56c71, trabajo 181 tomado 4 h) ──
+   * Lo decide el SERVIDOR (0013: `hilo.agente` con el tope del lease, y `hilo.escriben` para personas), releído en cada
+   * consulta; sin la 0013 se calcula aquí con la MISMA regla (ChatWA.estadoEscritura) sobre los trabajos que trae el hilo.
+   * Nunca de una marca local. agente = tomado con señal de menos de 10 min · detenido = tomado sin señal más de 10 min ·
+   * cola = solo pendientes · persona = alguien más tecleó en los últimos 8 s. */
+  var TOPE_MIN = 10;
+  function trabajosVivos() {
+    var H = ST.hilo; if (!H) return [];
+    var c = H.caso || {}, disp = c.disparado_at ? new Date(c.disparado_at).getTime() : null;
+    if (c.modo === 'levantamiento' && !disp) return (H.trabajos || []).filter(function (t) { return t.estado === 'tomado'; });
+    return (H.trabajos || []).filter(function (t) {
+      if (t.lote_de) return false;
+      if (t.estado === 'tomado') return true;
+      if (t.estado === 'pendiente' && ST.qf && String(t.id) === String(ST.qf)) return true;
+      return t.estado === 'pendiente' && !!disp && new Date(t.created_at).getTime() >= disp - 5000;
+    });
+  }
+  function nombrePersona(actor) { return nombreCorto(actor); }   // (nombreDe ya existe: es el de los archivos)
+  function estadoDelServidor(ag, escriben) {
+    var gente = (escriben || []).filter(function (e) { return e && e.actor && e.actor !== yo(); });
+    if (ag && ag.estado === 'escribiendo') return { k: 'agente', texto: '🤖 El agente está escribiendo…', paso: ag.paso || null, trabajo_id: ag.trabajo_id };
+    if (ag && ag.estado === 'detenido') return { k: 'detenido', texto: 'Se detuvo', trabajo_id: ag.trabajo_id, desde: ag.senal || ag.desde };
+    if (ag && ag.estado === 'cola') return { k: 'cola', texto: '🤖 En la cola del agente', trabajo_id: ag.trabajo_id };
+    if (!gente.length || !G.ChatWA) return null;
+    return G.ChatWA.estadoEscritura({ trabajos: [], escriben: gente.map(function (e) { return { actor: e.actor, nombre: nombrePersona(e.actor), at: e.at }; }), yo: yo() });
+  }
+  function escrituraChat() {
+    var H = ST.hilo; if (!H || (ST.sel || {}).menu) return null;
+    if (Object.prototype.hasOwnProperty.call(ST, 'srvAgente')) return estadoDelServidor(ST.srvAgente, ST.srvEscriben);
+    if (!G.ChatWA) return null;
+    return G.ChatWA.estadoEscritura({ trabajos: trabajosVivos(), topeMin: TOPE_MIN, escriben: [], yo: yo() });
+  }
   function trabajoQueContesta() {
+    var e = escrituraChat(); if (!e || (e.k !== 'agente' && e.k !== 'cola')) return null;
+    var L0 = trabajosVivos(), x = L0.filter(function (t) { return String(t.id) === String(e.trabajo_id); })[0];
+    return x || L0.filter(function (t) { return t.estado === 'pendiente'; })[0] || null;
+  }
+  function trabajoQueContestaViejo() {
     var H = ST.hilo; if (!H) return null;
     var c = H.caso || {}, disp = c.disparado_at ? new Date(c.disparado_at).getTime() : null;
     if (c.modo === 'levantamiento' && !disp) return null;
@@ -976,6 +1123,13 @@
       return t.estado === 'pendiente' && !!disp && new Date(t.created_at).getTime() >= disp - 5000;
     });
     return L.filter(function (t) { return t.estado === 'tomado'; })[0] || L[0] || null;
+  }
+  /** «Reintentar»: pide al agente que retome el caso (evento ligero «revisa», como el de V1.46). No reescribe nada. */
+  async function reintentarAgente(tid) {
+    var c = (ST.sel || {}).id; if (!c) return;
+    var r = await C.evento({ caso_id: c, tipo: 'correccion', concepto: 'revisa', razon: 'Reintentar: el agente se detuvo' + (tid ? ' en el trabajo ' + tid : ''), datos: { revisa: true, reintenta: tid ? Number(tid) : null, version: VERSION } });
+    if (!r.ok) return aviso(r);
+    toast('Le pedí al agente que lo retome.'); await cargarHilo(); sondear(true);
   }
   function notasSinTexto() {
     return ((ST.hilo && ST.hilo.adjuntos) || []).filter(function (a) { return a.clase === 'audio' && !a.transcripcion && Date.now() - new Date(a.created_at) < 10 * 60000; }).length;
@@ -992,8 +1146,12 @@
     if (cTx) emp += cTx + ' · ';
     var sub = !navigator.onLine ? 'sin señal · lo que mandes se guarda en el teléfono' :
       emp + (!m ? 'conectando…' : m.modo === 'rapido' ? 'motor rápido · en línea' : 'respaldo · contesta en minutos');
-    var t = trabajoQueContesta();
-    if (t && navigator.onLine) { sub = 'escribiendo…' + (t.estado === 'tomado' && t.avance ? ' · ' + t.avance : ''); vivo = true; }
+    var t = trabajoQueContesta(), ew = navigator.onLine ? escrituraChat() : null, subHtml = null;
+    // V1.51 · C/H · arriba: «🤖 El agente está escribiendo…», «Montalvo está escribiendo…» o «⚠ El agente se detuvo · Reintentar».
+    if (ew && G.ChatWA) {
+      var ew2 = ew.k === 'agente' && ew.paso ? Object.assign({}, ew, { texto: ew.texto + ' · ' + ew.paso }) : ew;
+      subHtml = G.ChatWA.escrituraCabeceraHtml(ew2); vivo = ew.k === 'agente' || ew.k === 'persona';
+    } else if (t && navigator.onLine) { sub = 'escribiendo…' + (t.estado === 'tomado' && t.avance ? ' · ' + t.avance : ''); vivo = true; }
     else if (H && H.caso && H.caso.modo === 'levantamiento' && !H.caso.disparado_at && navigator.onLine) {
       var n = notasSinTexto();
       sub = 'guardando tu levantamiento' + (n ? ' · transcribiendo ' + n + ' nota' + (n > 1 ? 's' : '') : '');
@@ -1002,12 +1160,13 @@
     $('#ch').innerHTML = '<button class="btn-ic vuelve" id="bVuelve" aria-label="Volver">' + ico('atras') + '</button>' +
       '<div class="av" style="background:' + color(c.titulo) + '">' + esc(iniciales(c.cliente || c.titulo)) + '</div>' +
       '<div class="tx"><b><span>' + esc(c.titulo) + '</span>' + (((H && H.caso) || c).demo ? '<span class="chip-prueba" title="No enseña">PRUEBA</span>' : '') +
-      '<span class="ver" title="Build del módulo">' + VERSION + '</span></b><small class="' + (vivo ? 'vivo' : '') + '">' + esc(sub) + '</small></div>' +
+      '<span class="ver" title="Build del módulo">' + VERSION + '</span></b><small class="' + (vivo ? 'vivo' : '') + (subHtml ? ' esc-wa' : '') + '">' + (subHtml || esc(sub)) + '</small></div>' +
       // V1.48 · el globito del agente (prototipo aprobado, #4): su estado y, al tocarlo, explicación y botones.
       globitoHtml() +
       // V1.37 · «Ya terminé, cotiza» es el botón del siguiente paso (abajo) y «¿Qué me falta?» vive en ⋮ (decisión de Esteban, #4).
       '<button class="btn-ic" id="bMenu" aria-label="Opciones">' + ico('mas') + '</button>';
     $('#bVuelve').onclick = volverALista;
+    var br = $('#ch [data-chwa-reintentar]'); if (br) br.onclick = function () { reintentarAgente(br.getAttribute('data-chwa-trabajo')); };
     if ($('#bAgente')) $('#bAgente').onclick = function (e) { popAgente(e.currentTarget); };
     $('#bMenu').onclick = function (e) { menuChat(e.currentTarget); };
   }
@@ -1061,7 +1220,12 @@
       '<button data-a="empresa"' + (hayM || !mia ? ' disabled' : '') + '>' + ico('empresa', 's') + '<span>Empresa: ' + esc((EMPRESAS[claveEmpresa(cs)] || EMPRESAS.mx_mxn).n) +
         '<small>' + (hayM ? 'Ya hay machote: no se cambia aquí' : !mia ? 'Solo quien la abrió o Esteban' : 'Cambiar mientras no haya machote') + '</small></span></button>' +
       '<button data-a="prueba"' + (mia ? '' : ' disabled') + '>' + ico('prueba', 's') + '<span>' + (cs.demo ? 'Ya no es prueba (sí enseña)' : 'Es una prueba (no enseña)') + '<small>Solo quien la abrió o Esteban</small></span></button>' +
-      '<button data-a="pagina">' + ico('pagina', 's') + '<span>Ver en página<small>Lo considerado y el machote, con versiones</small></span></button><hr>' +
+      // V1.51 · F «Vista ejecutiva del proyecto» (antes «Ver en página»), G «Ir al machote» y el visor de la cotización.
+      (G.CzVista ? '<button data-a="vista">' + ico('pagina', 's') + '<span>Vista ejecutiva del proyecto<small>Costo, precio y margen por nivel, en vivo</small></span></button>' : '') +
+      (hayM ? '<button data-a="ir_machote">' + ico('docs', 's') + '<span>Ir al machote<small>' + esc((cs.machote_folio || 'Machote') + (verMachote() ? ' · versión ' + verMachote() : '')) + '</small></span></button>'
+        : '<button data-a="ir_machote" disabled aria-disabled="true">' + ico('docs', 's') + '<span>Ir al machote<small>Aún no hay machote</small></span></button>') +
+      (G.CzVisor && ultimoBorrador() ? '<button data-a="visor">' + ico('pagina', 's') + '<span>Ver cotización<small>Como la verá el cliente, desde Odoo</small></span></button>' : '') +
+      '<button data-a="pagina">' + ico('pagina', 's') + '<span>Lo considerado, con versiones<small>La vista en página de antes</small></span></button><hr>' +
       '<button data-a="archivos">' + ico('docs', 's') + '<span>Archivos, enlaces y docs.</span></button>' +
       '<button data-a="multimedia">' + ico('bajar', 's') + '<span>Descargar todo lo multimedia<small>Fotos, audios y PDFs en un ZIP</small></span></button>' +
       '<button data-a="exportar">' + ico('exportar', 's') + '<span>Exportar chat<small>JSON o TXT, con o sin multimedia</small></span></button><hr>') : '');
@@ -1079,6 +1243,7 @@
         '<small>' + esc(presupuesto() ? presupuesto().linea : 'El trabajo proactivo del motor (sin presupuesto leído todavía)') + '</small></span></button>' : '') +
       (abierta && c.id ? '<button data-a="cierre">' + ico('candado', 's') + '<span>Cerrar con /cierre</span></button>' : '') +
       (G.CzPush ? G.CzPush.menuHtml('chat') : '') +   // V1.41 · «Permisos y avisos» (cz-push.js)
+      itemIdioma() + itemsApp() +                     // V1.51 · E, «Instalar app» y la barra inferior
       '<button data-a="aprendio">' + ico('libro', 's') + '<span>Lo que aprendió</span></button>';
     var v = enMenu(btn, h);
     $$('[data-a]', v).forEach(function (b) { b.onclick = function () {
@@ -1094,10 +1259,15 @@
       if (a === 'ciudad') return cambiarCiudad();
       if (a === 'detalles') return menuSesion();
       if (a === 'aprendio') return verAprendio();
+      if (a === 'idioma') return dlgIdioma();
+      if (accionApp(a)) return;
       if (a === 'ficha') return hojaFicha();
       if (a === 'empresa') return dlgEmpresa();
       if (a === 'prueba') return marcarPrueba();
       if (a === 'pagina') return abrirPagina('considerado');
+      if (a === 'vista') return abrirVista();
+      if (a === 'visor') return abrirVisor();
+      if (a === 'ir_machote') { var hm = ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'hecha'; }).pop(); return abrirEditor(hm || null); }
       if (a === 'archivos') return abrirArchivos();
       if (a === 'multimedia') return bajarMultimedia();
       if (a === 'exportar') return dlgExportar();
@@ -1163,6 +1333,11 @@
         '<span class="hora">' + (m.escrito_at && Math.abs(new Date(m.created_at) - new Date(m.escrito_at)) > 120000 ? '<i title="Escrito sin señal; llegó ' + esc(hora(m.created_at)) + '">⟲</i> ' : '') +
         esc(hora(t)) + tk + '</span><div style="clear:both"></div>', m.id);
       if (mio && tr && tr.estado === 'error') aparte('<div class="sis"><span class="mal">El motor no pudo con este mensaje: ' + esc(tr.error || '') + '. Escríbelo de otra forma o vuelve a intentar.</span></div>');
+      // V1.51 · B · una respuesta vieja que traía estado («Llevas N %» o «Rubros n/m») queda SUPERADA: tachada, sin botones,
+      // con un toque que lleva al estado vigente. Nunca se decide sobre algo viejo.
+      if (!mio && H.ultima && m.trabajo_id && Number(H.ultima.trabajo_id) !== Number(m.trabajo_id) && /\bLlevas \d{1,3} %|\bRubros \d+\/\d+/.test(String(m.texto || '')))
+        aparte('<div class="fila el"><div class="carta superada" aria-disabled="true"><s>Estado de la cotización · ' + esc(hora(t)) + '</s>' +
+          '<button type="button" class="link" data-ir-vigente="1">Reemplazado por el estado de las ' + esc(hora(H.ultima.created_at)) + ' · ver el vigente</button></div></div>');
       if (!mio && m.trabajo_id) {
         // Primero lo que hay que confirmar, luego conceptos y machote (el orden del método).
         if (acc[m.trabajo_id]) aparte(tarjetaAcciones(acc[m.trabajo_id].filter(function (a) { return a.tipo === 'conjetura'; })));
@@ -1203,8 +1378,12 @@
         '<p>Vas en <b>' + esc(RT.vas) + '</b>.</p>' + (RT.falta.length ? '<p>Falta: ' + esc(RT.falta.join(', ')) + '.</p>' : '') +
         (rtSig ? '<p>Siguiente: <b>' + esc(rtSig) + '</b> (el botón de abajo).</p>' : '') + '</div>');
     }
-    var tq = trabajoQueContesta();
+    var tq = trabajoQueContesta(), ewc = escrituraChat();
     if (tq) h += escribeHtml(tq);
+    // V1.51 · H · se detuvo: aviso al dueño en el chat (como el trabajo 248), con la hora de la última señal.
+    else if (ewc && ewc.k === 'detenido') aparte('<div class="sis"><span class="mal">⚠ El agente se detuvo' + (ewc.desde ? ' (sin señal desde las ' + esc(hora(ewc.desde)) + ', más de ' + TOPE_MIN + ' min)' : '') +
+      '. No está escribiendo. Toca «Reintentar» arriba y lo retoma.</span></div>');
+    else if (ewc && ewc.k === 'persona') aparte('<div class="sis"><span>' + esc(ewc.texto) + '</span></div>');
     // ¿Llegaron respuestas del motor desde el último pintado? Si la persona está leyendo arriba, se cuentan
     // en el botón ⇊ y NO se le arrastra hacia abajo (6b).
     var nMotor = ((H && H.mensajes) || []).filter(function (m) { return m.rol !== 'usuario'; }).length;
@@ -1511,8 +1690,10 @@
       '<span class="nota">Contra la venta parecida ya escalada; más de 50 % arriba o abajo es alerta.</span></div>';
   }
   function tarjetaSupuestos(L) {
-    var puede = mia(ST.hilo && ST.hilo.caso);
-    return '<div class="carta sup-carta"><h4>💡 Supuse esto · con su fuente</h4><p class="nota">No te lo pregunto: lo deduje. Si algo no va, cámbialo.</p>' + L.map(function (x) {
+    var puede = mia(ST.hilo && ST.hilo.caso), rs = resumenSupuestos(L);
+    // V1.51 · colapsado por omisión; se abre solo si hay una corrección a medio escribir o enviándose.
+    var activo = L.some(function (x) { var kk = 's:' + x.id; return (ST.borr[kk] || {}).abierto || ST.env[kk] || ST.errBt[kk]; });
+    return '<div class="carta sup-carta">' + plegable('sup', '💡', esc(rs.t), esc(rs.s), '<p class="nota">No te lo pregunto: lo deduje. Si algo no va, cámbialo.</p>' + L.map(function (x) {
       var kk = 's:' + x.id, b = ST.borr[kk] || {}, e = ST.env[kk], vz = ST.vozCorr[kk];
       return '<div class="sup" data-sup="' + esc(x.id) + '"><div class="sup-t">' + (x.cambiado ? '<s>' + esc(x.texto) + '</s> ' : '') + esc(x.vigente || x.texto) +
         '<small> · ' + esc(x.fuente || '') + '</small></div>' +
@@ -1521,7 +1702,7 @@
          x.cambiado ? '<span class="hecho repl">↺ Cambiado ' + esc(VIA[x.via] || '') + '</span>' : '') +
         (b.abierto ? cajaRazon(kk, '¿Qué es lo correcto?', 'Cambiar', false) : (puede && !e && !vz ? '<div class="decide"><button type="button" class="cambiar" data-supc="' + esc(x.id) + '">↺ Cambiar</button></div>' : '')) +
         (ST.errBt[kk] && !b.abierto ? '<span class="err-bt">' + esc(ST.errBt[kk]) + '</span>' : '') + '</div>';
-    }).join('') + '</div>';
+    }).join(''), activo) + '</div>';
   }
 
   var ETIQ = { alta_contacto: 'Sí, dar de alta', crear_machote: 'Crear machote', crear_borrador: 'Crear borrador en Odoo',
@@ -1556,6 +1737,48 @@
     return '<p class="nota">' + esc(p.mensaje || 'Crear la cotización en Odoo todavía no está habilitado para tu usuario.') + '</p>';
   }
   /** Lo releído de Odoo (no el 200): renglón por renglón, la suma y los opcionales fuera del total. */
+  /* ── V1.51 · Frente 3: el visor de la cotización y el ciclo ver → corregir → misma orden ─────────────────────────────
+   * Lo que se ve sale de lo releído en Odoo (resultado de la acción) y de la cotización que mandó el motor (datos).
+   * Corregir (texto o voz) va al chat como mensaje normal: el motor lo toma como decreto (Frente 0, aprende con su
+   * alcance), arma la cotización otra vez y «Crear borrador» actualiza la MISMA orden; el visor enseña «Cambió: …». */
+  function verMachote() { var hm = ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'hecha'; }).pop(); return hm && hm.resultado && hm.resultado.version; }
+  function ultimoBorrador() { var b = ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return x.tipo === 'crear_borrador' && x.estado === 'hecha' && x.resultado && x.resultado.orden_id; }).pop(); return b ? b.id : null; }
+  function abrirVisor(version) {
+    if (!G.CzVisor || !ST.hilo) return;
+    G.CzVisor.abrir(ST.hilo, { version: version, alCorregir: function (modo, v) {
+      var so = (v && v.resultado && (v.resultado.orden_nombre || v.resultado.orden_id)) || 'la cotización';
+      if (modo === 'voz') { toast('Dicta la corrección a ' + so + ': lo que digas va al agente.'); return grabar(); }
+      var i = $('#in'); i.value = 'Corrección a la cotización ' + so + ': '; autoAlto(); pintarComposer(); i.focus(); i.setSelectionRange(i.value.length, i.value.length);
+    } });
+  }
+  /** Términos de la cotización en Odoo («<p><b>Alcance.</b> …») para la vista ejecutiva. */
+  function terminosDe(cot) {
+    var t = {}, n = String((cot && cot.nota_orden) || ''); if (!n) return null;
+    var K = { 'Alcance': 'alcance', 'Scope': 'alcance', 'Lugar': 'lugar', 'Location': 'lugar', 'Tiempo': 'tiempo', 'Time': 'tiempo', 'Moneda': 'moneda', 'Currency': 'moneda',
+      'Exclusiones': 'exclusiones', 'Exclusions': 'exclusiones', 'Supuestos': 'supuestos', 'Assumptions': 'supuestos' };
+    var limpio = function (x) { return x.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim(); };
+    n.split(/<p>/).forEach(function (bl) {
+      var m = bl.match(/^\s*<b>([^<.]+)\.<\/b>([\s\S]*)$/); if (!m || !K[m[1].trim()]) return;
+      var k = K[m[1].trim()], li = m[2].match(/<li>([\s\S]*?)<\/li>/g);
+      t[k] = li ? li.map(limpio) : limpio(m[2]);
+    });
+    var imp = cot.impuesto; if (imp) t.impuestos = imp.decision === 'aplicar' ? imp.tasa + ' %' : (imp.leyenda && (imp.leyenda.es || imp.leyenda.en)) || (imp.decision === 'proponer' ? 'Propuesto, sin dar de alta' : '—');
+    return t;
+  }
+  function abrirVista() {
+    if (!G.CzVista || !ST.hilo) return;
+    var H = ST.hilo, U = H.propuesta || H.ultima || {}, A = H.acciones || [], cs = H.caso || {};
+    var cm = A.filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'hecha'; }).pop(), br = A.filter(function (x) { return x.tipo === 'crear_borrador' && x.datos && x.datos.cotizacion; }).pop();
+    var datos = function () {
+      var H2 = ST.hilo, U2 = H2.propuesta || H2.ultima || {}, v = verUlt();
+      return { machote: U2.machote || null, caso: { titulo: cs.titulo, cliente: cs.cliente, machote_folio: (cm && cm.resultado && cm.resultado.folio) || cs.machote_folio || null, moneda: cs.moneda || (cs.pais === 'usa' ? 'USD' : 'MXN') },
+        hilo: H2, analisis: v.analisis || null, supuestos: v.supuestos || [], version: cm && cm.resultado && cm.resultado.version,
+        decisionesPendientes: (H2.acciones || []).filter(function (x) { return x.estado === 'propuesta'; }).map(function (x) { return { titulo: x.titulo }; }),
+        terminos: br ? terminosDe(br.datos.cotizacion) : null };
+    };
+    G.CzVista.abrir(Object.assign(datos(), { al: { actualizar: async function () { await cargarHilo(); return datos(); } } }));
+    void U;
+  }
   function releidoOdoo(r) {
     if (!r || !r.orden_id || !(r.renglones || []).length) return '';
     var din = function (n) { return '$' + Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
@@ -1620,7 +1843,9 @@
           '<span class="nota">El machote sí se crea: esos renglones van sin precio y marcados (N5).</span></div>' : '') +
         // V1.43 · qué parte del costo es referencia (N3/N4), con las alertas N3 arriba.
         ((a.tipo === 'crear_machote' && a.id === ultimoCm) || a.tipo === 'crear_borrador' ? referenciasHtml(d.referencias, a.tipo === 'crear_borrador' && a.estado === 'propuesta') + sensatezHtml(d.sensatez) : '') +
-        (a.estado === 'hecha' ? '<span class="hecho">✓ ' + esc(r.texto || 'Hecho') + '</span>' + releidoOdoo(r) :
+        (a.estado === 'hecha' ? '<span class="hecho">✓ ' + esc(r.texto || 'Hecho') + '</span>' + releidoOdoo(r) +
+          // V1.51 · Frente 3: «Ver cotización» bajo el último borrador (cz-visor.js, prototipo aprobado), con lo que cambió.
+          (a.tipo === 'crear_borrador' && G.CzVisor && r.orden_id && a.id === ultimoBorrador() ? G.CzVisor.boton(ST.hilo) : '') :
          a.estado === 'descartada' ? '<span class="hecho gris">' + ((r.reemplazada_por_trabajo) ? 'Reemplazado por una propuesta más nueva' : 'Descartado') + '</span>' :
          espera ? '<p class="nota">Contesta primero las suposiciones pendientes: el machote se arma con lo que confirmes.</p>' :
          viejo ? '<p class="nota">Es de la versión anterior del machote: primero toca «' + esc(cmPend.titulo) + '».</p>' :
@@ -1722,6 +1947,12 @@
 
   // ── eventos del chat ───────────────────────────────────────────────────
   function enlazarChat(M) {
+    $$('[data-ir-vigente]', M).forEach(function (b) { b.onclick = function () { var v = $('#estadoVigente') || $$('#msgs .fila.el .b.el').pop(); if (v) { v.scrollIntoView({ block: 'center', behavior: 'smooth' }); v.classList.add('destello'); setTimeout(function () { v.classList.remove('destello'); }, 1400); } }; });
+    $$('[data-cz-visor]', M).forEach(function (b) { b.onclick = function () { abrirVisor(b.dataset.czVisor || undefined); }; });   // V1.51
+    $$('[data-plg-res]', M).forEach(function (b) { b.onclick = function () {
+      var id = b.dataset.plgRes, ab = b.getAttribute('aria-expanded') !== 'true', c = b.parentNode.querySelector('.plg-cuerpo');
+      ST.plg[id] = ab; b.setAttribute('aria-expanded', ab); if (c) c.hidden = !ab;
+    }; });
     $$('[data-foto]', M).forEach(function (f) {
       var k = f.dataset.foto; cargarUrl(k).then(function (u) { if (u) f.style.backgroundImage = 'url(' + u + ')'; });
       f.onclick = function () { verFotos(f.dataset.grupo.split(','), k); };
@@ -2070,6 +2301,7 @@
     if (ST.franjaAbierta) abrirFranja(false);   // V1.40: mandar un mensaje esconde la franja
     var arch = ST.bandeja.slice(); ST.bandeja = [];
     $('#in').value = ''; autoAlto(); pintarComposer();
+    if (ST.tecleo) ST.tecleo.hasta = 0;   // V1.51 · H · ya mandó: deja de «escribir»
     var datos = null;
     if (resp !== null && resp !== undefined) {
       datos = { responde_a: resp };
@@ -2363,9 +2595,15 @@
     var s = ST.sel || {};
     if (!s.id && s.local) { var l = ST.locales.filter(function (x) { return x.local_id === s.local; })[0]; if (l && l.caso_id) { s.id = l.caso_id; guardarSel(); } }
     if (!s.id) { ST.hilo = null; pintarChat(); return; }
-    var r = await C.hilo(s.id); if (!r.ok) { aviso(r); return; }
+    // V1.51 · H · si la persona teclea (o acaba de dejar de teclear), la consulta lo dice; el servidor lo guarda 8 s.
+    var tec = ST.tecleo && ST.tecleo.caso === s.id ? (ST.tecleo.hasta > Date.now() ? true : ST.tecleo.avisado ? false : null) : null;
+    var r = await C.hilo(s.id, tec === null ? null : { escribiendo: tec }); if (!r.ok) { aviso(r); return; }
+    if (tec !== null && ST.tecleo) ST.tecleo.avisado = tec;
     if ((ST.sel || {}).id !== s.id) return;
     ST.motor = r.motor;
+    // El estado del agente y quién escribe: lo que dijo el servidor EN ESTA consulta (0013). Sin la 0013, no hay llave.
+    if (Object.prototype.hasOwnProperty.call(r, 'agente')) { ST.srvAgente = r.agente || null; ST.srvEscriben = r.escriben || []; }
+    else { delete ST.srvAgente; delete ST.srvEscriben; }
     var n = (r.hilo.mensajes || []).filter(function (m) { return m.rol !== 'usuario' && m.autor !== 'acuse'; }).length;
     if (ST.vistos && ST.vistos.id === s.id && n > ST.vistos.n) avisarLlegada();
     ST.vistos = { id: s.id, n: n };
@@ -2404,12 +2642,18 @@
     try { if (navigator.vibrate) navigator.vibrate(120); } catch (e) {}
     try { if (document.hidden && G.Notification && Notification.permission === 'granted') new Notification('Conceptualizador', { body: 'Llegó la respuesta.' }); } catch (e) {}
   }
-  function enCurso() { return (ST.hilo && (ST.hilo.trabajos || []).some(function (t) { return t.estado === 'pendiente' || t.estado === 'tomado'; })) ||
+  // V1.51 · H · consulta rápida mientras alguien escribe (el agente o una persona); un trabajo detenido ya no la acelera.
+  function enCurso() { var e = escrituraChat(); return (e && e.k !== 'detenido') || (ST.tecleo && ST.tecleo.hasta > Date.now()) ||
     Object.keys(ST.borr).some(function (k) { return ST.borr[k].adjunto; }); }
   /** Consulta sola: cada 2.5 s mientras el motor trabaja (se ve el paso), cada 20 s si no. */
   function sondear(ya) {
     clearTimeout(ST.sondeo);
-    ST.sondeoMs = ya ? 1200 : (enCurso() ? 2500 : 20000);
+    // V1.51 · H · la lista se relee cada 5 s mientras alguna fila diga «escribiendo» (el agente o una persona).
+    var listaViva = ST.casos.some(function (c) { return (c.agente && c.agente.estado === 'escribiendo') || (c.escriben || []).length; });
+    // Con la 0013 (el servidor dice si alguien escribe) el chat abierto se relee cada 10 s en reposo, para que el
+    // «escribiendo…» aparezca pronto; sin ella, cada 20 s como antes.
+    var chatVivo = ST.sel && ST.sel.id && Object.prototype.hasOwnProperty.call(ST, 'srvAgente');
+    ST.sondeoMs = ya ? 1200 : (enCurso() ? 2500 : listaViva ? 5000 : chatVivo ? 10000 : 20000);
     ST.sondeo = setTimeout(async function () {
       if (!document.hidden) {
         await cargarCasos(); pintarLista();
@@ -2425,6 +2669,7 @@
       cerrarHojaRubro(); ST.rubEnv = {}; ST.franjaAbierta = false;   // V1.40: la hoja y los envíos de rubro son del caso que se deja
     }
     ST.sel = sel; guardarSel(); ST.hilo = null; ST.vistos = null; ST.bandeja = []; ST.irAbajo = true;
+    delete ST.srvAgente; delete ST.srvEscriben; ST.tecleo = null;   // V1.51 · H · el estado del agente es de cada caso
     if (G.CzTabla) G.CzTabla.reiniciar();   // V1.48 · lo abierto y los filtros de la tabla y del BOM son de cada caso
     $('#app').classList.remove('en-menu'); $('#app').classList.add('ver-chat'); pintarLista(); pintarChat(); pintarComposer();
     await cargarHilo(); sondear();
@@ -2436,7 +2681,16 @@
   G.CzApp = { VERSION: VERSION, arrancar: async function () {
     if (G.__ftsSinAcceso) return;
     $('#lArch').insertAdjacentHTML('afterbegin', ico('clip')); $('#lCam').insertAdjacentHTML('afterbegin', ico('camara'));
-    $('#in').oninput = function () { autoAlto(); pintarComposer(); };
+    // V1.51 · núcleo (shared/chat/chat-wa.js): «Instalar app», la explicación de los globitos y la barra inferior opcional.
+    if (G.ChatWA) { G.ChatWA.instalar.escuchar(); G.ChatWA.enlazarGlobitos($('#lista')); montarBarra(); }
+    // V1.51 · H · tecleo: avisa al servidor como mucho una vez cada 4 s (ChatWA.tecleo) y deja de avisar 6 s después.
+    var TQ = G.ChatWA ? G.ChatWA.tecleo({ cadaMs: 4000, enviar: function () { var c = (ST.sel || {}).id; if (!c) return;
+      ST.tecleo = { caso: c, hasta: Date.now() + 6000, avisado: (ST.tecleo && ST.tecleo.caso === c) ? ST.tecleo.avisado : false }; cargarHilo(); } }) : null;
+    $('#in').oninput = function () { autoAlto(); pintarComposer();
+      var v = $('#in').value;
+      if (TQ && v.trim()) { TQ.tecla(v); if (ST.tecleo) ST.tecleo.hasta = Date.now() + 6000; }
+      else if (ST.tecleo) ST.tecleo.hasta = 0;   // lo borró todo: la siguiente consulta dice que ya no escribe
+    };
     /* V1.43 (#4 punto 9) · en compu: Enter envía; Shift+Enter y Alt+Enter hacen salto de línea. En teléfono (puntero
      * grueso) Enter sigue siendo salto de línea y se envía con el botón. */
     $('#in').onkeydown = function (e) {

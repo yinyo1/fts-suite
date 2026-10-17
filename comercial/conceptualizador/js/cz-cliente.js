@@ -123,7 +123,8 @@
     evento: function (campos) { return pedir('evento', campos); },
     accion: function (campos) { return pedir('accion', campos); },
     verAdjunto: function (id) { return pedir('ver_adjunto', { adjunto_id: id }, { timeout: TIMEOUT_SUBIR_MS }); },
-    hilo: function (casoId) { return pedir('hilo', { caso_id: casoId }); },
+    // V1.51 · H · `datos.escribiendo` (true/false) viaja firmado en la misma consulta del hilo: sin modo nuevo.
+    hilo: function (casoId, datos) { return pedir('hilo', datos ? { caso_id: casoId, datos: datos } : { caso_id: casoId }); },
     casos: function () { return pedir('casos'); },
     aprendio: function () { return pedir('aprendio'); },
     estado: function () { return pedir('estado'); },

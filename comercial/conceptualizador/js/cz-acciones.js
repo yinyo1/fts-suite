@@ -168,7 +168,10 @@
     return { orden_id: r.odoo_so_id, orden_nombre: r.odoo_so_name || null, estado: r.estado || null, partner: r.partner || null,
       lista_precios: r.lista_precios || null, moneda: r.moneda || null, subtotal: r.subtotal, total: r.total, vence_el: r.vence_el || null,
       renglones: base.map(function (x) { return { texto: x.texto, precio: x.precio }; }),
-      opcionales: (r.renglones || []).filter(function (x) { return x.tipo === 'line_note' && /no incluido en el total/.test(x.texto || ''); }).map(function (x) { return x.texto; }),
+      opcionales: (r.renglones || []).filter(function (x) { return x.tipo === 'line_note' && /no incluido en el total|not included in the total/.test(x.texto || ''); }).map(function (x) { return x.texto; }),
+      // V1.51 · lo que necesita el visor de la cotización (cz-visor.js): impuesto, nota y todos los renglones, releídos de Odoo.
+      impuesto: r.impuesto == null ? null : r.impuesto, nota_orden: r.nota_orden || null,
+      todos: (r.renglones || []).map(function (x) { return { tipo: x.tipo, texto: x.texto, precio: x.precio, opcional: !!x.opcional }; }),
       avisos: r.avisos || [] };
   }
   function textoOrden(o, que) {

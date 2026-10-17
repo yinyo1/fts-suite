@@ -1,6 +1,10 @@
 {
-  "version": "V1.49",
+  "version": "V1.51",
   "historial": [
+    {
+      "version": "V1.51",
+      "nota": "Lo aprobado de V1.50 (#4). «Ver cotización»: abre la cotización como la ve el cliente, leída de Odoo, con «Descargar PDF»; si la corriges por texto o voz, se actualiza la MISMA orden en borrador y arriba dice qué cambió. «Vista ejecutiva del proyecto» en el ⋮: costo, precio y margen en cada nivel, en vivo, con filtros que se combinan igual que el BOM. «Ir al machote» en el ⋮. «Supuse esto», los rubros y las listas largas del agente arrancan colapsados con un resumen de una línea. La lista abre en «Mis proyectos» (los tuyos y donde escribiste) y «Todos» muestra el resto; se recuerda lo último que elegiste. Globito verde = mensajes del agente sin leer; ámbar con ⏳ = decisiones que te tocan (deja el dedo encima para la explicación). El estado vigente de la cotización va titulado y los anteriores quedan tachados. «Escribiendo…» ya no se queda prendido: lo decide el servidor; si el agente lleva más de 10 minutos sin señal dice «se detuvo · Reintentar», y si otra persona redacta en ese chat ves «Montalvo está escribiendo…», también en la lista. En el ⋮: idioma de las respuestas, «Instalar app» y la barra inferior delgada (se puede ocultar)."
+    },
     {
       "version": "V1.49",
       "nota": "Notas de voz en cualquier idioma (#4). El conceptualizador ya reconoce solo en qué idioma hablaste (español, inglés o portugués), aunque el caso sea de otro país: una nota en español en un caso de Estados Unidos ya no sale como «otro idioma». Debajo de la nota ves lo que dijiste, tal cual; si el dueño del caso lee otro idioma, abajo sale la «Traducción», marcada como tal. Si la nota no se entendió bien, sale «⚠ Transcripción dudosa»: el conceptualizador no la toma como instrucción, te dice lo que oyó y te pregunta; puedes escribirlo, volver a grabarla o escribir «reintenta la nota»."
