@@ -41,6 +41,29 @@
     });
     return _doc;
   }
+  /* V1.52 · el motor de cálculo del machote, para el resumen de una versión que NO armó el conceptualizador (la de
+   * «lo que editaste a mano no se tocó»). Sin resumen la versión queda sin total ni moneda y la cotización en Odoo la
+   * rechaza (MONEDA_INVALIDA / MACHOTE_SIN_TOTAL): pasó con COT-0046 v4 del caso 21fec6 (17-oct, issue #5). */
+  var _calc = null;
+  function cargarCalc() {
+    if (G.MachoteCalc && G.MachoteCalc.calcular) return Promise.resolve(G.MachoteCalc);
+    if (_calc) return _calc;
+    _calc = new Promise(function (ok, mal) {
+      var s = document.createElement('script'); s.src = '../machote/js/calc.js?v=V1.53';
+      s.onload = function () { G.MachoteCalc && G.MachoteCalc.calcular ? ok(G.MachoteCalc) : (_calc = null, mal(new Error('sin MachoteCalc'))); };
+      s.onerror = function () { _calc = null; mal(new Error('No se pudo cargar el cálculo del machote.')); };
+      document.head.appendChild(s);
+    });
+    return _calc;
+  }
+  /** Resumen de una versión armada en la pantalla: total y moneda salen del MISMO cálculo que usa el editor del machote. */
+  async function resumenDe(doc) {
+    var r = { total: null, margen: isFinite(Number(doc.margen_deseado)) ? Number(doc.margen_deseado) : null, moneda: doc.moneda || null,
+      tc: isFinite(Number(doc.tc)) && Number(doc.tc) > 0 ? Number(doc.tc) : null, tc_fuente: doc.tc_fuente || null,
+      comision_fts: isFinite(Number(doc.comision_fts)) ? Number(doc.comision_fts) : null, comision_cliente: isFinite(Number(doc.comision_cliente)) ? Number(doc.comision_cliente) : 0 };
+    try { var c = (await cargarCalc()).calcular(doc); if (c && isFinite(Number(c.precio))) r.total = Math.round(Number(c.precio) * 100) / 100; } catch (e) {}
+    return r;
+  }
   /** Los bloques de la orden: una sección con su línea de precio, como las órdenes reales de FTS. */
   async function bloques(datos, caso) {
     var D = await cargarDocumento();
@@ -134,7 +157,7 @@
         (actual.secciones || []).some(function (sec) { return (sec.partidas || []).some(function (l) { return clave(sec, l) === k; }); }) || sinLugar.push(p.descripcion); });
     }
     var r = await C.suite('/webhook/comercial/machote-guardar', { id_local: fila.id_local, cliente_odoo_id: doc.cliente_id || null, version_leida: Number(fila.version) || 0,
-      estado: fila.estado || 'borrador', motivo: 'Actualizado desde el conceptualizador', documento: doc, resumen: intacto ? (d.resumen || null) : null });
+      estado: fila.estado || 'borrador', motivo: 'Actualizado desde el conceptualizador', documento: doc, resumen: intacto ? (d.resumen || null) : await resumenDe(doc) });
     if (!r.ok) return { ok: false, mensaje: r.error === 'CONFLICTO_DE_VERSION' ? 'Alguien guardó el machote en este momento. Vuelve a tocar «Actualizar machote».' : (r.mensaje || ('No se actualizó el machote: ' + (r.error || 'error'))) };
     var tp = textoPendientes({ n: Number(d.n_pendientes) || 0, lista: d.pendientes || [] });
     var folio = r.folio_txt || fila.folio_txt || u.folio || '';

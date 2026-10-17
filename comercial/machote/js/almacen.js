@@ -388,7 +388,11 @@
     try {
       if (G.MachoteCalc && G.MachoteCalc.calcular) {
         var c = G.MachoteCalc.calcular(m);
-        if (c && isFinite(Number(c.precio_venta))) total = Number(c.precio_venta);
+        // V1.53 · el precio del escenario elegido se llama `precio` en calc.js (`precio_venta` y `total` no existen): con
+        // los dos nombres viejos el total se guardaba VACÍO en 1,130 de 1,132 versiones del editor, y la cotización en Odoo
+        // las rechaza (MACHOTE_SIN_TOTAL). Medido el 17-oct-2026 en comercial.machote_version (fts-conceptualizador#5).
+        if (c && c.precio !== null && c.precio !== undefined && isFinite(Number(c.precio))) total = Math.round(Number(c.precio) * 100) / 100;
+        else if (c && isFinite(Number(c.precio_venta))) total = Number(c.precio_venta);
         else if (c && isFinite(Number(c.total))) total = Number(c.total);
       }
     } catch (e) { total = null; }
