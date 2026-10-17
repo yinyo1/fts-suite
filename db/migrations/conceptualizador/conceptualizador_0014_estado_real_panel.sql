@@ -73,7 +73,8 @@ ON CONFLICT (clave) DO NOTHING;
 CREATE OR REPLACE FUNCTION conceptualizador.interruptores_nombres() RETURNS text[]
 LANGUAGE sql IMMUTABLE AS $in15$
   SELECT ARRAY['estados_reales','cerrar_colgados','arranque_auto','saltar_sin_novedad','relevo_v152','aviso_motor_caido',
-               'experimento_contexto','tope_v152','moneda_decreto','margen_por_seccion','un_solo_dato','menu_hoja']
+               'experimento_contexto','tope_v152','moneda_decreto','margen_por_seccion','un_solo_dato','menu_hoja',
+               'robot_config_base']
 $in15$;
 
 -- La ÚNICA lectura de un interruptor en SQL: falta o vale distinto de '1' → apagado.
@@ -82,7 +83,7 @@ LANGUAGE sql STABLE AS $pr15$
   SELECT coalesce((SELECT btrim(c.valor) = '1' FROM conceptualizador.config c WHERE c.clave = 'interruptor:' || nombre), false)
 $pr15$;
 
--- {nombre: bool} de los 12, para casos/hilo y el panel.
+-- {nombre: bool} de los 13, para casos/hilo y el panel.
 CREATE OR REPLACE FUNCTION conceptualizador.interruptores() RETURNS jsonb
 LANGUAGE sql STABLE AS $is15$
   SELECT jsonb_object_agg(n, conceptualizador.prendido(n) ORDER BY o)
