@@ -146,16 +146,18 @@
   /** «Precios 46/46 (62 % referencia, 19 alertas)»: corto, para que quepa a 380 px. */
   /* V1.52 · UN solo dato: alertas, % de referencia y avance salen de CzIndicadores (copia generada de
    * fts-conceptualizador/herramientas/motor/indicadores.js), la misma cuenta que usa el mensaje del agente. */
-  var IN = G.CzIndicadores || null;
+  /* V1.52 §15 · detrás del interruptor `un_solo_dato` (lo da el servidor; cz-app.js expone G.CzInterruptor). Apagado,
+   * los textos salen como en V1.51. */
+  function inds() { return G.CzIndicadores && typeof G.CzInterruptor === 'function' && G.CzInterruptor('un_solo_dato') ? G.CzIndicadores : null; }
   /** Los tres números de este hilo, de la respuesta más nueva que los trae. */
   function indicadores(H) {
-    if (!IN) return null;
+    var IN = inds(); if (!IN) return null;
     var v = (H && H.ultima && H.ultima.verifica) || {};
     return IN.calcular({ precios: precios(H), rubros: rubros(H), analisis: v.analisis || null, referencias: v.referencias || null });
   }
   function textoPrecios(P) {
     if (!P || !P.total) return '';
-    if (IN) return IN.textoPrecios(IN.calcular({ precios: P }));
+    var IN = inds(); if (IN) return IN.textoPrecios(IN.calcular({ precios: P }));
     var d = [];
     if (P.pct) d.push(Math.round(P.pct) + ' % referencia');
     if (P.n3 || P.alertas) d.push(((P.n3 || 0) + (P.alertas || 0)) + ((P.n3 || 0) + (P.alertas || 0) === 1 ? ' alerta' : ' alertas'));

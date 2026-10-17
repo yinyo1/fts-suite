@@ -98,6 +98,14 @@
              // V1.51 · lo plegado que la persona abrió (sobrevive al sondeo); por omisión todo arranca colapsado
              plg: {} };
   try { var g = JSON.parse(sessionStorage.getItem('cz_sel') || 'null'); if (g && (g.id || g.local)) ST.sel = g; } catch (e) {}
+  /* V1.52 §15 (motor/DISENO-V152.md) · INTERRUPTORES: todo lo que cambia comportamiento entra APAGADO. El servidor manda
+   * `interruptores: {<nombre>: bool}` en `casos` y en `hilo` (lectura, no permiso); si el campo falta (servidor viejo),
+   * todo apagado. Apagado, la pantalla hace exactamente lo de V1.51. Los de la pantalla: estados_reales, un_solo_dato,
+   * menu_hoja y moneda_decreto. cz-avance, cz-acciones y cz-vista preguntan por G.CzInterruptor(nombre). */
+  ST.int = {};
+  function on(n) { return !!(ST.int && ST.int[n] === true); }
+  function ponInterruptores(r) { if (!r || !r.ok) return; var I = r.interruptores; ST.int = I && typeof I === 'object' && !Array.isArray(I) ? I : {}; }
+  G.CzInterruptor = on;
 
   // ── iconos de línea (genéricos, los del prototipo) ─────────────────────
   var P = {
@@ -382,7 +390,7 @@
   /* V1.52 · en teléfono el ⋮ es la hoja del núcleo (ChatWA.hoja: máximo 70 % de alto, barra para arrastrar, X, tocar fuera,
    * deslizar y Esc la cierran); en PC sigue siendo el popover anclado al botón. Devuelve el elemento donde están los botones. */
   function enMenu(btn, html, izq, titulo) {
-    if (G.ChatWA && G.ChatWA.hoja && !G.ChatWA.esPc()) {
+    if (on('menu_hoja') && G.ChatWA && G.ChatWA.hoja && !G.ChatWA.esPc()) {
       cerrarVelo();
       var hj = G.ChatWA.hoja({ titulo: titulo || 'Más opciones', html: '<div class="menu en-hoja" role="menu">' + html + '</div>', alCerrar: function () { if (ST.hojaMenu === hj) ST.hojaMenu = null; } });
       ST.hojaMenu = hj; return hj.el;
@@ -570,6 +578,33 @@
 
   /* El panel (solo panel_admin, lo decide el servidor): campos de §1 con su valor actual, gasto, razón obligatoria,
    * segunda confirmación cuando el servidor responde CONFIRMAR, y la bitácora (últimos 50). */
+  /* V1.52 §15 · los 12 interruptores (`interruptor:<nombre>`, '0' o '1'): todo entra apagado y se prende aquí, uno por uno,
+   * con la misma razón obligatoria, bitácora y segunda confirmación que el resto del panel. Apagado = lo de V1.51. */
+  var INTERRUPTORES = [
+    ['estados_reales', 'Estados reales', 'Barra con quién trabaja y el paso exacto, «Detener» y la configuración del robot; sin globito, «Reintentar» ni «se detuvo» (§4, §5, §8, §13).'],
+    ['cerrar_colgados', 'Cerrar trabajos colgados', 'Un trabajo sin señal tras agotar sus intentos se cierra con un mensaje en el caso y un correo a Esteban (§3).'],
+    ['arranque_auto', 'Arranque automático', 'El levantamiento arranca solo tras los minutos del panel sin nada nuevo (§6).'],
+    ['saltar_sin_novedad', 'Saltar pasadas sin nada nuevo', 'Una pasada del robot sin mensajes, adjuntos ni decretos nuevos no llega al modelo (§10).'],
+    ['relevo_v152', 'Relevo nuevo del motor', 'El vigía se releva con espera creciente, late «sin relevo» si no puede y lleva la profundidad de la cadena (§7).'],
+    ['aviso_motor_caido', 'Aviso de motor caído', 'Correo a Esteban si el motor principal se cae o se acerca al límite de relevos (§7).'],
+    ['experimento_contexto', 'Experimento de contexto', 'Sombra con carga incremental en el % de trabajos y con el techo semanal del panel (§11).'],
+    ['tope_v152', 'Tope por persona V1.52', '«Detener», «Dame los generales», el arranque y los reintentos no cuentan; el acuse dice de quién es el tope y a qué hora se reinicia (§2).'],
+    ['moneda_decreto', 'Moneda por decreto', 'Un decreto de moneda cambia el caso, la spec y la orden; la pantalla manda la moneda del caso a la cotización en Odoo (§12).'],
+    ['margen_por_seccion', 'Margen por sección por decreto', 'Precio de venta o margen por sección decretado por el dueño, solo en ese caso (§14).'],
+    ['un_solo_dato', 'Un solo dato', 'Alertas, % de referencia y avance salen de una sola cuenta en el mensaje, la tarjeta, la franja y la vista ejecutiva (§14).'],
+    ['menu_hoja', 'Menú ⋮ como hoja', 'En el teléfono el ⋮ sube como hoja desde abajo; en PC sigue siendo el menú de siempre (§14).'],
+    ['robot_config_base', 'Robot con la configuración del panel', 'Robot con la configuración del panel (horario, zona, topes, ritmo y freno). Apagado: usa la de hoy.']
+  ];
+  /** Los interruptores que conoce el servidor (valores `interruptor:*` y `interruptores`), en el orden de arriba; uno nuevo
+   * que la pantalla todavía no describe sale al final con su nombre, para que se pueda prender igual. */
+  function listaInterruptores(r) {
+    var V = r.valores || {}, n = {}, L = INTERRUPTORES.slice();
+    Object.keys(V).forEach(function (k) { if (k.indexOf('interruptor:') === 0) n[k.slice(12)] = 1; });
+    Object.keys(r.interruptores || {}).forEach(function (k) { n[k] = 1; });
+    var con = Object.keys(n).length ? L.filter(function (x) { return n[x[0]]; }) : L;
+    Object.keys(n).sort().forEach(function (k) { if (!L.some(function (x) { return x[0] === k; })) con.push([k, k.replace(/_/g, ' '), 'Sin descripción en esta pantalla todavía.']); });
+    return con;
+  }
   var PANEL = [
     ['Mensajes y sesiones', [['tope_mensajes_dia', 'Mensajes de persona al día', 'n'], ['tope_mensajes_dia:*', 'Tope de mensajes de', 'n'], ['tope_sesiones_dia', 'Sesiones nuevas al día', 'n']]],
     ['Robot asistente', [['robot_desde', 'Trabaja desde', 'h'], ['robot_hasta', 'Hasta', 'h'], ['robot_dias', 'Días (ISO, lunes = 1)', 't'], ['robot_zona', 'Zona horaria', 't'],
@@ -593,6 +628,12 @@
     var V = r.valores || {}, Gs = r.gasto || {}, L = r.limites || {}, B = r.bitacora || [];
     var campo = function (k, et, t) {
       var v = V[k] == null ? '' : String(V[k]), id = 'czk-' + k.replace(/[^a-z0-9]/gi, '_');
+      if (t === 'sw') {   // interruptor: '1' prendido; cualquier otra cosa (o falta) es apagado, como prendido() en la base
+        var p1 = v === '1';
+        return '<div class="czc-fila czc-int"><div class="czc-tx"><b>' + esc(et[0]) + '</b> <span class="czc-est' + (p1 ? ' on' : '') + '" data-est="' + esc(k) + '">' + (p1 ? 'prendido' : 'apagado') + '</span>' +
+          '<small>' + esc(et[1]) + '</small><small class="czc-cl">' + esc(k) + '</small></div>' +
+          '<button type="button" class="czc-sw' + (p1 ? ' on' : '') + '" id="' + id + '" data-k="' + esc(k) + '" data-base="' + (p1 ? '1' : '0') + '" value="' + (p1 ? '1' : '0') + '" role="switch" aria-checked="' + p1 + '" aria-label="' + esc(et[0]) + '"></button></div>';
+      }
       var inp = t === 's' ? '<select id="' + id + '" data-k="' + esc(k) + '">' + ['completo', 'experimento', 'incremental'].map(function (o) { return '<option' + (o === v ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select>' :
         '<input id="' + id + '" data-k="' + esc(k) + '" value="' + esc(v) + '"' + (t === 'n' ? ' inputmode="numeric"' : '') + (t === 'h' ? ' placeholder="HH:MM" inputmode="numeric"' : '') + ' autocomplete="off">';
       return '<label class="czc-campo" for="' + id + '"><span>' + esc(et) + '<small>' + esc(k) + '</small></span>' + inp + '</label>';
@@ -602,6 +643,9 @@
       '<div>Semana: <b>' + millones(Gs.semana) + '</b> de ' + millones(V.consumo_tope_semana) + ' ponderados</div>' + medidor(Number(Gs.semana) || 0, Number(V.consumo_tope_semana) || 0) +
       '<div class="czc-k">Experimento (sombra), aparte: ' + millones(Gs.experimento_semana) + ' de ' + millones(V.experimento_techo_semana) + ' esta semana.</div>' +
       (Gs.por_persona_hoy && Object.keys(Gs.por_persona_hoy).length ? '<div class="czc-k">Mensajes hoy: ' + Object.keys(Gs.por_persona_hoy).map(function (a) { return esc(nombreCorto(a)) + ' ' + Number(Gs.por_persona_hoy[a]); }).join(' · ') + '</div>' : '') + '</div>';
+    var INTS = listaInterruptores(r), nOn = INTS.filter(function (x) { return String(V['interruptor:' + x[0]]) === '1'; }).length;
+    h += '<h3>Interruptores · ' + nOn + ' de ' + INTS.length + ' prendidos</h3><p class="czc-k">Todo entró apagado: apagado hace lo de V1.51. Prende uno a la vez, con su razón; queda en la bitácora.</p><div class="czc-ints">' +
+      INTS.map(function (x) { return campo('interruptor:' + x[0], [x[1], x[2]], 'sw'); }).join('') + '</div>';
     PANEL.forEach(function (g) {
       h += '<h3>' + esc(g[0]) + '</h3><div class="czc-grupo">';
       g[1].forEach(function (f) {
@@ -624,7 +668,7 @@
     var E = hj.cuerpo, err = function (t) { var e = $('#czcErr', E); e.textContent = t; e.hidden = !t; };
     var guardar = async function (confirmar) {
       var cambios = {};
-      $$('[data-k]', E).forEach(function (i) { var k = i.dataset.k, v = String(i.value).trim(); if (v !== (V[k] == null ? '' : String(V[k]))) cambios[k] = v; });
+      $$('[data-k]', E).forEach(function (i) { var k = i.dataset.k, v = String(i.value).trim(), b0 = i.dataset.base != null ? i.dataset.base : (V[k] == null ? '' : String(V[k])); if (v !== b0) cambios[k] = v; });
       var rz = $('#czcRazonP', E).value.replace(/\s+/g, ' ').trim();
       if (!Object.keys(cambios).length) return err('No cambiaste ningún valor.');
       if (rz.length < 3 || rz.length > 200) { err('Escribe la razón del cambio (3 a 200 letras).'); return $('#czcRazonP', E).focus(); }
@@ -643,6 +687,10 @@
       dlgPanel('Guardado: ' + n + ' cambio' + (n === 1 ? '' : 's') + ' (' + Object.keys(cambios).join(', ') + ').');
     };
     $('#czcGuardar', E).onclick = function () { guardar(false); };
+    $$('.czc-sw[data-k]', E).forEach(function (b) { b.onclick = function () {
+      var v = b.value === '1' ? '0' : '1'; b.value = v; b.classList.toggle('on', v === '1'); b.setAttribute('aria-checked', String(v === '1'));
+      var e = $('[data-est="' + b.dataset.k + '"]', E); if (e) { e.textContent = (v === '1' ? 'prendido' : 'apagado') + (v !== b.dataset.base ? ' · sin guardar' : ''); e.classList.toggle('on', v === '1'); }
+    }; });
   }
   /** ¿Eres panel_admin? Lo dice el servidor (modo config) una vez al arrancar; NO_AUTORIZADO o servidor viejo → no. */
   async function revisarPanel() {
@@ -939,7 +987,8 @@
     el.style.display = 'flex';
     el.innerHTML = '<button id="bFijo" type="button" data-fijo="' + esc(sg.acc) + '"' + (sg.espera || e ? ' disabled' : '') + ' class="' + (sg.espera ? 'espera' : '') + '">' +
       // V1.52 · la pastilla gira solo con lo que la persona acaba de tocar (e) o con un proceso vivo en la base.
-      (e || (sg.espera && agenteTrabajando()) ? GIRO : ico(sg.espera ? 'reloj' : ic, 's')) + '<span class="fx">' + esc(e || sg.txt) + '</span></button>';
+      (!on('estados_reales') ? (sg.espera || e ? GIRO : ico(ic, 's')) :   // V1.51 (interruptor apagado)
+        e || (sg.espera && agenteTrabajando()) ? GIRO : ico(sg.espera ? 'reloj' : ic, 's')) +'<span class="fx">' + esc(e || sg.txt) + '</span></button>';
     var b = $('#bFijo');
     b.onclick = function () {
       if (sg.acc === 'ciudad') return cambiarCiudad();
@@ -1083,10 +1132,10 @@
   function ponLadoColapsado(v) { try { localStorage.setItem(LADO_KEY(), v ? '1' : '0'); } catch (e) {} var a = $('#app'); if (a) a.classList.toggle('lado-col', !!v); }
   /** V1.45 · el renglón de precios del detalle de la franja: con precio, % de referencia, alertas N3 y de sensatez. */
   /* V1.52 · el avance hacia el 100 de este hilo: el MISMO número del mensaje, la tarjeta, la vista y la lista (CzIndicadores). */
-  function indicHilo() { return G.CzAvance && G.CzAvance.indicadores ? G.CzAvance.indicadores(ST.hilo) : null; }
+  function indicHilo() { return on('un_solo_dato') && G.CzAvance && G.CzAvance.indicadores ? G.CzAvance.indicadores(ST.hilo) : null; }
   function pctAv() { var I = indicHilo(), AN = analisis(); if (I && I.avance_pct !== null) return I.avance_pct; return AN ? (AN.estado === 'cerrado' || AN.estado === 'listo' ? 100 : AN.pct) : null; }
   function preciosFranja(P, sig) {
-    var S = P.sensatez || [], IN = G.CzIndicadores, I = IN ? IN.calcular({ precios: P }) : null;
+    var S = P.sensatez || [], IN = on('un_solo_dato') ? G.CzIndicadores : null, I = IN ? IN.calcular({ precios: P }) : null;
     return '<div class="avl-precios"><b>Precios</b> ' + esc(P.con_precio + ' de ' + P.total + ' renglones con precio') +
       (I ? (I.referencia_pct ? ' · ' + esc(IN.textoReferencia(I)) : '') + (I.alertas.total ? ' · <span class="alerta">⚠ ' + esc(IN.textoAlertas(I)) + '</span>' : '') :
         (P.pct ? ' · ' + esc(P.pct + ' % del costo es referencia (N3/N4)') : '') + (P.n3 ? ' · <span class="alerta">⚠ ' + esc(P.n3 + (P.n3 === 1 ? ' alerta N3' : ' alertas N3')) + '</span>' : '')) +
@@ -1299,6 +1348,13 @@
   function agenteTrabajando() { return !!agenteVivo(ST.srvAgente); }
   function estadoDelServidor(ag, escriben) {
     var gente = (escriben || []).filter(function (e) { return e && e.actor && e.actor !== yo(); });
+    if (!on('estados_reales')) {   // V1.51 tal cual (interruptor apagado): «escribiendo» y «se detuvo» de la 0013
+      if (ag && ag.estado === 'escribiendo') return { k: 'agente', texto: '🤖 El agente está escribiendo…', paso: ag.paso || null, trabajo_id: ag.trabajo_id };
+      if (ag && ag.estado === 'detenido') return { k: 'detenido', texto: 'Se detuvo', trabajo_id: ag.trabajo_id, desde: ag.senal || ag.desde };
+      if (ag && ag.estado === 'cola') return { k: 'cola', texto: '🤖 En la cola del agente', trabajo_id: ag.trabajo_id };
+      if (!gente.length || !G.ChatWA) return null;
+      return G.ChatWA.estadoEscritura({ trabajos: [], escriben: gente.map(function (e) { return { actor: e.actor, nombre: nombrePersona(e.actor), at: e.at }; }), yo: yo() });
+    }
     var av = agenteVivo(ag);
     if (av) return { k: 'agente', texto: av.quien === 'robot' ? '🤖 El robot asistente está trabajando…' : '🤖 El agente está escribiendo…', paso: av.paso || null, trabajo_id: av.trabajo_id, quien: av.quien };
     if (ag && ag.estado === 'cola') return { k: 'cola', texto: '🤖 En la cola del agente', trabajo_id: ag.trabajo_id };
@@ -1311,7 +1367,7 @@
     if (!G.ChatWA) return null;
     // Servidor sin la 0013: la misma regla del núcleo, pero «se detuvo» ya no se pinta (V1.52).
     var e = G.ChatWA.estadoEscritura({ trabajos: trabajosVivos(), topeMin: TOPE_MIN, escriben: [], yo: yo() });
-    return e && e.k === 'detenido' ? null : e;
+    return e && e.k === 'detenido' && on('estados_reales') ? null : e;
   }
   function trabajoQueContesta() {
     var e = escrituraChat(); if (!e || (e.k !== 'agente' && e.k !== 'cola')) return null;
@@ -1331,6 +1387,13 @@
     });
     return L.filter(function (t) { return t.estado === 'tomado'; })[0] || L[0] || null;
   }
+  /** V1.51 (con `estados_reales` apagado) · «Reintentar»: pide al agente que retome el caso (evento ligero «revisa», como el de V1.46). No reescribe nada. */
+  async function reintentarAgente(tid) {
+    var c = (ST.sel || {}).id; if (!c) return;
+    var r = await C.evento({ caso_id: c, tipo: 'correccion', concepto: 'revisa', razon: 'Reintentar: el agente se detuvo' + (tid ? ' en el trabajo ' + tid : ''), datos: { revisa: true, reintenta: tid ? Number(tid) : null, version: VERSION } });
+    if (!r.ok) return aviso(r);
+    toast('Le pedí al agente que lo retome.'); await cargarHilo(); sondear(true);
+  }
   function notasSinTexto() {
     return ((ST.hilo && ST.hilo.adjuntos) || []).filter(function (a) { return a.clase === 'audio' && !a.transcripcion && Date.now() - new Date(a.created_at) < 10 * 60000; }).length;
   }
@@ -1344,22 +1407,44 @@
     // V1.34 (D89) · empresa · moneda · ciudad (o «ciudad por confirmar»). Con servidor viejo no se pinta ciudad.
     var cTx = (ST.sel || {}).menu ? '' : ciudadTxt((H && H.caso) || c);
     if (cTx) emp += cTx + ' · ';
-    // V1.52 §13 · si nadie escribe de verdad: empresa · ciudad, y nada más (sin «motor rápido», sin deducciones).
-    var sub = !navigator.onLine ? 'sin señal · lo que mandes se guarda en el teléfono' : emp.replace(/ · $/, '');
-    var ew = navigator.onLine ? escrituraChat() : null, subHtml = null;
-    // V1.52 · arriba «escribiendo…» SOLO con un proceso vivo en la base (o una persona tecleando, que dice el servidor).
-    if (ew && G.ChatWA && (ew.k === 'agente' || ew.k === 'persona')) {
-      var ew2 = ew.k === 'agente' && ew.paso ? Object.assign({}, ew, { texto: ew.texto + ' · ' + ew.paso }) : ew;
-      subHtml = G.ChatWA.escrituraCabeceraHtml(ew2); vivo = true;
+    var ER = on('estados_reales'), sub, ew, subHtml = null;
+    if (!ER) {   // V1.51 tal cual (interruptor apagado)
+      sub = !navigator.onLine ? 'sin señal · lo que mandes se guarda en el teléfono' :
+        emp + (!m ? 'conectando…' : m.modo === 'rapido' ? 'motor rápido · en línea' : 'respaldo · contesta en minutos');
+      var t = trabajoQueContesta(); ew = navigator.onLine ? escrituraChat() : null;
+      // V1.51 · C/H · arriba: «🤖 El agente está escribiendo…», «Montalvo está escribiendo…» o «⚠ El agente se detuvo · Reintentar».
+      if (ew && G.ChatWA) {
+        var ew1 = ew.k === 'agente' && ew.paso ? Object.assign({}, ew, { texto: ew.texto + ' · ' + ew.paso }) : ew;
+        subHtml = G.ChatWA.escrituraCabeceraHtml(ew1); vivo = ew.k === 'agente' || ew.k === 'persona';
+      } else if (t && navigator.onLine) { sub = 'escribiendo…' + (t.estado === 'tomado' && t.avance ? ' · ' + t.avance : ''); vivo = true; }
+      else if (H && H.caso && H.caso.modo === 'levantamiento' && !H.caso.disparado_at && navigator.onLine) {
+        var n = notasSinTexto();
+        sub = 'guardando tu levantamiento' + (n ? ' · transcribiendo ' + n + ' nota' + (n > 1 ? 's' : '') : '');
+      }
+    } else {
+      // V1.52 §13 · si nadie escribe de verdad: empresa · ciudad, y nada más (sin «motor rápido», sin deducciones).
+      sub = !navigator.onLine ? 'sin señal · lo que mandes se guarda en el teléfono' : emp.replace(/ · $/, '');
+      ew = navigator.onLine ? escrituraChat() : null;
+      // V1.52 · arriba «escribiendo…» SOLO con un proceso vivo en la base (o una persona tecleando, que dice el servidor).
+      if (ew && G.ChatWA && (ew.k === 'agente' || ew.k === 'persona')) {
+        var ew2 = ew.k === 'agente' && ew.paso ? Object.assign({}, ew, { texto: ew.texto + ' · ' + ew.paso }) : ew;
+        subHtml = G.ChatWA.escrituraCabeceraHtml(ew2); vivo = true;
+      }
     }
     if (c.id && archivada(c)) sub = 'archivada · ' + sub;
     $('#ch').innerHTML = '<button class="btn-ic vuelve" id="bVuelve" aria-label="Volver">' + ico('atras') + '</button>' +
       '<div class="av" style="background:' + color(c.titulo) + '">' + esc(iniciales(c.cliente || c.titulo)) + '</div>' +
       '<div class="tx"><b><span>' + esc(c.titulo) + '</span>' + (((H && H.caso) || c).demo ? '<span class="chip-prueba" title="No enseña">PRUEBA</span>' : '') +
       '<span class="ver" title="Build del módulo">' + VERSION + '</span></b><small class="' + (vivo ? 'vivo' : '') + (subHtml ? ' esc-wa' : '') + '">' + (subHtml || esc(sub)) + '</small></div>' +
+      // V1.48 · el globito del agente (prototipo aprobado, #4) — solo con `estados_reales` apagado (V1.51).
+      (ER ? '' : globitoHtml()) +
       // V1.37 · «Ya terminé, cotiza» es el botón del siguiente paso (abajo) y «¿Qué me falta?» vive en ⋮ (decisión de Esteban, #4).
       '<button class="btn-ic" id="bMenu" aria-label="Opciones">' + ico('mas') + '</button>';
     $('#bVuelve').onclick = volverALista;
+    if (!ER) {
+      var br = $('#ch [data-chwa-reintentar]'); if (br) br.onclick = function () { reintentarAgente(br.getAttribute('data-chwa-trabajo')); };
+      if ($('#bAgente')) $('#bAgente').onclick = function (e) { popAgente(e.currentTarget); };
+    }
     $('#bMenu').onclick = function (e) { menuChat(e.currentTarget); };
   }
   /* V1.52 §13 · barra de estado del núcleo (ChatWA.barraEstado): aparece solo con un proceso vivo en la base, dice quién
@@ -1367,6 +1452,7 @@
   function puedeDetener() { var c = (ST.hilo && ST.hilo.caso) || {}; return mia(c) || ST.admin === true || ST.panelAdmin === true; }
   function pintarEstado() {
     var box = $('#estAg'); if (!box || !G.ChatWA || !G.ChatWA.barraEstado) return;
+    if (!on('estados_reales')) { if (ST.barraEst) ST.barraEst.chwaPoner(null); return; }   // V1.51: no hay barra
     if (!ST.barraEst) {
       ST.barraEst = G.ChatWA.barraEstado({ textoSinPermiso: 'Solo el dueño del caso o Esteban pueden detenerlo.', hora: hora, alDetener: async function (a) {
         var cid = (ST.sel || {}).id; if (!cid || a.proceso_id == null) return { ok: false, mensaje: 'Este proceso todavía no se puede detener desde aquí.' };
@@ -1392,6 +1478,28 @@
         'Trabaja por su cuenta L–V de 7:00 a 21:00 de quien cotiza.') + ' Tus mensajes sí se contestan.' };
     if (PR && PR.modo_prueba) return { k: 'prueba', e: '🧪', l: 'modo prueba', t: 'Modo prueba (hasta ' + horaDe(PR.modo_prueba.hasta) + ')', p: 'Esta semana el agente trabaja con más margen para probarlo, con un vigilante de código que lo corta si gasta de más o no avanza. Nunca cambia lo que tú decidiste.' };
     return { k: 'trabajando', e: '🤖', l: 'trabajando', t: 'El agente está trabajando', p: 'Avanza solo hacia el 100 %: completa precios, revisa alertas y sube versión nueva del mismo machote. Nunca cambia lo que tú decidiste.' };
+  }
+  /* V1.48 · el globito del agente (solo con `estados_reales` apagado, como en V1.51). */
+  function globitoHtml() {
+    var x = estadoAgente(); if (!x) return '';
+    return '<button type="button" class="bot-ag ' + x.k + '" id="bAgente" aria-haspopup="dialog" aria-label="Agente: ' + esc(x.l) + '"><span class="e">' + x.e + '</span><span class="lbl">' + esc(x.l) + '</span></button>';
+  }
+  function popAgente(btn) {
+    var x = estadoAgente(); if (!x) return;
+    var c = (ST.hilo && ST.hilo.caso) || {}, puede = mia(c), b = [];
+    if (x.k === 'pausa') b.push('<button type="button" class="bt si" data-ag="reanuda">▶ Reanudar</button>');
+    else if (x.k !== 'cerrado') b.push('<button type="button" class="bt" data-ag="pausa">⏸️ Pausar</button>');
+    if (x.k !== 'cerrado') b.push('<button type="button" class="bt" data-ag="cierra">🔒 Ya está todo ok</button>');
+    else b.push('<button type="button" class="bt si" data-ag="reabre">↺ Reabrir</button>');
+    var v = enMenu(btn, '<div class="pop-ag"><b>' + x.e + ' ' + esc(x.t) + '</b><p>' + esc(x.p) + '</p><div class="acc">' + b.join('').replace(/<button /g, puede ? '<button ' : '<button disabled ') + '</div>' +
+      '<small>' + (puede ? 'Solo el dueño del caso o Esteban ven estos botones activos.' : 'Solo el dueño del caso (' + esc(nombreAgente(c.autor)) + ') o Esteban pueden cambiar esto.') + '</small></div>');
+    $$('[data-ag]', v).forEach(function (bt) { bt.onclick = function () {
+      cerrarVelo(); var a = bt.dataset.ag;
+      if (a === 'pausa') return pedirRazonAg('pausa');
+      if (a === 'reabre') return pedirRazonAg('reabre');
+      if (a === 'reanuda') return mandar(FRASE_REANUDA);
+      if (a === 'cierra' && confirm('¿Cerrar el análisis? El machote vigente queda congelado y el agente deja de moverlo.')) return mandar(BOTON_CIERRE);
+    }; });
   }
   /** ⋮ del chat: lo de la sesión (fijar, renombrar, archivar) y, abajo, detalles y lo aprendido. */
   function menuChat(btn) {
@@ -1419,7 +1527,7 @@
       '<button data-a="multimedia">' + ico('bajar', 's') + '<span>Descargar todo lo multimedia<small>Fotos, audios y PDFs en un ZIP</small></span></button>' +
       '<button data-a="exportar">' + ico('exportar', 's') + '<span>Exportar chat<small>JSON o TXT, con o sin multimedia</small></span></button><hr>') : '');
     // V1.52 §13 · lo que decía el globito del agente vive aquí, con el estado real del motor y del robot.
-    var hRobot = c.id && !(ST.sel || {}).menu ? '<button data-a="robot_cfg">' + ico('info', 's') + '<span>Configuración del robot asistente<small>Estado real, mantener activo, pausa, arranque automático</small></span></button><hr>' : '';
+    var hRobot = on('estados_reales') && c.id && !(ST.sel || {}).menu ? '<button data-a="robot_cfg">' + ico('info', 's') + '<span>Configuración del robot asistente<small>Estado real, mantener activo, pausa, arranque automático</small></span></button><hr>' : '';
     var h = hRobot + V + A.map(function (a) { return '<button data-a="' + a.k + '"' + (a.ok ? '' : ' disabled') + '>' + ico(a.ic, 's') + '<span>' + a.t + a.sub + '</span></button>'; }).join('') +
       (A.length ? '<hr>' : '') +
       ((ST.sel || {}).menu ? '' : '<button data-a="detalles">' + ico('info', 's') + '<span>Detalles y línea de tiempo</span></button>') +
@@ -1573,7 +1681,14 @@
     // V1.52 · lo que hace el agente vive en la barra de estado (núcleo), arriba de la caja: aquí ya no hay burbuja deducida
     // ni aviso de «se detuvo» (lo vencido lo cierra la base y escribe su propio mensaje en el caso).
     var ewc = escrituraChat();
-    if (ewc && ewc.k === 'persona') aparte('<div class="sis"><span>' + esc(ewc.texto) + '</span></div>');
+    if (!on('estados_reales')) {   // V1.51 tal cual (interruptor apagado): burbuja «escribiendo» y aviso «se detuvo»
+      var tq = trabajoQueContesta();
+      if (tq) h += escribeHtml(tq);
+      // V1.51 · H · se detuvo: aviso al dueño en el chat (como el trabajo 248), con la hora de la última señal.
+      else if (ewc && ewc.k === 'detenido') aparte('<div class="sis"><span class="mal">⚠ El agente se detuvo' + (ewc.desde ? ' (sin señal desde las ' + esc(hora(ewc.desde)) + ', más de ' + TOPE_MIN + ' min)' : '') +
+        '. No está escribiendo. Toca «Reintentar» arriba y lo retoma.</span></div>');
+      else if (ewc && ewc.k === 'persona') aparte('<div class="sis"><span>' + esc(ewc.texto) + '</span></div>');
+    } else if (ewc && ewc.k === 'persona') aparte('<div class="sis"><span>' + esc(ewc.texto) + '</span></div>');
     // ¿Llegaron respuestas del motor desde el último pintado? Si la persona está leyendo arriba, se cuentan
     // en el botón ⇊ y NO se le arrastra hacia abajo (6b).
     var nMotor = ((H && H.mensajes) || []).filter(function (m) { return m.rol !== 'usuario'; }).length;
@@ -1866,7 +1981,7 @@
   function referenciasHtml(R, conLista, S) {
     if (!R || !R.n) return '';
     // V1.52 · el encabezado con los MISMOS números que el mensaje y la franja (CzIndicadores): alertas = N3 + secciones.
-    var IN = G.CzIndicadores, I = IN ? IN.calcular({ referencias: R, sensatez: (S || []).filter(function (x) { return x && x.alerta; }) }) : null;
+    var IN = on('un_solo_dato') ? G.CzIndicadores : null, I = IN ? IN.calcular({ referencias: R, sensatez: (S || []).filter(function (x) { return x && x.alerta; }) }) : null;
     var din = function (x) { return '$' + Number(x || 0).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); };
     var lista = conLista ? (R.lista || []).map(function (x) { return '<li class="' + (x.nivel === 'N3' ? 'n3' : '') + '"><span class="niv niv-' + esc(x.nivel) + '">' + esc(x.nivel) + '</span> ' +
       esc(x.descripcion) + ' · ' + din(x.importe) + (x.riesgo ? '<small> ⚠ ' + esc(x.riesgo) + '</small>' : '') + '</li>'; }).join('') : '';
@@ -1967,7 +2082,7 @@
       return { machote: U2.machote || null, caso: { titulo: cs.titulo, cliente: cs.cliente, machote_folio: (cm && cm.resultado && cm.resultado.folio) || cs.machote_folio || null, moneda: cs.moneda || (cs.pais === 'usa' ? 'USD' : 'MXN') },
         hilo: H2, analisis: v.analisis || null, supuestos: v.supuestos || [], version: cm && cm.resultado && cm.resultado.version,
         // V1.52 · el % y las alertas de la vista: los MISMOS de la franja y el mensaje (CzIndicadores).
-        pct: pctAv(), indicadores: indicHilo(),
+        pct: on('un_solo_dato') ? pctAv() : undefined, indicadores: indicHilo(),
         decisionesPendientes: (H2.acciones || []).filter(function (x) { return x.estado === 'propuesta'; }).map(function (x) { return { titulo: x.titulo }; }),
         terminos: br ? terminosDe(br.datos.cotizacion) : null };
     };
@@ -2787,7 +2902,7 @@
   function guardarSel() { try { sessionStorage.setItem('cz_sel', JSON.stringify(ST.sel)); } catch (e) {} }
   async function cargarCasos() {
     var r = await C.casos();
-    if (r.ok) { ST.casos = r.casos || []; ST.motor = r.motor; if ('uso' in r) ST.uso = r.uso || null; if ('admin' in r) ST.admin = r.admin === true; motorV152(r); }
+    if (r.ok) { ponInterruptores(r); ST.casos = r.casos || []; ST.motor = r.motor; if ('uso' in r) ST.uso = r.uso || null; if ('admin' in r) ST.admin = r.admin === true; motorV152(r); }
     return r;
   }
   /* V1.52 §7 · el texto del motor (estado_motor_v152().texto) lo da el servidor: en `motor_v152`, o dentro de `motor`
@@ -2805,7 +2920,7 @@
     var r = await C.hilo(s.id, tec === null ? null : { escribiendo: tec }); if (!r.ok) { aviso(r); return; }
     if (tec !== null && ST.tecleo) ST.tecleo.avisado = tec;
     if ((ST.sel || {}).id !== s.id) return;
-    ST.motor = r.motor; motorV152(r);
+    ponInterruptores(r); ST.motor = r.motor; motorV152(r);
     // V1.52 §6 · el arranque automático EFECTIVO de este caso (caso > persona > config), lo dice el hilo.
     if ('arranque_auto_efectivo' in r) ST.arranque = { caso: s.id, efectivo: r.arranque_auto_efectivo === true, min: r.arranque_auto_min, fuente: r.arranque_auto_fuente || null };
     // El estado del agente y quién escribe: lo que dijo el servidor EN ESTA consulta (0013). Sin la 0013, no hay llave.
@@ -2856,7 +2971,7 @@
   function sondear(ya) {
     clearTimeout(ST.sondeo);
     // V1.51 · H · la lista se relee cada 5 s mientras alguna fila diga «escribiendo» (el agente o una persona).
-    var listaViva = ST.casos.some(function (c) { return !!agenteVivo(c.agente) || (c.escriben || []).length; });
+    var listaViva = ST.casos.some(function (c) { return (on('estados_reales') ? !!agenteVivo(c.agente) : !!(c.agente && c.agente.estado === 'escribiendo')) || (c.escriben || []).length; });
     // Con la 0013 (el servidor dice si alguien escribe) el chat abierto se relee cada 10 s en reposo, para que el
     // «escribiendo…» aparezca pronto; sin ella, cada 20 s como antes.
     var chatVivo = ST.sel && ST.sel.id && Object.prototype.hasOwnProperty.call(ST, 'srvAgente');

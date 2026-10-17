@@ -644,7 +644,7 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
   }
 
   /* ═══ V1.48 (#4, prototipo aprobado el 16-oct): tabla del machote, BOM con filtros, globito del agente, anillo del avance ═══
-   * Prefijos tb- (cz-tabla.js), (V1.52: sin globito), avl-anillo/avl-col (franja). La tabla y el BOM no usan .tabla ni .bom
+   * Prefijos tb- (cz-tabla.js), bot-ag/pop-ag (globito), avl-anillo/avl-col (franja). La tabla y el BOM no usan .tabla ni .bom
    * (ya existen con otro significado, §20 #12). */
   .tb-carta{max-width:min(100%,760px)}
   .tb-arriba{font-size:13px;color:#3b4a54;margin:0 0 8px}
@@ -698,8 +698,20 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
   .tb-nueva{border:1px solid #bfe5cd}.tb-dif{font-size:13px;margin:2px 0 4px;font-variant-numeric:tabular-nums}
   .txt-corto{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
   .ver-todo{font-size:12.5px;margin:2px 0 0}
-  /* V1.52 · el globito del agente se quitó (su contenido vive en ⋮ → «Configuración del robot asistente»). La animación se queda: la copia el núcleo. */
+  /* el globito del agente (V1.48). V1.52 §15: solo se pinta con el interruptor `estados_reales` APAGADO; prendido, su
+   * contenido vive en ⋮ → «Configuración del robot asistente». */
+  .bot-ag{display:flex;align-items:center;gap:4px;height:30px;padding:0 9px 0 6px;border-radius:15px;font-size:12px;font-weight:600;flex-shrink:0;border:1px solid transparent;margin-left:2px}
+  .bot-ag .e{font-size:15px;line-height:1}
+  .bot-ag.trabajando{background:#e3f6ea;color:#0b6b45;border-color:#bfe5cd}.bot-ag.trabajando .e{animation:latido-ag 1.6s ease-in-out infinite}
+  .bot-ag.pausa{background:#fff4d6;color:#8a5a00;border-color:#f0dc8c}
+  .bot-ag.cerrado,.bot-ag.dormido{background:#f6f5f3;color:#3b4a54;border-color:var(--linea)}
+  .bot-ag.prueba{background:#efeafb;color:#6b4fbb;border-color:#d8cdf4}
   @keyframes latido-ag{50%{opacity:.45}}
+  @media (max-width:479px){ .bot-ag{padding:0 7px} .bot-ag .lbl{display:none} }
+  .pop-ag{padding:10px 14px 12px;max-width:min(340px,calc(100vw - 32px));white-space:normal}
+  .pop-ag b{display:block;font-size:14.5px;margin-bottom:4px}.pop-ag p{font-size:13.5px;color:var(--sec);margin:0 0 10px}
+  .pop-ag .acc{display:flex;flex-wrap:wrap;gap:8px}.pop-ag .bt[disabled]{opacity:.4}
+  .pop-ag small{display:block;font-size:12px;color:var(--ter);margin-top:10px}
   /* el anillo del avance y el colapso del panel (PC) */
   #avance .avl-anillo{width:18px;height:18px;display:inline-block;vertical-align:-4px;margin-right:6px}
   #avance .avl-pct.rojo{color:var(--rojo)}#avance .avl-pct.ambar{color:#8a5a00}#avance .avl-pct.verde{color:#0b6b45}
@@ -772,6 +784,8 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
   .czc-campo{display:flex;flex-direction:column;gap:4px;min-width:0;font-size:13px}
   .czc-campo>span small{display:block;color:var(--ter);font-size:11px;font-family:ui-monospace,Menlo,monospace;overflow-wrap:anywhere}
   .czc-rz{margin-top:12px}
+  .czc-ints{margin-bottom:6px}.czc-int .czc-tx b{font-size:14px}.czc-int .czc-est{margin-left:4px;vertical-align:1px}
+  .czc-tx small.czc-cl{color:var(--ter);font-size:11px;font-family:ui-monospace,Menlo,monospace}
   .czc-conf{background:#fff4d6;color:#5c3d00;border:1px solid #f0dc8c;border-radius:10px;padding:10px 12px;margin-top:10px;font-size:13.5px}
   .czc-bit{list-style:none;padding:0;margin:0}.czc-bit li{border-bottom:1px solid var(--linea);padding:7px 0;font-size:13px;overflow-wrap:anywhere}
   .czc-bit small{display:block;color:var(--sec);font-size:12px}
