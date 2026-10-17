@@ -38,7 +38,7 @@ const GENERICO = new Set(('app ver-chat chat lista ch cab tit ver btn-ic vuelve 
   'meta badge quien-ses est enviada cerrada archivada local abierta mas vacio pie fab nueva senal msgs dia sis fila yo sig b el pend quien txt li sp intro hora tk leido mal cola ok ' +
   'barra album n1 n2 n3 n4 foto sube pie-adj doc ic voz play cuerpo onda perilla voz-pie vel trans et giro escribe carta conj acc der boton si no hecho gris corr err ' +
   'nota tabla r tot velo oscuro menu destaca hoja-ses asa cabh dlg cuenta acciones cz-toast compose caja redondo grab bandeja tira mini prep fijo espera fx abajo ' +
-  'escribe-b top pts flecha pasos abierto paso m pt-tx bt enviando decide pend-env ico s xs brilla caja-razon lin mic-dict estado acc-r cambiar resalta').split(/\s+/));
+  'escribe-b top pts flecha pasos abierto paso m pt-tx bt enviando decide pend-env ico s xs brilla caja-razon lin mic-dict estado acc-r cambiar resalta plg plg-res plg-ic plg-tx plg-cuerpo chev dud trad').split(/\s+/));
 function partirReglas(css) {   // reglas de primer nivel: { sel, cuerpo } o { at, interior }
   const out = []; let i = 0;
   while (i < css.length) {
@@ -81,7 +81,8 @@ function sacar(nombre) {
   const i = app.findIndex(l => re.test(l)); if (i < 0) throw new Error('No encontré ' + nombre + ' en cz-app.js');
   let d = 0, j = i, vio = false;
   for (; j < app.length; j++) {
-    const l = app[j].replace(/'(?:[^'\\]|\\.)*'/g, "''");
+    // Sin cadenas, sin escapes y sin clases de caracteres: un regex como /\(([^)]*)\)/ no debe mover la cuenta (V1.51, partirTranscripcion).
+    const l = app[j].replace(/'(?:[^'\\]|\\.)*'/g, "''").replace(/\\./g, '').replace(/\[[^\]]*\]/g, '[]');
     for (const c of l) { if ('{(['.includes(c)) { d++; vio = true; } else if ('})]'.includes(c)) d--; }
     if (vio && d === 0) break;
   }
@@ -89,13 +90,15 @@ function sacar(nombre) {
 }
 const FUNCIONES = ['$', '$$', 'esc', 'P', 'ico', 'palomita', 'MES', 'fecha', 'hora', 'diaDe', 'separador', 'corto', 'peso', 'iniciales', 'md', 'PALETA', 'color',
   'dur', 'barrasDe', 'durDe', 'vozHtml', 'selVoz', 'pararVoz', 'conDuracion', 'prepararAudio', 'alternar', 'actualizarVoz', 'rafVoz', 'ciclo', 'enlazarVoces',
-  'cargarUrl', 'blobDe', 'adjuntosHtml'];
+  'cargarUrl', 'blobDe', 'adjuntosHtml',
+  // V1.51 (main, 16-oct): md() pliega las listas largas y adjuntosHtml() separa original, traducción y transcripción dudosa.
+  'hashCorto', 'plegable', 'plegarListas', 'partirTranscripcion', 'transcripcionHtml'];
 const CUERPO = FUNCIONES.map(sacar).join('\n');
 const NUCLEO_CZ = AVISO('comercial/conceptualizador/index.html (CSS) y js/cz-app.js (funciones)') +
 `(function (G) {
   'use strict';
   /* Lo que las funciones copiadas esperan encontrar en cz-app.js. El núcleo lo llena (ChatNucleo.crear). */
-  var ST = { urls: {}, cargando: {}, nombres: {}, salida: [], player: null, rate: 1 };
+  var ST = { urls: {}, cargando: {}, nombres: {}, salida: [], player: null, rate: 1, plg: {} };
   var C = { verAdjunto: function (k) { return ST.verAdjunto ? ST.verAdjunto(k) : Promise.resolve({ ok: false }); } };
   function toast(t) { if (ST.toast) ST.toast(t); }
   function adjuntosPorId() { return ST.adjuntos || {}; }
@@ -124,6 +127,8 @@ const SALIDAS = {
 let malos = 0;
 for (const [n, t] of Object.entries(SALIDAS)) {
   const f = path.join(SALE, n);
+  // Que coincida con el conceptualizador no prueba que compile: un recorte mal contado da un archivo roto que «coincide» (V1.51).
+  try { new (require('vm').Script)(t, { filename: n }); } catch (e) { console.log('  FALLA ' + n + ' no compila: ' + e.message); malos++; continue; }
   if (REVISAR) { const ok = fs.existsSync(f) && leer(f) === t; console.log((ok ? '  OK    ' : '  FALLA ') + n + (ok ? ' coincide con el conceptualizador' : ' NO coincide: corre node shared/chat/subir-del-conceptualizador.js')); if (!ok) malos++; }
   else { fs.writeFileSync(f, t); console.log('escrito ' + n + ' · ' + t.length + ' bytes'); }
 }

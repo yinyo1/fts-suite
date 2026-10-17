@@ -207,6 +207,8 @@
     }
     M.addEventListener('click', function (e) {
       var x;
+      // V1.51: listas largas plegadas por md(); lo que la persona abre se queda abierto al repintar (ST.plg).
+      if ((x = e.target.closest('[data-plg-res]'))) { var ab = x.getAttribute('aria-expanded') !== 'true', cu = x.parentNode.querySelector('.plg-cuerpo'); ST.plg[x.dataset.plgRes] = ab; x.setAttribute('aria-expanded', ab); if (cu) cu.hidden = !ab; return; }
       if ((x = e.target.closest('[data-chn="escribe"]'))) { est.abierto = !est.abierto; x.classList.toggle('abierto', est.abierto); x.setAttribute('aria-expanded', est.abierto); return; }
       if ((x = e.target.closest('[data-foto]'))) { var gr = x.dataset.grupo.split(','); AR.visor(gr.map(function (k) { var a = ST.adjuntos[k] || {}; return { id: k, nombre: a.nombre || 'foto', cuando: a.created_at }; }), Math.max(0, gr.indexOf(x.dataset.foto)), { obtener: function (f) { return Z.blobDe(f.id); }, aviso: toast }); return; }
       if ((x = e.target.closest('[data-doc]'))) { var k = x.dataset.doc; Z.blobDe(k).then(function (b) { if (!b) return toast('No se pudo bajar el archivo.'); AR.descargar(b, (ST.adjuntos[k] || {}).nombre || ST.nombres[k] || 'archivo'); }); return; }
