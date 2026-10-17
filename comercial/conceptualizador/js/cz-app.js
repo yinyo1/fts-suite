@@ -1092,10 +1092,21 @@
     });
   }
   function nombrePersona(actor) { return nombreCorto(actor); }   // (nombreDe ya existe: es el de los archivos)
+  /* V1.52 (motor/DISENO-V152.md §4, §13) · el servidor dice `trabajando` SOLO con un proceso vivo en la base (tabla
+   * `proceso`, con su señal dentro del lease). Lo vencido no se pinta: la base lo cierra (§3). Por eso aquí ya no
+   * existe «se detuvo» ni «Reintentar»: con la 0013 todavía puede llegar `detenido`, y se ignora. `escribiendo` (0013)
+   * se lee como trabajando del motor, sin pasos, hasta que la 0014 esté en el servidor. */
+  function agenteVivo(ag) {
+    if (!ag) return null;
+    if (ag.estado === 'trabajando') return ag;
+    if (ag.estado === 'escribiendo') return { estado: 'trabajando', quien: 'motor', paso: ag.paso || 'Escribiendo la respuesta', pasos: [], paso_i: 0, hechos: [], desde: ag.desde || null, trabajo_id: ag.trabajo_id, proceso_id: null };
+    return null;
+  }
+  function agenteTrabajando() { return !!agenteVivo(ST.srvAgente); }
   function estadoDelServidor(ag, escriben) {
     var gente = (escriben || []).filter(function (e) { return e && e.actor && e.actor !== yo(); });
-    if (ag && ag.estado === 'escribiendo') return { k: 'agente', texto: '🤖 El agente está escribiendo…', paso: ag.paso || null, trabajo_id: ag.trabajo_id };
-    if (ag && ag.estado === 'detenido') return { k: 'detenido', texto: 'Se detuvo', trabajo_id: ag.trabajo_id, desde: ag.senal || ag.desde };
+    var av = agenteVivo(ag);
+    if (av) return { k: 'agente', texto: av.quien === 'robot' ? '🤖 El robot asistente está trabajando…' : '🤖 El agente está escribiendo…', paso: av.paso || null, trabajo_id: av.trabajo_id, quien: av.quien };
     if (ag && ag.estado === 'cola') return { k: 'cola', texto: '🤖 En la cola del agente', trabajo_id: ag.trabajo_id };
     if (!gente.length || !G.ChatWA) return null;
     return G.ChatWA.estadoEscritura({ trabajos: [], escriben: gente.map(function (e) { return { actor: e.actor, nombre: nombrePersona(e.actor), at: e.at }; }), yo: yo() });
@@ -1104,7 +1115,9 @@
     var H = ST.hilo; if (!H || (ST.sel || {}).menu) return null;
     if (Object.prototype.hasOwnProperty.call(ST, 'srvAgente')) return estadoDelServidor(ST.srvAgente, ST.srvEscriben);
     if (!G.ChatWA) return null;
-    return G.ChatWA.estadoEscritura({ trabajos: trabajosVivos(), topeMin: TOPE_MIN, escriben: [], yo: yo() });
+    // Servidor sin la 0013: la misma regla del núcleo, pero «se detuvo» ya no se pinta (V1.52).
+    var e = G.ChatWA.estadoEscritura({ trabajos: trabajosVivos(), topeMin: TOPE_MIN, escriben: [], yo: yo() });
+    return e && e.k === 'detenido' ? null : e;
   }
   function trabajoQueContesta() {
     var e = escrituraChat(); if (!e || (e.k !== 'agente' && e.k !== 'cola')) return null;
@@ -1123,13 +1136,6 @@
       return t.estado === 'pendiente' && !!disp && new Date(t.created_at).getTime() >= disp - 5000;
     });
     return L.filter(function (t) { return t.estado === 'tomado'; })[0] || L[0] || null;
-  }
-  /** «Reintentar»: pide al agente que retome el caso (evento ligero «revisa», como el de V1.46). No reescribe nada. */
-  async function reintentarAgente(tid) {
-    var c = (ST.sel || {}).id; if (!c) return;
-    var r = await C.evento({ caso_id: c, tipo: 'correccion', concepto: 'revisa', razon: 'Reintentar: el agente se detuvo' + (tid ? ' en el trabajo ' + tid : ''), datos: { revisa: true, reintenta: tid ? Number(tid) : null, version: VERSION } });
-    if (!r.ok) return aviso(r);
-    toast('Le pedí al agente que lo retome.'); await cargarHilo(); sondear(true);
   }
   function notasSinTexto() {
     return ((ST.hilo && ST.hilo.adjuntos) || []).filter(function (a) { return a.clase === 'audio' && !a.transcripcion && Date.now() - new Date(a.created_at) < 10 * 60000; }).length;

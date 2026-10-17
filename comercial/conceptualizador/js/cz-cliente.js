@@ -150,6 +150,14 @@
       if (['push_estado', 'push_alta', 'push_baja', 'permisos', 'recordar', 'push_ajustes', 'equipo_avisos'].indexOf(modo) < 0) return Promise.resolve({ ok: false, error: 'MODO_DESCONOCIDO' });
       return pedir(modo, campos);
     },
+    // V1.52 (0014, motor/DISENO-V152.md §1): el panel del conceptualizador. Solo `panel_admin` lo lee y lo guarda; lo decide
+    // el SERVIDOR con el actor del token (otro actor → NO_AUTORIZADO). La razón va en `razon` (firmada) y en `datos`.
+    config: function () { return pedir('config'); },
+    configGuardar: function (cambios, razon, confirmar) {
+      return pedir('config_guardar', { razon: razon, datos: { cambios: cambios, razon: razon, confirmar: confirmar === true } });
+    },
+    // V1.52 §5: «Detener» un proceso vivo. No crea trabajo ni cuenta en el tope; el servidor valida dueño o administrador.
+    detener: function (casoId, procesoId) { return pedir('evento', { caso_id: casoId, tipo: 'detener', datos: { proceso_id: procesoId } }); },
     _canonica: canonica
   };
 })(window);
