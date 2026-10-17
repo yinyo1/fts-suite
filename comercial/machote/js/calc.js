@@ -726,6 +726,73 @@
              usada: usadaPartida(linea) };
   }
 
+  /* ── V1.52 · PRECIO DECRETADO POR SECCIÓN (contrato del conceptualizador §14, C8) ──────────────
+   *
+   * El dueño de una cotización puede decidir el precio de UNA sección sin mover las demás: «el
+   * chiller a 150,000 USD de venta y el compresor a costo ÷ 0.90, sin comisión» (21fec6, msg 579).
+   * Hasta V1.51 eso no tenía dónde vivir y se aproximaba con UN margen de proyecto (10.28 %), que
+   * reparte mal: el compresor quedaba arriba de lo decidido y el chiller abajo.
+   *
+   *   seccion.precio_decretado = { precio: 150000, decreto: 'D7' }   precio de venta fijo de la sección
+   *                            = { margen: 0.10,   decreto: 'D8' }   margen después de comisiones de esa sección
+   *
+   * Uno solo de los dos. La comisión de la sección es la de siempre (`comision_fts` de la sección o del
+   * machote, V1.40): «sin comisión» es `comision_fts: 0`, no un caso especial aquí.
+   *
+   * Es una EXCEPCIÓN, y por eso pide su autorización escrita en el machote: `m.excepcion_decreto`
+   * con el id del decreto (regla dura `precio-decretado-sin-excepcion` en reglas.js). Solo gobierna el
+   * escenario «margen deseado», que es el que cotiza el conceptualizador; las secciones sin la marca
+   * se siguen precificando al margen deseado sobre SU costo, como siempre.
+   *
+   * ⚠️ ADITIVO, como el atajo de comisiones de V1.40: un machote sin ninguna sección marcada corre
+   * EXACTAMENTE el mismo camino de antes, línea por línea. Medido sobre las specs de los casos abiertos
+   * del conceptualizador y los machotes de demo: mismo resultado de `calcular()` antes y después. */
+  function precioDecretadoDe(s) {
+    const d = s && s.precio_decretado;
+    if (!d || typeof d !== 'object') return null;
+    const decreto = String(d.decreto || '');
+    const hayP = !vacio(d.precio), hayM = !vacio(d.margen);
+    if (hayP === hayM) return { invalido: 'lleva `precio` o `margen`, uno solo', decreto: decreto };
+    if (hayP) {
+      const p = Number(d.precio);
+      return isFinite(p) && p > 0 ? { tipo: 'precio', valor: p, decreto: decreto } : { invalido: 'el precio tiene que ser mayor que cero', decreto: decreto };
+    }
+    const mg = Number(d.margen);
+    return isFinite(mg) && mg >= 0 && mg < 0.95 ? { tipo: 'margen', valor: mg, decreto: decreto } : { invalido: 'el margen va de 0 a 0.95', decreto: decreto };
+  }
+  const decretoVale = s => !!(s.decretado && !s.decretado.invalido);
+  /** Escenario «margen deseado» cuando hay secciones con precio decretado. Las decretadas valen lo
+   *  decidido; las demás, el margen deseado sobre su costo (a prorrata de su costo, como siempre). */
+  function decretarPrecios(secciones, m, md, pctFts, pctCli) {
+    const k = s => { const pf = s.comisiones.fts.pct, pc = s.comisiones.cliente.pct;
+      return { kF: pf / ((1 + pf) * (1 + pc)), kC: pc / (1 + pc) }; };
+    const resto = secciones.filter(s => !decretoVale(s));
+    const costoR = resto.reduce((a, s) => a + s.costo, 0), ventaR = resto.reduce((a, s) => a + s.venta, 0);
+    const apartadaR = resto.some(s => s.comisionesApartadas > 0);
+    const comFR = apartadaR ? resto.reduce((a, s) => a + s.comFts, 0) : ventaR * pctFts;
+    const comCR = apartadaR ? resto.reduce((a, s) => a + s.comCli, 0) : (ventaR + comFR) * pctCli;
+    const cuR = ventaR + comFR + comCR, kFR = cuR > 0 ? comFR / cuR : 0, kCR = cuR > 0 ? comCR / cuR : 0;
+    const dR = 1 - md - kFR - kCR;
+    const precioR = costoR > 0 ? (dR > 0 ? costoR / dR : null) : 0;
+    let imposible = precioR === null;
+    const por = secciones.map(s => {
+      if (decretoVale(s)) {
+        const x = k(s); let P;
+        if (s.decretado.tipo === 'precio') P = s.decretado.valor;
+        else { const d = 1 - s.decretado.valor - x.kF - x.kC; P = d > 0 ? s.costo / d : null; if (P === null) imposible = true; }
+        return { precio: P, comFts: P === null ? 0 : P * x.kF, comCli: P === null ? 0 : P * x.kC, decreto: s.decretado };
+      }
+      const w = costoR > 0 ? s.costo / costoR : 0, P = precioR === null ? null : precioR * w;
+      return { precio: P, comFts: P === null ? 0 : P * kFR, comCli: P === null ? 0 : P * kCR, decreto: null };
+    });
+    const costo = secciones.reduce((a, s) => a + s.costo, 0);
+    if (imposible) return { por, esc: { id: 'margen_deseado', precio: null, comisionFts: 0, comisionCliente: 0, utilidad: null, margen: null, decretado: true } };
+    const precio = por.reduce((a, x) => a + x.precio, 0), cF = por.reduce((a, x) => a + x.comFts, 0), cC = por.reduce((a, x) => a + x.comCli, 0);
+    const util = precio - cF - cC - costo;
+    return { por, esc: { id: 'margen_deseado', precio, comisionFts: cF, comisionCliente: cC, utilidad: util,
+                         margen: precio > 0 ? util / precio : null, decretado: true } };
+  }
+
   function totalSeccion(s, m) {
     const mgSec = margenes(m, s);
     let costoMoTot = 0, ventaMo = 0, horas = 0, dias = 0, moSinTarifa = 0;
@@ -780,7 +847,7 @@
     const comFtsSec = ventaSec * comSec.fts.pct;
     const comCliSec = (ventaSec + comFtsSec) * comSec.cliente.pct;
 
-    return {
+    const res = {
       id: s.id, nombre: s.nombre,
       // Los multiplicadores de ESTA sección. La pantalla los pinta de aquí, no
       // de los del machote: si los resolviera por su cuenta habría dos lugares
@@ -820,6 +887,10 @@
       comCli: comCliSec,
       monedas: Object.keys(monedas)
     };
+    // V1.52 · solo si la sección trae la marca: sin ella el objeto es idéntico al de antes.
+    const dec = precioDecretadoDe(s);
+    if (dec) res.decretado = dec;
+    return res;
   }
 
   /** Reparte una comisión entre las personas nombradas.
@@ -916,6 +987,11 @@
       }
     };
 
+    // V1.52 · secciones con precio decretado: el escenario «margen deseado» se arma con lo decidido.
+    // Sin ninguna marca no se entra aquí y todo sigue por el camino de antes.
+    const porDecreto = secciones.some(decretoVale) ? decretarPrecios(secciones, m, margenDeseado, pctFts, pctCli) : null;
+    if (porDecreto) esc.margen_deseado = porDecreto.esc;
+
     const elegido = esc[m.escenario] || esc.margen_deseado;
 
     // Bajo margen deseado el precio se reparte a prorrata del COSTO de cada
@@ -947,14 +1023,31 @@
           : { mo: precioMD * pMo, mat: precioMD * pMat, viaje: precioMD * pVia,
               precio: precioMD * peso }
       };
+      // V1.52 · con precio decretado en alguna sección, el reparto del escenario sale de `decretarPrecios`.
+      const pd = porDecreto ? porDecreto.por[iSec] : null;
+      if (pd) {
+        const P = porDecreto.esc.precio === null ? null : pd.precio, f = x => s.costo > 0 ? x / s.costo : 0;
+        esc.margen_deseado = P === null ? { mo: null, mat: null, viaje: null, precio: null }
+          : { mo: P * f(s.costoMo), mat: P * f(s.costoMat), viaje: P * f(s.costoViaje), precio: P };
+      }
 
       const precioSec = esc[elegido.id] ? esc[elegido.id].precio : null;
-      return Object.assign({}, s, {
+      const out = Object.assign({}, s, {
         peso, pesoV, esc,
         precio: precioSec,
         utilidad: precioSec === null ? null : precioSec - s.costo - (elegido.precio > 0 ? (elegido.comisionFts + elegido.comisionCliente) * peso : 0),
         margenObtenido: s.venta > 0 ? (s.venta - s.costo) / s.venta : null
       });
+      if (pd) {
+        // La comisión y la utilidad de ESTA sección (las suyas, no un prorrateo) y su margen después de comisiones.
+        const md = esc.margen_deseado.precio;
+        out.decreto = { tipo: pd.decreto ? pd.decreto.tipo : null, valor: pd.decreto ? pd.decreto.valor : null, decreto: pd.decreto ? pd.decreto.decreto : '',
+          comisionFts: pd.comFts, comisionCliente: pd.comCli,
+          utilidad: md === null ? null : md - s.costo - pd.comFts - pd.comCli,
+          margen: md ? (md - s.costo - pd.comFts - pd.comCli) / md : null };
+        if (elegido.id === 'margen_deseado') out.utilidad = out.decreto.utilidad;
+      }
+      return out;
     });
 
     /* ── Reparto de comisiones ─────────────────────────────────────────────
@@ -1011,7 +1104,7 @@
 
     const huecos = sinPrecio + moSinTarifa + sinTipo;
 
-    return {
+    return Object.assign({
       margenes: mg,
       secciones: detalle,
       costoMo: costoMoTot, costoMat, costoViaje, costo,
@@ -1043,7 +1136,8 @@
       budget,
       sinPrecio, moSinTarifa, sinTipo, sinLink, pisados, mezclaMoneda,
       huecos, costoIncompleto: huecos > 0
-    };
+    }, porDecreto ? { decretadas: secciones.filter(decretoVale).length } : {},
+       secciones.some(x => x.decretado && x.decretado.invalido) ? { decretosInvalidos: secciones.filter(x => x.decretado && x.decretado.invalido).length } : {});
   }
 
   /** Inverso: qué precio hace falta para un margen dado, con las comisiones
@@ -1075,6 +1169,6 @@
     usadaPartida, capturada, padPendiente, padFilas,
     seccionNueva, machoteNuevo,
     tcEfectivo, margenes, comisionesDe, costoMo, costoPartida, totalSeccion,
-    calcular, precioParaMargen, repartir
+    calcular, precioParaMargen, repartir, precioDecretadoDe
   };
 })(window);

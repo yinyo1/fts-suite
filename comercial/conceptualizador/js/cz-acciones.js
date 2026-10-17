@@ -204,7 +204,10 @@
     if (conRef) {   // queda en la acción y por ella en hilo.md: quién aceptó qué y cuándo
       var S = G.SuiteAuth.getSession() || {};
       o.referencias_aceptadas = { pct: R.pct, n3: R.n3, n4: R.n4, importe: R.importe, por: S.actor || null, at: new Date().toISOString() };
-      o.texto += ' Cotizada con referencias: ' + R.pct + ' % del costo' + (R.n3 ? ', ' + R.n3 + ' alerta' + (R.n3 === 1 ? '' : 's') + ' N3' : '') + ' (aceptado).';
+      // V1.52 · un solo dato (CzIndicadores): el mismo % y las mismas alertas que el mensaje, la tarjeta y la franja.
+      var IN = G.CzIndicadores, I = IN ? IN.calcular({ referencias: R, sensatez: ((a.datos || {}).sensatez || []).filter(function (x) { return x && x.alerta; }) }) : null;
+      o.texto += I ? ' Cotizada con referencias: ' + (I.referencia_pct || 0) + ' % del costo' + (I.alertas.total ? ', ' + IN.textoAlertas(I) : '') + ' (aceptado).'
+        : ' Cotizada con referencias: ' + R.pct + ' % del costo' + (R.n3 ? ', ' + R.n3 + ' alerta' + (R.n3 === 1 ? '' : 's') + ' N3' : '') + ' (aceptado).';
     }
     return { ok: true, resultado: o };
   }

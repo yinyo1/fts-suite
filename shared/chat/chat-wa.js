@@ -20,6 +20,7 @@
  *                      ChatWA.escrituraFilaHtml(estado) · ChatWA.escrituraCabeceraHtml(estado) · ChatWA.tecleo({ enviar, cadaMs }) → { tecla(texto?) }
  *   I · estado (V1.52) ChatWA.barraEstado({ textos?, alDetener(agente) → Promise<{ok}>, textoSinPermiso? }) → elemento con
  *                      el.chwaPoner(agente, { puedeDetener }) · ChatWA.quienEstado(quien) · ChatWA.gastoTexto(ponderado)
+ *   J · hoja (V1.52)   ChatWA.hoja({ titulo, html, ancho?, alCerrar }) → { el, cuerpo, cerrar } · hojaAbierta() · cerrarHoja() · esPc()
  *   fila de la lista   ChatWA.fila({ id?, avatar:{ iniciales, color }, titulo, linea, hora, globitos, dueno, fijado, activa, escritura? })
  *
  * El estilo vive en chat-wa.css con prefijo chwa- en TODO (CLAUDE.md §20 #12: `.chip`, `.menu`, `.fila`, `.badge` ya
@@ -370,7 +371,7 @@
       if (!st.ag) { st.abierta = false; st.deteniendo = null; st.error = ''; }
       else {
         if (antes && String(antes.proceso_id) !== String(st.ag.proceso_id)) { st.abierta = false; st.error = ''; }
-        if (st.ag.detener_por) st.deteniendo = st.ag.proceso_id;
+        if (st.ag.detener_por || st.ag.deteniendo === true) st.deteniendo = st.ag.proceso_id;
         else if (st.deteniendo != null && String(st.deteniendo) !== String(st.ag.proceso_id)) st.deteniendo = null;
       }
       pintar(); return el;
@@ -381,6 +382,75 @@
     if (o.agente !== undefined) el.chwaPoner(o.agente, { puedeDetener: o.puedeDetener });
     return el;
   }
+
+  /* ═══ J · hoja desde abajo (V1.52, adelantado de V1.53; prototipo v152 escena «Menú ⋮») ═══
+   * En teléfono: sube desde abajo, máximo 70 % del alto, barra para arrastrar, X visible; se cierra tocando fuera,
+   * deslizando hacia abajo (> 80 px), con Esc o con Atrás. En PC (≥ 900 px): tarjeta flotante arriba a la derecha
+   * (los menús ⋮ del producto siguen siendo su popover; esto es para cuando el producto la pide también en PC).
+   *   ChatWA.hoja({ titulo, html, etiqueta?, ancho?:'380px', alCerrar(motivo) }) → { el, cuerpo, cerrar(motivo) }
+   *   ChatWA.hojaAbierta() → el | null   ·   ChatWA.cerrarHoja()   ·   ChatWA.esPc() */
+  var hojaCtl = null, hsec = 0;
+  function esPc() { try { return G.matchMedia('(min-width:900px)').matches; } catch (e) { return (G.innerWidth || 0) >= 900; } }
+  function hoja(o) {
+    o = o || {};
+    if (hojaCtl) hojaCtl.cerrar('otra');
+    var id = ++hsec, antes = D.activeElement;
+    var velo = D.createElement('div'); velo.className = 'chwa-hoja-velo';
+    var el = D.createElement('div'); el.className = 'chwa-hoja' + (esPc() ? ' chwa-hoja-pc' : '');
+    el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-labelledby', 'chwa-hoja-t' + id);
+    if (o.ancho && esPc()) el.style.width = o.ancho;
+    el.innerHTML = '<div class="chwa-hoja-cab"><span class="chwa-hoja-asa" aria-hidden="true"></span><b id="chwa-hoja-t' + id + '">' + esc(o.titulo || '') + '</b>' +
+      '<button type="button" class="chwa-hoja-x" aria-label="Cerrar"><svg class="chwa-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
+      '<div class="chwa-hoja-c">' + (o.html || '') + '</div>';
+    D.body.appendChild(velo); D.body.appendChild(el);
+    var cuerpo = el.querySelector('.chwa-hoja-c');
+    var ctl = { el: el, cuerpo: cuerpo, id: id };
+    function tecla(e) { if (e.key === 'Escape' && hojaCtl === ctl) { e.preventDefault(); e.stopPropagation(); ctl.cerrar('esc'); } }
+    function quitar(motivo) {
+      if (!el.parentNode) return false;
+      D.removeEventListener('keydown', tecla, true);
+      el.parentNode.removeChild(el); if (velo.parentNode) velo.parentNode.removeChild(velo);
+      if (hojaCtl === ctl) hojaCtl = null;
+      if (antes && antes.focus && motivo !== 'otra') { try { antes.focus({ preventScroll: true }); } catch (e) {} }
+      if (typeof o.alCerrar === 'function') o.alCerrar(motivo);
+      return true;
+    }
+    ctl.cerrar = function (motivo) {
+      if (!quitar(motivo || 'codigo')) return;
+      // Cerrada por la persona (fuera, X, Esc, deslizar): se saca su entrada del historial. Cerrada por el código (eligió algo
+      // del menú): solo se desmarca, porque lo que sigue puede empujar su propia entrada (visor, vista) y un back() tardío la tiraría.
+      var st = G.history.state;
+      if (st && st.chwaHoja === id) {
+        ctl.salioPorAtras = true;
+        if (['fuera', 'x', 'esc', 'deslizar'].indexOf(motivo) >= 0) { try { G.history.back(); } catch (e) {} }
+        else { var n = {}; for (var k2 in st) if (k2 !== 'chwaHoja' && Object.prototype.hasOwnProperty.call(st, k2)) n[k2] = st[k2]; try { G.history.replaceState(n, ''); } catch (e) {} }
+      }
+    };
+    ctl.quitar = quitar;
+    hojaCtl = ctl;
+    D.addEventListener('keydown', tecla, true);
+    velo.addEventListener('click', function () { ctl.cerrar('fuera'); });
+    el.querySelector('.chwa-hoja-x').addEventListener('click', function () { ctl.cerrar('x'); });
+    // Atrás cierra (una entrada propia en el historial que conserva el estado del producto, como el menú ⋮)
+    var est = {}, h0 = G.history.state;
+    if (h0 && typeof h0 === 'object') for (var k in h0) if (Object.prototype.hasOwnProperty.call(h0, k)) est[k] = h0[k];
+    est.chwaHoja = id; try { G.history.pushState(est, ''); } catch (e) {}
+    // deslizar hacia abajo desde la barra de arriba (solo teléfono)
+    var cab = el.querySelector('.chwa-hoja-cab'), y0 = null, dy = 0;
+    cab.addEventListener('pointerdown', function (e) {
+      if (esPc() || (e.target.closest && e.target.closest('.chwa-hoja-x'))) return;
+      y0 = e.clientY; dy = 0; el.style.transition = 'none'; try { cab.setPointerCapture(e.pointerId); } catch (er) {}
+    });
+    cab.addEventListener('pointermove', function (e) { if (y0 === null) return; dy = Math.max(0, e.clientY - y0); el.style.transform = 'translateY(' + dy + 'px)'; });
+    var soltar = function () { if (y0 === null) return; y0 = null; el.style.transition = ''; if (dy > 80) ctl.cerrar('deslizar'); else el.style.transform = ''; };
+    cab.addEventListener('pointerup', soltar); cab.addEventListener('pointercancel', soltar);
+    // entra con animación (sin animación si la persona pidió menos movimiento: lo resuelve el CSS)
+    G.requestAnimationFrame(function () { velo.classList.add('chwa-vis'); el.classList.add('chwa-vis'); });
+    var b0 = cuerpo.querySelector('button:not([disabled]), [href], input, select, textarea');
+    try { (b0 || el.querySelector('.chwa-hoja-x')).focus({ preventScroll: true }); } catch (e) {}
+    return ctl;
+  }
+  G.addEventListener('popstate', function () { if (hojaCtl && !hojaCtl.salioPorAtras) hojaCtl.quitar('atras'); });
 
   /* ═══ D · hora en cada globo ═══ */
   function dos(n) { return (n < 10 ? '0' : '') + n; }
@@ -682,6 +752,7 @@
     estadoEscritura: estadoEscritura, escrituraFilaHtml: escrituraFilaHtml, escrituraCabeceraHtml: escrituraCabeceraHtml, tecleo: tecleo,
     hora: hora, horaHtml: horaHtml,
     barraEstado: barraEstado, quienEstado: quienEstado, gastoTexto: gastoTexto,
+    hoja: hoja, hojaAbierta: function () { return hojaCtl ? hojaCtl.el : null; }, cerrarHoja: function () { if (hojaCtl) hojaCtl.cerrar('codigo'); }, esPc: esPc,
     menu: menu, menuAbierto: function () { return abierto ? abierto.el : null; }, cerrarMenu: function () { if (abierto) abierto.cerrar('codigo'); },
     itemIrAlMachote: itemIrAlMachote, itemInstalar: itemInstalar, itemBarra: itemBarra,
     barra: barra, barraVisible: barraVisible, ponBarra: ponBarra,

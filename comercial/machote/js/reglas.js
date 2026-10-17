@@ -146,6 +146,63 @@
         ? { detalle: 'En COSTO el precio es el costo: se cotizaría con utilidad cero. Cambia a CON UTILIDAD o MARGEN DESEADO antes de mandarla.' }
         : null
     },
+
+    /* ── V1.52 · precio decretado por sección (calc.js `precioDecretadoDe`) ───────────────────────
+     * Una sección puede llevar el precio (o el margen) que decidió el dueño. Es una EXCEPCIÓN a la
+     * plantilla y por eso exige su autorización escrita en el propio machote: `excepcion_decreto`
+     * con el id del decreto. Sin ella, la misma sección frena. El piso de margen del proyecto
+     * (`margen-bajo-duro`) NO se toca: sigue midiendo el margen total. Sin secciones marcadas, ninguna
+     * de estas reglas puede dispararse. */
+    {
+      destino: (m) => ({ tab: 'secc', seccion: (secs(m).find(x => x.precio_decretado) || {}).id || null }),
+      id: 'precio-decretado-invalido', severidad: 'dura', area: 'Precio',
+      titulo: 'Precio decretado mal escrito',
+      evaluar: (m, c) => {
+        const mal = c.secciones.filter(x => x.decretado && x.decretado.invalido).map(x => (x.nombre || 'sección') + ': ' + x.decretado.invalido);
+        return mal.length ? { detalle: 'La sección no se precifica con lo decretado hasta que se corrija.', items: mal } : null;
+      }
+    },
+    {
+      destino: () => ({ tab: 'gen' }),
+      id: 'precio-decretado-sin-excepcion', severidad: 'dura', area: 'Precio',
+      titulo: 'Precio decretado sin autorización escrita',
+      evaluar: (m, c) => {
+        const ok = (Array.isArray(m.excepcion_decreto) ? m.excepcion_decreto : m.excepcion_decreto ? [m.excepcion_decreto] : []).map(String);
+        const mal = c.secciones.filter(x => x.decretado && !x.decretado.invalido && !(x.decretado.decreto && ok.indexOf(x.decretado.decreto) >= 0))
+          .map(x => (x.nombre || 'sección') + (x.decretado.decreto ? ' (' + x.decretado.decreto + ' no está en excepcion_decreto)' : ' (sin id de decreto)'));
+        return mal.length ? { detalle: 'Un precio o margen de sección fuera de la plantilla solo vale con el decreto del dueño escrito en `excepcion_decreto`.', items: mal } : null;
+      }
+    },
+    {
+      destino: () => ({ tab: 'gen' }),
+      id: 'precio-decretado-otro-escenario', severidad: 'dura', area: 'Precio',
+      titulo: 'El precio decretado no aplica en este escenario',
+      evaluar: (m, c) => (c.decretadas > 0 && c.escenario.id !== 'margen_deseado')
+        ? { detalle: 'Hay ' + c.decretadas + ' sección(es) con precio decretado y la cotización está en «' + c.escenario.id + '»: lo decretado solo gobierna MARGEN DESEADO. Cambia el escenario o quita la marca.' }
+        : null
+    },
+    {
+      destino: () => ({ tab: 'gen' }),
+      id: 'precio-decretado-bajo-costo', severidad: 'dura', area: 'Precio',
+      titulo: 'Una sección decretada vende por debajo de su costo',
+      evaluar: (m, c) => {
+        if (c.escenario.id !== 'margen_deseado') return null;
+        const mal = c.secciones.filter(x => x.decreto && x.decreto.utilidad !== null && x.decreto.utilidad < 0)
+          .map(x => (x.nombre || 'sección') + ': precio ' + mx(x.esc.margen_deseado.precio) + ', costo ' + mx(x.costo) + ' más comisiones ' + mx(x.decreto.comisionFts + x.decreto.comisionCliente));
+        return mal.length ? { detalle: 'El precio decidido no cubre el costo y las comisiones de la sección.', items: mal } : null;
+      }
+    },
+    {
+      destino: () => ({ tab: 'gen' }),
+      id: 'precio-decretado', severidad: 'info', area: 'Precio',
+      titulo: 'Secciones con precio decretado por el dueño',
+      evaluar: (m, c) => {
+        const L = c.secciones.filter(x => x.decreto).map(x => (x.nombre || 'sección') + ': ' +
+          (x.decreto.tipo === 'precio' ? 'precio fijo ' + mx(x.decreto.valor) : 'margen ' + pct(x.decreto.valor)) +
+          ' · margen después de comisiones ' + (x.decreto.margen === null ? '—' : pct(x.decreto.margen)) + (x.decreto.decreto ? ' · ' + x.decreto.decreto : ''));
+        return L.length ? { detalle: 'Las demás secciones siguen al margen deseado del machote. El piso de margen se mide sobre el total.', items: L } : null;
+      }
+    },
     {
       destino: () => ({ tab: 'gen' }),
       id: 'con-utilidad-bajo-deseado', severidad: 'info', area: 'Precio',
