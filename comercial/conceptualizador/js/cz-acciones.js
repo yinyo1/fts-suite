@@ -41,6 +41,29 @@
     });
     return _doc;
   }
+  /* V1.52 · el motor de cálculo del machote, para el resumen de una versión que NO armó el conceptualizador (la de
+   * «lo que editaste a mano no se tocó»). Sin resumen la versión queda sin total ni moneda y la cotización en Odoo la
+   * rechaza (MONEDA_INVALIDA / MACHOTE_SIN_TOTAL): pasó con COT-0046 v4 del caso 21fec6 (17-oct, issue #5). */
+  var _calc = null;
+  function cargarCalc() {
+    if (G.MachoteCalc && G.MachoteCalc.calcular) return Promise.resolve(G.MachoteCalc);
+    if (_calc) return _calc;
+    _calc = new Promise(function (ok, mal) {
+      var s = document.createElement('script'); s.src = '../machote/js/calc.js?v=V1.53';
+      s.onload = function () { G.MachoteCalc && G.MachoteCalc.calcular ? ok(G.MachoteCalc) : (_calc = null, mal(new Error('sin MachoteCalc'))); };
+      s.onerror = function () { _calc = null; mal(new Error('No se pudo cargar el cálculo del machote.')); };
+      document.head.appendChild(s);
+    });
+    return _calc;
+  }
+  /** Resumen de una versión armada en la pantalla: total y moneda salen del MISMO cálculo que usa el editor del machote. */
+  async function resumenDe(doc) {
+    var r = { total: null, margen: isFinite(Number(doc.margen_deseado)) ? Number(doc.margen_deseado) : null, moneda: doc.moneda || null,
+      tc: isFinite(Number(doc.tc)) && Number(doc.tc) > 0 ? Number(doc.tc) : null, tc_fuente: doc.tc_fuente || null,
+      comision_fts: isFinite(Number(doc.comision_fts)) ? Number(doc.comision_fts) : null, comision_cliente: isFinite(Number(doc.comision_cliente)) ? Number(doc.comision_cliente) : 0 };
+    try { var c = (await cargarCalc()).calcular(doc); if (c && isFinite(Number(c.precio))) r.total = Math.round(Number(c.precio) * 100) / 100; } catch (e) {}
+    return r;
+  }
   /** Los bloques de la orden: una sección con su línea de precio, como las órdenes reales de FTS. */
   async function bloques(datos, caso) {
     var D = await cargarDocumento();
@@ -134,7 +157,7 @@
         (actual.secciones || []).some(function (sec) { return (sec.partidas || []).some(function (l) { return clave(sec, l) === k; }); }) || sinLugar.push(p.descripcion); });
     }
     var r = await C.suite('/webhook/comercial/machote-guardar', { id_local: fila.id_local, cliente_odoo_id: doc.cliente_id || null, version_leida: Number(fila.version) || 0,
-      estado: fila.estado || 'borrador', motivo: 'Actualizado desde el conceptualizador', documento: doc, resumen: intacto ? (d.resumen || null) : null });
+      estado: fila.estado || 'borrador', motivo: 'Actualizado desde el conceptualizador', documento: doc, resumen: intacto ? (d.resumen || null) : await resumenDe(doc) });
     if (!r.ok) return { ok: false, mensaje: r.error === 'CONFLICTO_DE_VERSION' ? 'Alguien guardó el machote en este momento. Vuelve a tocar «Actualizar machote».' : (r.mensaje || ('No se actualizó el machote: ' + (r.error || 'error'))) };
     var tp = textoPendientes({ n: Number(d.n_pendientes) || 0, lista: d.pendientes || [] });
     var folio = r.folio_txt || fila.folio_txt || u.folio || '';
@@ -180,6 +203,15 @@
   }
 
   // ── crear borrador en Odoo ──────────────────────────────────────────────
+  /** V1.52 §12 · la moneda del caso que dice el servidor (caso.moneda, la cambia un decreto); si no la trae, la de la empresa. */
+  /** V1.52 §15 · interruptores (los da el servidor; cz-app.js expone G.CzInterruptor). Sin él, apagado. */
+  function prendido(n) { return typeof G.CzInterruptor === 'function' && G.CzInterruptor(n) === true; }
+  function monedaCaso(caso) {
+    var m = String((caso && caso.moneda) || '').toUpperCase();
+    if (m === 'USD' || m === 'MXN') return m;
+    var e = String((caso && caso.empresa) || '');
+    return e === 'mx_usd' || e === 'usa_usd' ? 'USD' : e === 'mx_mxn' ? 'MXN' : null;
+  }
   async function crearBorrador(a, ctx) {
     var caso = ctx.caso, H = ctx.hilo;
     var cm = (H.acciones || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'hecha'; }).pop();
@@ -196,15 +228,27 @@
     if (conRef && !p.referencias) return { ok: false, mensaje: 'El servidor de Odoo todavía no acepta cotizar con referencias (falta publicar el workflow). El machote sí está al día.' };
     if (conRef && !ctx.aceptaReferencias) return { ok: false, mensaje: 'Revisa las referencias y toca «Cotizar con referencias».' };
     var prev = ordenDe(H), modo = prev ? 'actualizar' : 'crear';
-    var r = await C.suite(RUTA_ORDEN, { modo: modo, machote_id: caso.machote_id, version_leida: (cm.resultado || {}).version || 1,
-      caso_id: caso.id, cotizacion: cot, acepta_referencias: conRef }, 120000);
+    var cuerpo = { modo: modo, machote_id: caso.machote_id, version_leida: (cm.resultado || {}).version || 1,
+      caso_id: caso.id, cotizacion: cot, acepta_referencias: conRef },
+      // V1.52 §12 · la moneda del caso (la decide el servidor, p. ej. por decreto): orden-odoo la compara con la del machote.
+      // Solo con el interruptor `moneda_decreto` prendido; apagado, el cuerpo es el de V1.51.
+      md = prendido('moneda_decreto');
+    if (md) cuerpo.moneda_caso = monedaCaso(caso);
+    var r = await C.suite(RUTA_ORDEN, cuerpo, 120000);
+    if (md && !r.ok && r.error === 'MONEDA_DISTINTA_AL_CASO') {
+      var mm = r.moneda_machote || (cot && cot.moneda) || '¿?', mc = r.moneda_caso || monedaCaso(caso) || '¿?';
+      return { ok: false, error: r.error, mensaje: 'El machote está en ' + mm + ' y el caso en ' + mc + ': actualiza el machote antes de crear la cotización.' };
+    }
     if (!r.ok || !r.odoo_so_id) return { ok: false, mensaje: r.mensaje || ('No se creó el borrador: ' + (r.error || 'sin orden')) };
     var o = releido(r);
     o.texto = textoOrden(o, modo === 'crear' ? 'Borrador' : 'Actualizado');
     if (conRef) {   // queda en la acción y por ella en hilo.md: quién aceptó qué y cuándo
       var S = G.SuiteAuth.getSession() || {};
       o.referencias_aceptadas = { pct: R.pct, n3: R.n3, n4: R.n4, importe: R.importe, por: S.actor || null, at: new Date().toISOString() };
-      o.texto += ' Cotizada con referencias: ' + R.pct + ' % del costo' + (R.n3 ? ', ' + R.n3 + ' alerta' + (R.n3 === 1 ? '' : 's') + ' N3' : '') + ' (aceptado).';
+      // V1.52 · un solo dato (CzIndicadores): el mismo % y las mismas alertas que el mensaje, la tarjeta y la franja.
+      var IN = prendido('un_solo_dato') ? G.CzIndicadores : null, I = IN ? IN.calcular({ referencias: R, sensatez: ((a.datos || {}).sensatez || []).filter(function (x) { return x && x.alerta; }) }) : null;
+      o.texto += I ? ' Cotizada con referencias: ' + (I.referencia_pct || 0) + ' % del costo' + (I.alertas.total ? ', ' + IN.textoAlertas(I) : '') + ' (aceptado).'
+        : ' Cotizada con referencias: ' + R.pct + ' % del costo' + (R.n3 ? ', ' + R.n3 + ' alerta' + (R.n3 === 1 ? '' : 's') + ' N3' : '') + ' (aceptado).';
     }
     return { ok: true, resultado: o };
   }

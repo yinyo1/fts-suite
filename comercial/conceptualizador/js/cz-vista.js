@@ -159,6 +159,10 @@
       '<div class="vz-tile"><small>Precio a cliente (total' + (mon ? ', ' + esc(mon) : '') + ')</small><b>' + dinero(D.tot.p) + '</b></div>' +
       '<div class="vz-tile"><small>Costo</small><b>' + dinero(D.tot.c) + '</b></div>' +
       '<div class="vz-tile"><small>Margen después de comisión</small><b>' + pc(mar) + '</b></div>' +
+      // V1.52 · un solo dato: % de referencia y alertas, los MISMOS del mensaje, la tarjeta y la franja (o.indicadores = CzIndicadores).
+      (o.indicadores && G.CzIndicadores ? '<div class="vz-tile" data-vz-ind="ref"><small>Costo en referencia N3/N4</small><b>' + esc((o.indicadores.referencia_pct || 0) + ' %') + '</b></div>' +
+        '<div class="vz-tile" data-vz-ind="alertas" title="' + esc(G.CzIndicadores.textoAlertas(o.indicadores) || 'Sin alertas') + '"><small>Alertas</small><b>' + esc(o.indicadores.alertas.total) + '</b>' +
+        (o.indicadores.alertas.total ? '<small>' + esc(G.CzIndicadores.textoAlertas(o.indicadores).replace(/^\d+ alertas? /, '')) + '</small>' : '') + '</div>' : '') +
       (pct !== null ? '<div class="vz-tile"><small>Hacia el 100</small><b>' + esc(pct) + ' %</b><div class="vz-barra-av"><i style="width:' + Math.max(0, Math.min(100, Number(pct) || 0)) + '%"></i></div></div>' : '') + '</section>';
     var pend = arr(o.decisionesPendientes).map(function (p) { return typeof p === 'string' ? { t: p } : { t: p.titulo || p.texto || p.q || '', por: p.por || p.id || '' }; }).filter(function (p) { return p.t; });
     var falta = arr(M.pendientes).map(function (p) { return { t: (p.titulo || '') + (arr(p.items).length ? ': ' + arr(p.items).join(' · ') : ''), por: 'para cotizar' }; }).filter(function (p) { return p.t; });

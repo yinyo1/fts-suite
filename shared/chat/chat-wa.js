@@ -18,6 +18,9 @@
  *   mis proyectos      ChatWA.misProyectos({ claveUsuario, esMio(conv), puedeVerTodos }) → controlador
  *   H · escritura      ChatWA.estadoEscritura({ trabajos, ahora, topeMin, escriben, yo }) → {k:'agente'|'detenido'|'cola'|'persona',…} | null
  *                      ChatWA.escrituraFilaHtml(estado) · ChatWA.escrituraCabeceraHtml(estado) · ChatWA.tecleo({ enviar, cadaMs }) → { tecla(texto?) }
+ *   I · estado (V1.52) ChatWA.barraEstado({ textos?, alDetener(agente) → Promise<{ok}>, textoSinPermiso?, hora?(iso) }) → elemento con
+ *                      el.chwaPoner(agente, { puedeDetener }) · ChatWA.quienEstado(quien) · ChatWA.gastoTexto(ponderado)
+ *   J · hoja (V1.52)   ChatWA.hoja({ titulo, html, ancho?, alCerrar }) → { el, cuerpo, cerrar } · hojaAbierta() · cerrarHoja() · esPc()
  *   fila de la lista   ChatWA.fila({ id?, avatar:{ iniciales, color }, titulo, linea, hora, globitos, dueno, fijado, activa, escritura? })
  *
  * El estilo vive en chat-wa.css con prefijo chwa- en TODO (CLAUDE.md §20 #12: `.chip`, `.menu`, `.fila`, `.badge` ya
@@ -301,6 +304,157 @@
       reiniciar: function () { ult = -Infinity; }
     };
   }
+
+  /* ═══ I · barra de estado del agente (V1.52, prototipo v152 «estados»): SOLO con un proceso vivo en la base ═══
+   * El producto le pasa lo que dijo el servidor en ESTA consulta (`agente`): {estado:'trabajando', quien:'motor'|'robot'|
+   * 'respaldo', paso, pasos[], paso_i, hechos[], desde, gasto, proceso_id}. Cualquier otro estado (o null) la esconde:
+   * nada se pinta por deducción. Tocarla la expande (hechos ✓, en curso, faltan, desde y gasto). «Detener» sale solo si
+   * el producto dice que esta persona puede (dueño o administrador) y llama a alDetener(proceso); desde ahí dice
+   * «Deteniendo en el siguiente punto seguro…» hasta que el servidor cierre ESE proceso (deja de venir vivo). */
+  var QUIEN = { motor: 'Motor · te contesta', robot: 'Robot asistente · trabaja solo', respaldo: 'Respaldo · te contesta en minutos' };
+  function quienEstado(q, textos) { var t = textos || {}; return t[q] || QUIEN[q] || QUIEN.motor; }
+  /** 312000 → '312 mil tokens ponderados' · 1100000 → '1.1 millones de tokens ponderados'. Sin dato → ''. */
+  function gastoTexto(n) {
+    n = Number(n); if (!isFinite(n) || n <= 0) return '';
+    if (n < 1000) return Math.round(n) + ' tokens ponderados';
+    if (n < 1e6) return Math.round(n / 1000) + ' mil tokens ponderados';
+    var m = Math.round(n / 1e5) / 10;
+    return (m === 1 ? '1 millón' : String(m) + ' millones') + ' de tokens ponderados';
+  }
+  function vivo(a) { return !!(a && a.estado === 'trabajando'); }
+  function barraEstado(o) {
+    o = o || {};
+    var st = { ag: null, abierta: false, deteniendo: null, puede: false, error: '' };
+    var el = D.createElement('div'); el.className = 'chwa-est'; el.hidden = true; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite');
+    function pasosHtml(a) {
+      var P = Array.isArray(a.pasos) ? a.pasos : [], i = Number(a.paso_i), H = Array.isArray(a.hechos) ? a.hechos : [];
+      if (!isFinite(i) || i < 0) i = 0;
+      // El paso en curso manda: si su texto empieza con otro de los previstos («Buscando precios · 12 de 47»), ése es el índice.
+      var cur = String(a.paso || ''), nom = function (x) { return typeof x === 'object' && x ? (x.texto || x.paso || '') : String(x); };
+      if (cur && !(P[i] && cur.indexOf(nom(P[i])) === 0)) { for (var j = 0; j < P.length; j++) if (nom(P[j]) && cur.indexOf(nom(P[j])) === 0) { i = j; break; } }
+      var Hn = H.map(nom), hechos = H.length ? H : P.slice(0, i);
+      var faltan = P.slice(i + 1).filter(function (x) { return Hn.indexOf(nom(x)) < 0; });
+      var fila = function (k, x, ic) { return '<div class="chwa-est-paso ' + k + '"><span class="chwa-est-pi" aria-hidden="true">' + ic + '</span><span>' + esc(x) + '</span></div>'; };
+      return hechos.map(function (x) { return fila('h', typeof x === 'object' && x ? (x.texto || x.paso || '') : x, '✓'); }).join('') +
+        fila('c', a.paso || P[i] || 'Trabajando', '•') + faltan.map(function (x) { return fila('f', x, '○'); }).join('');
+    }
+    function pintar() {
+      var a = st.ag;
+      if (!vivo(a)) { el.hidden = true; el.innerHTML = ''; el.classList.remove('chwa-abierta'); return; }
+      el.hidden = false; el.classList.toggle('chwa-abierta', st.abierta);
+      var q = a.quien === 'robot' || a.quien === 'respaldo' ? a.quien : 'motor';
+      var det = st.deteniendo != null && String(st.deteniendo) === String(a.proceso_id);
+      var desde = (typeof o.hora === 'function' ? o.hora : hora)(a.desde), g = gastoTexto(a.gasto);
+      el.innerHTML = '<button type="button" class="chwa-est-l" data-chwa-est="tog" aria-expanded="' + st.abierta + '">' +
+        '<span class="chwa-est-giro" aria-hidden="true"></span><span class="chwa-est-tx"><span class="chwa-est-q chwa-q-' + q + '">' + esc(quienEstado(q, o.textos)) + '</span>' +
+        '<span class="chwa-est-p">' + esc(det ? 'Deteniendo en el siguiente punto seguro…' : (a.paso || 'Trabajando')) + '</span></span>' +
+        '<span class="chwa-est-t" aria-hidden="true">' + (st.abierta ? '▴' : '▾') + '</span></button>' +
+        '<div class="chwa-est-x">' + pasosHtml(a) +
+        ((desde || g) ? '<div class="chwa-est-meta">' + (desde ? 'Corre desde las ' + esc(desde) : '') + (desde && g ? ' · ' : '') + (g ? 'lleva ' + esc(g) : '') + '</div>' : '') +
+        (st.puede && a.proceso_id != null
+          ? '<div class="chwa-est-acc"><button type="button" class="chwa-est-det" data-chwa-est="det"' + (det ? ' disabled aria-busy="true"' : '') + '>' +
+            '<span class="chwa-est-cuad" aria-hidden="true"></span>' + (det ? 'Deteniendo en el siguiente punto seguro…' : 'Detener') + '</button>' +
+            '<span class="chwa-est-meta">' + esc(st.error || 'Corta en el siguiente punto seguro. Lo que ya quedó guardado se queda.') + '</span></div>'
+          : '<div class="chwa-est-meta">' + esc(o.textoSinPermiso || 'Solo el dueño del caso o un administrador pueden detenerlo.') + '</div>') + '</div>';
+    }
+    el.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('[data-chwa-est]'); if (!b || b.disabled) return;
+      if (b.getAttribute('data-chwa-est') === 'tog') { st.abierta = !st.abierta; pintar(); return; }
+      var a = st.ag; if (!vivo(a) || typeof o.alDetener !== 'function') return;
+      st.deteniendo = a.proceso_id; st.error = ''; pintar();
+      Promise.resolve(o.alDetener(a)).then(function (r) {
+        if (r && r.ok === false) { st.deteniendo = null; st.error = r.mensaje || 'No se pudo detener. Intenta otra vez.'; pintar(); }
+      }, function () { st.deteniendo = null; st.error = 'No se pudo detener. Intenta otra vez.'; pintar(); });
+    });
+    /** Lo que dijo el servidor en ESTA consulta. op.puedeDetener: si esta persona ve «Detener». */
+    el.chwaPoner = function (a, op) {
+      op = op || {};
+      if (op.puedeDetener !== undefined) st.puede = !!op.puedeDetener;
+      var antes = st.ag; st.ag = vivo(a) ? a : null;
+      // «Deteniendo…» dura hasta que el servidor deja de traer ESE proceso vivo (o desde que el servidor ya dice quién lo detiene).
+      if (!st.ag) { st.abierta = false; st.deteniendo = null; st.error = ''; }
+      else {
+        if (antes && String(antes.proceso_id) !== String(st.ag.proceso_id)) { st.abierta = false; st.error = ''; }
+        if (st.ag.detener_por || st.ag.deteniendo === true) st.deteniendo = st.ag.proceso_id;
+        else if (st.deteniendo != null && String(st.deteniendo) !== String(st.ag.proceso_id)) st.deteniendo = null;
+      }
+      pintar(); return el;
+    };
+    el.chwaVivo = function () { return vivo(st.ag); };
+    el.chwaDeteniendo = function () { return st.deteniendo; };
+    el.chwaAbierta = function (v) { if (v !== undefined) { st.abierta = !!v; pintar(); } return st.abierta; };
+    if (o.agente !== undefined) el.chwaPoner(o.agente, { puedeDetener: o.puedeDetener });
+    return el;
+  }
+
+  /* ═══ J · hoja desde abajo (V1.52, adelantado de V1.53; prototipo v152 escena «Menú ⋮») ═══
+   * En teléfono: sube desde abajo, máximo 70 % del alto, barra para arrastrar, X visible; se cierra tocando fuera,
+   * deslizando hacia abajo (> 80 px), con Esc o con Atrás. En PC (≥ 900 px): tarjeta flotante arriba a la derecha
+   * (los menús ⋮ del producto siguen siendo su popover; esto es para cuando el producto la pide también en PC).
+   *   ChatWA.hoja({ titulo, html, etiqueta?, ancho?:'380px', alCerrar(motivo) }) → { el, cuerpo, cerrar(motivo) }
+   *   ChatWA.hojaAbierta() → el | null   ·   ChatWA.cerrarHoja()   ·   ChatWA.esPc() */
+  var hojaCtl = null, hsec = 0;
+  function esPc() { try { return G.matchMedia('(min-width:900px)').matches; } catch (e) { return (G.innerWidth || 0) >= 900; } }
+  function hoja(o) {
+    o = o || {};
+    if (hojaCtl) hojaCtl.cerrar('otra');
+    var id = ++hsec, antes = D.activeElement;
+    var velo = D.createElement('div'); velo.className = 'chwa-hoja-velo';
+    var el = D.createElement('div'); el.className = 'chwa-hoja';
+    el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-labelledby', 'chwa-hoja-t' + id);
+    if (o.ancho) el.style.setProperty('--chwa-hoja-ancho', o.ancho);   // solo cuenta en PC (≥ 900 px, chat-wa.css)
+    el.innerHTML = '<div class="chwa-hoja-cab"><span class="chwa-hoja-asa" aria-hidden="true"></span><b id="chwa-hoja-t' + id + '">' + esc(o.titulo || '') + '</b>' +
+      '<button type="button" class="chwa-hoja-x" aria-label="Cerrar"><svg class="chwa-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
+      '<div class="chwa-hoja-c">' + (o.html || '') + '</div>';
+    D.body.appendChild(velo); D.body.appendChild(el);
+    var cuerpo = el.querySelector('.chwa-hoja-c');
+    var ctl = { el: el, cuerpo: cuerpo, id: id };
+    function tecla(e) { if (e.key === 'Escape' && hojaCtl === ctl) { e.preventDefault(); e.stopPropagation(); ctl.cerrar('esc'); } }
+    function quitar(motivo) {
+      if (!el.parentNode) return false;
+      D.removeEventListener('keydown', tecla, true);
+      el.parentNode.removeChild(el); if (velo.parentNode) velo.parentNode.removeChild(velo);
+      if (hojaCtl === ctl) hojaCtl = null;
+      if (antes && antes.focus && motivo !== 'otra') { try { antes.focus({ preventScroll: true }); } catch (e) {} }
+      if (typeof o.alCerrar === 'function') o.alCerrar(motivo);
+      return true;
+    }
+    ctl.cerrar = function (motivo) {
+      if (!quitar(motivo || 'codigo')) return;
+      // Cerrada por la persona (fuera, X, Esc, deslizar): se saca su entrada del historial. Cerrada por el código (eligió algo
+      // del menú): solo se desmarca, porque lo que sigue puede empujar su propia entrada (visor, vista) y un back() tardío la tiraría.
+      var st = G.history.state;
+      if (st && st.chwaHoja === id) {
+        ctl.salioPorAtras = true;
+        if (['fuera', 'x', 'esc', 'deslizar'].indexOf(motivo) >= 0) { try { G.history.back(); } catch (e) {} }
+        else { var n = {}; for (var k2 in st) if (k2 !== 'chwaHoja' && Object.prototype.hasOwnProperty.call(st, k2)) n[k2] = st[k2]; try { G.history.replaceState(n, ''); } catch (e) {} }
+      }
+    };
+    ctl.quitar = quitar;
+    hojaCtl = ctl;
+    D.addEventListener('keydown', tecla, true);
+    velo.addEventListener('click', function () { ctl.cerrar('fuera'); });
+    el.querySelector('.chwa-hoja-x').addEventListener('click', function () { ctl.cerrar('x'); });
+    // Atrás cierra (una entrada propia en el historial que conserva el estado del producto, como el menú ⋮)
+    var est = {}, h0 = G.history.state;
+    if (h0 && typeof h0 === 'object') for (var k in h0) if (Object.prototype.hasOwnProperty.call(h0, k)) est[k] = h0[k];
+    est.chwaHoja = id; try { G.history.pushState(est, ''); } catch (e) {}
+    // deslizar hacia abajo desde la barra de arriba (solo teléfono)
+    var cab = el.querySelector('.chwa-hoja-cab'), y0 = null, dy = 0;
+    cab.addEventListener('pointerdown', function (e) {
+      if (esPc() || (e.target.closest && e.target.closest('.chwa-hoja-x'))) return;
+      y0 = e.clientY; dy = 0; el.style.transition = 'none'; try { cab.setPointerCapture(e.pointerId); } catch (er) {}
+    });
+    cab.addEventListener('pointermove', function (e) { if (y0 === null) return; dy = Math.max(0, e.clientY - y0); el.style.transform = 'translateY(' + dy + 'px)'; });
+    var soltar = function () { if (y0 === null) return; y0 = null; el.style.transition = ''; if (dy > 80) ctl.cerrar('deslizar'); else el.style.transform = ''; };
+    cab.addEventListener('pointerup', soltar); cab.addEventListener('pointercancel', soltar);
+    // entra con animación (sin animación si la persona pidió menos movimiento: lo resuelve el CSS)
+    G.requestAnimationFrame(function () { velo.classList.add('chwa-vis'); el.classList.add('chwa-vis'); });
+    var b0 = cuerpo.querySelector('button:not([disabled]), [href], input, select, textarea');
+    try { (b0 || el.querySelector('.chwa-hoja-x')).focus({ preventScroll: true }); } catch (e) {}
+    return ctl;
+  }
+  G.addEventListener('popstate', function () { if (hojaCtl && !hojaCtl.salioPorAtras) hojaCtl.quitar('atras'); });
 
   /* ═══ D · hora en cada globo ═══ */
   function dos(n) { return (n < 10 ? '0' : '') + n; }
@@ -594,13 +748,15 @@
   }
 
   G.ChatWA = {
-    version: '1.51',
+    version: '1.52',
     esc: esc,
     globitos: globitos, enlazarGlobitos: enlazarGlobitos, ocultarExplicacion: ocultarTip,
     superados: superados, marcarSuperada: marcarSuperada,
     escribiendo: escribiendo, pasoEnCurso: pasoEnCurso,
     estadoEscritura: estadoEscritura, escrituraFilaHtml: escrituraFilaHtml, escrituraCabeceraHtml: escrituraCabeceraHtml, tecleo: tecleo,
     hora: hora, horaHtml: horaHtml,
+    barraEstado: barraEstado, quienEstado: quienEstado, gastoTexto: gastoTexto,
+    hoja: hoja, hojaAbierta: function () { return hojaCtl ? hojaCtl.el : null; }, cerrarHoja: function () { if (hojaCtl) hojaCtl.cerrar('codigo'); }, esPc: esPc,
     menu: menu, menuAbierto: function () { return abierto ? abierto.el : null; }, cerrarMenu: function () { if (abierto) abierto.cerrar('codigo'); },
     itemIrAlMachote: itemIrAlMachote, itemInstalar: itemInstalar, itemBarra: itemBarra,
     barra: barra, barraVisible: barraVisible, ponBarra: ponBarra,

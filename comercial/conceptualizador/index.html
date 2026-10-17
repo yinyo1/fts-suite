@@ -698,7 +698,8 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
   .tb-nueva{border:1px solid #bfe5cd}.tb-dif{font-size:13px;margin:2px 0 4px;font-variant-numeric:tabular-nums}
   .txt-corto{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
   .ver-todo{font-size:12.5px;margin:2px 0 0}
-  /* el globito del agente */
+  /* el globito del agente (V1.48). V1.52 §15: solo se pinta con el interruptor `estados_reales` APAGADO; prendido, su
+   * contenido vive en ⋮ → «Configuración del robot asistente». */
   .bot-ag{display:flex;align-items:center;gap:4px;height:30px;padding:0 9px 0 6px;border-radius:15px;font-size:12px;font-weight:600;flex-shrink:0;border:1px solid transparent;margin-left:2px}
   .bot-ag .e{font-size:15px;line-height:1}
   .bot-ag.trabajando{background:#e3f6ea;color:#0b6b45;border-color:#bfe5cd}.bot-ag.trabajando .e{animation:latido-ag 1.6s ease-in-out infinite}
@@ -753,6 +754,41 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
   body.con-barra:has(.chwa-barra[hidden]) .app{height:100dvh}
   #ch .tx small.esc-wa{min-width:0;display:block}
   @media (min-width:900px){ body.con-barra .chwa-barra{display:none} body.con-barra .app{height:100dvh} }
+  /* ═══ V1.52 §13 · ⋮ como hoja del núcleo (teléfono) y las dos configuraciones (czc-). Nada de esto es del chat genérico. ═══ */
+  .chwa-hoja .menu.en-hoja{position:static;min-width:0;max-width:none;box-shadow:none;border-radius:0;padding:0 0 4px;background:transparent}
+  .chwa-hoja .menu.en-hoja button{padding:12px 18px}
+  #estAg{flex-shrink:0;min-width:0}
+  .czc{padding:2px 16px 16px;font-size:14px;color:var(--texto)}
+  .czc h3{font-size:12.5px;color:var(--acento-osc);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 6px;font-weight:700}
+  .czc h3.czc-robot{color:#7b4bb7}.czc h3.czc-adm{color:#7b4bb7}
+  .czc-tarj{background:var(--sup2);border-radius:12px;padding:10px 12px;margin-bottom:8px;overflow-wrap:anywhere}
+  .czc-tarj>div+div{margin-top:3px}
+  .czc-k{font-size:12.5px;color:var(--sec);margin-top:4px}
+  .czc-med{height:8px;border-radius:4px;background:var(--linea);overflow:hidden;margin:7px 0 2px}.czc-med i{display:block;height:100%;background:var(--acento-osc)}
+  .czc-fila{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--linea)}
+  .czc-tx{flex:1;min-width:0}.czc-tx small{display:block;color:var(--sec);font-size:12.5px;overflow-wrap:anywhere}
+  .czc-sw{width:42px;height:24px;border-radius:12px;background:var(--ter);position:relative;flex-shrink:0;border:0;cursor:pointer}
+  .czc-sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .15s}
+  .czc-sw.on{background:var(--acento-osc)}.czc-sw.on::after{left:21px}.czc-sw[disabled],.czc-btn[disabled]{opacity:.5;cursor:default}
+  .czc-btn{display:inline-flex;align-items:center;gap:6px;background:var(--sup);border:1px solid #d1d7db;border-radius:18px;padding:7px 13px;font-size:13.5px;font-weight:500;color:var(--texto);flex-shrink:0;cursor:pointer}
+  .czc-btn.p{background:var(--acento-osc);color:#fff;border-color:var(--acento-osc)}
+  .czc-est{font-size:12px;font-weight:600;color:var(--sec);background:var(--sup2);border-radius:10px;padding:3px 9px;flex-shrink:0}.czc-est.on{color:#0b6b45;background:#e3f6ea}
+  .czc-fijo{font-size:12.5px;color:var(--sec);background:var(--sup2);border-radius:10px;padding:8px 10px;margin-top:12px}
+  .czc-razon{background:var(--sup2);border-radius:12px;padding:10px 12px;margin:8px 0}
+  .czc-razon label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}.czc-razon p{font-size:13.5px;margin:0 0 6px}
+  .czc-razon input,.czc-campo input,.czc-campo select{width:100%;font:inherit;font-size:16px;padding:8px 10px;border:1px solid #d1d7db;border-radius:8px;background:var(--sup);color:var(--texto);min-width:0}
+  .czc-acc{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .czc-err{color:var(--rojo);font-size:12.5px;margin:6px 0 0}.czc-ok{background:#e3f6ea;color:#0b6b45;border-radius:10px;padding:8px 10px;font-size:13px;margin:6px 0 0}
+  .czc-grupo{display:grid;grid-template-columns:1fr;gap:8px}
+  @media (min-width:520px){ .czc-grupo{grid-template-columns:1fr 1fr} }
+  .czc-campo{display:flex;flex-direction:column;gap:4px;min-width:0;font-size:13px}
+  .czc-campo>span small{display:block;color:var(--ter);font-size:11px;font-family:ui-monospace,Menlo,monospace;overflow-wrap:anywhere}
+  .czc-rz{margin-top:12px}
+  .czc-ints{margin-bottom:6px}.czc-int .czc-tx b{font-size:14px}.czc-int .czc-est{margin-left:4px;vertical-align:1px}
+  .czc-tx small.czc-cl{color:var(--ter);font-size:11px;font-family:ui-monospace,Menlo,monospace}
+  .czc-conf{background:#fff4d6;color:#5c3d00;border:1px solid #f0dc8c;border-radius:10px;padding:10px 12px;margin-top:10px;font-size:13.5px}
+  .czc-bit{list-style:none;padding:0;margin:0}.czc-bit li{border-bottom:1px solid var(--linea);padding:7px 0;font-size:13px;overflow-wrap:anywhere}
+  .czc-bit small{display:block;color:var(--sec);font-size:12px}
 </style>
 </head>
 <body>
@@ -767,6 +803,7 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
     <button class="abajo" id="bAbajo" type="button" aria-label="Ir al último mensaje"><span class="badge" id="nAbajo" style="display:none"></span></button>
     <div id="bandeja"></div>
     <div id="prep"></div>
+    <div id="estAg"></div>
     <div id="fijo"><button id="bFijo" type="button"></button></div>
     <div class="compose">
       <div class="caja">
@@ -785,25 +822,26 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <div class="rub-velo" id="rubHoja"></div>
 <div class="modal" id="modal"></div>
 <div class="panel" id="panel"></div>
-<link rel="stylesheet" href="../../shared/chat/chat-wa.css?v=V1.51" />
-<script src="../../shared/chat/chat-wa.js?v=V1.51"></script>
-<script src="../../shared/chat/chat-firma.js?v=V1.51"></script>
-<script src="js/cz-cliente.js?v=V1.51"></script>
-<script src="js/cz-medios.js?v=V1.51"></script>
-<script src="js/cz-grabadora.js?v=V1.51"></script>
-<script src="js/cz-archivos.js?v=V1.51"></script>
-<script src="js/cz-ciudad.js?v=V1.51"></script>
-<script src="js/cz-cola.js?v=V1.51"></script>
-<script src="js/cz-acciones.js?v=V1.51"></script>
-<script src="js/cz-avance.js?v=V1.51"></script>
-<script src="js/cz-tabla.js?v=V1.51"></script>
-<script src="js/cz-visor.js?v=V1.51"></script>
-<script src="js/cz-vista.js?v=V1.51"></script>
-<script src="js/cz-camara.js?v=V1.51"></script>
-<script src="../../shared/chat/chat-gestos.js?v=V1.51"></script>
-<script src="js/cz-push.js?v=V1.51"></script>
-<script src="js/cz-app.js?v=V1.51"></script>
-<script src="js/cz-version.js?v=V1.51"></script>
+<link rel="stylesheet" href="../../shared/chat/chat-wa.css?v=V1.52" />
+<script src="../../shared/chat/chat-wa.js?v=V1.52"></script>
+<script src="../../shared/chat/chat-firma.js?v=V1.52"></script>
+<script src="js/cz-cliente.js?v=V1.52"></script>
+<script src="js/cz-medios.js?v=V1.52"></script>
+<script src="js/cz-grabadora.js?v=V1.52"></script>
+<script src="js/cz-archivos.js?v=V1.52"></script>
+<script src="js/cz-ciudad.js?v=V1.52"></script>
+<script src="js/cz-cola.js?v=V1.52"></script>
+<script src="js/cz-acciones.js?v=V1.52"></script>
+<script src="js/cz-indicadores.js?v=V1.52"></script>
+<script src="js/cz-avance.js?v=V1.52"></script>
+<script src="js/cz-tabla.js?v=V1.52"></script>
+<script src="js/cz-visor.js?v=V1.52"></script>
+<script src="js/cz-vista.js?v=V1.52"></script>
+<script src="js/cz-camara.js?v=V1.52"></script>
+<script src="../../shared/chat/chat-gestos.js?v=V1.52"></script>
+<script src="js/cz-push.js?v=V1.52"></script>
+<script src="js/cz-app.js?v=V1.52"></script>
+<script src="js/cz-version.js?v=V1.52"></script>
 <script>window.CzApp.arrancar().then(function () { if (window.CzVersion) window.CzVersion.iniciar(); if (window.CzPush) window.CzPush.iniciar(); });</script>
 </body>
 </html>
