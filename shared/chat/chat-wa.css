@@ -181,8 +181,10 @@ button.chwa-reemp:focus-visible{outline:2px solid var(--chwa-marca);outline-offs
 .chwa-hoja-x{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:none;border:0;color:var(--chwa-sec);cursor:pointer;flex-shrink:0}
 .chwa-hoja-x:hover{background:var(--chwa-sup2)}
 .chwa-hoja-c{overflow-y:auto;overflow-x:hidden;padding:0 0 calc(12px + env(safe-area-inset-bottom, 0px));min-height:0;-webkit-overflow-scrolling:touch}
-.chwa-hoja.chwa-hoja-pc{left:auto;right:16px;top:64px;bottom:auto;width:380px;max-width:calc(100vw - 32px);border-radius:12px;max-height:calc(100vh - 90px);transform:none;opacity:0;transition:opacity .15s}
-.chwa-hoja.chwa-hoja-pc.chwa-vis{opacity:1}
-.chwa-hoja.chwa-hoja-pc .chwa-hoja-asa{display:none}
-.chwa-hoja.chwa-hoja-pc .chwa-hoja-cab{cursor:default;padding-top:8px}
+@media (min-width:900px){
+  .chwa-hoja{left:auto;right:16px;top:64px;bottom:auto;width:var(--chwa-hoja-ancho,380px);max-width:calc(100vw - 32px);border-radius:12px;max-height:calc(100vh - 90px);transform:none;opacity:0;transition:opacity .15s}
+  .chwa-hoja.chwa-vis{opacity:1}
+  .chwa-hoja .chwa-hoja-asa{display:none}
+  .chwa-hoja .chwa-hoja-cab{cursor:default;padding-top:8px}
+}
 @media (prefers-reduced-motion:reduce){ .chwa-hoja,.chwa-hoja-velo{transition:none} }

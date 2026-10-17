@@ -1368,7 +1368,7 @@
   function pintarEstado() {
     var box = $('#estAg'); if (!box || !G.ChatWA || !G.ChatWA.barraEstado) return;
     if (!ST.barraEst) {
-      ST.barraEst = G.ChatWA.barraEstado({ textoSinPermiso: 'Solo el dueño del caso o Esteban pueden detenerlo.', alDetener: async function (a) {
+      ST.barraEst = G.ChatWA.barraEstado({ textoSinPermiso: 'Solo el dueño del caso o Esteban pueden detenerlo.', hora: hora, alDetener: async function (a) {
         var cid = (ST.sel || {}).id; if (!cid || a.proceso_id == null) return { ok: false, mensaje: 'Este proceso todavía no se puede detener desde aquí.' };
         var r = await C.detener(cid, a.proceso_id);
         if (!r.ok) return { ok: false, mensaje: r.error === 'MODO_DESCONOCIDO' || r.error === 'TIPO_INVALIDO' ? 'Esto se activa cuando se actualice el servidor.' : (r.mensaje || 'No se pudo detener: ' + (r.error || 'error')) };

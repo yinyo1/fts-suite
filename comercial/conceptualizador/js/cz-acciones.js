@@ -180,6 +180,13 @@
   }
 
   // ── crear borrador en Odoo ──────────────────────────────────────────────
+  /** V1.52 §12 · la moneda del caso que dice el servidor (caso.moneda, la cambia un decreto); si no la trae, la de la empresa. */
+  function monedaCaso(caso) {
+    var m = String((caso && caso.moneda) || '').toUpperCase();
+    if (m === 'USD' || m === 'MXN') return m;
+    var e = String((caso && caso.empresa) || '');
+    return e === 'mx_usd' || e === 'usa_usd' ? 'USD' : e === 'mx_mxn' ? 'MXN' : null;
+  }
   async function crearBorrador(a, ctx) {
     var caso = ctx.caso, H = ctx.hilo;
     var cm = (H.acciones || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'hecha'; }).pop();
@@ -197,7 +204,13 @@
     if (conRef && !ctx.aceptaReferencias) return { ok: false, mensaje: 'Revisa las referencias y toca «Cotizar con referencias».' };
     var prev = ordenDe(H), modo = prev ? 'actualizar' : 'crear';
     var r = await C.suite(RUTA_ORDEN, { modo: modo, machote_id: caso.machote_id, version_leida: (cm.resultado || {}).version || 1,
-      caso_id: caso.id, cotizacion: cot, acepta_referencias: conRef }, 120000);
+      caso_id: caso.id, cotizacion: cot, acepta_referencias: conRef,
+      // V1.52 §12 · la moneda del caso (la decide el servidor, p. ej. por decreto): orden-odoo la compara con la del machote.
+      moneda_caso: monedaCaso(caso) }, 120000);
+    if (!r.ok && r.error === 'MONEDA_DISTINTA_AL_CASO') {
+      var mm = r.moneda_machote || (cot && cot.moneda) || '¿?', mc = r.moneda_caso || monedaCaso(caso) || '¿?';
+      return { ok: false, error: r.error, mensaje: 'El machote está en ' + mm + ' y el caso en ' + mc + ': actualiza el machote antes de crear la cotización.' };
+    }
     if (!r.ok || !r.odoo_so_id) return { ok: false, mensaje: r.mensaje || ('No se creó el borrador: ' + (r.error || 'sin orden')) };
     var o = releido(r);
     o.texto = textoOrden(o, modo === 'crear' ? 'Borrador' : 'Actualizado');

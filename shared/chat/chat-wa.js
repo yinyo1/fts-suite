@@ -18,7 +18,7 @@
  *   mis proyectos      ChatWA.misProyectos({ claveUsuario, esMio(conv), puedeVerTodos }) → controlador
  *   H · escritura      ChatWA.estadoEscritura({ trabajos, ahora, topeMin, escriben, yo }) → {k:'agente'|'detenido'|'cola'|'persona',…} | null
  *                      ChatWA.escrituraFilaHtml(estado) · ChatWA.escrituraCabeceraHtml(estado) · ChatWA.tecleo({ enviar, cadaMs }) → { tecla(texto?) }
- *   I · estado (V1.52) ChatWA.barraEstado({ textos?, alDetener(agente) → Promise<{ok}>, textoSinPermiso? }) → elemento con
+ *   I · estado (V1.52) ChatWA.barraEstado({ textos?, alDetener(agente) → Promise<{ok}>, textoSinPermiso?, hora?(iso) }) → elemento con
  *                      el.chwaPoner(agente, { puedeDetener }) · ChatWA.quienEstado(quien) · ChatWA.gastoTexto(ponderado)
  *   J · hoja (V1.52)   ChatWA.hoja({ titulo, html, ancho?, alCerrar }) → { el, cuerpo, cerrar } · hojaAbierta() · cerrarHoja() · esPc()
  *   fila de la lista   ChatWA.fila({ id?, avatar:{ iniciales, color }, titulo, linea, hora, globitos, dueno, fijado, activa, escritura? })
@@ -329,7 +329,11 @@
     function pasosHtml(a) {
       var P = Array.isArray(a.pasos) ? a.pasos : [], i = Number(a.paso_i), H = Array.isArray(a.hechos) ? a.hechos : [];
       if (!isFinite(i) || i < 0) i = 0;
-      var hechos = H.length ? H : P.slice(0, i), faltan = P.slice(i + 1);
+      // El paso en curso manda: si su texto empieza con otro de los previstos («Buscando precios · 12 de 47»), ése es el índice.
+      var cur = String(a.paso || ''), nom = function (x) { return typeof x === 'object' && x ? (x.texto || x.paso || '') : String(x); };
+      if (cur && !(P[i] && cur.indexOf(nom(P[i])) === 0)) { for (var j = 0; j < P.length; j++) if (nom(P[j]) && cur.indexOf(nom(P[j])) === 0) { i = j; break; } }
+      var Hn = H.map(nom), hechos = H.length ? H : P.slice(0, i);
+      var faltan = P.slice(i + 1).filter(function (x) { return Hn.indexOf(nom(x)) < 0; });
       var fila = function (k, x, ic) { return '<div class="chwa-est-paso ' + k + '"><span class="chwa-est-pi" aria-hidden="true">' + ic + '</span><span>' + esc(x) + '</span></div>'; };
       return hechos.map(function (x) { return fila('h', typeof x === 'object' && x ? (x.texto || x.paso || '') : x, '✓'); }).join('') +
         fila('c', a.paso || P[i] || 'Trabajando', '•') + faltan.map(function (x) { return fila('f', x, '○'); }).join('');
@@ -340,7 +344,7 @@
       el.hidden = false; el.classList.toggle('chwa-abierta', st.abierta);
       var q = a.quien === 'robot' || a.quien === 'respaldo' ? a.quien : 'motor';
       var det = st.deteniendo != null && String(st.deteniendo) === String(a.proceso_id);
-      var desde = hora(a.desde), g = gastoTexto(a.gasto);
+      var desde = (typeof o.hora === 'function' ? o.hora : hora)(a.desde), g = gastoTexto(a.gasto);
       el.innerHTML = '<button type="button" class="chwa-est-l" data-chwa-est="tog" aria-expanded="' + st.abierta + '">' +
         '<span class="chwa-est-giro" aria-hidden="true"></span><span class="chwa-est-tx"><span class="chwa-est-q chwa-q-' + q + '">' + esc(quienEstado(q, o.textos)) + '</span>' +
         '<span class="chwa-est-p">' + esc(det ? 'Deteniendo en el siguiente punto seguro…' : (a.paso || 'Trabajando')) + '</span></span>' +
@@ -396,9 +400,9 @@
     if (hojaCtl) hojaCtl.cerrar('otra');
     var id = ++hsec, antes = D.activeElement;
     var velo = D.createElement('div'); velo.className = 'chwa-hoja-velo';
-    var el = D.createElement('div'); el.className = 'chwa-hoja' + (esPc() ? ' chwa-hoja-pc' : '');
+    var el = D.createElement('div'); el.className = 'chwa-hoja';
     el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-labelledby', 'chwa-hoja-t' + id);
-    if (o.ancho && esPc()) el.style.width = o.ancho;
+    if (o.ancho) el.style.setProperty('--chwa-hoja-ancho', o.ancho);   // solo cuenta en PC (≥ 900 px, chat-wa.css)
     el.innerHTML = '<div class="chwa-hoja-cab"><span class="chwa-hoja-asa" aria-hidden="true"></span><b id="chwa-hoja-t' + id + '">' + esc(o.titulo || '') + '</b>' +
       '<button type="button" class="chwa-hoja-x" aria-label="Cerrar"><svg class="chwa-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
       '<div class="chwa-hoja-c">' + (o.html || '') + '</div>';
