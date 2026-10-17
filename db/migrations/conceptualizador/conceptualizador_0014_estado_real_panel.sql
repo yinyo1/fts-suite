@@ -20,6 +20,12 @@
 --   §10 consumo_avance.resultado 'saltada'.
 --   §11 experimento_par y modo experimento (muestra / registra).
 --   §12 modo caso_moneda.
+--   §15 INTERRUPTORES: todo lo que cambia comportamiento entra APAGADO. Filas config `interruptor:<nombre>` = '0'
+--       (ON CONFLICT DO NOTHING: reaplicar no prende nada), leídas SOLO con prendido(nombre). Con todos en '0' la base
+--       hace lo mismo que la 0013: agente_estado/uso_hoy/aviso_tope despachan a sus copias _0013; cerrar_colgados,
+--       arrancar_levantamientos, los avisos motor_caido/motor_linaje, el latido sin_relevo/profundidad, la muestra del
+--       experimento, el «detener» de la suite y la línea del modo error no actúan. Los VALORES del tope no se tocan
+--       (siguen en 60; Esteban los cambia en el panel). casos e hilo traen `interruptores`.
 --
 -- Patrón: api_motor → api_motor_0014prev, api_suite → api_suite_0014prev, api_respaldo →
 -- api_respaldo_0014prev; la nueva atiende lo suyo y delega lo demás.
@@ -28,7 +34,8 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- ── §1 · configuración ─────────────────────────────────────────────────────
--- ★ = se actualiza aunque exista (y deja su renglón en la bitácora si cambió).
+-- §15 · ningún valor existente se reescribe: el tope sigue como esté (60 en producción) y el override de Esteban
+-- NO se siembra; Esteban pone 80/150 desde el panel. Todo lo de abajo es ON CONFLICT DO NOTHING.
 CREATE TABLE IF NOT EXISTS conceptualizador.config_cambio (
   id         bigserial   PRIMARY KEY,
   clave      text        NOT NULL CHECK (char_length(clave) BETWEEN 1 AND 100),
@@ -40,20 +47,10 @@ CREATE TABLE IF NOT EXISTS conceptualizador.config_cambio (
 );
 CREATE INDEX IF NOT EXISTS config_cambio_fecha ON conceptualizador.config_cambio (created_at DESC);
 
-INSERT INTO conceptualizador.config_cambio (clave, antes, despues, por, razon)
-SELECT s.clave, c.valor, s.valor, 'migracion_0014', 'Semilla V1.52 (DISENO-V152 §1)'
-  FROM (VALUES ('tope_mensajes_dia', '80'), ('tope_mensajes_dia:esteban.delacruz', '150')) s(clave, valor)
-  LEFT JOIN conceptualizador.config c ON c.clave = s.clave
- WHERE c.valor IS DISTINCT FROM s.valor;
-INSERT INTO conceptualizador.config (clave, valor) VALUES
-  ('tope_mensajes_dia', '80'),
-  ('tope_mensajes_dia:esteban.delacruz', '150')
-ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor;
-
 INSERT INTO conceptualizador.config (clave, valor) VALUES
   ('tope_sesiones_dia', '8'),
   ('robot_desde', '07:00'),
-  ('robot_hasta', '22:00'),
+  ('robot_hasta', '21:00'),          -- §15: el de hoy (presupuesto-tokens.json de main); 22:00 se pone en el panel
   ('robot_dias', '1,2,3,4,5'),
   ('robot_zona', 'America/Mexico_City'),
   ('robot_por_caso_dia_pasadas', '3'),
@@ -70,6 +67,30 @@ INSERT INTO conceptualizador.config (clave, valor) VALUES
   ('motor_caido_desde', '07:00'),
   ('motor_caido_hasta', '22:00'),
   ('panel_admin', 'esteban.delacruz')
+ON CONFLICT (clave) DO NOTHING;
+
+-- ── §15 · interruptores ────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION conceptualizador.interruptores_nombres() RETURNS text[]
+LANGUAGE sql IMMUTABLE AS $in15$
+  SELECT ARRAY['estados_reales','cerrar_colgados','arranque_auto','saltar_sin_novedad','relevo_v152','aviso_motor_caido',
+               'experimento_contexto','tope_v152','moneda_decreto','margen_por_seccion','un_solo_dato','menu_hoja']
+$in15$;
+
+-- La ÚNICA lectura de un interruptor en SQL: falta o vale distinto de '1' → apagado.
+CREATE OR REPLACE FUNCTION conceptualizador.prendido(nombre text) RETURNS boolean
+LANGUAGE sql STABLE AS $pr15$
+  SELECT coalesce((SELECT btrim(c.valor) = '1' FROM conceptualizador.config c WHERE c.clave = 'interruptor:' || nombre), false)
+$pr15$;
+
+-- {nombre: bool} de los 12, para casos/hilo y el panel.
+CREATE OR REPLACE FUNCTION conceptualizador.interruptores() RETURNS jsonb
+LANGUAGE sql STABLE AS $is15$
+  SELECT jsonb_object_agg(n, conceptualizador.prendido(n) ORDER BY o)
+    FROM unnest(conceptualizador.interruptores_nombres()) WITH ORDINALITY u(n, o)
+$is15$;
+
+INSERT INTO conceptualizador.config (clave, valor)
+SELECT 'interruptor:' || n, '0' FROM unnest(conceptualizador.interruptores_nombres()) n
 ON CONFLICT (clave) DO NOTHING;
 
 -- ── Columnas y CHECKs nuevos ───────────────────────────────────────────────
@@ -257,7 +278,36 @@ LANGUAGE sql STABLE AS $tq14$
      AND NOT (t.tipo = 'mensaje' AND conceptualizador.es_generales(m.texto))
 $tq14$;
 
-CREATE OR REPLACE FUNCTION conceptualizador.uso_hoy(p_actor text) RETURNS jsonb
+-- §15 · tope_v152 apagado = el uso_hoy y el acuse de la 0013, copiados por programa de la 0006 y la 0005+0008.
+CREATE OR REPLACE FUNCTION conceptualizador.uso_hoy_0013(p_actor text) RETURNS jsonb
+LANGUAGE sql STABLE AS $uso13c$
+  SELECT jsonb_build_object(
+    'dia', conceptualizador.dia_uso(now()),
+    'mensajes', (SELECT count(*) FROM conceptualizador.trabajo t
+                  LEFT JOIN conceptualizador.mensaje m ON m.id = t.mensaje_id
+                  LEFT JOIN conceptualizador.evento  e ON e.id = t.evento_id
+                 WHERE t.created_at > now() - interval '2 days'
+                   AND conceptualizador.dia_uso(t.created_at) = conceptualizador.dia_uso(now())
+                   AND coalesce(e.tipo, '') <> 'prueba'
+                   AND coalesce(m.autor, e.autor) = p_actor),
+    'tope_mensajes', conceptualizador.tope('tope_mensajes_dia', p_actor),
+    'sesiones', (SELECT count(*) FROM conceptualizador.caso c
+                  WHERE c.autor = p_actor AND c.created_at > now() - interval '2 days'
+                    AND conceptualizador.dia_uso(c.created_at) = conceptualizador.dia_uso(now())),
+    'tope_sesiones', conceptualizador.tope('tope_sesiones_dia', p_actor))
+$uso13c$;
+
+CREATE OR REPLACE FUNCTION conceptualizador.aviso_tope_0013(p_actor text, p_tipo text, p_uso jsonb) RETURNS text
+LANGUAGE plpgsql AS $avt13c$
+BEGIN
+  INSERT INTO conceptualizador.aviso (tipo, actor, dia, detalle)
+  VALUES (p_tipo, p_actor, conceptualizador.dia_uso(now()), p_uso)
+  ON CONFLICT (tipo, actor, dia) WHERE tipo IN ('tope_mensajes','tope_sesiones','fuera_de_tema') DO UPDATE SET detalle = EXCLUDED.detalle;
+  RETURN 'Llegaste al tope de hoy, avisé a Esteban.';
+END
+$avt13c$;
+
+CREATE OR REPLACE FUNCTION conceptualizador.uso_hoy_v152(p_actor text) RETURNS jsonb
 LANGUAGE sql STABLE AS $uh14$
   SELECT jsonb_build_object(
     'dia', conceptualizador.dia_uso(now()),
@@ -270,9 +320,34 @@ LANGUAGE sql STABLE AS $uh14$
     'reinicia', '00:00')
 $uh14$;
 
+CREATE OR REPLACE FUNCTION conceptualizador.uso_hoy(p_actor text) RETURNS jsonb
+LANGUAGE sql STABLE AS $uhd15$
+  SELECT CASE WHEN conceptualizador.prendido('tope_v152') THEN conceptualizador.uso_hoy_v152(p_actor)
+              ELSE conceptualizador.uso_hoy_0013(p_actor) END
+$uhd15$;
+
+-- Lo que el panel muestra por persona hoy, con la MISMA regla que está frenando.
+CREATE OR REPLACE FUNCTION conceptualizador.conteo_tope_hoy() RETURNS jsonb
+LANGUAGE sql STABLE AS $ct15$
+  SELECT CASE WHEN conceptualizador.prendido('tope_v152') THEN
+      (SELECT coalesce(jsonb_object_agg(q.actor, q.n), '{}'::jsonb)
+         FROM (SELECT actor, count(*) n FROM conceptualizador.trabajos_que_cuentan(conceptualizador.dia_uso(now())) GROUP BY actor) q)
+    ELSE
+      (SELECT coalesce(jsonb_object_agg(q.actor, q.n), '{}'::jsonb)
+         FROM (SELECT coalesce(m.autor, e.autor) AS actor, count(*) n
+                 FROM conceptualizador.trabajo t
+                 LEFT JOIN conceptualizador.mensaje m ON m.id = t.mensaje_id
+                 LEFT JOIN conceptualizador.evento  e ON e.id = t.evento_id
+                WHERE t.created_at > now() - interval '2 days'
+                  AND conceptualizador.dia_uso(t.created_at) = conceptualizador.dia_uso(now())
+                  AND coalesce(e.tipo, '') <> 'prueba'
+                  AND conceptualizador.es_persona(coalesce(m.autor, e.autor))
+                GROUP BY 1) q) END
+$ct15$;
+
 -- El acuse dice de quién es el tope, cuántos lleva y cuándo se reinicia. El aviso a Esteban
 -- se registra para los demás, nunca para él mismo.
-CREATE OR REPLACE FUNCTION conceptualizador.aviso_tope(p_actor text, p_tipo text, p_uso jsonb) RETURNS text
+CREATE OR REPLACE FUNCTION conceptualizador.aviso_tope_v152(p_actor text, p_tipo text, p_uso jsonb) RETURNS text
 LANGUAGE plpgsql AS $at14$
 DECLARE
   v_admin boolean := conceptualizador.es_admin(p_actor) OR conceptualizador.es_panel_admin(p_actor);
@@ -293,6 +368,14 @@ BEGIN
          || CASE WHEN v_z = 'America/Mexico_City' THEN 'hora del centro de México' ELSE 'hora de ' || v_z END || ').';
 END
 $at14$;
+
+CREATE OR REPLACE FUNCTION conceptualizador.aviso_tope(p_actor text, p_tipo text, p_uso jsonb) RETURNS text
+LANGUAGE plpgsql AS $atd15$
+BEGIN
+  IF conceptualizador.prendido('tope_v152') THEN RETURN conceptualizador.aviso_tope_v152(p_actor, p_tipo, p_uso); END IF;
+  RETURN conceptualizador.aviso_tope_0013(p_actor, p_tipo, p_uso);
+END
+$atd15$;
 
 -- ── §1 · validación de un valor del panel (NULL = válido) ──────────────────
 CREATE OR REPLACE FUNCTION conceptualizador.config_valida(p_clave text, p_valor text) RETURNS text
@@ -318,6 +401,10 @@ BEGIN
     RETURN NULL;
   ELSIF k = 'panel_admin' THEN
     IF v !~ '^[a-z0-9][a-z0-9._-]{1,59}\Z' THEN RETURN 'usuario de la suite (minúsculas, punto o guion)'; END IF;
+    RETURN NULL;
+  ELSIF k LIKE 'interruptor:%' THEN
+    IF NOT (substr(k, 13) = ANY (conceptualizador.interruptores_nombres())) THEN RETURN 'interruptor desconocido'; END IF;
+    IF v NOT IN ('0','1') THEN RETURN '0 (apagado) o 1 (prendido)'; END IF;
     RETURN NULL;
   END IF;
   SELECT r.mn, r.mx INTO v_min, v_max FROM (VALUES
@@ -392,7 +479,28 @@ END
 $em14$;
 
 -- ── §4 · agente_estado: proceso vivo | cola | null ─────────────────────────
-CREATE OR REPLACE FUNCTION conceptualizador.agente_estado(p_caso uuid) RETURNS jsonb
+-- §15 · estados_reales apagado = la de la 0013 (escribiendo | detenido | cola), copiada por programa.
+CREATE OR REPLACE FUNCTION conceptualizador.agente_estado_0013(p_caso uuid) RETURNS jsonb
+LANGUAGE sql STABLE AS $ag13c$
+  WITH c AS (SELECT * FROM conceptualizador.caso WHERE id = p_caso),
+  t AS (SELECT t.*, greatest(t.tomado_at, coalesce(t.avance_at, t.tomado_at)) AS senal
+          FROM conceptualizador.trabajo t, c
+         WHERE t.caso_id = p_caso AND t.lote_de IS NULL AND t.estado IN ('pendiente','tomado')
+           AND (t.estado = 'tomado' OR NOT (c.modo = 'levantamiento' AND c.disparado_at IS NULL))),
+  vivo AS (SELECT * FROM t WHERE estado = 'tomado' AND senal > now() - make_interval(secs => conceptualizador.cfg('lease_segundos'))
+            ORDER BY senal DESC LIMIT 1),
+  muerto AS (SELECT * FROM t WHERE estado = 'tomado' AND senal <= now() - make_interval(secs => conceptualizador.cfg('lease_segundos'))
+              ORDER BY senal DESC LIMIT 1),
+  cola AS (SELECT * FROM t WHERE estado = 'pendiente' ORDER BY created_at LIMIT 1)
+  SELECT CASE
+    WHEN EXISTS (SELECT 1 FROM vivo) THEN (SELECT jsonb_build_object('estado', 'escribiendo', 'trabajo_id', id, 'paso', avance, 'desde', tomado_at, 'senal', senal) FROM vivo)
+    WHEN EXISTS (SELECT 1 FROM muerto) THEN (SELECT jsonb_build_object('estado', 'detenido', 'trabajo_id', id, 'desde', tomado_at, 'senal', senal,
+                                            'tope_min', round(conceptualizador.cfg('lease_segundos') / 60.0)) FROM muerto)
+    WHEN EXISTS (SELECT 1 FROM cola) THEN (SELECT jsonb_build_object('estado', 'cola', 'trabajo_id', id, 'desde', created_at) FROM cola)
+    ELSE NULL END
+$ag13c$;
+
+CREATE OR REPLACE FUNCTION conceptualizador.agente_estado_v152(p_caso uuid) RETURNS jsonb
 LANGUAGE sql STABLE AS $ag14$
   WITH c AS (SELECT * FROM conceptualizador.caso WHERE id = p_caso),
   vivo AS (SELECT * FROM conceptualizador.proceso pr
@@ -412,6 +520,12 @@ LANGUAGE sql STABLE AS $ag14$
     ELSE NULL END
 $ag14$;
 
+CREATE OR REPLACE FUNCTION conceptualizador.agente_estado(p_caso uuid) RETURNS jsonb
+LANGUAGE sql STABLE AS $agd15$
+  SELECT CASE WHEN conceptualizador.prendido('estados_reales') THEN conceptualizador.agente_estado_v152(p_caso)
+              ELSE conceptualizador.agente_estado_0013(p_caso) END
+$agd15$;
+
 -- ── §3 · trabajos colgados ─────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION conceptualizador.cerrar_colgados() RETURNS jsonb
 LANGUAGE plpgsql AS $cc14$
@@ -425,6 +539,10 @@ DECLARE
   v_venc  int := 0;
   v_n     int;
 BEGIN
+  -- §15 · interruptor cerrar_colgados apagado: no toca nada (como la 0013).
+  IF NOT conceptualizador.prendido('cerrar_colgados') THEN
+    RETURN jsonb_build_object('apagado', true, 'cerrados', 0, 'devueltos', 0, 'procesos_vencidos', 0);
+  END IF;
   -- a) Intentos agotados y sin señal: error, una línea para la persona y un aviso a Esteban.
   FOR t IN SELECT tr.*, c.carpeta, c.titulo, c.autor AS dueno
              FROM conceptualizador.trabajo tr JOIN conceptualizador.caso c ON c.id = tr.caso_id
@@ -486,15 +604,17 @@ $cc14$;
 
 -- ── §6 · arranque automático de levantamientos ─────────────────────────────
 -- Valor efectivo: caso > persona (arranque_auto:<actor>) > config (arranque_auto, por omisión 1).
+-- §15 · con el interruptor arranque_auto apagado el valor es false (la preferencia del caso se guarda igual).
 CREATE OR REPLACE FUNCTION conceptualizador.arranque_efectivo(p_caso uuid) RETURNS jsonb
 LANGUAGE sql STABLE AS $ae6$
   SELECT jsonb_build_object(
-    'valor', CASE WHEN c.arranque_auto IS NOT NULL THEN c.arranque_auto
+    'valor', conceptualizador.prendido('arranque_auto') AND CASE WHEN c.arranque_auto IS NOT NULL THEN c.arranque_auto
                   WHEN conceptualizador.cfg_txt('arranque_auto:' || c.autor) IS NOT NULL THEN conceptualizador.cfg_txt('arranque_auto:' || c.autor) <> '0'
                   ELSE coalesce(conceptualizador.cfg_txt('arranque_auto'), '1') <> '0' END,
     'fuente', CASE WHEN c.arranque_auto IS NOT NULL THEN 'caso'
                    WHEN conceptualizador.cfg_txt('arranque_auto:' || c.autor) IS NOT NULL THEN 'persona' ELSE 'config' END,
     'caso', c.arranque_auto,
+    'interruptor', conceptualizador.prendido('arranque_auto'),
     'min', greatest(coalesce(conceptualizador.cfg('arranque_auto_min'), 15), 1))
   FROM conceptualizador.caso c WHERE c.id = p_caso
 $ae6$;
@@ -507,6 +627,7 @@ DECLARE
   v_n   int;
   v_tot int := 0;
 BEGIN
+  IF NOT conceptualizador.prendido('arranque_auto') THEN RETURN 0; END IF;   -- §15
   FOR k IN SELECT c.id, c.autor, x.ult
              FROM conceptualizador.caso c
              CROSS JOIN LATERAL (SELECT greatest(
@@ -645,11 +766,17 @@ BEGIN
 
   -- §7 · latido con sin_relevo y profundidad; marca desde cuándo está en ese estado.
   ELSIF v_modo = 'latido' THEN
+    -- §15 · relevo_v152 apagado: sin_relevo no existe (la 0013 lo rechazaba en el CHECK) y no se guarda profundidad.
+    IF NOT conceptualizador.prendido('relevo_v152') AND coalesce(p->>'estado', 'activo') = 'sin_relevo' THEN
+      RAISE EXCEPTION 'new row for relation "latido" violates check constraint "latido_estado_check"'
+        USING ERRCODE = 'check_violation';
+    END IF;
     SELECT * INTO l FROM conceptualizador.latido WHERE motor = v_motor;
     v_r := conceptualizador.api_motor_0014prev(p);
     IF coalesce((v_r->>'ok')::boolean, false) THEN
       UPDATE conceptualizador.latido la SET
-        profundidad = CASE WHEN coalesce(p->>'profundidad', '') ~ '^[0-9]{1,3}\Z' THEN (p->>'profundidad')::int
+        profundidad = CASE WHEN NOT conceptualizador.prendido('relevo_v152') THEN la.profundidad
+                           WHEN coalesce(p->>'profundidad', '') ~ '^[0-9]{1,3}\Z' THEN (p->>'profundidad')::int
                            WHEN la.sesion IS DISTINCT FROM l.sesion THEN NULL ELSE la.profundidad END,
         activo_at = CASE WHEN la.estado = 'activo' THEN now() ELSE la.activo_at END,
         estado_desde = CASE WHEN l.motor IS NULL OR l.estado IS DISTINCT FROM la.estado
@@ -707,6 +834,15 @@ BEGIN
     IF coalesce((v_r->>'ok')::boolean, false) THEN
       v_rein := CASE WHEN p->>'reintento' = 'persona' THEN 'persona' ELSE 'auto' END;
       v_razon := conceptualizador.razon_limpia(p->>'razon_persona');
+      -- §15 · estados_reales apagado: lo de la 0013 (sin línea en el chat, sin reintento=persona). Solo se guarda la
+      -- falla (columnas nuevas) y se cierra el proceso, que nadie pinta.
+      IF NOT conceptualizador.prendido('estados_reales') THEN
+        UPDATE conceptualizador.trabajo SET error_ultimo = left(coalesce(p->>'causa', 'sin causa'), 500), razon_ultima = v_razon,
+               motor_ultimo = v_motor
+         WHERE id = v_id;
+        UPDATE conceptualizador.proceso SET fin = now(), resultado = 'error' WHERE trabajo_id = v_id AND fin IS NULL;
+        RETURN v_r;
+      END IF;
       IF v_rein = 'persona' THEN
         UPDATE conceptualizador.trabajo SET estado = 'error' WHERE id = v_id AND estado = 'pendiente';
       END IF;
@@ -730,7 +866,7 @@ BEGIN
       v_c := v_c || jsonb_build_object('tokens', jsonb_build_object('input', 0, 'output', 0, 'cache_leida', 0, 'cache_escrita', 0, 'llamadas_modelo', 0),
                                        'fuente', 'sin_medicion');
     END IF;
-    v_r := conceptualizador.api_motor_0014prev(p || jsonb_build_object('consumo', v_c));
+    v_r := conceptualizador.api_motor_0014prev(CASE WHEN v_med = 'sin_medicion' THEN p || jsonb_build_object('consumo', v_c) ELSE p END);
     IF coalesce((v_r->>'ok')::boolean, false) THEN
       UPDATE conceptualizador.consumo SET
         archivos = conceptualizador.archivos_limpios(coalesce(v_c->'archivos', p->'archivos')),
@@ -766,7 +902,8 @@ BEGIN
     IF NOT coalesce((v_r->>'ok')::boolean, false) THEN RETURN v_r; END IF;
     v_e := conceptualizador.estado_motor_v152();
     -- motor_caido: uno por incidente (clave = inicio), solo dentro del horario.
-    IF v_e->'principal'->>'estado' <> 'activo' AND (v_e->'principal'->>'desde') IS NOT NULL
+    IF conceptualizador.prendido('aviso_motor_caido')
+       AND v_e->'principal'->>'estado' <> 'activo' AND (v_e->'principal'->>'desde') IS NOT NULL
        AND (v_e->'principal'->>'desde')::timestamptz < now() - make_interval(mins => coalesce(conceptualizador.cfg('motor_caido_aviso_min'), 15))
        AND conceptualizador.en_ventana(coalesce(conceptualizador.cfg_txt('motor_caido_desde'), '07:00'), coalesce(conceptualizador.cfg_txt('motor_caido_hasta'), '22:00'))
        AND NOT EXISTS (SELECT 1 FROM conceptualizador.consumo_aviso WHERE tipo = 'motor_caido'
@@ -779,9 +916,10 @@ BEGIN
         'atendidos_respaldo', (v_e->'respaldo'->>'atendidos_desde_caida')::int, 'texto', v_e->>'texto',
         'desde', v_e->'principal'->>'desde', 'visto_at', v_e->'principal'->>'visto_at');
     END IF;
-    -- motor_linaje: la cadena de relevos se acerca al límite de 8; una vez por sesión.
+    -- motor_linaje: la cadena de relevos se acerca al límite de 8; una vez por sesión (§15: aviso_motor_caido Y relevo_v152).
     SELECT * INTO l FROM conceptualizador.latido WHERE motor = 'principal';
-    IF l.motor IS NOT NULL AND coalesce(l.profundidad, 0) >= 6
+    IF conceptualizador.prendido('aviso_motor_caido') AND conceptualizador.prendido('relevo_v152')
+       AND l.motor IS NOT NULL AND coalesce(l.profundidad, 0) >= 6
        AND l.visto_at > now() - make_interval(secs => coalesce(conceptualizador.cfg('latido_vivo_segundos'), 120))
        AND NOT EXISTS (SELECT 1 FROM conceptualizador.consumo_aviso WHERE tipo = 'motor_linaje' AND clave = coalesce(l.sesion, '?')) THEN
       v_avisos := v_avisos || jsonb_build_object('tipo', 'motor_linaje', 'clave', coalesce(l.sesion, '?'), 'sesion', l.sesion,
@@ -915,6 +1053,10 @@ BEGIN
     v_lunes := conceptualizador.lunes_uso();
     IF v_acc = 'muestra' THEN
       IF coalesce(p->>'grupo', '') NOT IN ('corto','largo') THEN RETURN jsonb_build_object('ok', false, 'error', 'GRUPO_INVALIDO'); END IF;
+      -- §15 · experimento_contexto apagado: nunca hay sombra, no se registra muestra ni aviso de techo.
+      IF NOT conceptualizador.prendido('experimento_contexto') THEN
+        RETURN jsonb_build_object('ok', true, 'sombra', false, 'motivo', 'interruptor');
+      END IF;
       SELECT sombra INTO v_sombra FROM conceptualizador.experimento_par WHERE trabajo_id = t.id;
       IF FOUND THEN RETURN jsonb_build_object('ok', true, 'sombra', v_sombra, 'ya_estaba', true); END IF;
       IF coalesce(conceptualizador.cfg_txt('contexto_modo'), 'completo') <> 'experimento' THEN
@@ -1000,7 +1142,9 @@ DECLARE
   v_ev    bigint;
   v_lunes date := conceptualizador.lunes_uso();
 BEGIN
-  IF v_modo IS NULL OR NOT (v_modo IN ('config','config_guardar','caso_arranque') OR (v_modo = 'evento' AND p->>'tipo' = 'detener')) THEN
+  -- §15 · el «detener» solo existe con estados_reales prendido; apagado lo contesta la de antes (TIPO_INVALIDO).
+  IF v_modo IS NULL OR NOT (v_modo IN ('config','config_guardar','caso_arranque')
+                            OR (v_modo = 'evento' AND p->>'tipo' = 'detener' AND conceptualizador.prendido('estados_reales'))) THEN
     v_r := conceptualizador.api_suite_0014prev(p);
     IF v_modo IN ('casos','estado') AND coalesce((v_r->>'ok')::boolean, false) THEN
       v_r := v_r || jsonb_build_object('motor_v152', conceptualizador.estado_motor_v152());
@@ -1016,6 +1160,10 @@ BEGIN
         'arranque_auto_efectivo', (conceptualizador.arranque_efectivo(conceptualizador.a_uuid(p->>'caso_id'))->>'valor')::boolean,
         'arranque_auto_min', (conceptualizador.arranque_efectivo(conceptualizador.a_uuid(p->>'caso_id'))->>'min')::int,
         'arranque_auto_fuente', conceptualizador.arranque_efectivo(conceptualizador.a_uuid(p->>'caso_id'))->>'fuente');
+    END IF;
+    -- §15 · la pantalla decide qué pinta con esto (lectura, no permiso).
+    IF v_modo IN ('casos','hilo') AND coalesce((v_r->>'ok')::boolean, false) THEN
+      v_r := v_r || jsonb_build_object('interruptores', conceptualizador.interruptores());
     END IF;
     RETURN v_r;
   END IF;
@@ -1126,8 +1274,8 @@ BEGIN
       'semana', (SELECT coalesce(sum(ponderado), 0) FROM conceptualizador.consumo_registro WHERE dia >= v_lunes),
       'semana_desde', v_lunes,
       'experimento_semana', (SELECT coalesce(sum(costo_sombra), 0) FROM conceptualizador.experimento_par WHERE dia >= v_lunes),
-      'por_persona_hoy', (SELECT coalesce(jsonb_object_agg(q.actor, q.n), '{}'::jsonb)
-                            FROM (SELECT actor, count(*) n FROM conceptualizador.trabajos_que_cuentan(conceptualizador.dia_uso(now())) GROUP BY actor) q)),
+      'por_persona_hoy', conceptualizador.conteo_tope_hoy()),
+    'interruptores', conceptualizador.interruptores(),
     'motor', conceptualizador.estado_motor_v152(),
     'bitacora', (SELECT coalesce(jsonb_agg(jsonb_build_object('id', b.id, 'clave', b.clave, 'antes', b.antes, 'despues', b.despues,
                    'por', b.por, 'razon', b.razon, 'created_at', b.created_at) ORDER BY b.id DESC), '[]'::jsonb)
@@ -1166,6 +1314,10 @@ REVOKE ALL ON FUNCTION conceptualizador.api_motor_0014prev(jsonb), conceptualiza
                        conceptualizador.estado_motor_v152(), conceptualizador.cerrar_colgados(), conceptualizador.arrancar_levantamientos(),
                        conceptualizador.razon_limpia(text), conceptualizador.codigo_de(text),
                        conceptualizador.archivos_limpios(jsonb), conceptualizador.etapas_limpias(jsonb),
-                       conceptualizador.arranque_efectivo(uuid) FROM PUBLIC;
+                       conceptualizador.arranque_efectivo(uuid),
+                       conceptualizador.interruptores_nombres(), conceptualizador.prendido(text), conceptualizador.interruptores(),
+                       conceptualizador.uso_hoy_0013(text), conceptualizador.uso_hoy_v152(text), conceptualizador.conteo_tope_hoy(),
+                       conceptualizador.aviso_tope_0013(text, text, jsonb), conceptualizador.aviso_tope_v152(text, text, jsonb),
+                       conceptualizador.agente_estado_0013(uuid), conceptualizador.agente_estado_v152(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION conceptualizador.api_motor(jsonb), conceptualizador.api_suite(jsonb),
                           conceptualizador.api_respaldo(jsonb) TO conceptualizador_app;
