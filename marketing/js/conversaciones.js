@@ -11,10 +11,23 @@
  * Toques en etapa 2: la propuesta mecánica (toque-base.js, la MISMA que usa el motor) responde al instante;
  * el mensaje se guarda sin disparar un trabajo y el motor entra en ráfaga o cuando la persona pide sugerencia.
  * Lo que NUNCA hace: escribir en Odoo por su cuenta (Enviar a CRM y el toque pasan por marketing/odoo-lead).
+ *
+ * v4 (#428): la lista y la conversación las pinta el NÚCLEO de chat de la suite (shared/chat/chat-nucleo.js, el look del
+ * conceptualizador). Aquí solo queda el contenido de Marketing: qué filas, qué filtros, qué botones, qué tarjetas. Ningún
+ * estilo del chat vive en este archivo; lo que queda en CSS es del tablero (una página, no un chat).
+ * Mismo servidor, misma firma y la MISMA cola en IndexedDB (`fts-marketing`): no se pierde nada al cambiar de pantalla.
  */
 (function (G) {
   'use strict';
   var M = G.Mkt, U = G.ChatUI, esc = U.esc, $ = function (s) { return document.querySelector(s); };
+  // Despliegue en cualquier orden (CLAUDE.md §8): si el navegador trae la página de antes (sin el núcleo) con este
+  // archivo nuevo, se recarga UNA vez para traer la página nueva; la cola del teléfono no se toca.
+  if (!G.ChatNucleo || !document.getElementById('raiz')) {
+    try { if (!sessionStorage.getItem('mkt-nucleo-recarga')) { sessionStorage.setItem('mkt-nucleo-recarga', '1'); location.replace(location.pathname + '?r=' + Date.now() + location.hash); return; } } catch (e) {}
+    if (U && U.toast) U.toast('Hay una versión nueva de Marketing: recarga la página.', 8000);
+    return;
+  }
+  try { sessionStorage.removeItem('mkt-nucleo-recarga'); } catch (e) {}
   /* Los campos propios del v3 viajan DENTRO de `datos`, que va firmado (igual que tarjeta_id en Seguimiento): la cadena
    * canónica de la firma no cambia y chat/suite copia `datos.conversacion_id` al pedido. Un solo lugar lo arma. */
   var C0 = M.cliente, PROPIOS = ['conversacion_id', 'hasta', 'razon', 'empresa', 'ciudad', 'resumen'];
@@ -30,26 +43,10 @@
   var ORIGEN = { radar: 'Radar', manual: 'Manual', investigacion: 'Investigación', nuevo_lead: 'Nuevo lead' };
   var COLOR = { 1: '#b42318', 2: '#b54708', 3: '#3b5a75' };
   var MOTIVO = { sin_necesidad: 'No tiene la necesidad', competencia: 'Eligió competencia', sin_contacto: 'Sin forma de contacto', precalificacion: 'No pasamos precalificación', otro: 'Otro' };
+  // Solo el tablero (una página, no el chat). El chat no trae estilos del producto (CLAUDE.md §20 #25).
   var CSS = [
-    '.mkc-cab{display:flex;gap:8px;align-items:center;padding:8px 12px 2px;flex-wrap:wrap}.mkc-cab .sp{flex:1}',
-    '.mkc-info{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px 12px;background:var(--dark2,#fff);border-bottom:1px solid var(--border)}',
-    '.mkc-pill{font-size:11.5px;font-weight:600;border-radius:6px;padding:0 7px;line-height:20px;white-space:nowrap;background:var(--dark3,#f6f5f3);color:var(--muted2,#667781)}',
-    '.mkc-n1{background:#fde7e5;color:#b42318}.mkc-n2{background:#fef0db;color:#b54708}.mkc-n3{background:#e8eef4;color:#3b5a75}',
-    '.mkc-e1{background:#efe9fb;color:#6941c6}.mkc-e2{background:#e0f4f5;color:#0e7c86}.mkc-cuar{background:#e3eefa;color:#2e6db4}.mkc-frio{background:#fff1f0;color:#d13438}.mkc-cerr{background:#eceff1;color:#54656f}',
-    '.chl-pill.n1{background:#fde7e5;color:#b42318}.chl-pill.n2{background:#fef0db;color:#b54708}.chl-pill.n3{background:#e8eef4;color:#3b5a75}',
-    '.chl-pill.e1{background:#efe9fb;color:#6941c6}.chl-pill.e2{background:#e0f4f5;color:#0e7c86}.chl-pill.cuar{background:#e3eefa;color:#2e6db4}.chl-pill.frio{background:#fff1f0;color:#d13438}.chl-pill.cerr{background:#eceff1;color:#54656f}.chl-pill.du{background:#fff;border:1px solid #e7e3dd;color:#3b4a54}',
-    '.chl-av i.n1{background:#fde7e5;color:#b42318}.chl-av i.n2{background:#fef0db;color:#b54708}.chl-av i.n3{background:#e8eef4;color:#3b5a75}',
-    '.mkc-etapas{display:flex;gap:2px;padding:6px 12px;font-size:12px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--border)}',
-    '.mkc-etapas span{flex-shrink:0;padding:3px 10px;border-radius:12px;color:var(--muted)}.mkc-etapas span.ya{color:var(--muted2)}.mkc-etapas span.ya::before{content:"✓ "}.mkc-etapas span.on{background:#e0f4f5;color:#0e7c86;font-weight:600}',
-    '.mkc-acc{display:flex;gap:6px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--border)}',
-    '.mkc-sis{text-align:center;margin:8px auto;max-width:92%}.mkc-sis span{display:inline-block;font-size:12.5px;padding:6px 12px;border-radius:8px;background:#fff3c4;color:#54656f}',
-    '.mkc-sis.frio span{background:#fff1f0;color:#8a1c14}.mkc-sis.cuar span{background:#e3eefa;color:#1d4f8a}.mkc-sis.reac span{background:#e7f6ee;color:#0a5c3c}.mkc-sis.etapa span{background:#e0f4f5;color:#0e7c86;font-weight:600}',
-    '.mkc-prop{margin-top:6px;border:1px dashed #9ed3c0;border-radius:10px;padding:8px 10px;font-size:13px;background:rgba(255,255,255,.6)}.mkc-prop b{display:block;font-size:12px;color:#0e7c86;margin-bottom:2px}',
     '.mkc-tab{width:100%;border-collapse:collapse;font-size:13.5px;min-width:520px}.mkc-tab th,.mkc-tab td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}.mkc-tab td.n{text-align:right;font-variant-numeric:tabular-nums}',
-    '.mkc-ancho .ch-app{max-width:1400px}.mkc-dos{display:grid;grid-template-columns:minmax(340px,400px) 1fr;align-items:start}',
-    '.mkc-dos>aside{position:sticky;top:56px;max-height:calc(100vh - 56px);overflow:auto;border-right:1px solid var(--border);background:var(--dark2,#fff)}',
-    '.mkc-dos>section{min-width:0;display:flex;flex-direction:column;min-height:calc(100vh - 56px)}',
-    '.mkc-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}.mkc-kpi{border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:var(--dark2,#fff)}.mkc-kpi b{font-size:22px;display:block;font-variant-numeric:tabular-nums}.mkc-kpi small{color:var(--muted2);font-size:12.5px}'
+    '.mkc-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}.mkc-kpi{border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:#fff}.mkc-kpi b{font-size:22px;display:block;font-variant-numeric:tabular-nums}.mkc-kpi small{color:var(--muted2);font-size:12.5px}'
   ].join('\n');
   (function () { var s = document.createElement('style'); s.textContent = CSS; document.head.appendChild(s); })();
 
@@ -58,12 +55,14 @@
   function parar() { clearTimeout(est.sondeo); est.sondeo = null; }
   function corto(u) { u = String(u || ''); return u === yo() ? 'Tú' : u.split(/[._]/)[0].replace(/^./, function (c) { return c.toUpperCase(); }); }
   function etapaTxt(c) { return c.etapa === 2 ? 'Etapa 2 · Seguimiento' : 'Etapa 1 · Prospección'; }
+  // Tonos del núcleo (el producto elige un tono, no escribe CSS): nivel 1 rojo · 2 naranja · 3 pizarra.
+  var TONO_N = { 1: 'rojo', 2: 'naranja', 3: 'pizarra' };
   function pillsDe(c) {
-    var p = [{ texto: corto(c.dueno), clase: 'du' }, { texto: 'Etapa ' + c.etapa, clase: 'e' + c.etapa }, { texto: 'N' + c.nivel, clase: 'n' + c.nivel }, { texto: ORIGEN[c.origen] || c.origen }];
-    if (c.estado === 'cuarentena') p.push({ texto: 'Cuarentena', clase: 'cuar' });
-    if (c.estado === 'cerrada') p.push({ texto: c.cierre === 'por_cotizar' ? 'Por cotizar' : 'Perdida', clase: 'cerr' });
-    if (c.frio === 'nos') p.push({ texto: 'Enfriándose', clase: 'frio' });
-    if (c.frio === 'mercado' && c.estado === 'curso') p.push({ texto: 'Fría por mercado', clase: 'frio' });
+    var p = [{ texto: corto(c.dueno), clase: 'borde' }, { texto: 'Etapa ' + c.etapa, clase: c.etapa === 2 ? 'teal' : 'morado' }, { texto: 'N' + c.nivel, clase: TONO_N[c.nivel] }, { texto: ORIGEN[c.origen] || c.origen }];
+    if (c.estado === 'cuarentena') p.push({ texto: 'Cuarentena', clase: 'azul' });
+    if (c.estado === 'cerrada') p.push({ texto: c.cierre === 'por_cotizar' ? 'Por cotizar' : 'Perdida', clase: 'gris' });
+    if (c.frio === 'nos') p.push({ texto: 'Enfriándose', clase: 'rojo' });
+    if (c.frio === 'mercado' && c.estado === 'curso') p.push({ texto: 'Fría por mercado', clase: 'rojo' });
     return p;
   }
   function modal(html) {
@@ -75,26 +74,9 @@
 
   // ── Lista ───────────────────────────────────────────────────────────────
   function vacioHtml(ic, t, p) { return '<div class="ch-vacio"><div class="ic">' + ic + '</div><h2>' + esc(t) + '</h2><p>' + p + '</p></div>'; }
-  function ancho() { return G.matchMedia('(min-width:900px)').matches; }
-  /** Desde 900 px: lista a la izquierda y conversación a la derecha (como WhatsApp en escritorio). */
-  function dosPaneles(derecha) {
-    document.body.classList.add('mkc-ancho');
-    V.innerHTML = '<div class="mkc-dos"><aside id="lado"><div class="mkc-cab"><button class="ch-btn ch-btn-p" style="flex:0 0 auto" data-ir="#/nueva">＋ Empresa</button><span class="sp"></span>' +
-      '<button class="ch-btn ch-btn-s" style="flex:0 0 auto;min-width:0" id="mas" aria-label="Más opciones">⋮</button></div><div id="lst"></div><p class="ch-nota" id="mot" style="margin:10px 12px"></p></aside>' +
-      '<section id="convp">' + derecha + '</section></div>';
-    $('#mas').onclick = menuLista;
-    est.lista = G.ChatLista.crear($('#lst'), opcionesLista());
-    if (est.convs.length) est.lista.pintar(est.convs);
-  }
   async function vLista() {
     parar(); est.conv = null;
-    M.cab('Prospectador', 'Marketing · una conversación por empresa', '../index.html');
-    if (ancho()) { dosPaneles('<div class="ch-vacio" style="margin-top:20vh"><div class="ic">💬</div><h2>Elige una conversación</h2><p>Una empresa = una conversación, con todo su historial.</p></div>'); await cargarLista(); return; }
-    document.body.classList.remove('mkc-ancho');
-    V.innerHTML = '<div class="mkc-cab"><button class="ch-btn ch-btn-p" style="flex:0 0 auto" data-ir="#/nueva">＋ Empresa</button><span class="sp"></span>' +
-      '<button class="ch-btn ch-btn-s" style="flex:0 0 auto;min-width:0" id="mas" aria-label="Más opciones">⋮</button></div><div id="lst"></div><p class="ch-nota" id="mot" style="margin:10px 12px"></p>';
-    $('#mas').onclick = menuLista;
-    est.lista = G.ChatLista.crear($('#lst'), opcionesLista());
+    N.lista(); document.title = 'Marketing · Prospectador';
     await cargarLista();
   }
   function opcionesLista() {
@@ -109,7 +91,7 @@
       },
       hora: function (c) { return c.vence_hoy ? 'vence hoy' : U.fecha(c.ultimo ? c.ultimo.at : c.updated_at); },
       horaClase: function (c) { return c.vence_hoy ? 'vence' : c.no_leidos ? 'nuevo' : ''; },
-      avatar: function (c) { return { letra: c.empresa.charAt(0), color: c.estado === 'curso' ? COLOR[c.nivel] : '#8696a0', insignia: 'N' + c.nivel, insigniaClase: 'n' + c.nivel }; },
+      avatar: function (c) { return { letra: c.empresa.charAt(0), color: c.estado === 'curso' ? COLOR[c.nivel] : '#8696a0', insignia: 'N' + c.nivel, insigniaClase: TONO_N[c.nivel] }; },
       etiquetas: pillsDe, noLeidos: function (c) { return c.no_leidos || 0; }, fijada: function (c) { return c.fijada; },
       buscarEn: function (c) { return [c.empresa, c.grupo, c.ciudad, c.clave].join(' '); },
       filtros: [
@@ -141,10 +123,11 @@
       est.apagado = true; U.toast('Marketing v3 todavía no está encendido en el servidor: se muestra la vista anterior.', 6000);
       G.dispatchEvent(new HashChangeEvent('hashchange')); return;
     }
-    if (!r.ok) { $('#lst').innerHTML = vacioHtml('⚠️', 'No se pudo cargar la lista', esc(r.mensaje || r.error) + (r.clase === 'red' ? '<br>Lo que mandes sin señal se guarda en el teléfono.' : '')); return; }
+    if (!r.ok) { N.pieLista(esc('No se pudo cargar la lista: ' + (r.mensaje || r.error)) + (r.clase === 'red' ? '<br>Lo que mandes sin señal se guarda en el teléfono.' : '')); return; }
     est.convs = r.conversaciones; est.yo = r.yo || est.yo; est.equipo = r.equipo;
-    if (est.lista && $('#lst')) est.lista.pintar(est.convs);
-    var m = r.motor; if ($('#mot') && m) $('#mot').textContent = (m.vivo ? '🟢 El motor está despierto' : '🟡 El motor no está despierto: lo que mandes queda en cola') + (m.pendientes ? ' · ' + m.pendientes + ' en cola' : '') + '.';
+    N.listaChat.pintar(est.convs);
+    var m = r.motor;
+    N.pieLista(esc((m ? (m.vivo ? '🟢 El motor está despierto' : '🟡 El motor no está despierto: lo que mandes queda en cola') + (m.pendientes ? ' · ' + m.pendientes + ' en cola' : '') + '. ' : '') + 'Una conversación por empresa · ' + (G.MKT_BUILD || '')));
     if (!est.conv) est.sondeo = setTimeout(function () { if (!location.hash || location.hash === '#/') cargarLista(); }, 30000);
   }
   function accionesFila(c) {
@@ -221,21 +204,17 @@
   // ── Conversación ─────────────────────────────────────────────────────────
   async function vConv(id) {
     parar();
-    est.conv = id; est.det = null; est.hilo = null; est.gestos = null;
-    M.cab('Conversación', 'Prospectador', function () { ir('#/'); });
-    var html = '<div id="info" class="mkc-info"></div><div id="etp" class="mkc-etapas"></div><div id="acc" class="mkc-acc"></div>' +
-      '<div class="ch-chat" id="chat" aria-live="polite"><p class="ch-nota">Cargando…</p></div><div class="ch-chips" id="chips"></div><div id="barra"></div>';
-    if (ancho()) { dosPaneles(html); if (!est.convs.length) C.pedir('conversaciones', {}).then(function (r) { if (r.ok) { est.convs = r.conversaciones; est.yo = r.yo || est.yo; est.equipo = r.equipo; if (est.lista && $('#lst')) est.lista.pintar(est.convs); } }); }
-    else { document.body.classList.remove('mkc-ancho'); V.innerHTML = html; }
-    est.barra = U.barra($('#barra'), { placeholder: 'Cuenta qué pasó (texto o voz)', onEnviar: enviar });
-    U.enlazar($('#chat'), C, Q);
-    $('#chat').addEventListener('click', clicChat);
+    est.conv = id; est.det = null; est.hilo = null;
+    N.chat(); N.cabecera({ titulo: 'Cargando…', vuelve: function () { ir('#/'); } }); N.franja(''); N.fijo([]); N.mensajes([], { vacio: 'Cargando…' });
+    if (!est.convs.length) C.pedir('conversaciones', {}).then(function (r) { if (r.ok) { est.convs = r.conversaciones; est.yo = r.yo || est.yo; est.equipo = r.equipo; N.listaChat.pintar(est.convs); } });
+    else N.listaChat.refrescar();
     await cargarConv();
   }
   async function cargarConv() {
     var id = est.conv; if (!id) return;
     var r = await C.pedir('conv', { conversacion_id: id });
-    if (!r.ok) { if (r.clase !== 'red') $('#chat').innerHTML = vacioHtml('⚠️', 'No se pudo abrir la conversación', esc(r.mensaje || r.error)); est.sondeo = setTimeout(cargarConv, 15000); return; }
+    if (!r.ok) { if (r.clase !== 'red') N.mensajes([], { vacio: 'No se pudo abrir la conversación: ' + (r.mensaje || r.error) }); est.sondeo = setTimeout(cargarConv, 15000); return; }
+    if (est.conv !== id) return;
     est.det = r;
     var h = await C.pedir('hilo', { sesion_id: r.conversacion.sesion_id });
     if (h.ok) est.hilo = h.hilo;
@@ -246,114 +225,109 @@
   }
   function pintarConv() {
     var d = est.det, c = d.conversacion;
-    M.cab(c.empresa, (c.ciudad ? c.ciudad + ' · ' : '') + etapaTxt(c), function () { ir('#/'); });
-    $('#info').innerHTML = pillsDe(c).map(function (p) { return '<span class="mkc-pill ' + (p.clase ? 'mkc-' + p.clase : '') + '">' + esc(p.clase === 'du' ? 'Dueño: ' + p.texto : p.texto) + '</span>'; }).join('') +
-      (c.siguiente && c.siguiente.fecha ? '<span class="mkc-pill">Siguiente: ' + esc(c.siguiente.tipo || '') + ' ' + esc(c.siguiente.fecha) + '</span>' : '') +
-      (c.leads && c.leads.length ? '<span class="mkc-pill">Odoo: lead ' + c.leads.map(function (l) { return '#' + l; }).join(', ') + '</span>' : '');
+    document.title = 'Marketing · ' + c.empresa;
+    // Encabezado del conceptualizador (decisión 1 del #428): ← · avatar con su nivel · empresa · ciudad y etapa · ⋮
+    N.cabecera({ titulo: c.empresa, sub: [c.ciudad, etapaTxt(c), 'Dueño: ' + corto(c.dueno)].filter(Boolean).join(' · '),
+      avatar: { texto: c.empresa.charAt(0).toUpperCase(), color: c.estado === 'curso' ? COLOR[c.nivel] : '#8696a0', insignia: 'N' + c.nivel, insigniaColor: COLOR[c.nivel] },
+      mas: { attrs: { 'data-acc': 'mas', 'aria-label': 'Más opciones de la conversación' }, hacer: masConv }, vuelve: function () { ir('#/'); } });
+    // La tira de etapas en la franja de una línea (decisión 3), con lo que antes iba en píldoras sueltas.
     var fichas = d.fichas || [], enviada = fichas.some(function (f) { return f.estado === 'enviada'; }) || (c.leads || []).length;
     var cerrada = c.estado === 'cerrada', fin = c.cierre === 'perdida' ? 'Perdida' : 'Por cotizar';
-    $('#etp').innerHTML = '<span class="' + (c.etapa === 1 && !cerrada ? 'on' : 'ya') + '">Etapa 1 · Prospección</span>' +
-      '<span class="' + (enviada ? 'ya' : '') + '">' + (enviada ? 'Enviada a CRM' : 'Enviar a CRM') + '</span>' +
-      '<span class="' + (c.etapa === 2 && !cerrada ? 'on' : c.etapa === 2 ? 'ya' : '') + '">Etapa 2 · Seguimiento</span>' +
-      '<span class="' + (cerrada ? 'on' : '') + '">' + fin + '</span>';
+    var paso = function (t, k) { return '<span class="' + k + '">' + esc(t) + '</span>'; };
+    var extra = pillsDe(c).slice(2).concat(c.siguiente && c.siguiente.fecha ? [{ texto: 'Siguiente: ' + (c.siguiente.tipo || '') + ' ' + c.siguiente.fecha }] : [])
+      .concat(c.leads && c.leads.length ? [{ texto: 'Odoo: lead ' + c.leads.map(function (l) { return '#' + l; }).join(', ') }] : []);
+    N.franja('<div class="chn-pasos" id="etp">' + paso('Etapa 1 · Prospección', c.etapa === 1 && !cerrada ? 'actual' : 'hecho') + paso(enviada ? 'Enviada a CRM' : 'Enviar a CRM', enviada ? 'hecho' : '') +
+      paso('Etapa 2 · Seguimiento', c.etapa === 2 && !cerrada ? 'actual' : c.etapa === 2 ? 'hecho' : '') + paso(fin, cerrada ? 'actual' : '') +
+      extra.map(function (p) { return '<span class="chn-et ' + esc(p.clase || '') + '">' + esc(p.texto) + '</span>'; }).join('') + '</div>');
+    // Los botones bajan a la fila del siguiente paso, el principal resaltado; si no caben, se desplazan de lado (decisión 2).
     var crm = M.tiene('marketing:crm'), b = [];
     var fUlt = fichas.filter(function (f) { return f.estado !== 'descartada'; }).slice(-1)[0];
-    if (fUlt) b.push('<button class="ch-btn ch-btn-s" data-ir="#/f/' + esc(fUlt.id) + '">📄 Ficha</button>');
-    if (fUlt && crm && c.estado === 'curso') b.push('<button class="ch-btn ' + (enviada ? 'ch-btn-s' : 'ch-btn-p') + '" data-ir="#/crm/' + esc(fUlt.id) + '">📤 Enviar a CRM</button>');
-    if (c.estado === 'curso' && c.etapa === 1 && crm) b.push('<button class="ch-btn ch-btn-s" data-acc="pasar">➡️ Pasar a seguimiento</button>');
-    if (c.estado === 'curso' && c.etapa === 2) b.push('<button class="ch-btn ch-btn-s" data-acc="sugerir">💡 Pedir sugerencia</button>');
-    if (c.estado === 'curso' && c.etapa === 2 && d.tarjeta_id && crm) b.push('<button class="ch-btn ch-btn-s" data-acc="odoo" id="aOdoo">✓ Escribir nota y actividad en Odoo</button>');
-    if (c.estado === 'cuarentena') b.push('<button class="ch-btn ch-btn-p" data-acc="reactivar">♻️ Reactivar</button>');
-    if (c.estado === 'cerrada') b.push('<button class="ch-btn ch-btn-s" data-acc="reabrir">Reabrir</button>');
-    b.push('<button class="ch-btn ch-btn-s" data-acc="mas" aria-label="Más opciones de la conversación" style="flex:0 0 auto;min-width:0">⋮</button>');
-    $('#acc').innerHTML = b.join('');
-    $('#acc').onclick = function (e) { var x = e.target.closest('[data-acc]'); if (x) accion(x.getAttribute('data-acc')); };
+    if (fUlt) b.push({ texto: '📄 Ficha', attrs: { 'data-ir': '#/f/' + fUlt.id } });
+    if (fUlt && crm && c.estado === 'curso') b.push({ texto: '📤 Enviar a CRM', fuerte: !enviada, attrs: { 'data-ir': '#/crm/' + fUlt.id } });
+    if (c.estado === 'curso' && c.etapa === 1 && crm) b.push({ texto: '➡️ Pasar a seguimiento', attrs: { 'data-acc': 'pasar' }, hacer: function () { accion('pasar'); } });
+    if (c.estado === 'curso' && c.etapa === 2) b.push({ texto: '💡 Pedir sugerencia', attrs: { 'data-acc': 'sugerir' }, hacer: function () { accion('sugerir'); } });
+    if (c.estado === 'curso' && c.etapa === 2 && d.tarjeta_id && crm) b.push({ texto: '✓ Escribir nota y actividad en Odoo', fuerte: true, attrs: { 'data-acc': 'odoo', id: 'aOdoo' }, hacer: function () { accion('odoo'); } });
+    if (c.estado === 'cuarentena') b.push({ texto: '♻️ Reactivar', fuerte: true, attrs: { 'data-acc': 'reactivar' }, hacer: function () { accion('reactivar'); } });
+    if (c.estado === 'cerrada') b.push({ texto: 'Reabrir', attrs: { 'data-acc': 'reabrir' }, hacer: function () { accion('reabrir'); } });
+    N.fijo(b, { id: 'acc' });
     pintarHilo();
   }
   function quienDe(m) { return m.rol === 'motor' ? 'Motor de Marketing' : m.rol === 'sistema' ? 'Sistema' : (m.autor === yo() ? 'Tú' : m.autor); }
   function toquePorCliente(cid) { return (est.det && est.det.toques || []).filter(function (t) { return t.cliente_id === cid; })[0]; }
+  /** La propuesta del toque, DENTRO de la burbuja que la originó, con las piezas del núcleo (conj, acc, bt). */
   function propuestaHtml(p, revisada) {
     if (!p) return '';
     var s = p.siguiente || {};
-    return '<div class="mkc-prop"><b>' + (revisada ? 'Propuesta (revisada por el motor)' : 'Propuesta al instante') + '</b>' + esc(p.resumen || '') +
+    return '<div class="conj mkc-prop"><b>' + (revisada ? 'Propuesta (revisada por el motor)' : 'Propuesta al instante') + '</b><br>' + esc(p.resumen || '') +
       (s.fecha ? '<br>Siguiente: ' + esc(s.tipo || '') + ' el ' + esc(s.fecha) + ' · ' + esc(s.resumen || '') : '') +
-      (p.sugerencia ? '<br><span style="color:var(--muted2)">' + esc(p.sugerencia) + '</span>' : '') +
-      '<div style="margin-top:6px"><button class="ch-btn ch-btn-s" style="min-width:0;flex:0 0 auto;height:30px;font-size:12.5px" data-corregir="1">🎙️ Corregir por voz</button></div></div>';
+      (p.sugerencia ? '<br><span style="color:var(--chn-sec)">' + esc(p.sugerencia) + '</span>' : '') +
+      '<div class="acc"><button class="bt" type="button" data-corregir="1">🎙️ Corregir por voz</button></div></div>';
   }
-  function burbuja(m) {
-    if (m.rol === 'sistema') {
-      var k = (m.datos && m.datos.conv) || '';
-      var cl = k === 'frio_nos' ? 'frio' : k === 'cuarentena' ? 'cuar' : k === 'reactivacion' ? 'reac' : (k === 'etapa' || k === 'reasignacion' || k === 'cierre') ? 'etapa' : '';
-      return '<div class="mkc-sis ' + cl + '"><span>' + esc(m.texto) + '</span></div>';
+  var TONO_SIS = { frio_nos: 'rojo', cuarentena: 'azul', reactivacion: 'verde', etapa: 'teal', reasignacion: 'teal', cierre: 'teal' };
+  var MARCA_SIS = { frio_nos: 'frio', cuarentena: 'cuar', reactivacion: 'reac', etapa: 'etapa', reasignacion: 'etapa', cierre: 'etapa' };
+  /** Un mensaje del servidor → un mensaje del núcleo. Palomitas: una = llegó, doble = el motor lo trabaja, azul = contestó. */
+  function delServidor(m, i, L) {
+    var at = m.escrito_at || m.created_at;
+    if (m.rol === 'sistema') { var k = (m.datos && m.datos.conv) || ''; return { id: m.id, rol: 'sistema', texto: m.texto, at: at, tono: TONO_SIS[k] || '', marca: 'mkc-sis ' + (MARCA_SIS[k] || '') }; }
+    var marca = G.ChatGestos ? G.ChatGestos.marcador.leer(m.texto) : null, mio = m.rol === 'persona' && m.autor === yo();
+    var contesto = L.slice(i + 1).some(function (x) { return x.rol === 'motor'; });
+    var out = { id: m.id, rol: mio ? 'yo' : 'el', quien: m.rol === 'motor' ? 'Motor de Marketing' : corto(m.autor), texto: marca ? marca.resto : m.texto, md: m.rol === 'motor',
+      at: at, llego_at: m.created_at, adjuntos: m.adjuntos || [], cita: marca ? { id: marca.id, extracto: marca.extracto } : null,
+      estado: contesto ? 'leido' : est.hilo.trabajo && est.hilo.trabajo.estado === 'tomado' ? 'recibido' : 'enviado' };
+    var dentro = '', fid = m.datos && m.datos.ficha_id;
+    if (fid) { var f = (est.det.fichas || []).filter(function (y) { return y.id === fid; })[0];
+      if (f) dentro += '<button type="button" class="chn-liga ch-tarjeta" data-ir="#/f/' + esc(f.id) + '"><b>Ver ficha →</b><small>Cuenta primero · ' + esc(f.estado) + ' · ' + esc(f.consultas || 0) + ' consultas</small></button>'; }
+    if (m.rol === 'persona' && m.cliente_id) {
+      var t = toquePorCliente(m.cliente_id);
+      if (t) dentro += propuestaHtml(t.motor || t.propuesta || est.propLocal[m.cliente_id], !!t.motor);
+      else if (est.propLocal[m.cliente_id]) dentro += propuestaHtml(est.propLocal[m.cliente_id], false);
     }
-    var marca = G.ChatGestos ? G.ChatGestos.marcador.leer(m.texto) : null;
-    var mm = marca ? Object.assign({}, m, { texto: marca.resto }) : m;
-    var html = U.burbuja(mm, yo(), { extra: function (x) {
-      var out = '', fid = x.datos && x.datos.ficha_id;
-      if (fid) { var f = (est.det.fichas || []).filter(function (y) { return y.id === fid; })[0];
-        if (f) out += '<button class="ch-tarjeta" data-ir="#/f/' + esc(f.id) + '"><b>Ver ficha →</b><br><span style="font-size:12px;color:var(--muted2)">Cuenta primero · ' + esc(f.estado) + ' · ' + esc(f.consultas || 0) + ' consultas</span></button>'; }
-      if (x.rol === 'persona' && x.cliente_id) {
-        var t = toquePorCliente(x.cliente_id);
-        if (t) out += propuestaHtml(t.motor || t.propuesta || est.propLocal[x.cliente_id], !!t.motor);
-        else if (est.propLocal[x.cliente_id]) out += propuestaHtml(est.propLocal[x.cliente_id], false);
-      }
-      return out;
-    } });
-    if (marca) html = html.replace(/(<div class="ch-msg [^"]*">)/, '$1' + G.ChatGestos.citaHtml(marca.id, '', marca.extracto));
-    return html.replace('<div class="ch-msg ', '<div data-chg-id="' + esc(m.id) + '" class="ch-msg ');
+    out.dentro = dentro;
+    return out;
+  }
+  /** Lo que sigue en la cola del teléfono: «pendiente de enviar», sin palomita (§15). */
+  function deLaCola(it) {
+    var marca = G.ChatGestos ? G.ChatGestos.marcador.leer(it.texto) : null;
+    var actual = it.archivos.filter(function (a) { return Q.progreso(a.local) !== undefined; })[0], subidos = it.archivos.filter(function (a) { return a.adjunto_id; }).length;
+    return { id: it.cliente_id, rol: 'yo', local: true, texto: marca ? marca.resto : it.texto, at: it.escrito_at, error: it.error,
+      cita: marca ? { id: marca.id, extracto: marca.extracto } : null,
+      estado: it.estado === 'error' ? 'error' : actual ? 'subiendo' : 'pendiente', progreso: actual ? (subidos + Q.progreso(actual.local)) / it.archivos.length : null,
+      adjuntos: it.archivos.map(function (a) { return { local: a.local, clase: a.clase, nombre: a.nombre, bytes: a.bytes, duracion_s: a.duracion_s, subido: !!a.adjunto_id }; }),
+      dentro: propuestaHtml(est.propLocal[it.cliente_id], false) };
   }
   async function pintarHilo() {
-    var ch = $('#chat'); if (!ch) return;
-    var h = est.hilo, html = [];
-    if (h) {
-      html = h.mensajes.map(burbuja);
-      if (h.trabajo) html.push('<div class="ch-escribiendo">' + (h.trabajo.estado === 'tomado' ? '✍️ ' + esc(h.trabajo.paso || 'trabajando…') : '⏳ en cola') + '</div>');
-    }
+    if (!est.det) return;
+    var h = est.hilo, L = h ? h.mensajes.map(delServidor) : [];
     var cola = (await Q.salida()).filter(function (it) { return h && it.sesion_id === h.sesion.id; });
-    cola.forEach(function (it) {
-      var p = est.propLocal[it.cliente_id];
-      html.push(U.pendiente(it, Q).replace(/<\/div>$/, (p ? propuestaHtml(p, false) : '') + '</div>'));
-    });
-    var abajo = ch.scrollHeight - ch.scrollTop - ch.clientHeight < 80;
-    ch.innerHTML = html.join('') || '<div class="ch-sistema">Escribe qué pasó, pega lo que encontraste o manda una foto.</div>';
-    if (abajo || !est.pintado) { window.scrollTo(0, document.body.scrollHeight); est.pintado = true; }
-    if (!est.gestos && G.ChatGestos) {
-      // Los gestos de la conversación anterior (esta pantalla no recarga entre conversaciones) se quitan antes de volver a engancharlos.
-      Array.prototype.forEach.call(document.querySelectorAll('.chg-menu, .chg-barra, .chg-resp'), function (e) { e.remove(); });
-      est.gestos = G.ChatGestos.enganchar({
-        contenedor: ch, cabecera: document.querySelector('.topbar'), antesDe: $('#barra'), burbujas: '[data-chg-id]',
-        mensaje: function (id) { var m = (est.hilo.mensajes || []).filter(function (x) { return x.id === id; })[0]; if (!m) return null;
-          var mk = G.ChatGestos.marcador.leer(m.texto); return { quien: quienDe(m), texto: mk ? mk.resto : (m.texto || (m.adjuntos || []).map(function (a) { return a.transcripcion || a.nombre; }).join(' ')), voz: (m.adjuntos || []).some(function (a) { return a.clase === 'audio'; }) }; },
-        onResponder: function () {}, onCancelarRespuesta: function () {},
-        puedeReenviar: function () { return true; }, onReenviar: reenviar,
-        aviso: function (t) { U.toast(t); }
-      });
-    }
-    if (est.gestos) est.gestos.decorar();
+    N.salida(cola);
+    L = L.concat(cola.map(deLaCola));
+    N.mensajes(L, { vacio: 'Escribe qué pasó, pega lo que encontraste o manda una foto.',
+      escribiendo: h && h.trabajo ? { texto: h.trabajo.estado === 'tomado' ? (h.trabajo.paso || 'trabajando…') : 'en cola' + (h.motor && !h.motor.vivo ? ' · el motor no está despierto' : ''), pasos: h.trabajo.paso ? [{ t: h.trabajo.paso }] : [] } : null });
   }
   function clicChat(e) {
-    if (e.target.closest('[data-corregir]')) { e.preventDefault(); corregir(e.target.closest('[data-chg-id]')); }
+    var x = e.target.closest('[data-corregir]'); if (x) { e.preventDefault(); corregir(x.closest('[data-chg-id]')); }
   }
-  /** Corregir por voz: cita la propuesta y abre el micrófono. */
+  /** Corregir por voz: cita la propuesta y abre el micrófono (la grabadora del núcleo). */
   function corregir(burb) {
-    if (burb && est.gestos) est.gestos.responder(Number(burb.getAttribute('data-chg-id')) || burb.getAttribute('data-chg-id'));
-    if (est.barra && est.barra.grabar) est.barra.grabar();
+    var gz = N.gestos();
+    if (burb && gz) gz.responder(Number(burb.getAttribute('data-chg-id')) || burb.getAttribute('data-chg-id'));
+    N.grabar();
   }
   async function enviar(texto, archivos, at) {
     var c = est.det && est.det.conversacion; if (!c) return;
     if (/^\/cierre\s*$/i.test(texto) && !archivos.length) { cerrar(); return; }
-    var r = est.gestos && est.gestos.respondiendo();
-    if (r) { var m = (est.hilo.mensajes || []).filter(function (x) { return x.id === r; })[0]; if (m) texto = G.ChatGestos.marcador.armar(r, G.ChatGestos.marcador.quitar(m.texto), texto); est.gestos.enviada(); }
+    var gz = N.gestos(), r = gz && gz.respondiendo();
+    if (r) { var m = (est.hilo.mensajes || []).filter(function (x) { return x.id === r; })[0]; if (m) texto = G.ChatGestos.marcador.armar(r, G.ChatGestos.marcador.quitar(m.texto), texto); gz.enviada(); }
     var it = await Q.encolar({ sesion_id: c.sesion_id }, texto, archivos, at);
     if (c.etapa === 2 && c.estado === 'curso' && texto && G.MktToqueBase) {
       // La propuesta mecánica responde AL INSTANTE (la misma base que usa el motor); se guarda en el toque cuando el mensaje llega.
       var f = (est.det.fichas || []).slice(-1)[0] || null;
       est.propLocal[it.cliente_id] = G.MktToqueBase.proponer({ texto: G.ChatGestos ? G.ChatGestos.marcador.quitar(texto) : texto, hoy: M.hoyISO(), ficha: f });
     }
-    pintarHilo();
+    N.irAbajo(); pintarHilo();
   }
   function reenviar(id) {
-    var m = (est.hilo.mensajes || []).filter(function (x) { return x.id === id; })[0]; if (!m) return;
+    var m = (est.hilo.mensajes || []).filter(function (x) { return String(x.id) === String(id); })[0]; if (!m) return;
     var otros = est.convs.length ? est.convs : [];
     var cargar = otros.length ? Promise.resolve(otros) : C.pedir('conversaciones', {}).then(function (r) { est.convs = r.ok ? r.conversaciones : []; return est.convs; });
     cargar.then(function (lst) {
@@ -381,7 +355,9 @@
       { texto: '🗂️ Archivos, enlaces y docs.', nota: 'Enlaces junta la evidencia de la ficha y de las señales', hacer: archivos },
       { texto: '↪️ Reasignar', nota: 'conserva toda la historia', apagado: !crm, hacer: function () { reasignar(c, false); } },
       { texto: '❄️ Mandar a cuarentena', nota: 'se archiva; el lead SIGUE abierto en Odoo con actividad a 90 días', apagado: c.estado !== 'curso', hacer: async function () {
-        var r = await C.pedir('conv_cuarentena', { conversacion_id: c.id }); U.toast(r.ok ? 'En cuarentena.' : (r.mensaje || r.error)); cargarConv(); } },
+        var r = await C.pedir('conv_cuarentena', { conversacion_id: c.id }); U.toast(r.ok ? 'En cuarentena.' : (r.mensaje || r.error));
+        if (r.ok) await alCuarentena(c, r);
+        cargarConv(); } },
       { texto: '✔ Cerrar · Por cotizar o perdida', nota: 'también escribiendo /cierre', apagado: c.estado === 'cerrada', hacer: cerrar },
       { texto: '⬇️ Exportar chat', hacer: function () { G.ChatPanel.exportar({ titulo: c.empresa + (c.ciudad ? ' · ' + c.ciudad : ''), mensajes: (est.hilo || {}).mensajes || [], quien: quienDe }); } },
       { texto: c.fijada ? '📌 Quitar de fijadas' : '📌 Fijar', hacer: function () { marca(c, c.fijada ? 'conv_desfijar' : 'conv_fijar'); } },
@@ -390,6 +366,10 @@
       { texto: '🕘 Historia de antes (' + (d.historial || []).length + ')', nota: 'tarjetas y sesiones que ahora viven aquí', apagado: !(d.historial || []).length, hacer: historial }
     ]);
   }
+  /** GANCHO del disparador de cuarentena (#421, pendiente: NO está construido). Corre después de que la base aceptó la
+   *  cuarentena. Ahí va C.webhook('/webhook/marketing/odoo-lead', 'cuarentena', { datos: { conversacion_id: c.id } }) con el
+   *  mismo manejo que aOdoo() (NO_PUBLICADO → queda registrado). Es contenido del producto: el núcleo no se toca. */
+  async function alCuarentena(c, r) {}
   function archivos() {
     var d = est.det, extra = [];
     (d.conversacion.evidencia || []).forEach(function (e) { if (e.liga) extra.push({ titulo: e.titulo || e.liga, liga: e.liga, fecha: e.fecha, nota: 'evidencia · ' + (e.tipo || '') }); });
@@ -471,7 +451,22 @@
     } else pintarHilo();
   });
 
-  try { G.matchMedia('(min-width:900px)').addEventListener('change', function () { if (!est.apagado) G.MktConv.ruta(); }); } catch (e) {}
+  // El marco: el núcleo de chat con el contenido de Marketing. Nada de estilos del chat aquí.
+  var N = G.Mkt.marco({
+    producto: 'marketing', titulo: 'Prospectador', version: 'v4', atras: { aria: 'Volver a Marketing', hacer: function () { location.href = '../index.html'; } },
+    lista: opcionesLista(), menuLista: { attrs: { id: 'mas', 'aria-label': 'Más opciones' }, hacer: menuLista },
+    fab: { texto: 'Nueva empresa', attrs: { 'data-ir': '#/nueva' } },
+    placeholder: 'Cuenta qué pasó', vacioChat: 'Elige una conversación: una empresa, con todo su historial.',
+    verAdjunto: function (k) { return C.pedir('ver_adjunto', { adjunto_id: k }, { timeout: 120000 }).then(function (r) { return r.ok ? { ok: true, b64: r.adjunto.b64, tipo: r.adjunto.mime, nombre: r.adjunto.nombre } : { ok: false }; }); },
+    onEnviar: enviar, onReintentar: function (id) { Q.reintentar(id); }, onDescartar: function (id) { Q.descartar(id); },
+    gestos: {
+      mensaje: function (id) { var m = ((est.hilo || {}).mensajes || []).filter(function (x) { return String(x.id) === String(id); })[0]; if (!m) return null;
+        var mk = G.ChatGestos.marcador.leer(m.texto); return { quien: quienDe(m), texto: mk ? mk.resto : (m.texto || (m.adjuntos || []).map(function (a) { return a.transcripcion || a.nombre; }).join(' ')), voz: (m.adjuntos || []).some(function (a) { return a.clase === 'audio'; }) }; },
+      onResponder: function () { N.foco(); }, onCancelarRespuesta: function () {},
+      puedeReenviar: function () { return true; }, onReenviar: function (id) { reenviar(Number(id) || id); }
+    }
+  });
+  N.msgs.addEventListener('click', clicChat);
 
   G.MktConv = {
     ruta: function () {

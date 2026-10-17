@@ -416,7 +416,7 @@
   window.addEventListener('hashchange', ruta);
   Q.oir(function (x) { if (location.hash.startsWith('#/s/')) { if (!est.sesionId && x && x.sesion) { parar(); refrescar(); } else pintarChat(); } else if (!location.hash || location.hash === '#/') { if (x && (x.sesion || x.errorSesion)) vLista(); } });
   G.MktProspectador = { arrancar: async function () {
-    U.red(document.getElementById('red'));
+    if (document.getElementById('red')) U.red(document.getElementById('red'));   // v4: sin la barra de antes, la red va en el subtítulo del núcleo
     var ok = await Q.iniciar(); if (!ok) U.toast('Este navegador no guarda la cola: no cierres la pestaña sin señal.', 5000);
     ruta();
   } };

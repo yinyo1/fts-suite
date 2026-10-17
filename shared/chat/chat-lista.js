@@ -89,7 +89,8 @@
     (o.filtros || []).forEach(function (gr) { if (gr.unico && !est.sel[gr.id]) est.sel[gr.id] = gr.opciones[0].id; });
     function guardar() { try { localStorage.setItem(LS, JSON.stringify({ sel: est.sel, persona: est.persona })); } catch (e) {} }
     cont.classList.add('chl');
-    cont.innerHTML = '<label class="chl-buscar"><span aria-hidden="true">🔍</span><input type="search" id="chl-q-' + esc(o.producto || 'chat') + '" placeholder="' + esc(o.buscarTexto || 'Buscar') + '" aria-label="Buscar"></label>' +
+    // Núcleo (#428): con `buscador:false` la lista no pinta su caja; busca quien la contiene con L.buscar(q) (la lupa del encabezado).
+    cont.innerHTML = (o.buscador === false ? '<input type="search" hidden aria-hidden="true">' : '<label class="chl-buscar"><span aria-hidden="true">🔍</span><input type="search" id="chl-q-' + esc(o.producto || 'chat') + '" placeholder="' + esc(o.buscarTexto || 'Buscar') + '" aria-label="Buscar"></label>') +
       '<div class="chl-filtros"></div><div class="chl-lst" role="list"></div>';
     var inp = cont.querySelector('input'), F = cont.querySelector('.chl-filtros'), L = cont.querySelector('.chl-lst');
     inp.addEventListener('input', function () { est.q = inp.value.trim().toLowerCase(); lista(); });
@@ -172,6 +173,7 @@
       filtro: function (g, v) { est.sel[g] = v; guardar(); lista(); },
       persona: function (p) { est.persona = p; guardar(); lista(); },
       estado: function () { return { sel: est.sel, persona: est.persona, q: est.q }; },
+      buscar: function (q) { est.q = String(q || '').trim().toLowerCase(); lista(); },
       refrescar: lista
     };
   }

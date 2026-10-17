@@ -91,5 +91,5 @@
     if ($('#tel')) listas();
   });
   G.addEventListener('online', pintar); G.addEventListener('offline', function () { M.cab('Lead rápido', 'Sin señal: se guarda en el teléfono', '../index.html'); });
-  G.MktLead = { arrancar: async function () { U.red(document.getElementById('red')); var ok = await Q.iniciar(); if (!ok) U.toast('Este navegador no guarda la cola: no cierres la pestaña sin señal.', 5000); pintar(); } };
+  G.MktLead = { arrancar: async function () { if (document.getElementById('red')) U.red(document.getElementById('red')); var ok = await Q.iniciar(); if (!ok) U.toast('Este navegador no guarda la cola: no cierres la pestaña sin señal.', 5000); pintar(); } };
 })(window);

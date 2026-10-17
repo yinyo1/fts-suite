@@ -1,0 +1,42 @@
+{
+ "cab": {
+  "backgroundColor": "rgb(255, 255, 255)",
+  "borderBottomColor": "rgb(231, 227, 221)",
+  "h": 52
+ },
+ "msgs": {
+  "backgroundColor": "rgb(239, 234, 226)",
+  "backgroundImage": "radial-gradient(rgba(11, 20, 26, 0.043) 1px, rgba(0, 0, 0, 0) 1.2px)",
+  "backgroundSize": "22px 22px",
+  "h": 627
+ },
+ "yo": {
+  "backgroundColor": "rgb(217, 253, 211)",
+  "borderRadius": "18px 6px 18px 18px",
+  "boxShadow": "rgba(11, 20, 26, 0.13) 0px 1px 0.5px 0px",
+  "fontSize": "15px",
+  "paddingTop": "6px",
+  "paddingLeft": "10px",
+  "h": 94.390625
+ },
+ "el": {
+  "backgroundColor": "rgb(255, 248, 225)",
+  "borderRadius": "6px 18px 18px",
+  "h": 156.5
+ },
+ "caja": {
+  "backgroundColor": "rgb(255, 255, 255)",
+  "borderRadius": "24px",
+  "boxShadow": "rgba(11, 20, 26, 0.13) 0px 1px 0.5px 0px",
+  "h": 48
+ },
+ "redondo": {
+  "backgroundColor": "rgb(29, 170, 97)",
+  "width": "48px",
+  "h": 48
+ },
+ "body": {
+  "fontFamily": "Roboto, \"Google Sans\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+  "h": 820
+ }
+}
