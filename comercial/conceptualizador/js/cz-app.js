@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.52';
+  var VERSION = 'V1.52.1';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -293,13 +293,18 @@
       ST.filtro === 'vivas' && !gu ? 'No hay cotizaciones en curso. Abre una con «Nueva cotización» y platícale el trabajo.' : 'Nada aquí con estos filtros.') + '</p>';
     L.forEach(function (c) {
       var u = c.ultimo, on = (c.id && sel.id === c.id) || (c.local && sel.local === c.local);
+      // V1.52.1 · el «revisa» sin aviso no es una vista previa (la base 0015 ya lo salta; esto cubre un servidor sin ella).
+      if (u && u.rol === 'motor' && String(u.texto || '').trim() === SIN_AVISO) u = null;
       var prev = c.estado === 'local' ? 'Se da de alta al volver la señal' : !u ? 'Sin mensajes' :
         (sinMarca(u.texto) ? sinMarca(u.texto) : (u.adjuntos ? u.adjuntos + ' adjunto' + (u.adjuntos > 1 ? 's' : '') : ''));
       var pre = !u ? '' : (u.rol === 'usuario' ? '<span class="tk" title="En el servidor">' + palomita(false) + '</span>' : '') +
         (u.adjuntos && !u.texto ? ico('clip', 'xs') : '');
       var nAcc = Number(c.acciones) || 0;
       // V1.51 · H · en la fila, como WhatsApp: «🤖 escribiendo…» / «Richard está escribiendo…» en vez de la vista previa.
-      var ef = (Object.prototype.hasOwnProperty.call(c, 'agente') && G.ChatWA) ? G.ChatWA.escrituraFilaHtml(estadoDelServidor(c.agente, c.escriben)) : '';
+      var esF = Object.prototype.hasOwnProperty.call(c, 'agente') && G.ChatWA ? estadoDelServidor(c.agente, c.escriben) : null;
+      // V1.52.1 · con estados_reales, la fila solo dice «escribiendo…» (robot, agente o persona); lo demás, la vista previa.
+      if (esF && ST.int && ST.int.estados_reales === true && esF.k === 'cola') esF = null;
+      var ef = esF ? G.ChatWA.escrituraFilaHtml(esF) : '';
       h += '<div class="ses' + (on ? ' on' : '') + '" data-id="' + esc(c.id || '') + '" data-local="' + esc(c.local || '') + '" role="button" tabindex="0">' +
         '<div class="av" style="background:' + color(c.titulo) + '">' + esc(iniciales(c.cliente || c.titulo)) + '</div>' +
         '<div class="tx"><div class="t"><span class="n">' + esc(c.titulo) + '</span><span class="h' + (nAcc ? ' nuevo' : '') + '">' + esc(corto((u && u.created_at) || c.ultima_actividad_at)) + '</span></div>' +
@@ -481,7 +486,27 @@
   /* ═══ V1.52 §13 · Configuración del robot asistente (⋮ del chat) y del conceptualizador (⋮ de la lista) ═══
    * Las dos son hojas del núcleo (ChatWA.hoja): en teléfono suben desde abajo; en PC, tarjeta arriba a la derecha.
    * Todo lo que dicen sale del servidor (hilo, casos, config); nada usa alert/confirm del navegador. */
-  var HORARIO_ROBOT = 'Trabaja solo de lunes a viernes, de 7:00 a 22:00 (hora del centro de México). Tus mensajes se contestan a cualquier hora.';
+  /* V1.52.1 · UN solo horario en toda la pantalla. Con `robot_config_base` prendido manda el panel (robot_desde/hasta/dias/
+   * zona, que el servidor manda en casos e hilo); apagado, el robot usa todavía el del archivo (7 a 21 h, en la hora de
+   * quien cotiza) y eso es lo que se dice: nunca un horario que el robot no cumple. */
+  var DIAS_ISO = ['', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
+  function hhmm(t) { var m = /^(\d{1,2}):(\d{2})$/.exec(String(t || '')); return m ? Number(m[1]) + ':' + m[2] : String(t || ''); }
+  function horarioRobot() {
+    var h = ST.robotHorario;
+    if (!h || h.de_panel !== true) return 'L–V de 7:00 a 21:00 de quien cotiza';
+    var d = String(h.dias || '').split(',').map(Number).filter(function (x) { return x >= 1 && x <= 7; }).sort(), dias;
+    var seguidos = d.length > 1 && d.every(function (x, i) { return i === 0 || x === d[i - 1] + 1; });
+    dias = d.join(',') === '1,2,3,4,5' ? 'L–V' : seguidos ? DIAS_ISO[d[0]] + ' a ' + DIAS_ISO[d[d.length - 1]] : d.map(function (x) { return DIAS_ISO[x]; }).join(', ');
+    return dias + ' de ' + hhmm(h.desde) + ' a ' + hhmm(h.hasta) + ' (' + (h.zona === 'America/Mexico_City' || !h.zona ? 'hora del centro de México' : h.zona) + ')';
+  }
+  function horarioRobotLinea() { return 'Trabaja por su cuenta ' + horarioRobot() + '. Tus mensajes se contestan a cualquier hora.'; }
+  /** El permiso de administrador vigente en el caso abierto (0015), o null. Vencido = sin permiso (se apaga solo). */
+  function permisoRobot() {
+    var x = ST.robotPermiso, c = (ST.hilo && ST.hilo.caso) || {};
+    if (!x || !x.p || x.caso !== c.id) return null;
+    return Date.parse(x.p.hasta) > Date.now() ? x.p : null;
+  }
+  function permisoTxt(pm) { return 'con permiso de ' + nombreCorto(pm.por || 'esteban.delacruz') + ' hasta las ' + (pm.hasta_local || horaDe(pm.hasta)); }
   function gastoTxt(n) { var t = G.ChatWA && G.ChatWA.gastoTexto ? G.ChatWA.gastoTexto(n) : ''; return t || (Number(n) > 0 ? String(n) : '0 tokens ponderados'); }
   function millones(n) { n = Number(n) || 0; return n >= 1e6 ? (Math.round(n / 1e5) / 10) + ' millones' : n >= 1000 ? Math.round(n / 1000) + ' mil' : String(Math.round(n)); }
   function hojaCfg(titulo, html, ancho) {
@@ -532,7 +557,8 @@
         '<p class="czc-err" id="czcArrErr" hidden></p>';
     }
     if (!puede) h += '<p class="czc-k">Solo el dueño del caso (' + esc(nombreAgente(c.autor)) + ') o Esteban pueden cambiar esto.</p>';
-    h += '<div class="czc-fijo">' + HORARIO_ROBOT + '</div>';
+    var pmV = permisoRobot();
+    h += '<div class="czc-fijo">' + esc(horarioRobotLinea()) + (pmV ? ' <b>Ahora trabaja este caso ' + esc(permisoTxt(pmV)) + '.</b>' : '') + '</div>';
     if (adm) {
       var V = (ST.cfg && ST.cfg.valores) || null, Gs = (ST.cfg && ST.cfg.gasto) || null;
       h += '<h3 class="czc-adm">Administrador</h3>';
@@ -540,6 +566,17 @@
         var tope = Number(V.consumo_tope_semana) || 0, sem = Number(Gs.semana) || 0;
         h += '<div class="czc-tarj"><div><b>Freno semanal</b> · ' + millones(sem) + ' de ' + millones(tope) + ' ponderados (' + (tope ? Math.round(100 * sem / tope) : 0) + ' %)</div>' + medidor(sem, tope) +
           '<div class="czc-k">Hoy: ' + esc(gastoTxt(Gs.hoy)) + '. Se reinicia el lunes 00:00.</div></div>';
+      }
+      // V1.52.1 (#5) · permiso del robot por caso: solo panel_admin (lo valida el servidor), con razón y bitácora.
+      if (ST.panelAdmin === true && c.id && ['abierto', 'enviada'].indexOf(c.estado) >= 0) {
+        var hst = (ST.robotHorario && ST.robotHorario.hasta) || '22:00', mas = hhmm(hst).replace(/^(\d+)/, function (x) { return String((Number(x) + 1) % 24); });
+        h += (pmV ? '<div class="czc-fila czc-perm"><div class="czc-tx"><b>Permiso vigente</b> · trabaja este caso hasta las ' + esc(pmV.hasta_local || horaDe(pmV.hasta)) +
+              '<small>Lo dio ' + esc(nombreCorto(pmV.por || '')) + '. Se apaga solo a esa hora; el freno semanal nunca se salta.</small></div><button type="button" class="czc-btn" data-p="quitar">Quitar</button></div>' : '') +
+          '<div class="czc-fila"><div class="czc-tx">Dale 1 hora más hoy<small>' + (pmV ? 'Suma una hora al permiso vigente.' : 'Salta el horario y el tope de este caso hasta las ' + esc(mas) + '.') + ' Nunca el freno semanal.</small></div><button type="button" class="czc-btn" data-p="hora_mas">+1 hora</button></div>' +
+          '<div class="czc-fila czc-perm-h"><div class="czc-tx">Trabaja este caso fuera de horario hasta<small>Para pruebas. Hasta 18 h desde ahora; queda en el hilo quién y por qué.</small></div>' +
+            '<input type="time" id="czcPermHasta" value="' + esc(mas.length === 4 ? '0' + mas : mas) + '" aria-label="Hasta" class="czc-hora"><button type="button" class="czc-btn" data-p="hasta">Dar permiso</button></div>' +
+          '<label class="czc-campo czc-rz" for="czcPermRz"><span>Razón del permiso<small>Obligatoria, una línea (3 a 200 letras). Queda en la bitácora y en el hilo.</small></span><input id="czcPermRz" maxlength="200" autocomplete="off" placeholder="probar el robot de noche con este caso"></label>' +
+          '<p class="czc-err" id="czcPermErr" hidden></p>';
       }
       if (ST.panelAdmin === true) h += '<div class="czc-fila"><div class="czc-tx">Configuración del conceptualizador<small>Topes, horario, freno, experimento y bitácora</small></div><button type="button" class="czc-btn" data-r="panel">Abrir</button></div>';
     }
@@ -574,6 +611,23 @@
       }
       razon(r);
     }; });
+    // V1.52.1 · permiso del robot (solo panel_admin): «+1 hora», «hasta HH:MM» o «Quitar»; el servidor calcula la hora final.
+    $$('[data-p]', E).forEach(function (b) { b.onclick = async function () {
+      var err = $('#czcPermErr', E), rz = ($('#czcPermRz', E).value || '').replace(/\s+/g, ' ').trim(), k = b.dataset.p;
+      var poner = function (t) { err.textContent = t; err.hidden = !t; };
+      if (rz.length < 3 || rz.length > 200) { poner('Escribe la razón del permiso (3 a 200 letras): queda en la bitácora y en el hilo.'); return $('#czcPermRz', E).focus(); }
+      var v = k === 'hora_mas' ? 'hora_mas' : k === 'quitar' ? 'quitar' : 'hasta:' + String($('#czcPermHasta', E).value || '').slice(0, 5);
+      if (k === 'hasta' && !/^hasta:([01][0-9]|2[0-3]):[0-5][0-9]$/.test(v)) { poner('Elige la hora hasta la que trabaja (HH:MM).'); return; }
+      poner(''); b.disabled = true; var t0 = b.textContent; b.textContent = 'Guardando…';
+      var cam = {}; cam['robot_permiso:' + c.id] = v;
+      var q = await C.configGuardar(cam, rz, false);
+      b.disabled = false; b.textContent = t0;
+      if (!q.ok) return poner(q.error === 'NO_AUTORIZADO' ? 'Solo Esteban da este permiso.' : q.error === 'MODO_DESCONOCIDO' ? 'Esto se activa cuando se actualice el servidor.' :
+        q.error === 'VALOR_INVALIDO' ? 'El servidor todavía no acepta este permiso (falta la migración 0015).' : (q.mensaje || 'No se pudo: ' + (q.error || 'error')));
+      var x = (q.cambiados || [])[0];
+      ST.robotPermiso = { caso: c.id, p: x && x.permiso ? x.permiso : null };
+      sondear(true); dlgRobot();
+    }; });
   }
 
   /* El panel (solo panel_admin, lo decide el servidor): campos de §1 con su valor actual, gasto, razón obligatoria,
@@ -606,7 +660,7 @@
     return con;
   }
   var PANEL = [
-    ['Mensajes y sesiones', [['tope_mensajes_dia', 'Mensajes de persona al día', 'n'], ['tope_mensajes_dia:*', 'Tope de mensajes de', 'n'], ['tope_sesiones_dia', 'Sesiones nuevas al día', 'n']]],
+    ['Mensajes y sesiones', [['tope_mensajes_dia', 'Mensajes de persona al día', 'n'], ['tope_mensajes_dia:@admin', 'Tope de mensajes de', 'n'], ['tope_mensajes_dia:*', 'Tope de mensajes de', 'n'], ['tope_sesiones_dia', 'Sesiones nuevas al día', 'n']]],
     ['Robot asistente', [['robot_desde', 'Trabaja desde', 'h'], ['robot_hasta', 'Hasta', 'h'], ['robot_dias', 'Días (ISO, lunes = 1)', 't'], ['robot_zona', 'Zona horaria', 't'],
       ['robot_por_caso_dia_pasadas', 'Pasadas por caso al día', 'n'], ['robot_por_caso_dia_ponderado', 'Ponderado por caso al día', 'n'], ['robot_pasadas_por_hora', 'Pasadas por hora', 'n'],
       ['arranque_auto_min', 'Arranque automático (min sin nada nuevo)', 'n'], ['pasada_sin_novedad_salta', 'Saltar la pasada sin nada nuevo (1 = sí)', 'n']]],
@@ -649,16 +703,19 @@
     PANEL.forEach(function (g) {
       h += '<h3>' + esc(g[0]) + '</h3><div class="czc-grupo">';
       g[1].forEach(function (f) {
+        // V1.52.1 · el tope propio del administrador del panel sale SIEMPRE (aunque la clave todavía no exista): vacío = el general.
+        var adm0 = String(V.panel_admin || '').trim();
+        if (f[0].slice(-7) === ':@admin') { if (adm0) h += campo(f[0].slice(0, -6) + adm0, f[1] + ' ' + nombreCorto(adm0) + ' (vacío = el general)', f[2]); return; }
         if (f[0].slice(-2) === ':*') {
           var pre = f[0].slice(0, -1);
-          Object.keys(V).filter(function (k) { return k.indexOf(pre) === 0; }).sort().forEach(function (k) { h += campo(k, f[1] + ' ' + nombreCorto(k.slice(pre.length)), f[2]); });
+          Object.keys(V).filter(function (k) { return k.indexOf(pre) === 0 && k !== pre + adm0; }).sort().forEach(function (k) { h += campo(k, f[1] + ' ' + nombreCorto(k.slice(pre.length)), f[2]); });
         } else h += campo(f[0], f[1], f[2]);
       });
       h += '</div>';
     });
     h += '<div class="czc-k">Administrador del panel: <b>' + esc(V.panel_admin || '—') + '</b>. Freno arriba de ' + millones(L.freno_max_sin_confirmar || 100000000) +
       ' o horario de más de ' + (L.horario_max_horas_sin_confirmar || 18) + ' h piden una segunda confirmación.</div>' +
-      '<label class="czc-campo czc-rz" for="czcRazonP"><span>Razón del cambio<small>Obligatoria, una línea (3 a 200 letras). Queda en la bitácora.</small></span><input id="czcRazonP" maxlength="200" autocomplete="off" placeholder="subo el tope de Montalvo por la licitación"></label>' +
+      '<label class="czc-campo czc-rz" for="czcRazonP"><span>Razón del cambio<small>Obligatoria, una línea (3 a 200 letras). Queda en la bitácora.</small></span><input id="czcRazonP" maxlength="200" autocomplete="off" placeholder="subo el tope de mensajes por una semana de mucha carga"></label>' +
       '<p class="czc-err" id="czcErr" hidden></p><div class="czc-conf" id="czcConf" hidden></div>' +
       '<div class="czc-acc"><button type="button" class="czc-btn p" id="czcGuardar">Guardar cambios</button></div>' +
       '<h3>Bitácora</h3>' + (B.length ? '<ol class="czc-bit">' + B.slice(0, 50).map(function (x) {
@@ -982,6 +1039,10 @@
       var rab = Rb.lista.filter(function (r) { return r.estado === 'abierto'; })[0];
       if (rab) sg = { txt: 'Seguir con ' + rab.nombre, acc: 'rubro', id: rab.id };
     }
+    // V1.52.1 · con un proceso vivo la barra ya dice qué pasa: la pastilla de espera («Revisando si hay cambios…») no se pinta encima.
+    if (sg && sg.espera && on('estados_reales') && agenteTrabajando()) sg = null;
+    // V1.52.1 · «Ya está todo ok…» no se sugiere con el robot o el motor trabajando (la base lo dice por proceso vivo).
+    if (sg && sg.cierre && on('estados_reales') && agenteTrabajando()) sg = null;
     if (!sg) { el.style.display = 'none'; el.innerHTML = ''; return; }
     var e = ST.env.fijo || (ST.env.ciudad ? 'guardando la ciudad…' : null), ic = sg.acc === 'ciudad' || sg.acc === 'confirma_ciudad' ? 'mapa' : sg.acc === 'machote' || sg.acc === 'disparo' ? 'disparo' : 'pagina';
     el.style.display = 'flex';
@@ -1075,7 +1136,8 @@
     if (L.P) h += preciosFranja(L.P, L.sig);
     if (AN) h += '<div class="avl-analisis">' + (AN.estado === 'cerrado' ? '<b>🔒 Análisis cerrado' + (AN.cerrado && AN.cerrado.folio ? ' · ' + esc(AN.cerrado.folio) + (AN.cerrado.version ? ' v' + esc(AN.cerrado.version) : '') : '') + '.</b> El agente ya no mueve nada; si pides algo nuevo, se reabre.' :
       '<b>' + (AN.estado === 'listo' ? 'Listo para cerrar' : pctAv() + ' % hacia el 100') + '</b>' + (AN.falta && AN.falta.length ? ' · Falta: ' + esc(AN.falta.join('; ')) : '') +
-      (mia(c) ? ' <button type="button" class="link" id="avCerrarAn">' + esc(BOTON_CIERRE) + '</button>' : '') +
+      // V1.52.1 · el atajo de cierre, solo sin proceso vivo ni clic pendiente (Va, Guardar en el machote, Cotizar con referencias, Actualizar SO, Ya la mandé).
+      (mia(c) && (!on('estados_reales') || (G.CzAvance.cierrePosible(ST.hilo) && !agenteTrabajando())) ? ' <button type="button" class="link" id="avCerrarAn">' + esc(BOTON_CIERRE) + '</button>' : '') +
       (mia(c) && !AN.pausa ? ' <button type="button" class="link" id="avPausar">Pausar al agente</button>' : '') +
       (AN.congelado_ref && AN.congelado_ref.folio ? '<span class="avl-cong">Versión congelada de referencia: ' + esc(AN.congelado_ref.folio) + (AN.congelado_ref.version ? ' v' + esc(AN.congelado_ref.version) : '') + '</span>' : '')) +
       (AN.estado === 'cerrado' && mia(c) ? ' <button type="button" class="link" id="avReabrir">Reabrir el análisis</button>' : '') +
@@ -1463,6 +1525,9 @@
       box.appendChild(ST.barraEst);
     }
     var ag = navigator.onLine && !(ST.sel || {}).menu ? agenteVivo(ST.srvAgente) : null;
+    // V1.52.1 · con permiso de administrador, la barra del robot dice hasta qué hora (el núcleo no cambia: va en el paso).
+    var pmB = ag && ag.quien === 'robot' ? permisoRobot() : null;
+    if (pmB) ag = Object.assign({}, ag, { paso: 'Permiso hasta las ' + (pmB.hasta_local || horaDe(pmB.hasta)) + ' · ' + (ag.paso || 'Trabajando') });   // la hora primero: en teléfono el paso se corta
     ST.barraEst.chwaPoner(ag, { puedeDetener: puedeDetener() });
   }
   /* V1.52 · el estado del robot asistente en este caso (antes, el globito del agente de V1.48; ahora vive en ⋮ →
@@ -1473,9 +1538,11 @@
     var AN = analisis(), PR = presupuesto();
     if (AN && AN.estado === 'cerrado') return { k: 'cerrado', e: '🔒', l: 'cerrado', t: 'Análisis cerrado', p: 'Se cerró con «' + BOTON_CIERRE + '». El agente no toca este caso. Si necesitas cambiar algo, reábrelo.' };
     if (AN && AN.pausa) return { k: 'pausa', e: '⏸️', l: 'en pausa', t: 'El agente está en pausa', p: 'Lo pausó ' + nombreAgente(AN.pausa.por) + ' ' + horaDe(AN.pausa.desde) + ': «' + AN.pausa.razon + '». No mueve nada en este caso hasta que lo reanudes; si le pides algo, hace eso y solo eso.' };
+    var pmE = permisoRobot();
+    if (pmE && PR && !PR.apagado && PR.en_horario === false) return { k: 'trabajando', e: '🤖', l: 'con permiso', t: 'El agente trabaja ' + permisoTxt(pmE), p: 'Esteban le dio permiso de trabajar este caso fuera de horario. El freno semanal no se salta. Al vencer, vuelve solo a su horario.' };
     if (PR && (PR.apagado || PR.en_horario === false)) return { k: 'dormido', e: '💤', l: PR.apagado ? 'en tope' : 'fuera de horario', t: PR.apagado ? 'El agente llegó a su tope' : 'El agente descansa',
       p: (PR.apagado ? 'El trabajo por su cuenta está apagado' + (PR.apagado.motivo ? ' (' + String(PR.apagado.motivo).replace(/_/g, ' ') + ')' : '') + (PR.apagado.hasta ? ' hasta ' + horaDe(PR.apagado.hasta) : '') + '.' :
-        'Trabaja por su cuenta L–V de 7:00 a 21:00 de quien cotiza.') + ' Tus mensajes sí se contestan.' };
+        'Trabaja por su cuenta ' + horarioRobot() + '.') + ' Tus mensajes sí se contestan.' };
     if (PR && PR.modo_prueba) return { k: 'prueba', e: '🧪', l: 'modo prueba', t: 'Modo prueba (hasta ' + horaDe(PR.modo_prueba.hasta) + ')', p: 'Esta semana el agente trabaja con más margen para probarlo, con un vigilante de código que lo corta si gasta de más o no avanza. Nunca cambia lo que tú decidiste.' };
     return { k: 'trabajando', e: '🤖', l: 'trabajando', t: 'El agente está trabajando', p: 'Avanza solo hacia el 100 %: completa precios, revisa alertas y sube versión nueva del mismo machote. Nunca cambia lo que tú decidiste.' };
   }
@@ -2902,7 +2969,8 @@
   function guardarSel() { try { sessionStorage.setItem('cz_sel', JSON.stringify(ST.sel)); } catch (e) {} }
   async function cargarCasos() {
     var r = await C.casos();
-    if (r.ok) { ponInterruptores(r); ST.casos = r.casos || []; ST.motor = r.motor; if ('uso' in r) ST.uso = r.uso || null; if ('admin' in r) ST.admin = r.admin === true; motorV152(r); }
+    if (r.ok) { ponInterruptores(r); ST.casos = r.casos || []; ST.motor = r.motor; if ('uso' in r) ST.uso = r.uso || null; if ('admin' in r) ST.admin = r.admin === true; motorV152(r);
+      if (r.robot_horario) ST.robotHorario = r.robot_horario; }   // V1.52.1 (0015) · el horario del panel
     return r;
   }
   /* V1.52 §7 · el texto del motor (estado_motor_v152().texto) lo da el servidor: en `motor_v152`, o dentro de `motor`
@@ -2921,12 +2989,16 @@
     if (tec !== null && ST.tecleo) ST.tecleo.avisado = tec;
     if ((ST.sel || {}).id !== s.id) return;
     ponInterruptores(r); ST.motor = r.motor; motorV152(r);
+    // V1.52.1 (0015) · el horario del panel y el permiso de administrador del robot en ESTE caso (null = sin permiso).
+    if (r.robot_horario) ST.robotHorario = r.robot_horario;
+    if ('robot_permiso' in r) ST.robotPermiso = { caso: s.id, p: r.robot_permiso || null }; else delete ST.robotPermiso;
     // V1.52 §6 · el arranque automático EFECTIVO de este caso (caso > persona > config), lo dice el hilo.
     if ('arranque_auto_efectivo' in r) ST.arranque = { caso: s.id, efectivo: r.arranque_auto_efectivo === true, min: r.arranque_auto_min, fuente: r.arranque_auto_fuente || null };
     // El estado del agente y quién escribe: lo que dijo el servidor EN ESTA consulta (0013). Sin la 0013, no hay llave.
     if (Object.prototype.hasOwnProperty.call(r, 'agente')) { ST.srvAgente = r.agente || null; ST.srvEscriben = r.escriben || []; }
     else { delete ST.srvAgente; delete ST.srvEscriben; }
-    var n = (r.hilo.mensajes || []).filter(function (m) { return m.rol !== 'usuario' && m.autor !== 'acuse'; }).length;
+    // V1.52.1 · una línea del sistema (p. ej. el permiso del robot) no es «la respuesta del conceptualizador».
+    var n = (r.hilo.mensajes || []).filter(function (m) { return m.rol !== 'usuario' && m.rol !== 'sistema' && m.autor !== 'acuse'; }).length;
     if (ST.vistos && ST.vistos.id === s.id && n > ST.vistos.n) avisarLlegada();
     ST.vistos = { id: s.id, n: n };
     // V1.37 · «Retomamos»: se calcula UNA vez al abrir el caso; se va sola en cuanto hay actividad nueva.
