@@ -89,10 +89,21 @@
       sig = { txt: 'Revisando si hay cambios…', espera: true };
     // V1.47 (#4 Parte H) · al 100 % el siguiente paso es cerrar el análisis (solo el dueño, de forma explícita); cerrado, se dice.
     var AN = H && H.ultima && H.ultima.verifica && H.ultima.verifica.analisis;
-    if (AN && AN.estado === 'listo' && (!sig || sig.acc === 'cotiza')) sig = { txt: 'Ya está todo ok, ya no muevas nada', acc: 'mandar', texto: 'Ya está todo ok, ya no muevas nada' };
+    // V1.52.1 (#5) · con estados_reales: nunca con un trabajo en curso ni con un clic pendiente (cierrePosible). Apagado, lo de V1.51.
+    if (AN && AN.estado === 'listo' && (!sig || sig.acc === 'cotiza') && (!intOn('estados_reales') || cierrePosible(H))) sig = { txt: 'Ya está todo ok, ya no muevas nada', acc: 'mandar', texto: 'Ya está todo ok, ya no muevas nada', cierre: true };
     else if (AN && AN.estado === 'cerrado' && sig && sig.espera) sig = { txt: 'Análisis cerrado', espera: true };
     return { oferta: of, e: e, det: det, actual: actual, sig: sig, ciudad: ciudad, faltan: f, pendCot: pendCot, conjAb: conjAb, sinDec: sinDec, machote: cmH || null };
   }
+
+  /* V1.52.1 (#5) · ¿se puede sugerir «Ya está todo ok, ya no muevas nada»? Cierra el caso: nunca con un trabajo pendiente o
+   * tomado en la base, ni con un clic pendiente de la persona (una acción `propuesta`: «Va» de una conjetura, Guardar en el
+   * machote, Cotizar con referencias / Actualizar SO, Ya la mandé). El proceso vivo del robot lo revisa la pantalla. */
+  var CLIC_PENDIENTE = ['conjetura', 'crear_machote', 'crear_borrador', 'enviada'];
+  function cierrePosible(H) {
+    if (((H && H.trabajos) || []).some(function (t) { return t.estado === 'pendiente' || t.estado === 'tomado'; })) return false;
+    return !((H && H.acciones) || []).some(function (a) { return a.estado === 'propuesta' && CLIC_PENDIENTE.indexOf(a.tipo) >= 0; });
+  }
+  function intOn(n) { try { return !!(G.CzInterruptor && G.CzInterruptor(n)); } catch (e) { return false; } }
 
   /** La hora de la última actividad del caso: el último mensaje, de quien sea. */
   function ultimaActividad(H) {
@@ -200,6 +211,6 @@
              P: P, rubrosTxt: 'Rubros ' + cerr + '/' + R.lista.length, preciosTxt: textoPrecios(P) };
   }
 
-  G.CzAvance = { PASOS: PASOS, avance: avance, retomamos: retomamos, faltantes: faltantes, textoFaltantes: textoFaltantes, ultimaActividad: ultimaActividad,
+  G.CzAvance = { PASOS: PASOS, avance: avance, cierrePosible: cierrePosible, retomamos: retomamos, faltantes: faltantes, textoFaltantes: textoFaltantes, ultimaActividad: ultimaActividad,
                  rubros: rubros, delRubro: delRubro, linea: linea, corto: corto, precios: precios, textoPrecios: textoPrecios, indicadores: indicadores };
 })(window);
