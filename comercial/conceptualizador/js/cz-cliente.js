@@ -157,6 +157,8 @@
       return pedir('config_guardar', { razon: razon, datos: { cambios: cambios, razon: razon, confirmar: confirmar === true } });
     },
     // V1.52 §5: «Detener» un proceso vivo. No crea trabajo ni cuenta en el tope; el servidor valida dueño o administrador.
+    // V1.52 §6: arranque automático de ESTE caso (true · false · null = sigue a la persona). Dueño o Esteban.
+    casoArranque: function (casoId, valor) { return pedir('caso_arranque', { caso_id: casoId, datos: { valor: valor === true || valor === false ? valor : null } }); },
     detener: function (casoId, procesoId) { return pedir('evento', { caso_id: casoId, tipo: 'detener', datos: { proceso_id: procesoId } }); },
     _canonica: canonica
   };

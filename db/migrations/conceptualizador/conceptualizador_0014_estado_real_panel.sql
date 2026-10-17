@@ -11,7 +11,8 @@
 --   §4  tabla proceso y modo motor proceso (inicio/paso/fin/consulta); avance, tomar, entregar y error
 --       también lo mueven; agente_estado reescrita (trabajando | cola | null, nunca detenido).
 --   §5  evento detener (no crea trabajo, no cuenta).
---   §6  caso.arranque_auto y arrancar_levantamientos().
+--   §6  caso.arranque_auto, arrancar_levantamientos() y modo suite caso_arranque (dueño o Esteban);
+--       hilo y casos traen arranque_auto_efectivo y arranque_auto_min.
 --   §7  latido sin_relevo + profundidad; estado_motor_v152(); avisos motor_caido, motor_linaje,
 --       trabajo_fallido, experimento_techo.
 --   §8  error con razon_persona y reintento; error_ultimo/razon_ultima; tomar da intento_anterior.
@@ -484,6 +485,20 @@ END
 $cc14$;
 
 -- ── §6 · arranque automático de levantamientos ─────────────────────────────
+-- Valor efectivo: caso > persona (arranque_auto:<actor>) > config (arranque_auto, por omisión 1).
+CREATE OR REPLACE FUNCTION conceptualizador.arranque_efectivo(p_caso uuid) RETURNS jsonb
+LANGUAGE sql STABLE AS $ae6$
+  SELECT jsonb_build_object(
+    'valor', CASE WHEN c.arranque_auto IS NOT NULL THEN c.arranque_auto
+                  WHEN conceptualizador.cfg_txt('arranque_auto:' || c.autor) IS NOT NULL THEN conceptualizador.cfg_txt('arranque_auto:' || c.autor) <> '0'
+                  ELSE coalesce(conceptualizador.cfg_txt('arranque_auto'), '1') <> '0' END,
+    'fuente', CASE WHEN c.arranque_auto IS NOT NULL THEN 'caso'
+                   WHEN conceptualizador.cfg_txt('arranque_auto:' || c.autor) IS NOT NULL THEN 'persona' ELSE 'config' END,
+    'caso', c.arranque_auto,
+    'min', greatest(coalesce(conceptualizador.cfg('arranque_auto_min'), 15), 1))
+  FROM conceptualizador.caso c WHERE c.id = p_caso
+$ae6$;
+
 CREATE OR REPLACE FUNCTION conceptualizador.arrancar_levantamientos() RETURNS int
 LANGUAGE plpgsql AS $al14$
 DECLARE
@@ -501,7 +516,7 @@ BEGIN
                    WHERE a.caso_id = c.id AND conceptualizador.es_persona(a.autor))) AS ult) x
             WHERE c.estado = 'abierto' AND c.archivado_at IS NULL AND NOT c.demo
               AND c.modo = 'levantamiento' AND c.disparado_at IS NULL
-              AND coalesce(c.arranque_auto, coalesce(conceptualizador.cfg_txt('arranque_auto:' || c.autor), '1') <> '0')
+              AND (conceptualizador.arranque_efectivo(c.id)->>'valor')::boolean
               AND NOT EXISTS (SELECT 1 FROM conceptualizador.agente_pausa ap WHERE ap.caso_id = c.id AND ap.hasta IS NULL)
               AND x.ult IS NOT NULL AND x.ult < now() - make_interval(mins => v_min)
             ORDER BY x.ult LIMIT 20 LOOP
@@ -985,10 +1000,22 @@ DECLARE
   v_ev    bigint;
   v_lunes date := conceptualizador.lunes_uso();
 BEGIN
-  IF v_modo IS NULL OR NOT (v_modo IN ('config','config_guardar') OR (v_modo = 'evento' AND p->>'tipo' = 'detener')) THEN
+  IF v_modo IS NULL OR NOT (v_modo IN ('config','config_guardar','caso_arranque') OR (v_modo = 'evento' AND p->>'tipo' = 'detener')) THEN
     v_r := conceptualizador.api_suite_0014prev(p);
     IF v_modo IN ('casos','estado') AND coalesce((v_r->>'ok')::boolean, false) THEN
       v_r := v_r || jsonb_build_object('motor_v152', conceptualizador.estado_motor_v152());
+    END IF;
+    -- §6 · el arranque automático efectivo de cada caso, para pintarlo.
+    IF v_modo = 'casos' AND jsonb_typeof(v_r->'casos') = 'array' THEN
+      v_r := jsonb_set(v_r, '{casos}', (SELECT coalesce(jsonb_agg(x || jsonb_build_object(
+               'arranque_auto_efectivo', (conceptualizador.arranque_efectivo((x->>'id')::uuid)->>'valor')::boolean,
+               'arranque_auto_min', (conceptualizador.arranque_efectivo((x->>'id')::uuid)->>'min')::int) ORDER BY o), '[]'::jsonb)
+             FROM jsonb_array_elements(v_r->'casos') WITH ORDINALITY AS a(x, o)));
+    ELSIF v_modo = 'hilo' AND coalesce((v_r->>'ok')::boolean, false) AND EXISTS (SELECT 1 FROM conceptualizador.caso WHERE id = conceptualizador.a_uuid(p->>'caso_id')) THEN
+      v_r := v_r || jsonb_build_object(
+        'arranque_auto_efectivo', (conceptualizador.arranque_efectivo(conceptualizador.a_uuid(p->>'caso_id'))->>'valor')::boolean,
+        'arranque_auto_min', (conceptualizador.arranque_efectivo(conceptualizador.a_uuid(p->>'caso_id'))->>'min')::int,
+        'arranque_auto_fuente', conceptualizador.arranque_efectivo(conceptualizador.a_uuid(p->>'caso_id'))->>'fuente');
     END IF;
     RETURN v_r;
   END IF;
@@ -1020,6 +1047,23 @@ BEGIN
     INSERT INTO conceptualizador.evento (caso_id, tipo, datos, autor)
     VALUES (v_c.id, 'detener', jsonb_build_object('proceso_id', pr.id), v_actor) RETURNING id INTO v_ev;
     RETURN jsonb_build_object('ok', true, 'caso_id', v_c.id, 'proceso_id', pr.id, 'detener', true, 'evento_id', v_ev, 'trabajo_id', NULL);
+  END IF;
+
+  -- §6 · arranque automático por caso: dueño o Esteban. No crea trabajo ni cuenta en el tope.
+  IF v_modo = 'caso_arranque' THEN
+    SELECT * INTO v_c FROM conceptualizador.caso WHERE id = conceptualizador.a_uuid(p->>'caso_id') FOR UPDATE;
+    IF v_c.id IS NULL THEN RETURN jsonb_build_object('ok', false, 'error', 'CASO_NO_EXISTE'); END IF;
+    IF v_c.autor <> v_actor AND NOT conceptualizador.es_admin(v_actor) AND NOT conceptualizador.es_panel_admin(v_actor) THEN
+      RETURN jsonb_build_object('ok', false, 'error', 'NO_AUTORIZADO', 'mensaje', 'Solo el dueño del caso o Esteban cambian el arranque automático.');
+    END IF;
+    IF NOT (v_d ? 'valor') OR jsonb_typeof(v_d->'valor') NOT IN ('boolean','null') THEN
+      RETURN jsonb_build_object('ok', false, 'error', 'VALOR_INVALIDO', 'mensaje', 'El valor es true, false o null (sigue a la persona).');
+    END IF;
+    UPDATE conceptualizador.caso SET arranque_auto = CASE WHEN jsonb_typeof(v_d->'valor') = 'null' THEN NULL ELSE (v_d->>'valor')::boolean END
+     WHERE id = v_c.id;
+    v_r := conceptualizador.arranque_efectivo(v_c.id);
+    RETURN jsonb_build_object('ok', true, 'caso_id', v_c.id, 'arranque_auto', v_r->'caso', 'arranque_auto_efectivo', (v_r->>'valor')::boolean,
+                              'arranque_auto_fuente', v_r->>'fuente', 'arranque_auto_min', (v_r->>'min')::int, 'trabajo_id', NULL);
   END IF;
 
   -- §1 · el panel: solo panel_admin, lo decide el servidor.
@@ -1121,6 +1165,7 @@ REVOKE ALL ON FUNCTION conceptualizador.api_motor_0014prev(jsonb), conceptualiza
                        conceptualizador.trabajos_que_cuentan(date), conceptualizador.config_valida(text, text),
                        conceptualizador.estado_motor_v152(), conceptualizador.cerrar_colgados(), conceptualizador.arrancar_levantamientos(),
                        conceptualizador.razon_limpia(text), conceptualizador.codigo_de(text),
-                       conceptualizador.archivos_limpios(jsonb), conceptualizador.etapas_limpias(jsonb) FROM PUBLIC;
+                       conceptualizador.archivos_limpios(jsonb), conceptualizador.etapas_limpias(jsonb),
+                       conceptualizador.arranque_efectivo(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION conceptualizador.api_motor(jsonb), conceptualizador.api_suite(jsonb),
                           conceptualizador.api_respaldo(jsonb) TO conceptualizador_app;

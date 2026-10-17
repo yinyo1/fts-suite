@@ -512,12 +512,16 @@
     }
     h += '<div class="czc-razon" id="czcRazon" hidden></div>';
     if (c.modo === 'levantamiento') {
-      var min = ST.cfg && ST.cfg.valores && ST.cfg.valores.arranque_auto_min;
-      min = min || c.arranque_auto_min || (H && H.arranque_auto_min) || null;
+      // V1.52 §6 · lo efectivo lo dice el servidor (hilo: arranque_auto_efectivo / _min / _fuente); se cambia con caso_arranque.
+      var AA = ST.arranque && ST.arranque.caso === c.id ? ST.arranque : null;
+      var efe = AA ? AA.efectivo : c.arranque_auto !== false, min = (AA && AA.min) || (ST.cfg && ST.cfg.valores && ST.cfg.valores.arranque_auto_min) || null;
+      var fte = AA && AA.fuente === 'caso' ? 'decidido en este caso' : AA && AA.fuente === 'persona' ? 'lo de tu perfil' : AA ? 'lo del panel' : '';
       h += '<div class="czc-fila"><div class="czc-tx">Arranque automático del levantamiento<small>' + (c.disparado_at ? 'Ya arrancó ' + esc(horaDe(c.disparado_at)) + '.' :
-        c.arranque_auto === false ? 'Apagado en este caso: espera tu «Ya es todo».' :
-        'Si pasan ' + (min ? '<b>' + esc(min) + ' min</b>' : 'los minutos del panel') + ' sin nada nuevo, arranca solo. «Ya es todo» arranca de inmediato.') + '</small></div>' +
-        '<span class="czc-est' + (c.disparado_at || c.arranque_auto === false ? '' : ' on') + '">' + (c.disparado_at ? 'arrancó' : c.arranque_auto === false ? 'esperar' : 'activado') + '</span></div>';
+        efe ? 'Activado: si pasan ' + (min ? '<b>' + esc(min) + ' min</b>' : 'los minutos del panel') + ' sin nada nuevo, arranca solo. «Ya es todo» arranca de inmediato.' :
+        'Esperar: no arranca solo; espera tu «Ya es todo».') + (fte && !c.disparado_at ? ' (' + esc(fte) + ')' : '') + '</small></div>' +
+        (c.disparado_at ? '<span class="czc-est">arrancó</span>' : '<button type="button" class="czc-sw' + (efe ? ' on' : '') + '" data-r="arranque" role="switch" aria-checked="' + efe + '" aria-label="Arranque automático"' + dis + '></button>') + '</div>' +
+        (!c.disparado_at && AA && AA.fuente === 'caso' && puede ? '<div class="czc-acc"><button type="button" class="czc-btn" data-r="arranque_persona">Que siga lo de mi perfil</button></div>' : '') +
+        '<p class="czc-err" id="czcArrErr" hidden></p>';
     }
     if (!puede) h += '<p class="czc-k">Solo el dueño del caso (' + esc(nombreAgente(c.autor)) + ') o Esteban pueden cambiar esto.</p>';
     h += '<div class="czc-fijo">' + HORARIO_ROBOT + '</div>';
@@ -550,6 +554,16 @@
       var r = b.dataset.r;
       if (r === 'panel') { hj.cerrar('eleccion'); return dlgPanel(); }
       if (r === 'activo') { if (pausa) { hj.cerrar('eleccion'); return mandar(FRASE_REANUDA); } return razon('pausa'); }
+      if (r === 'arranque' || r === 'arranque_persona') {
+        var nuevo = r === 'arranque_persona' ? null : !(b.getAttribute('aria-checked') === 'true');
+        b.disabled = true;
+        return C.casoArranque(c.id, nuevo).then(function (q) {
+          if (!q.ok) { b.disabled = false; var e = $('#czcArrErr', E); e.hidden = false; e.textContent = q.error === 'MODO_DESCONOCIDO' ? 'Esto se activa cuando se actualice el servidor.' : (q.mensaje || 'No se pudo: ' + (q.error || 'error')); return; }
+          ST.arranque = { caso: c.id, efectivo: q.arranque_auto_efectivo === true, min: q.arranque_auto_min, fuente: q.arranque_auto_fuente || null };
+          if (ST.hilo && ST.hilo.caso) ST.hilo.caso.arranque_auto = q.arranque_auto;
+          dlgRobot();
+        });
+      }
       razon(r);
     }; });
   }
@@ -2792,6 +2806,8 @@
     if (tec !== null && ST.tecleo) ST.tecleo.avisado = tec;
     if ((ST.sel || {}).id !== s.id) return;
     ST.motor = r.motor; motorV152(r);
+    // V1.52 §6 · el arranque automático EFECTIVO de este caso (caso > persona > config), lo dice el hilo.
+    if ('arranque_auto_efectivo' in r) ST.arranque = { caso: s.id, efectivo: r.arranque_auto_efectivo === true, min: r.arranque_auto_min, fuente: r.arranque_auto_fuente || null };
     // El estado del agente y quién escribe: lo que dijo el servidor EN ESTA consulta (0013). Sin la 0013, no hay llave.
     if (Object.prototype.hasOwnProperty.call(r, 'agente')) { ST.srvAgente = r.agente || null; ST.srvEscriben = r.escriben || []; }
     else { delete ST.srvAgente; delete ST.srvEscriben; }
