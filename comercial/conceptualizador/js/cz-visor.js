@@ -42,9 +42,13 @@
   };
   var EMPRESA = {
     // Nombre y ciudad tal como están en Odoo (res.company 1 y 6, leídos el 16-oct-2026).
-    1: { nombre: 'Servicios FTS', lugar: 'Monterrey, Nuevo León · México', corto: 'FTS México' },
-    6: { nombre: 'FTS Full Technology Systems LLC', lugar: 'Hayward, California · United States', corto: 'FTS USA' }
+    1: { nombre: 'Servicios FTS', lugar: 'Monterrey, Nuevo León · México', corto: 'FTS México',
+      // V1.53b · datos fiscales leídos de Odoo (res.company 1, 18-oct-2026): vat, street, city, zip.
+      fiscal: 'RFC SFT170905L43 · Luis G Urbina 2213, Monterrey, Nuevo León, C.P. 64550' },
+    6: { nombre: 'FTS Full Technology Systems LLC', lugar: 'Hayward, California · United States', corto: 'FTS USA',
+      fiscal: 'Tax ID 32088797249 · 23415 Cabot Blvd, Hayward, California 94545' }
   };
+  var on = function (n) { try { return !!(G.CzInterruptor && G.CzInterruptor(n)); } catch (e) { return false; } };
 
   // ── datos ───────────────────────────────────────────────────────────────
   /** Las versiones de la cotización del caso, de la más vieja a la más nueva. */
@@ -206,7 +210,16 @@
     var taxLin = aplica ? ((Number(c.empresa_id) === 6 || I.pais === 'US') ? 'Sales tax ' + (I.estado ? I.estado + ' ' : '') + num(I.tasa) + ' %' : 'IVA ' + num(I.tasa) + ' %') : '';
     var h = '';
     h += '<header class="vco-h-cab"><div class="vco-logo"><i>FTS</i></div><div class="vco-emp"><b>' + esc(emp.nombre) + '</b>' + esc(emp.lugar) + '</div></header>';
-    h += '<div class="vco-h-cli"><div><small>' + X.cliente + '</small><b>' + esc(r.partner || '—') + '</b></div></div>';
+    if (on('pantalla_v153')) {
+      cssV153();
+      // V1.53b (#6, punto 11) · datos fiscales de FTS y del cliente, y quién cotiza. El RFC del cliente sale del read-back de
+      // Odoo cuando lo traiga (`resultado.partner_vat`); mientras, su nombre como está en Odoo.
+      // Un nombre, nunca el usuario: «Esteban De La Cruz» si la base lo trae; si no, el nombre de pila del usuario («Esteban»).
+      var cs = (hilo && hilo.caso) || {}, an = String(cs.autor_nombre || '').trim(), pila = String(cs.autor || '').split('.')[0];
+      var quien = /\s/.test(an) ? an : pila ? pila.charAt(0).toUpperCase() + pila.slice(1) : '';
+      h += '<div class="vco-h-fis"><div><small>' + (en ? 'From' : 'De') + '</small><b>' + esc(emp.nombre) + '</b>' + esc(emp.fiscal || emp.lugar) + (quien ? '<span>' + (en ? 'Quoted by: ' : 'Cotizó: ') + esc(quien) + '</span>' : '') + '</div>' +
+        '<div><small>' + X.cliente + '</small><b>' + esc(r.partner || '—') + '</b>' + (r.partner_vat ? esc((en ? 'Tax ID ' : 'RFC ') + r.partner_vat) : '') + (r.partner_domicilio ? '<span>' + esc(r.partner_domicilio) + '</span>' : '') + '</div></div>';
+    } else h += '<div class="vco-h-cli"><div><small>' + X.cliente + '</small><b>' + esc(r.partner || '—') + '</b></div></div>';
     h += '<h1 class="vco-h-tit">' + X.cot + ' <b>' + esc(r.orden_nombre || ('#' + r.orden_id)) + '</b> <span class="vco-est vco-est-' + esc(est) + '">' + esc(estTx) + '</span></h1>';
     h += '<div class="vco-h-info">' + (v.at ? '<div><small>' + X.fecha + '</small>' + esc(fechaDe(v.at, en)) + '</div>' : '') +
       (r.vence_el ? '<div><small>' + X.vence + '</small>' + esc(fechaDe(r.vence_el, en)) + '</div>' : '') +
@@ -248,7 +261,8 @@
     }
     var nota = limpio(String(r.nota_orden || '').trim() ? r.nota_orden : c.nota_orden);
     if (nota) h += '<section class="vco-terminos"><h3>' + X.terminos + '</h3>' + nota + '</section>';
-    h += '<footer class="vco-h-pie"><span>' + esc(emp.nombre) + '</span><span>' + X.pag + '</span></footer>';
+    // V1.53b · la página la pone el navegador al imprimir («Página 1 de 2»), no un texto fijo.
+    h += '<footer class="vco-h-pie"><span>' + esc(emp.nombre) + '</span>' + (on('pantalla_v153') ? '' : '<span>' + X.pag + '</span>') + '</footer>';
     return h;
   }
 
@@ -354,6 +368,14 @@
   }
 
   // ── estilos (una vez) ───────────────────────────────────────────────────
+  /** V1.53b · al imprimir: el número de página real («Página 1 de 2») y sin el sello de borrador en lo que va al cliente. */
+  function cssV153() {
+    if (D.getElementById('cz-visor-v153')) return;
+    var s = D.createElement('style'); s.id = 'cz-visor-v153';
+    s.textContent = '@media print{@page{size:letter;margin:12mm 12mm 16mm;@bottom-center{content:"Página " counter(page) " de " counter(pages);font-size:9pt;color:#5f6368}}' +
+      ' html.vco-abierto #cz-visor .vco-est{display:none !important}}';
+    (D.head || D.documentElement).appendChild(s);
+  }
   function css() {
     if (D.getElementById('cz-visor-css')) return;
     var s = D.createElement('style'); s.id = 'cz-visor-css';
@@ -400,6 +422,9 @@
       '.vco-emp{font-size:12px;color:#5f6368;text-align:right;min-width:0}',
       '.vco-emp b{display:block;color:#1f1f1f;font-size:12.5px}',
       '.vco-h-cli{display:flex;justify-content:flex-end;margin:18px 0 8px}',
+      '.vco-h-fis{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0 8px;font-size:12.5px}.vco-h-fis div{border:1px solid #e3e3e3;border-radius:6px;padding:8px 10px;min-width:0;overflow-wrap:anywhere}',
+      '.vco-h-fis small{display:block;color:#5f6368;font-size:11.5px}.vco-h-fis b{display:block;font-size:13px}.vco-h-fis span{display:block;margin-top:4px;color:#3c4043}',
+      '@media (max-width:560px){.vco-h-fis{grid-template-columns:1fr}}',
       '.vco-h-cli div{min-width:220px;max-width:100%;font-size:13px}',
       '.vco-h-cli small,.vco-h-proy small{display:block;color:#5f6368;font-size:11.5px}',
       '.vco-h-tit{font-size:24px;font-weight:400;margin:10px 0 12px;line-height:1.25}',

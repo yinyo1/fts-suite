@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.53a';
+  var VERSION = 'V1.53b';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -77,6 +77,9 @@
   /* V1.39 (#4 punto 11) · gestos del chat (shared/chat/chat-gestos.js): copiar, responder deslizando y reenviar
    * (deshabilitado aquí). GZ es el control enganchado al chat; CG el componente (marcador y cita). */
   var CG = G.ChatGestos, GZ = null;
+  // V1.53b (#6) · piezas del núcleo (shared/chat/chat-nucleo.js) que el conceptualizador ya usa aunque todavía pinte su chat:
+  // «Leer más» (interruptor `leer_mas`) y la bolita de acciones sugeridas (interruptor `bolita_acciones`).
+  var LM = null, BOL = null;
   var RAZON_REENVIAR = 'Reenviar todavía no está en los chats de machote. Se enciende cuando existan los chats de grupo y del prospectador.';
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
@@ -259,6 +262,24 @@
     ST.casos.forEach(function (c) { if (c.autor) o[c.autor] = nombreCorto(c.autor, c.autor_nombre); });
     return Object.keys(o).sort(function (a, b) { return o[a].localeCompare(o[b]); }).map(function (k) { return { actor: k, n: o[k] }; });
   }
+  /* V1.53b (`pantalla_v153`, #5) · el nombre del chat es «Cliente corto · proyecto»: el cliente sin razón social (S.A. de C.V.,
+   * Inc., LLC…) y en una palabra (dos si la primera es genérica: «Grupo», «Bebidas»…); si el título ya empieza con el cliente,
+   * no se repite. Apagado: el título de siempre. */
+  var CLI_GEN = /^(grupo|bebidas|industrias|industrial|servicios|productos|corporativo|compa[nñ][ií]a|comercializadora|distribuidora|planta)$/i;
+  function clienteCorto(cl) {
+    var x = String(cl || '').replace(/,?\s+(s\.?\s?a\.?\s?p?\.?\s?i?\.?(\s+de\s+c\.?\s?v\.?)?|s\.?\s+de\s+r\.?\s?l\.?(\s+de\s+c\.?\s?v\.?)?|inc(orporated)?\.?|llc|l\.l\.c\.|corp(oration)?\.?|ltd\.?|co\.)$/i, '').trim();
+    var w = x.split(/\s+/).filter(Boolean); if (!w.length) return '';
+    var r = w.slice(0, CLI_GEN.test(w[0]) && w[1] ? 2 : 1).join(' ');
+    return r === r.toUpperCase() && r.length > 3 ? r.charAt(0) + r.slice(1).toLowerCase() : r;
+  }
+  function nombreChat(c) {
+    if (!c) return '';
+    var t = String(c.titulo || '').trim(); if (!on('pantalla_v153')) return t;
+    var cc = clienteCorto(c.cliente); if (!cc) return t;
+    if (/^cotizacion-nueva-[0-9a-f]{6}$/i.test(t)) t = 'Cotización nueva';   // el nombre de carpeta no es un nombre
+    if (sinAcento(t).indexOf(sinAcento(cc)) === 0) t = t.slice(cc.length).replace(/^[\s·:,\-]+/, '');
+    return t ? cc + ' · ' + t : cc;
+  }
   function pintarLista() {
     var L = sesionesVisibles(), sel = ST.sel || {}, todas = todasLasSesiones();
     var MP = mis(), enMis = function (c) { return !MP || MP.modo() !== 'mios' || esMio(c); };
@@ -307,7 +328,7 @@
       var ef = esF ? G.ChatWA.escrituraFilaHtml(esF) : '';
       h += '<div class="ses' + (on ? ' on' : '') + '" data-id="' + esc(c.id || '') + '" data-local="' + esc(c.local || '') + '" role="button" tabindex="0">' +
         '<div class="av" style="background:' + color(c.titulo) + '">' + esc(iniciales(c.cliente || c.titulo)) + '</div>' +
-        '<div class="tx"><div class="t"><span class="n">' + esc(c.titulo) + '</span><span class="h' + (nAcc ? ' nuevo' : '') + '">' + esc(corto((u && u.created_at) || c.ultima_actividad_at)) + '</span></div>' +
+        '<div class="tx"><div class="t"><span class="n">' + esc(nombreChat(c)) + '</span><span class="h' + (nAcc ? ' nuevo' : '') + '">' + esc(corto((u && u.created_at) || c.ultima_actividad_at)) + '</span></div>' +
         '<div class="u">' + (ef ? '<span class="p">' + ef + '</span>' : pre + '<span class="p">' + (u && u.rol === 'sistema' ? '⚙ ' : '') + esc(prev) + '</span>') + '<span class="meta">' +
         (c.estado === 'enviada' ? '<span class="est enviada">enviada</span>' : c.estado === 'cerrado' ? '<span class="est cerrada">cerrada</span>' :
          c.estado === 'local' ? '<span class="est local">sin enviar</span>' : '') +
@@ -322,7 +343,9 @@
         '<button class="mas" data-mas="1" aria-label="Opciones de la sesión">' + ico('mas', 's') + '</button></div>';
     });
     h += '<p class="pie">Una sesión por cotización · <a href="#" id="bAprendio">Lo que aprendió</a> · ' + VERSION + '</p></div>';
-    if (!ST.archivadas) h += '<button class="fab nueva" id="bNueva">' + ico('nuevo') + 'Nueva cotización</button>';
+    // V1.53b (`pantalla_v153`) · la bolita «+» redonda del núcleo; «Nueva cotización» queda como nombre y aviso al pasar el mouse.
+    if (!ST.archivadas) h += G.CzInterruptor('pantalla_v153') ? '<button class="fab nueva chn-mas" id="bNueva" aria-label="Nueva cotización" title="Nueva cotización">' + ico('nuevo') + '</button>'
+      : '<button class="fab nueva" id="bNueva">' + ico('nuevo') + 'Nueva cotización</button>';
     $('#lista').innerHTML = h;
     var on = function (id, fn) { var e = $('#' + id); if (e) e.onclick = fn; };
     on('bNueva', nuevaCotizacion);
@@ -570,13 +593,18 @@
       // V1.52.1 (#5) · permiso del robot por caso: solo panel_admin (lo valida el servidor), con razón y bitácora.
       if (ST.panelAdmin === true && c.id && ['abierto', 'enviada'].indexOf(c.estado) >= 0) {
         var hst = (ST.robotHorario && ST.robotHorario.hasta) || '22:00', mas = hhmm(hst).replace(/^(\d+)/, function (x) { return String((Number(x) + 1) % 24); });
-        h += (pmV ? '<div class="czc-fila czc-perm"><div class="czc-tx"><b>Permiso vigente</b> · trabaja este caso hasta las ' + esc(pmV.hasta_local || horaDe(pmV.hasta)) +
-              '<small>Lo dio ' + esc(nombreCorto(pmV.por || '')) + '. Se apaga solo a esa hora; el freno semanal nunca se salta.</small></div><button type="button" class="czc-btn" data-p="quitar">Quitar</button></div>' : '') +
-          '<div class="czc-fila"><div class="czc-tx">Dale 1 hora más hoy<small>' + (pmV ? 'Suma una hora al permiso vigente.' : 'Salta el horario y el tope de este caso hasta las ' + esc(mas) + '.') + ' Nunca el freno semanal.</small></div><button type="button" class="czc-btn" data-p="hora_mas">+1 hora</button></div>' +
+        var V153 = on('pantalla_v153'), apag = V153 ? ' disabled title="Escribe la razón primero"' : '';
+        var hRz = '<label class="czc-campo czc-rz" for="czcPermRz"><span>Razón del permiso<small>Obligatoria, una línea (3 a 200 letras). Queda en la bitácora y en el hilo.</small></span><input id="czcPermRz" maxlength="200" autocomplete="off" placeholder="' +
+          (V153 ? 'Ejemplo: probar el robot de noche con este caso' : 'probar el robot de noche con este caso') + '"></label>';
+        var hVig = pmV ? '<div class="czc-fila czc-perm"><div class="czc-tx"><b>Permiso vigente</b> · trabaja este caso hasta las ' + esc(pmV.hasta_local || horaDe(pmV.hasta)) +
+              '<small>Lo dio ' + esc(nombreCorto(pmV.por || '')) + '. Se apaga solo a esa hora; el freno semanal nunca se salta.</small></div><button type="button" class="czc-btn" data-p="quitar"' + apag + '>Quitar</button></div>' : '';
+        var hBot = '<div class="czc-fila"><div class="czc-tx">Dale 1 hora más hoy<small>' + (pmV ? 'Suma una hora al permiso vigente.' : 'Salta el horario y el tope de este caso hasta las ' + esc(mas) + '.') + ' Nunca el freno semanal.</small></div><button type="button" class="czc-btn" data-p="hora_mas"' + apag + '>+1 hora</button></div>' +
           '<div class="czc-fila czc-perm-h"><div class="czc-tx">Trabaja este caso fuera de horario hasta<small>Para pruebas. Hasta 18 h desde ahora; queda en el hilo quién y por qué.</small></div>' +
-            '<input type="time" id="czcPermHasta" value="' + esc(mas.length === 4 ? '0' + mas : mas) + '" aria-label="Hasta" class="czc-hora"><button type="button" class="czc-btn" data-p="hasta">Dar permiso</button></div>' +
-          '<label class="czc-campo czc-rz" for="czcPermRz"><span>Razón del permiso<small>Obligatoria, una línea (3 a 200 letras). Queda en la bitácora y en el hilo.</small></span><input id="czcPermRz" maxlength="200" autocomplete="off" placeholder="probar el robot de noche con este caso"></label>' +
-          '<p class="czc-err" id="czcPermErr" hidden></p>';
+            '<input type="time" id="czcPermHasta" value="' + esc(mas.length === 4 ? '0' + mas : mas) + '" aria-label="Hasta" class="czc-hora"><button type="button" class="czc-btn" data-p="hasta"' + apag + '>Dar permiso</button></div>';
+        // V1.53b (#5, 20:23) · la razón va ARRIBA de los botones; apagados con «escribe la razón primero»; al guardar, confirmación visible.
+        var ok = ST.permisoOk && ST.permisoOk.caso === c.id && Date.now() - ST.permisoOk.at < 20000 ? '<p class="czc-ok" role="status">' + esc(ST.permisoOk.texto) + '</p>' : '';
+        h += V153 ? ok + hRz + '<p class="czc-k" id="czcPermPrimero">Escribe la razón primero; luego elige.</p>' + hVig + hBot + '<p class="czc-err" id="czcPermErr" hidden></p>'
+          : hVig + hBot + hRz + '<p class="czc-err" id="czcPermErr" hidden></p>';
       }
       if (ST.panelAdmin === true) h += '<div class="czc-fila"><div class="czc-tx">Configuración del conceptualizador<small>Topes, horario, freno, experimento y bitácora</small></div><button type="button" class="czc-btn" data-r="panel">Abrir</button></div>';
     }
@@ -611,6 +639,9 @@
       }
       razon(r);
     }; });
+    // V1.53b · con razón (3+ letras) se prenden los botones del permiso.
+    var rzI = $('#czcPermRz', E);
+    if (rzI && on('pantalla_v153')) rzI.oninput = function () { var ok = rzI.value.replace(/\s+/g, ' ').trim().length >= 3; $$('[data-p]', E).forEach(function (b) { b.disabled = !ok; b.title = ok ? '' : 'Escribe la razón primero'; }); var pr = $('#czcPermPrimero', E); if (pr) pr.hidden = ok; };
     // V1.52.1 · permiso del robot (solo panel_admin): «+1 hora», «hasta HH:MM» o «Quitar»; el servidor calcula la hora final.
     $$('[data-p]', E).forEach(function (b) { b.onclick = async function () {
       var err = $('#czcPermErr', E), rz = ($('#czcPermRz', E).value || '').replace(/\s+/g, ' ').trim(), k = b.dataset.p;
@@ -626,6 +657,8 @@
         q.error === 'VALOR_INVALIDO' ? 'El servidor todavía no acepta este permiso (falta la migración 0015).' : (q.mensaje || 'No se pudo: ' + (q.error || 'error')));
       var x = (q.cambiados || [])[0];
       ST.robotPermiso = { caso: c.id, p: x && x.permiso ? x.permiso : null };
+      var pq = x && x.permiso;
+      ST.permisoOk = { caso: c.id, at: Date.now(), texto: k === 'quitar' || !pq ? 'Permiso quitado · guardado' : 'Permiso hasta las ' + (pq.hasta_local || horaDe(pq.hasta)) + ' · guardado' };
       sondear(true); dlgRobot();
     }; });
   }
@@ -658,7 +691,12 @@
     ['decretos_destino', 'Decretos en su destino', 'El motor publica qué debe verse por cada decisión; la revisión diaria avisa al dueño en el chat si no llegó (una vez por falla).'],
     ['duplicados', 'Casos duplicados', 'Después del primer mensaje, si hay un caso casi igual del mismo cliente, pregunta avanzar o parar.'],
     ['vista_decretos', 'Vista: lo dijiste tú', 'En la vista ejecutiva, los renglones con precio decretado salen como «lo dijiste tú».'],
-    ['salud_diaria', 'Correo de salud 7:00', 'El correo diario a Esteban (motor, fallidos, consumo, decretos, avisos viejos, atorados). Apagado, el workflow no manda.']
+    ['salud_diaria', 'Correo de salud 7:00', 'El correo diario a Esteban (motor, fallidos, consumo, decretos, avisos viejos, atorados). Apagado, el workflow no manda.'],
+    // V1.53b (#6) · pantalla
+    ['leer_mas', 'Leer más', 'Los mensajes del agente se cortan a 5 renglones con «… Leer más» verde y en negrita, pegado al texto; abierto, «Leer menos».'],
+    ['bolita_acciones', 'Bolita de acciones', 'Las sugerencias van en la bolita ⚡ arriba del micrófono (sube sobre ⇊); «Ya está todo ok» solo cuando se puede cerrar.'],
+    ['tarjetas_colapsadas', 'Tarjetas colapsadas', 'Las tarjetas de datos salen cerradas (título y una línea); la que pide un clic sale abierta.'],
+    ['pantalla_v153', 'Pantalla V1.53', 'Bolita «+», nombre «Cliente corto · proyecto», tarjeta de estado vigente, una sola señal, permiso del robot con la razón arriba, textos sin contradicciones, generales y el PDF del visor.']
   ];
   /** Los interruptores que conoce el servidor (valores `interruptor:*` y `interruptores`), en el orden de arriba; uno nuevo
    * que la pantalla todavía no describe sale al final con su nombre, para que se pueda prender igual. */
@@ -1034,6 +1072,7 @@
     var abierta = ['abierto', 'enviada'].indexOf(c.estado) >= 0 && !archivada(c);
     // Sin hilo todavía (sesión local recién creada): el disparador de siempre.
     if (!H || !G.CzAvance) {
+      if (BOL) BOL.poner([]);
       if (md) { el.style.display = 'flex'; el.innerHTML = '<button id="bFijo" type="button">' + ico('disparo', 's') + esc(MODOS[md].boton) + '</button>'; $('#bFijo').onclick = function () { confirmarDisparo(md); }; }
       else { el.style.display = 'none'; el.innerHTML = ''; }
       return;
@@ -1054,6 +1093,17 @@
     if (sg && sg.espera && on('estados_reales') && agenteTrabajando()) sg = null;
     // V1.52.1 · «Ya está todo ok…» no se sugiere con el robot o el motor trabajando (la base lo dice por proceso vivo).
     if (sg && sg.cierre && on('estados_reales') && agenteTrabajando()) sg = null;
+    // V1.53b · el cierre solo se sugiere cuando de verdad se puede (sin proceso corriendo ni clic pendiente).
+    if (sg && sg.cierre && on('bolita_acciones') && G.CzAvance.cierrePosible && !G.CzAvance.cierrePosible(H)) sg = null;
+    /* V1.53b (`bolita_acciones`) · lo que se puede hacer va en la bolita ⚡ arriba del micrófono, como sugerencia: ya no es un botón
+     * ancho a un toque accidental. Abajo solo queda la pastilla de espera (es estado, no acción). */
+    if (on('bolita_acciones') && BOL) {
+      var sug = [];
+      if (sg && !sg.espera) sug.push({ texto: sg.txt, fuerte: true, attrs: { 'data-sug': sg.acc }, hacer: function (bt) { lanzarSiguiente(sg, c, bt); } });
+      if (abierta && !(ST.sel || {}).menu && H.caso && !/^Dame los generales/.test((sg && sg.txt) || '')) sug.push({ texto: 'Dame los generales', attrs: { 'data-sug': 'generales' }, hacer: function () { mandar('Dame los generales'); } });
+      BOL.poner(sug, { titulo: 'Sugerencias' });
+      if (sg && !sg.espera) sg = null;
+    } else if (BOL) BOL.poner([]);
     if (!sg) { el.style.display = 'none'; el.innerHTML = ''; return; }
     var e = ST.env.fijo || (ST.env.ciudad ? 'guardando la ciudad…' : null), ic = sg.acc === 'ciudad' || sg.acc === 'confirma_ciudad' ? 'mapa' : sg.acc === 'machote' || sg.acc === 'disparo' ? 'disparo' : 'pagina';
     el.style.display = 'flex';
@@ -1062,7 +1112,11 @@
       (!on('estados_reales') ? (sg.espera || e ? GIRO : ico(ic, 's')) :   // V1.51 (interruptor apagado)
         e || (sg.espera && agenteTrabajando()) ? GIRO : ico(sg.espera ? 'reloj' : ic, 's')) +'<span class="fx">' + esc(e || sg.txt) + '</span></button>';
     var b = $('#bFijo');
-    b.onclick = function () {
+    b.onclick = function () { lanzarSiguiente(sg, c, b); };
+  }
+  /** El «siguiente» de la franja: lo dispara el botón de abajo o (V1.53b) la bolita de acciones. */
+  function lanzarSiguiente(sg, c, b) {
+    (function () {
       if (sg.acc === 'ciudad') return cambiarCiudad();
       if (sg.acc === 'confirma_ciudad') return confirmarCiudad();
       if (sg.acc === 'rubro') return abrirRubro(sg.id);
@@ -1070,10 +1124,11 @@
       if (sg.acc === 'machote') { ST.env.fijo = /^Actualizar/.test(sg.txt) ? 'actualizando…' : 'creando…'; pintarFijo(); return hacer(sg.id, b).then(function () { delete ST.env.fijo; pintarFijo(); }); }
       if (sg.acc === 'cotiza' || sg.acc === 'mandar') { b.disabled = true; return mandar(sg.acc === 'cotiza' ? 'Haz la cotización' : sg.texto).then(function () { pintarFijo(); }); }
       if (sg.acc === 'ir') {
-        var t = sg.a === 'conjetura' ? $('[data-conf]') : sg.a === 'conceptos' ? $('[data-acepta]') : sg.a === 'oferta' ? $('.of-carta') : $('.pend-cot');
+        var t = sg.a === 'conjetura' ? $('[data-conf]') : sg.a === 'conceptos' ? $('[data-acepta]') : sg.a === 'oferta' ? $('.of-carta') :
+          sg.a === 'accion' ? ($('[data-hacer="' + sg.id + '"]') || $('[data-acc-id="' + sg.id + '"]')) : $('.pend-cot');
         if (t) { t.scrollIntoView({ block: 'center', behavior: 'smooth' }); var k = t.closest('.carta') || t; k.classList.add('resalta'); setTimeout(function () { k.classList.remove('resalta'); }, 1600); }
       }
-    };
+    })();
   }
 
   /* V1.40 · la franja de avance como UNA línea (visto bueno de Esteban al prototipo V1.39 · 1, #4). Sustituye a la franja
@@ -1129,7 +1184,9 @@
     // V1.48 · con el % hacia el 100, las referencias y alertas viven adentro: la línea de arriba ya no se pinta de naranja.
     var cab = L.P ? '<b>' + esc(L.rubrosTxt) + '</b> · <span class="avl-pre' + (L.P.alertas && !(AN0 && typeof AN0.pct === 'number') ? ' alerta' : '') + '">' + esc(L.preciosTxt) + '</span>' :
       (L.pct !== null ? '<b>' + L.pct + ' %</b>' : '<b>' + esc(L.paso) + '</b>') +
-      (L.sig ? ' · Siguiente: ' + (L.rojo ? '<span class="avl-rojo">' + esc(L.sig) + '</span>' : esc(L.sig)) : '');
+      // V1.53b (`pantalla_v153`) · UNA sola señal: con el motor o el robot trabajando, la barra dice qué pasa; la franja no repite
+      // una espera («Revisando si hay cambios…», «Armando el BOM…»).
+      (L.sig && !(on('pantalla_v153') && /…$/.test(L.sig) && agenteTrabajando()) ? ' · Siguiente: ' + (L.rojo ? '<span class="avl-rojo">' + esc(L.sig) + '</span>' : esc(L.sig)) : '');
     var AN = analisis();
     if (AN && AN.pausa && AN.estado !== 'cerrado') cab = '<b class="avl-pausa">⏸ En pausa</b> · ' + cab;
     if (AN && AN.estado === 'cerrado') cab = '<b class="avl-cerrado">🔒 Análisis cerrado</b> · ' + cab;
@@ -1273,7 +1330,7 @@
         '<span class="rub-pct">' + (r.estado === 'cerrado' ? '✓' : typeof r.pct === 'number' ? r.pct + ' %' : '') + '</span></button>';
     });
     var tit = 'Rubros ' + cerr + '/' + R.lista.length + ' · ' + (P ? G.CzAvance.textoPrecios(P) : 'Llevas ' + R.total_pct + ' %');
-    var hv = ST.hilo && ST.hilo.ultima && ST.hilo.ultima.created_at ? hora(ST.hilo.ultima.created_at) : '';
+    var hv = on('pantalla_v153') && ST.ultVis ? hora(ST.ultVis) : ST.hilo && ST.hilo.ultima && ST.hilo.ultima.created_at ? hora(ST.hilo.ultima.created_at) : '';
     // V1.51 · B · la tarjeta de estado VIGENTE (prototipo aprobado: una sola, al final y colapsada; las anteriores, superadas).
     return '<div class="carta rub-carta vigente" id="estadoVigente"><div class="vig-cab">Estado de la cotización <span class="vig">vigente' + (hv ? ' · ' + esc(hv) : '') + '</span></div>' +
       plegable('rub', '%', '<span class="rub-tot">' + esc(tit) + '</span>', esc(sigR && sigR.txt ? 'Siguiente: ' + sigR.txt : 'Resumen por rubro para confirmar'), h) + '</div>';
@@ -1507,7 +1564,7 @@
     if (c.id && archivada(c)) sub = 'archivada · ' + sub;
     $('#ch').innerHTML = '<button class="btn-ic vuelve" id="bVuelve" aria-label="Volver">' + ico('atras') + '</button>' +
       '<div class="av" style="background:' + color(c.titulo) + '">' + esc(iniciales(c.cliente || c.titulo)) + '</div>' +
-      '<div class="tx"><b><span>' + esc(c.titulo) + '</span>' + (((H && H.caso) || c).demo ? '<span class="chip-prueba" title="No enseña">PRUEBA</span>' : '') +
+      '<div class="tx"><b><span>' + esc(nombreChat(Object.assign({}, c, (H && H.caso) || {}))) + '</span>' + (((H && H.caso) || c).demo ? '<span class="chip-prueba" title="No enseña">PRUEBA</span>' : '') +
       '<span class="ver" title="Build del módulo">' + VERSION + '</span></b><small class="' + (vivo ? 'vivo' : '') + (subHtml ? ' esc-wa' : '') + '">' + (subHtml || esc(sub)) + '</small></div>' +
       // V1.48 · el globito del agente (prototipo aprobado, #4) — solo con `estados_reales` apagado (V1.51).
       (ER ? '' : globitoHtml()) +
@@ -1691,6 +1748,11 @@
     var acc = accionesPorTrabajo(), pintadas = {};
     var U = H && (H.propuesta || H.ultima), porTrabajo = {}; ((H && H.trabajos) || []).forEach(function (t) { porTrabajo[t.id] = t; });
     var OFR = ofertaDe(H), RUB = H && G.CzAvance ? G.CzAvance.rubros(H) : null;
+    /* V1.53b (`pantalla_v153`, #5 19:36) · la respuesta «vigente» es la última del motor que SE PINTA: un «revisa» que terminó en
+     * «Sin cambios pendientes» (no se pinta) no reemplaza la tarjeta de estado ni se lleva el resumen por rubro. */
+    var ULT = H && H.ultima ? Number(H.ultima.trabajo_id) : null, ULT_AT = H && H.ultima ? H.ultima.created_at : null;
+    if (H && on('pantalla_v153')) { var MS = (H.mensajes || []).filter(function (x) { return x.rol === 'motor' && x.trabajo_id && x.texto !== SIN_AVISO; }); if (MS.length) { ULT = Number(MS[MS.length - 1].trabajo_id); ULT_AT = MS[MS.length - 1].created_at; } }
+    ST.ultVis = ULT_AT;
     if (!H && !(ST.sel || {}).local) aparte('<div class="sis"><span>Cargando…</span></div>');
     if (modo) burbuja('el', 'intro', 'Conceptualizador', '<div class="txt">' + esc(MODOS[modo].intro) + '</div>');
     else if ((ST.sel || {}).local && !(H && H.mensajes && H.mensajes.length)) aparte('<div class="sis"><span>Platícale el trabajo: texto, notas de voz, fotos y PDFs. Cuando termines escribe «ya es todo».</span></div>');
@@ -1700,32 +1762,40 @@
       if (m.rol === 'motor' && m.texto === SIN_AVISO) return;          // V1.46 · el «revisa» sin aviso no se pinta
       var mio = m.rol === 'usuario', tr = m.trabajo_id && porTrabajo[m.trabajo_id];
       // V1.48 · el mensaje del agente que trae la tabla del machote se queda corto (4 líneas) con «Ver todo»: la tabla es el resumen.
-      var corto = !mio && U && U.machote && U.machote.tabla && Number(U.trabajo_id) === Number(m.trabajo_id) && String(sinMarca(m.texto) || '').length > 280 && !(ST.verTodo || {})[m.id];
+      var corto = !on('leer_mas') && !mio && U && U.machote && U.machote.tabla && Number(U.trabajo_id) === Number(m.trabajo_id) && String(sinMarca(m.texto) || '').length > 280 && !(ST.verTodo || {})[m.id];
+      // V1.53b · con `leer_mas`, todo mensaje del agente se corta a 5 renglones con «… Leer más» pegado al final (lo hace el núcleo).
+      var leer = !mio && on('leer_mas') && LM ? ' data-leer="' + esc(m.id) + '"' : '';
       // Sin trabajo en modo «ya tengo el levantamiento»: guardado; el motor lo lee todo junto al disparar.
       var tk = mio ? (!m.trabajo_id && modo === 'levantamiento' ? '<span class="tk leido" title="Guardado; lo reviso todo junto cuando toques «Ya es todo»">' + palomita(true) + '</span>' : tick(tr)) : '';
       burbuja(mio ? 'yo' : 'el', '', 'Conceptualizador' + (/respaldo/.test(m.autor) ? ' · respaldo' : ''),
         citaDe(m.responde_a, m.texto) +
         adjuntosHtml((m.adjuntos || []).map(function (a) { return Object.assign({}, a, meta[a.id] || {}); }), false) +
-        (sinMarca(m.texto) ? '<div class="txt' + (corto ? ' txt-corto' : '') + '">' + (mio ? esc(sinMarca(m.texto)) : md(sinMarca(m.texto))) + '</div>' +
+        (sinMarca(m.texto) ? '<div class="txt' + (corto ? ' txt-corto' : '') + '"' + leer + '>' + (mio ? esc(sinMarca(m.texto)) : md(sinMarca(m.texto))) + '</div>' +
           (corto ? '<button type="button" class="link ver-todo" data-vertodo="' + esc(m.id) + '">Ver todo</button>' : '') : '') +
         '<span class="hora">' + (m.escrito_at && Math.abs(new Date(m.created_at) - new Date(m.escrito_at)) > 120000 ? '<i title="Escrito sin señal; llegó ' + esc(hora(m.created_at)) + '">⟲</i> ' : '') +
         esc(hora(t)) + tk + '</span><div style="clear:both"></div>', m.id);
       if (mio && tr && tr.estado === 'error') aparte('<div class="sis"><span class="mal">El motor no pudo con este mensaje: ' + esc(tr.error || '') + '. Escríbelo de otra forma o vuelve a intentar.</span></div>');
       // V1.51 · B · una respuesta vieja que traía estado («Llevas N %» o «Rubros n/m») queda SUPERADA: tachada, sin botones,
       // con un toque que lleva al estado vigente. Nunca se decide sobre algo viejo.
-      if (!mio && H.ultima && m.trabajo_id && Number(H.ultima.trabajo_id) !== Number(m.trabajo_id) && /\bLlevas \d{1,3} %|\bRubros \d+\/\d+/.test(String(m.texto || '')))
+      if (!mio && H.ultima && m.trabajo_id && ULT !== Number(m.trabajo_id) && /\bLlevas \d{1,3} %|\bRubros \d+\/\d+/.test(String(m.texto || '')))
         aparte('<div class="fila el"><div class="carta superada" aria-disabled="true"><s>Estado de la cotización · ' + esc(hora(t)) + '</s>' +
-          '<button type="button" class="link" data-ir-vigente="1">Reemplazado por el estado de las ' + esc(hora(H.ultima.created_at)) + ' · ver el vigente</button></div></div>');
+          // V1.53b · «ver el vigente» solo si la tarjeta vigente se va a pintar; si no, el texto sin enlace.
+          (on('pantalla_v153') && !RUB ? '<span class="nota">Reemplazado por el estado de las ' + esc(hora(ULT_AT)) + '</span>' :
+          '<button type="button" class="link" data-ir-vigente="1">Reemplazado por el estado de las ' + esc(hora(on('pantalla_v153') ? ULT_AT : H.ultima.created_at)) + ' · ver el vigente</button>') + '</div></div>');
       if (!mio && m.trabajo_id) {
         // Primero lo que hay que confirmar, luego conceptos y machote (el orden del método).
         if (acc[m.trabajo_id]) aparte(tarjetaAcciones(acc[m.trabajo_id].filter(function (a) { return a.tipo === 'conjetura'; })));
         if (U && U.trabajo_id === m.trabajo_id) aparte(tarjetasRespuesta(U));
         if (OFR && Number(OFR.trabajo_id) === Number(m.trabajo_id)) aparte(tarjetaOferta(OFR));
         // V1.40 · el resumen por rubro, una sola vez: bajo la respuesta más nueva del motor (trae el % al día).
-        if (RUB && H.ultima && Number(H.ultima.trabajo_id) === Number(m.trabajo_id)) aparte(tarjetaRubros(RUB));
+        if (RUB && H.ultima && ULT === Number(m.trabajo_id)) aparte(tarjetaRubros(RUB));
         // V1.43 · «Supuse esto»: lo deducible se asume con su fuente (viaja en cada respuesta); bajo la más nueva.
         var SUP = (H.ultima && H.ultima.verifica && H.ultima.verifica.supuestos) || [];
-        if (SUP.length && Number(H.ultima.trabajo_id) === Number(m.trabajo_id)) aparte(tarjetaSupuestos(SUP));
+        if (SUP.length && ULT === Number(m.trabajo_id)) aparte(tarjetaSupuestos(SUP));
+        // V1.53b · «Dame los generales» (de lo guardado, sin modelo): un bloque por tarjeta, colapsadas con su línea.
+        var GEN = on('pantalla_v153') && H.ultima && H.ultima.verifica && H.ultima.verifica.generales;
+        if (Array.isArray(GEN) && GEN.length && Number(H.ultima.trabajo_id) === Number(m.trabajo_id))
+          aparte('<div class="fila el"><div class="gen-blq">' + GEN.map(function (g) { return '<div class="carta gen"><h4>' + esc(g.titulo) + '</h4><p class="nota">' + esc(g.resumen || '') + '</p>' + (g.cuerpo ? '<div class="txt">' + md(g.cuerpo) + '</div>' : '') + '</div>'; }).join('') + '</div></div>');
         if (acc[m.trabajo_id]) { aparte(tarjetaAcciones(acc[m.trabajo_id].filter(function (a) { return a.tipo !== 'conjetura'; }))); pintadas[m.trabajo_id] = 1; }
       }
     });
@@ -1773,6 +1843,8 @@
     var nuevas = ST.nMotor !== null && ST.nMotorCaso === (ST.sel || {}).id ? Math.max(0, nMotor - ST.nMotor) : 0;
     ST.nMotor = nMotor; ST.nMotorCaso = (ST.sel || {}).id;
     M.innerHTML = h;
+    if (on('tarjetas_colapsadas')) colapsarCartas(M);
+    if (LM && on('leer_mas')) LM.aplicar();
     enlazarChat(M);
     if (GZ) GZ.decorar();
     if (foco) { var t = $('#msgs [data-borr="' + foco.k + '"]'); if (t) { t.focus(); try { t.setSelectionRange(foco.a, foco.b); } catch (e) {} } }
@@ -1781,6 +1853,30 @@
     else { M.scrollTop = arriba0; ST.abajoN += nuevas; }
     actualizarAbajo();
     if (ST.rubHoja) pintarHojaRubro();
+  }
+  /* V1.53b (`tarjetas_colapsadas`, #6 20:43) · las tarjetas de datos salen COLAPSADAS: su título y una línea (total, estado);
+   * se abren al tocar el título y lo abierto se queda abierto al repintar. Solo la que pide un clic (Va, Guardar, Cotizar con
+   * referencias, Actualizar SO, Ya la mandé) sale abierta. Se hace sobre lo ya pintado, igual para todas las tarjetas. */
+  var PIDE_CLIC = 'button.si:not([disabled]), [data-conf], [data-opc], [data-acepta], [data-hacer]:not([disabled]), [data-refok], [data-corr]';
+  function colapsarCartas(M) {
+    ST.cartaAb = ST.cartaAb || {};
+    var vistos = {};
+    $$('.carta', M).forEach(function (k) {
+      if (k.classList.contains('superada') || k.classList.contains('vigente') || (k.parentElement && k.parentElement.closest('.carta'))) return;   // las de adentro van con su tarjeta
+      var h = k.querySelector(':scope > h4'); if (!h) return;
+      if (k.querySelector(PIDE_CLIC)) return;                 // pide un clic: abierta
+      var t = h.textContent.replace(/\s+/g, ' ').trim(), n = (vistos[t] = (vistos[t] || 0) + 1);
+      var clave = t + '#' + n;
+      var txt = function (e) { return e ? String(e.innerText || e.textContent || '') : ''; };   // innerText: respeta los saltos (sin pegar «$199,675.99margen»)
+      var res = k.querySelector('tfoot') ? 'Total ' + txt(k.querySelector('tfoot td.n:nth-child(3)') || k.querySelector('tfoot td.n')) :
+        txt(k.querySelector(':scope > .tb-arriba, :scope > p, :scope > .nota'));
+      res = String(res || '').replace(/\s+/g, ' ').trim(); if (res.length > 96) res = res.slice(0, 95) + '…';
+      k.classList.add('cr-pleg'); if (!ST.cartaAb[clave]) k.classList.add('cr-cerrada');
+      h.setAttribute('role', 'button'); h.setAttribute('tabindex', '0'); h.setAttribute('aria-expanded', !!ST.cartaAb[clave]); h.dataset.cartaClave = clave;
+      if (res) h.insertAdjacentHTML('afterend', '<p class="cr-res">' + esc(res) + '</p>');
+      var alternar = function () { ST.cartaAb[clave] = !ST.cartaAb[clave]; k.classList.toggle('cr-cerrada', !ST.cartaAb[clave]); h.setAttribute('aria-expanded', !!ST.cartaAb[clave]); actualizarAbajo(); };
+      h.onclick = alternar; h.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternar(); } };
+    });
   }
   /** «escribiendo…» que se despliega con los pasos de ESE trabajo (6a). Los pasos los junta la
    *  pantalla de lo que el motor va publicando (`trabajo.avance`), con sus segundos. */
@@ -1811,6 +1907,7 @@
     var c = $('.compose'), f = $('#fijo'), bj = $('#bandeja'), ea = $('#estAg');
     b.style.bottom = ((c ? c.offsetHeight : 56) + (ea ? ea.offsetHeight : 0) + (f && f.style.display !== 'none' ? f.offsetHeight : 0) + (bj && bj.style.display !== 'none' ? bj.offsetHeight : 0) + (GZ ? GZ.alto() : 0) + 10) + 'px';
     var n = $('#nAbajo'); n.style.display = ST.abajoN ? 'flex' : 'none'; n.textContent = ST.abajoN;
+    var A = $('#czAcc'); if (A) A.style.bottom = ((parseFloat(b.style.bottom) || 0) + (arriba ? 52 : 0)) + 'px';   // V1.53b · sobre ⇊
   }
   function tick(tr) {
     if (!tr) return '<span class="tk" title="Recibido en el servidor">' + palomita(false) + '</span>';
@@ -2197,7 +2294,7 @@
         var d = a.datos || {}, r = a.resultado || {}, kk = 'j:' + a.id, e = ST.env[kk], b = ST.borr[kk] || {};
         var rp = REP['conjetura:' + a.id], reab = !!ST.reab[kk] && a.estado !== 'propuesta', decidida = a.estado !== 'propuesta' && !reab;
         h += '<div class="preg' + (rp ? ' reemplazada' : '') + (reab ? ' reabierta' : '') + '" data-preg="' + a.id + '"><p>' + esc(d.pregunta || a.titulo) + '</p>' + (d.conjetura ? '<div class="conj">Supongo: ' + (rp ? '<s>' + esc(d.conjetura) + '</s>' : esc(d.conjetura)) + (d.porque ? '<small> · ' + esc(d.porque) + '</small>' : '') + '</div>' : '') +
-          (d.mueve ? '<div class="mueve">' + (/no mueve|sin estimar/i.test(d.mueve) ? '' : 'mueve ') + esc(d.mueve) + '</div>' : '') +
+          (d.mueve ? '<div class="mueve">' + (/no mueve|sin estimar|^\s*mueve\b/i.test(d.mueve) ? '' : 'mueve ') + esc(d.mueve) + '</div>' : '') +
           (ST.vozCorr[kk] && a.estado === 'propuesta' ? '<span class="hecho corr">🎤 Corrección por voz ' + (ST.vozCorr[kk].decidido ? 'enviada' : 'en cola') + ' · se transcribe</span>' : '') +
           (reab ? '<p class="nota reab">↺ Reabierta: vale tu última decisión.' + (rp ? ' Hoy está: ' + esc(rp.vigente) + '.' : '') + '</p>' : '') +
           (decidida && rp ? lineaReemplazo(rp) + (puede ? botonCambiar(kk) : '') :
@@ -2211,7 +2308,9 @@
            '<div class="acc" data-acc="' + a.id + '">' + (e === 'confirma' ? '<button class="si enviando" disabled>' + GIRO + 'enviando…</button>' : '<button class="si" data-conf="' + a.id + '">✓ Va</button>') +
            '<button data-corr="' + a.id + '"' + (e ? ' disabled' : '') + '>✎ Corregir</button></div>') + (ST.errBt[kk] ? '<span class="err-bt">' + esc(ST.errBt[kk]) + '</span>' : '')) + '</div>';
       });
-      h += (pend ? '<p class="nota">Cuando contestes todas, sigo con los conceptos.</p>' : '') + '</div>';
+      // V1.53b · «sigo con los conceptos» solo antes de los conceptos; en un caso listo para cerrar no se dice.
+      var anL = (ST.hilo && ST.hilo.ultima && ST.hilo.ultima.verifica && ST.hilo.ultima.verifica.analisis) || null, yaListo = on('pantalla_v153') && anL && (anL.estado === 'listo' || anL.estado === 'cerrado');
+      h += (pend && !yaListo ? '<p class="nota">Cuando contestes todas, sigo con los conceptos.</p>' : '') + '</div>';
     }
     // Un machote o un borrador con suposiciones sin contestar saldría con números viejos.
     var pendientes = ((ST.hilo && ST.hilo.acciones) || []).some(function (x) { return x.tipo === 'conjetura' && x.estado === 'propuesta'; });
@@ -3145,6 +3244,8 @@
     }, true);
     G.addEventListener('pointerup', function () { ratonG = null; }, true);
     $('#bEnviar').onclick = enviar;
+    if (G.ChatNucleo && G.ChatNucleo.LeerMas) LM = G.ChatNucleo.LeerMas($('#msgs'), { renglones: 5, alCambiar: actualizarAbajo });
+    if (G.ChatNucleo && G.ChatNucleo.Bolita && $('#czAcc')) BOL = G.ChatNucleo.Bolita($('#czAcc'), { alCambiar: actualizarAbajo });
     if (CG) GZ = CG.enganchar({
       contenedor: $('#msgs'), cabecera: $('#ch'), antesDe: $('.compose'),
       mensaje: gestoDe, puedeReenviar: function () { return false; }, razonReenviar: RAZON_REENVIAR,

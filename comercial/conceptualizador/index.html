@@ -745,6 +745,14 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
   /* V1.51 · B · estado vigente y superado */
   .rub-carta .vig-cab{font-size:12.5px;font-weight:600;color:var(--sec);margin:0 0 6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
   .rub-carta .vig{background:#e7f6ee;color:#0b6b45;border:1px solid #b8e3cb;border-radius:8px;padding:0 6px;font-size:11.5px}
+  /* V1.53b · tarjeta colapsada: título con flecha + una línea; lo demás se ve al abrirla */
+  .gen-blq{display:flex;flex-direction:column;gap:6px;max-width:min(94%,680px)}.gen-blq .carta{margin:0;max-width:none}
+  .carta.cr-pleg > h4{cursor:pointer;display:flex;align-items:center;gap:6px;margin-bottom:2px}
+  .carta.cr-pleg > h4::after{content:"";margin-left:auto;width:8px;height:8px;border-right:2px solid var(--sec);border-bottom:2px solid var(--sec);transform:rotate(45deg);transition:transform .15s;flex-shrink:0}
+  .carta.cr-pleg:not(.cr-cerrada) > h4::after{transform:rotate(-135deg)}
+  .carta.cr-pleg > .cr-res{font-size:12.5px;color:var(--sec);margin:0 0 4px}
+  .carta.cr-pleg:not(.cr-cerrada) > .cr-res{display:none}
+  .carta.cr-cerrada > :not(h4):not(.cr-res){display:none!important}
   .carta.superada{opacity:.6;font-size:13px;display:flex;flex-direction:column;gap:4px;max-width:min(82%,520px)}
   .carta.superada s{color:var(--sec)}
   .carta.superada .link{align-self:flex-start;color:var(--acento-osc);font-weight:600;font-size:12.5px;text-align:left;opacity:1}
@@ -807,6 +815,7 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
     <div id="bandeja"></div>
     <div id="prep"></div>
     <div id="estAg"></div>
+    <div id="czAcc"></div>
     <div id="fijo"><button id="bFijo" type="button"></button></div>
     <div class="compose">
       <div class="caja">
@@ -825,26 +834,28 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <div class="rub-velo" id="rubHoja"></div>
 <div class="modal" id="modal"></div>
 <div class="panel" id="panel"></div>
-<link rel="stylesheet" href="../../shared/chat/chat-wa.css?v=V1.53a" />
-<script src="../../shared/chat/chat-wa.js?v=V1.53a"></script>
-<script src="../../shared/chat/chat-firma.js?v=V1.53a"></script>
-<script src="js/cz-cliente.js?v=V1.53a"></script>
-<script src="js/cz-medios.js?v=V1.53a"></script>
-<script src="js/cz-grabadora.js?v=V1.53a"></script>
-<script src="js/cz-archivos.js?v=V1.53a"></script>
-<script src="js/cz-ciudad.js?v=V1.53a"></script>
-<script src="js/cz-cola.js?v=V1.53a"></script>
-<script src="js/cz-acciones.js?v=V1.53a"></script>
-<script src="js/cz-indicadores.js?v=V1.53a"></script>
-<script src="js/cz-avance.js?v=V1.53a"></script>
-<script src="js/cz-tabla.js?v=V1.53a"></script>
-<script src="js/cz-visor.js?v=V1.53a"></script>
-<script src="js/cz-vista.js?v=V1.53a"></script>
-<script src="js/cz-camara.js?v=V1.53a"></script>
-<script src="../../shared/chat/chat-gestos.js?v=V1.53a"></script>
-<script src="js/cz-push.js?v=V1.53a"></script>
-<script src="js/cz-app.js?v=V1.53a"></script>
-<script src="js/cz-version.js?v=V1.53a"></script>
+<link rel="stylesheet" href="../../shared/chat/chat-wa.css?v=V1.53b" />
+<script src="../../shared/chat/chat-wa.js?v=V1.53b"></script>
+<script src="../../shared/chat/chat-firma.js?v=V1.53b"></script>
+<script src="js/cz-cliente.js?v=V1.53b"></script>
+<script src="js/cz-medios.js?v=V1.53b"></script>
+<script src="js/cz-grabadora.js?v=V1.53b"></script>
+<script src="js/cz-archivos.js?v=V1.53b"></script>
+<script src="js/cz-ciudad.js?v=V1.53b"></script>
+<script src="js/cz-cola.js?v=V1.53b"></script>
+<script src="js/cz-acciones.js?v=V1.53b"></script>
+<script src="js/cz-indicadores.js?v=V1.53b"></script>
+<script src="js/cz-avance.js?v=V1.53b"></script>
+<script src="js/cz-tabla.js?v=V1.53b"></script>
+<script src="js/cz-visor.js?v=V1.53b"></script>
+<script src="js/cz-vista.js?v=V1.53b"></script>
+<script src="js/cz-camara.js?v=V1.53b"></script>
+<script src="../../shared/chat/chat-gestos.js?v=V1.53b"></script>
+<script src="../../shared/chat/chat-nucleo-cz.js?v=V1.53b"></script>
+<script src="../../shared/chat/chat-nucleo.js?v=V1.53b"></script>
+<script src="js/cz-push.js?v=V1.53b"></script>
+<script src="js/cz-app.js?v=V1.53b"></script>
+<script src="js/cz-version.js?v=V1.53b"></script>
 <script>window.CzApp.arrancar().then(function () { if (window.CzVersion) window.CzVersion.iniciar(); if (window.CzPush) window.CzPush.iniciar(); });</script>
 </body>
 </html>

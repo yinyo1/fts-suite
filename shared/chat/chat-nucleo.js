@@ -15,6 +15,9 @@
  *     gestos: { …lo que ChatGestos.enganchar recibe además de contenedor/cabecera/antesDe… }
  *   });
  *   N.cabecera({ titulo, sub, vivo, avatar: { texto, color, insignia, insigniaColor }, etiquetas: [{ texto, tono }], mas: { attrs, hacer }, vuelve })
+ *   N.acciones([{ texto, hacer, fuerte, attrs }], { titulo, nota, aria })   // V1.53b · bolita ⚡ de sugerencias arriba del micrófono
+ *   Opciones V1.53b: leerMas (por omisión true: el texto del otro lado se corta a `renglones` (5) con «Leer más» / «Leer menos»
+ *   pegado al final; un mensaje con leerMas:false no se corta) · el fab es la bolita «+» redonda (su texto queda como nombre).
  *   N.franja(html) · N.lado(html|null) · N.fijo([{ texto, icono, fuerte, attrs, hacer }], { id })
  *   N.mensajes(lista, { escribiendo: { texto, pasos: [{ t, s }] }, vacio })      // ver «mensaje» abajo
  *   N.chat() / N.lista() · N.pagina({ titulo, sub, atras, mas }) → el elemento de la página (formularios del producto)
@@ -81,8 +84,87 @@
     ':where(.chn-cz) #fijo .chn-fijo-in{display:flex;gap:8px;max-width:100%;overflow-x:auto;scrollbar-width:none;padding:2px 2px 4px}:where(.chn-cz) #fijo .chn-fijo-in::-webkit-scrollbar{display:none}',
     ':where(.chn-cz) #fijo .chn-fijo-in button{flex-shrink:0;white-space:nowrap}:where(.chn-cz) #fijo button.fuerte{background:var(--chn-acento-osc);color:#fff;border-color:var(--chn-acento-osc)}',
     ':where(.chn-cz) .chn-pie-lista{padding:6px 14px 14px;font-size:12px;color:var(--chn-ter);text-align:center}:where(.chn-cz) .chn-pie-lista:empty{display:none}',
-    ':where(.chn-cz) #lista .chl{background:transparent}'
+    ':where(.chn-cz) #lista .chl{background:transparent}',
+    // V1.53b (#6) · la bolita «+» redonda (también Marketing): el texto queda como nombre accesible y como aviso al pasar el mouse
+    // «Leer más» / «Leer menos»: pegado al final del texto, verde WhatsApp y negrita, mismo tamaño, sin subrayado ni fondo
+    // bolita de acciones sugeridas: arriba del micrófono; con la flecha ⇊ a la vista, se sube arriba de ella
   ].join('\n');
+  /* Las piezas de V1.53b que también usa un producto que todavía pinta su propio chat («Leer más» y la bolita de acciones):
+   * sin el alcance .chn-cz y con los colores del núcleo por omisión. Se ponen una vez, desde crear() o desde la pieza. */
+  var CSS_PIEZAS = [
+    '.fab.chn-mas{width:56px;height:56px;border-radius:50%;padding:0;gap:0;justify-content:center}.fab.chn-mas .ico{width:28px;height:28px;stroke-width:2.3}',
+    '.chn-leer{display:inline;padding:0;margin:0;border:0;background:none;color:var(--chn-acento,#1daa61);font:inherit;font-weight:700;line-height:inherit;cursor:pointer;text-decoration:none}',
+    '.chn-acc{position:absolute;right:12px;z-index:6;display:none}.chn-acc.on{display:block}',
+    '.chn-rayo{position:relative;width:44px;height:44px;border-radius:50%;background:var(--chn-sup,#fff);color:var(--chn-acento-osc,#008069);border:0;cursor:pointer;box-shadow:0 2px 6px rgba(11,20,26,.22);display:flex;align-items:center;justify-content:center}',
+    '.chn-rayo svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}',
+    '.chn-rayo .n{position:absolute;top:-5px;right:-4px;min-width:18px;height:18px;border-radius:9px;background:var(--chn-acento,#1daa61);color:#fff;font-size:11px;font-weight:700;line-height:18px;padding:0 5px;text-align:center}',
+    '.chn-acc-menu{position:absolute;right:52px;bottom:0;background:var(--chn-sup,#fff);color:var(--chn-texto,#111b21);border-radius:14px;box-shadow:0 4px 18px rgba(11,20,26,.22);padding:6px;min-width:220px;max-width:calc(100vw - 90px)}',
+    '.chn-acc-menu[hidden]{display:none}.chn-acc-menu small{display:block;font-size:11.5px;color:var(--chn-sec,#667781);padding:4px 12px}',
+    '.chn-acc-menu button{display:block;width:100%;text-align:left;padding:10px 12px;border-radius:9px;font:inherit;font-size:14.5px;line-height:1.3;background:none;border:0;color:inherit;cursor:pointer}',
+    '.chn-acc-menu button:hover{background:var(--chn-sup2,#f6f5f3)}.chn-acc-menu button.fuerte{color:var(--chn-acento-osc,#008069);font-weight:600}'
+  ].join('\n');
+  function cssPiezas() { if (!document.getElementById('chn-css-piezas')) { var s = document.createElement('style'); s.id = 'chn-css-piezas'; s.textContent = CSS_PIEZAS; document.head.appendChild(s); } }
+  var RAYO = '<svg class="ico s" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3L5 13h6l-1 8 8-10h-6z"/></svg>';
+  /* «Leer más» (V1.53b): corta el texto a N renglones con «…» y el enlace pegado al final del último renglón. Trabaja sobre el
+   * DOM ya pintado (el texto puede traer negritas, listas o tablas): se quedan los primeros k caracteres de texto con su
+   * estructura y se busca el k más grande que cabe. Sin layout (offsetHeight 0) no corta nada. */
+  function boton(id, txt) { var b = document.createElement('button'); b.type = 'button'; b.className = 'chn-leer'; b.dataset.leerId = id; b.textContent = txt; return b; }
+  function cortarA(t, html, k) {
+    t.innerHTML = html;
+    var w = document.createTreeWalker(t, NodeFilter.SHOW_TEXT, null), n, usado = 0, corte = null;
+    while ((n = w.nextNode())) {
+      if (usado + n.nodeValue.length >= k) { n.nodeValue = n.nodeValue.slice(0, Math.max(0, k - usado)).replace(/[\s.,;:]+$/, ''); corte = n; break; }
+      usado += n.nodeValue.length;
+    }
+    if (!corte) return;
+    var r = document.createRange(); r.setStartAfter(corte); r.setEndAfter(t.lastChild); r.deleteContents();
+    var donde = corte.parentNode; donde.appendChild(document.createTextNode('… ')); donde.appendChild(boton(t.dataset.leer, 'Leer más'));
+  }
+  function leerMas(t, html, abierto, renglones) {
+    t.innerHTML = html;
+    var lh = parseFloat(getComputedStyle(t).lineHeight) || 21, max = lh * renglones + 2;
+    if (!t.offsetHeight || t.scrollHeight <= max) return;
+    if (abierto) { t.appendChild(document.createTextNode(' ')); t.appendChild(boton(t.dataset.leer, 'Leer menos')); return; }
+    var lo = 1, hi = t.textContent.length;
+    while (lo < hi) { var mid = Math.ceil((lo + hi) / 2); cortarA(t, html, mid); if (t.scrollHeight <= max) lo = mid; else hi = mid - 1; }
+    cortarA(t, html, lo);
+  }
+  /** «Leer más» sobre un contenedor de mensajes. Marca: el texto lleva data-leer="<id>". aplicar() después de cada repintado. */
+  function LeerMas(M, op) {
+    op = op || {}; cssPiezas();
+    var abierto = {}, html = {}, n = op.renglones || 5;
+    M.addEventListener('click', function (e) {
+      var x = e.target.closest && e.target.closest('[data-leer-id]'); if (!x || !M.contains(x)) return;
+      e.preventDefault(); e.stopPropagation();
+      var id = x.dataset.leerId, t = x.closest('[data-leer]'); abierto[id] = !abierto[id];
+      if (t && html[id] != null) { leerMas(t, html[id], abierto[id], n); if (!abierto[id] && t.scrollIntoView) t.scrollIntoView({ block: 'nearest' }); }
+      if (op.alCambiar) op.alCambiar();
+    }, true);
+    return { aplicar: function () { Array.prototype.forEach.call(M.querySelectorAll('[data-leer]'), function (t) { var id = t.dataset.leer; html[id] = t.innerHTML; leerMas(t, t.innerHTML, !!abierto[id], n); }); },
+      abierto: function (id) { return !!abierto[id]; } };
+  }
+  /** Bolita de acciones sugeridas en el elemento A (posición: el producto o el núcleo ponen A.style.bottom). */
+  function Bolita(A, op0) {
+    cssPiezas(); A.classList.add('chn-acc');
+    var L = [], op = op0 || {}, ab = false;
+    function pintar() {
+      A.classList.toggle('on', L.length > 0);
+      if (!L.length) { ab = false; A.innerHTML = ''; return; }
+      A.innerHTML = '<button type="button" class="chn-rayo" data-chn="rayo" aria-label="' + esc(op.aria || 'Acciones sugeridas') + '" aria-expanded="' + ab + '">' + RAYO +
+        (L.length > 1 ? '<span class="n">' + L.length + '</span>' : '') + '</button><div class="chn-acc-menu" role="menu"' + (ab ? '' : ' hidden') + '>' +
+        '<small>' + esc(op.titulo || 'Sugerencias') + '</small>' + L.map(function (x, i) { return '<button type="button" role="menuitem" data-acc-i="' + i + '"' + attrs(x.attrs) + (x.fuerte ? ' class="fuerte"' : '') + '>' + esc(x.texto) + '</button>'; }).join('') +
+        (op.nota ? '<small>' + esc(op.nota) + '</small>' : '') + '</div>';
+      if (op0 && op0.alCambiar) op0.alCambiar();
+    }
+    document.addEventListener('click', function (e) {
+      if (!L.length) return;
+      var r = e.target.closest && e.target.closest('[data-chn="rayo"]'), i = e.target.closest && e.target.closest('[data-acc-i]');
+      if (r && A.contains(r)) { ab = !ab; pintar(); return; }
+      if (i && A.contains(i)) { ab = false; var x = L[+i.dataset.accI]; pintar(); if (x && x.hacer) x.hacer(i); return; }
+      if (ab && !A.contains(e.target)) { ab = false; pintar(); }
+    });
+    return { poner: function (lista, o2) { L = lista || []; if (o2) op = Object.assign({}, op0 || {}, o2); pintar(); }, abierta: function () { return ab; }, n: function () { return L.length; } };
+  }
 
   function attrs(a) { return Object.keys(a || {}).map(function (k) { return ' ' + k + '="' + esc(a[k]) + '"'; }).join(''); }
   function etiquetas(L) { return (L || []).map(function (e) { return '<span class="chn-et ' + esc(e.tono || '') + '">' + esc(e.texto) + '</span>'; }).join(''); }
@@ -100,14 +182,15 @@
   function crear(raiz, o) {
     Z.ponerCss();
     if (!document.getElementById('chn-css')) { var s = document.createElement('style'); s.id = 'chn-css'; s.textContent = CSS; document.head.appendChild(s); }
+    cssPiezas();
     var ST = Z.ST, pag = document.getElementById(o.pagina || 'vista');
     ST.verAdjunto = o.verAdjunto; ST.toast = toast;
     raiz.classList.add('chn');
     raiz.innerHTML = '<div class="app chn-cz" id="app"><aside id="lista"><div class="cab" id="lcab"></div><div class="scroll"><div id="lchl"></div><div class="chn-pie-lista" id="lpie"></div></div>' +
-      (o.fab ? '<button class="fab nueva" id="bNueva"' + attrs(o.fab.attrs) + '>' + ico('nuevo') + esc(o.fab.texto) + '</button>' : '') + '</aside>' +
+      (o.fab ? '<button class="fab nueva chn-mas" id="bNueva"' + attrs(Object.assign({ 'aria-label': o.fab.texto, title: o.fab.texto }, o.fab.attrs)) + '>' + ico('nuevo') + '</button>' : '') + '</aside>' +
       '<section class="chat" data-vacio="' + esc(o.vacioChat || 'Elige una conversación.') + '"><header class="cab" id="ch"></header><div class="chn-franja" id="chnFranja"></div>' +
       '<div id="msgs"></div><div class="chn-lado" id="chnLado"></div><button class="abajo" id="bAbajo" type="button" aria-label="Ir al último mensaje">' + ico('abajo2') +
-      '<span class="badge" id="nAbajo" style="display:none"></span></button><div id="fijo"></div>' +
+      '<span class="badge" id="nAbajo" style="display:none"></span></button><div class="chn-acc" id="chnAcc"></div><div id="fijo"></div>' +
       '<div class="compose"><div class="caja"><label class="btn-ic" title="Adjuntar fotos, PDFs o audios" aria-label="Adjuntar">' + ico('clip') +
       '<input type="file" id="fArch" multiple hidden accept="image/*,application/pdf,audio/*,.doc,.docx,.xls,.xlsx,.csv,.txt"></label>' +
       '<textarea id="in" rows="1" placeholder="' + esc(o.placeholder || 'Mensaje') + '" maxlength="20000" aria-label="Mensaje"></textarea>' +
@@ -180,7 +263,7 @@
           (lado !== 'yo' ? '' : m.estado === 'error' ? ' <span class="mal">⚠ no se mandó</span>' : m.estado === 'subiendo' ? ' <span class="cola">' + RELOJ + 'subiendo' + (m.progreso != null ? ' ' + Math.round(m.progreso * 100) + '%' : '') + '</span>'
             : m.estado === 'enviando' ? ' <span class="pend-env">' + RELOJ + 'enviando…</span>' : m.estado === 'pendiente' ? ' <span class="pend-env" title="Guardado en el teléfono con su hora real; se manda solo al volver la señal">' + RELOJ + 'pendiente de enviar</span>' : tick(m.estado)) + '</span>';
         var cuerpo = (m.cita && G.ChatGestos ? G.ChatGestos.citaHtml(m.cita.id, m.cita.quien || '', m.cita.extracto || '') : '') + adjuntos(m) +
-          (m.texto ? '<div class="txt">' + (m.md ? Z.md(m.texto) : esc(m.texto)) + '</div>' : '') + (m.dentro || '') +
+          (m.texto ? '<div class="txt"' + (lado === 'el' && o.leerMas !== false && m.leerMas !== false && m.id != null ? ' data-leer="' + esc(m.id) + '"' : '') + '>' + (m.md ? Z.md(m.texto) : esc(m.texto)) + '</div>' : '') + (m.dentro || '') +
           (m.estado === 'subiendo' && m.progreso != null ? '<div class="barra"><i style="width:' + Math.round(m.progreso * 100) + '%"></i></div>' : '') + hora + '<div style="clear:both"></div>' +
           (m.estado === 'error' ? '<div class="corr"><span class="err">' + esc(m.error || '') + '</span><button class="boton" data-reint="' + esc(m.id) + '">Reintentar</button><button class="boton" data-desc="' + esc(m.id) + '">Descartar</button></div>' : '');
         var g = m.gesto !== false && !pend && m.id != null;
@@ -199,6 +282,7 @@
       if (!h && op.vacio) h = '<div class="sis"><span>' + esc(op.vacio) + '</span></div>';
       var nEl = L.filter(function (m) { return m.rol === 'el'; }).length, nuevas = est.nEl !== null ? Math.max(0, nEl - est.nEl) : 0; est.nEl = nEl;
       M.innerHTML = h;
+      if (est.lm) est.lm.aplicar();
       Z.enlazarVoces(M);
       Array.prototype.forEach.call(M.querySelectorAll('[data-foto]'), function (f) { var k = f.dataset.foto; Z.cargarUrl(k).then(function (u) { if (u) f.style.backgroundImage = 'url(' + u + ')'; }); });
       if (est.gz) est.gz.decorar();
@@ -222,6 +306,8 @@
       var F = $('#fijo');
       b.style.bottom = ($('.compose').offsetHeight + (F.style.display !== 'none' ? F.offsetHeight : 0) + (est.gz && est.gz.alto ? est.gz.alto() : 0) + 10) + 'px';
       var n = $('#nAbajo'); n.style.display = est.abajoN ? 'flex' : 'none'; n.textContent = est.abajoN;
+      // La bolita de acciones va arriba del micrófono; si la flecha ⇊ está a la vista, se sube arriba de ella.
+      var A = $('#chnAcc'); if (A) A.style.bottom = (parseFloat(b.style.bottom) || 0) + (arriba ? 52 : 0) + 'px';   // se sube sobre ⇊
     }
     M.addEventListener('scroll', actualizarAbajo, { passive: true });
     $('#bAbajo').onclick = function () { M.scrollTo({ top: M.scrollHeight, behavior: 'smooth' }); est.abajoN = 0; };
@@ -285,6 +371,7 @@
       cabecera: cabecera, franja: function (h) { $('#chnFranja').innerHTML = h || ''; },
       lado: function (h) { APP.classList.toggle('con-lado', !!h); $('#chnLado').innerHTML = h || ''; },
       fijo: fijo, mensajes: mensajes, chat: chat, lista: lista, pagina: pagina, toast: toast,
+      acciones: function (L, op) { est.bolita.poner(L, op); },
       grabar: function () { if (!TA.value.trim()) grabar(); else TA.focus(); },
       escribir: function (t) { TA.value = t || ''; TA.dispatchEvent(new Event('input')); TA.focus(); },
       foco: function () { TA.focus(); },
@@ -293,6 +380,8 @@
       irAbajo: function () { est.irAbajo = true; },
       gestos: function () { return est.gz; }
     };
+    if (o.leerMas !== false) est.lm = LeerMas(M, { renglones: o.renglones || 5, alCambiar: actualizarAbajo });
+    est.bolita = Bolita($('#chnAcc'), { alCambiar: actualizarAbajo });
     if (o.lista) N.listaChat = G.ChatLista.crear($('#lchl'), Object.assign({ buscador: false }, o.lista));
     if (G.ChatGestos && o.gestos) est.gz = G.ChatGestos.enganchar(Object.assign({ contenedor: M, cabecera: $('#ch'), antesDe: $('.compose'), burbujas: '[data-chg-id]',
       alCambiar: actualizarAbajo, aviso: function (t) { toast(t); } }, o.gestos));
@@ -302,5 +391,5 @@
     return N;
   }
 
-  G.ChatNucleo = { crear: crear, esc: esc, ico: ico, md: Z.md, hora: Z.hora, corto: Z.corto, separador: Z.separador, color: Z.color, iniciales: Z.iniciales, tick: tick };
+  G.ChatNucleo = { crear: crear, LeerMas: LeerMas, Bolita: Bolita, esc: esc, ico: ico, md: Z.md, hora: Z.hora, corto: Z.corto, separador: Z.separador, color: Z.color, iniciales: Z.iniciales, tick: tick };
 })(window);

@@ -1,6 +1,11 @@
 {
-  "version": "V1.53a",
+  "version": "V1.53b",
   "historial": [
+    {
+      "version": "V1.53b",
+      "fecha": "2026-10-18",
+      "nota": "Pantalla (fts-conceptualizador#6), con 4 interruptores nuevos apagados: «Leer más» / «Leer menos» a 5 renglones, verde y negrita, pegado al texto (leer_mas); las sugerencias en la bolita ⚡ arriba del micrófono, que sube sobre ⇊, y «Ya está todo ok» solo cuando se puede cerrar (bolita_acciones); tarjetas de datos colapsadas, abierta solo la que pide un clic (tarjetas_colapsadas); y pantalla_v153: bolita «+», nombre «Cliente corto · proyecto», la tarjeta de estado no se tacha por un «revisa» sin cambios, una sola señal mientras trabaja el motor, «Siguiente: Ya la mandé al cliente», permiso del robot con la razón arriba y confirmación, «Precio por decreto», comisión 0 % con excepción, total de Odoo al peso dicho una vez, «Dame los generales» en bloques y el PDF del visor con datos fiscales y quién cotiza. Ícono A (globo con renglones). Las hojas dejan espacio para la barra de Android."
+    },
     {
       "version": "V1.53a",
       "fecha": "2026-10-18",

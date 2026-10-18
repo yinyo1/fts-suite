@@ -87,6 +87,11 @@
     // con lo que hay en pantalla: puede llegar una versión nueva del machote que hay que guardar primero.
     if (sig && sig.acc === 'cotiza' && ((H && H.trabajos) || []).some(function (t) { return t.estado === 'pendiente' || t.estado === 'tomado'; }))
       sig = { txt: 'Revisando si hay cambios…', espera: true };
+    // V1.53b (#5, 19:36) · con la orden ya en Odoo, el siguiente es el clic que falta: «Actualizar SO…» o «Ya la mandé al cliente».
+    if (intOn('pantalla_v153') && c.orden_nombre && (!sig || sig.espera || sig.acc === 'cotiza')) {
+      var pen = ((H && H.acciones) || []).filter(function (a) { return a.estado === 'propuesta' && (a.tipo === 'crear_borrador' || a.tipo === 'enviada'); }).pop();
+      if (pen) sig = { txt: pen.tipo === 'enviada' ? 'Ya la mandé al cliente' : (pen.titulo || 'Actualizar ' + c.orden_nombre + ' en Odoo'), acc: 'ir', a: 'accion', id: pen.id };
+    }
     // V1.47 (#4 Parte H) · al 100 % el siguiente paso es cerrar el análisis (solo el dueño, de forma explícita); cerrado, se dice.
     var AN = H && H.ultima && H.ultima.verifica && H.ultima.verifica.analisis;
     // V1.52.1 (#5) · con estados_reales: nunca con un trabajo en curso ni con un clic pendiente (cierrePosible). Apagado, lo de V1.51.

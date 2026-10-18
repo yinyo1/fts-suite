@@ -27,6 +27,9 @@
   var pc = function (x) { return (Number(x || 0) * 100).toFixed(1) + ' %'; };
   var tiene = function (o) { return Object.keys(o).some(function (k) { return o[k]; }); };
   var conAlerta = function (r) { return !!String(r.alerta || '').trim(); };
+  var on = function (n) { try { return !!(G.CzInterruptor && G.CzInterruptor(n)); } catch (e) { return false; } };
+  /** El decreto de una sección: calc.js lo trae como objeto ({ tipo, valor, decreto, margen }). */
+  var decDe = function (s) { var d = s && s.decreto; return d && typeof d === 'object' ? String(d.decreto || '') : String(d || ''); };
   var esRef = function (r) { return r.nivel === 'N3' || r.nivel === 'N4'; };
   var esN5 = function (r) { return r.nivel === 'N5' || r.pu === null || r.pu === undefined; };
   /** Origen Y estado; dentro de cada grupo, O. Sin chips prendidos en un grupo, ese grupo no filtra. */
@@ -71,7 +74,9 @@
       if (typeof c.dif === 'number') partes.push(c.dif === 0 ? 'total sin cambio' : 'total ' + (c.dif > 0 ? '+' : '−') + din(Math.abs(c.dif)));
     }
     if (!pct && !partes.length) return '';
-    return '<div class="tb-arriba">' + (pct ? '<b>' + esc(pct) + '</b>' : '') + (partes.length ? (pct ? ' · ' : '') + 'Desde la versión anterior: ' + esc(partes.join(' · ')) + '.' : '') + '</div>';
+    // V1.53b · el motor compara contra el último machote GUARDADO (`c.version_antes`); lo dice con su número.
+    var contra = on('pantalla_v153') && c && c.version_antes ? 'Contra la versión guardada v' + c.version_antes + ': ' : 'Desde la versión anterior: ';
+    return '<div class="tb-arriba">' + (pct ? '<b>' + esc(pct) + '</b>' : '') + (partes.length ? (pct ? ' · ' : '') + contra + esc(partes.join(' · ')) + '.' : '') + '</div>';
   }
 
   /** La tarjeta de la tabla del machote. `o`: { analisis, folio }. */
@@ -88,16 +93,24 @@
       }).join('');
       return '<tr class="tb-s"><td><button type="button" class="tb-ex" data-tb-ab="' + i + '" aria-expanded="' + ab + '"' + (g.length ? '' : ' disabled') + '><span class="tb-chev">▸</span><span class="tb-n">' + esc(s.nombre) +
         (s.sin_precio ? ' <span class="mal">· ' + s.sin_precio + ' sin precio</span>' : '') + '</span></button></td>' +
-        '<td class="n">' + din(s.costo) + '</td><td class="n"><b>' + din(s.precio) + '</b><small class="mg">margen ' + pc(s.margen) + '</small></td><td class="n mg4">' + pc(s.margen) + '</td></tr>' + sub;
+        '<td class="n">' + din(s.costo) + '</td><td class="n"><b>' + din(s.precio) + '</b>' + (on('pantalla_v153') && s.decreto ? '<small class="mg">por decreto (' + esc(decDe(s)) + ')</small>' : '') + '<small class="mg">margen ' + pc(s.margen) + '</small></td><td class="n mg4">' + pc(s.margen) + '</td></tr>' + sub;
     }).join('');
     var sumaSec = (M.secciones || []).reduce(function (a, s) { return a + Math.round(Number(s.precio) * 100); }, 0) / 100;
     var redondeo = Math.abs(sumaSec - Number(M.precio)) >= 0.005;
+    /* V1.53b (`pantalla_v153`, #6 20:43) · sin textos que se contradigan: «Precio por decreto» cuando la sección lo trae, la comisión
+     * que de verdad lleva (0 % con excepción) y el total de Odoo (renglones al peso hacia arriba) dicho una vez. */
+    var V153 = on('pantalla_v153'), dec = (M.secciones || []).filter(function (s) { return s.decreto; }).map(decDe);
+    var cabPrecio = V153 && dec.length ? (dec.length === (M.secciones || []).length ? 'Precio por decreto' : 'Precio') : 'Precio al ' + Math.round((M.margen_objetivo || 0.4) * 100) + ' %';
+    var comF = V153 ? (M.comision_fts != null ? Number(M.comision_fts) : 0.055) : (M.comision_fts || 0.055);
+    var alPeso = (M.secciones || []).reduce(function (a, s) { return a + Math.ceil(Number(s.precio) - 1e-9); }, 0);
+    var notaOdoo = V153 && Math.abs(alPeso - Number(M.precio)) >= 0.005 ? ' En la cotización de Odoo cada renglón va redondeado al peso hacia arriba: total ' + din(alPeso) + '.' : '';
+    var notaDec = V153 && dec.length ? ' Precio por decreto (' + dec.join(', ') + ')' + (dec.length < (M.secciones || []).length ? '; el resto al ' + Math.round((M.margen_objetivo || 0.4) * 100) + ' %' : '') + '.' : '';
     return '<div class="carta tb-carta"><h4>📐 Así quedó' + (o.folio ? ' ' + esc(o.folio) : ' el machote') + '</h4>' + lineaArriba(M, o.analisis) +
-      '<table class="tb"><thead><tr><th>Sección</th><th>Costo</th><th>Precio al ' + Math.round((M.margen_objetivo || 0.4) * 100) + ' %</th><th class="mg4">Margen</th></tr></thead><tbody>' + filas + '</tbody>' +
+      '<table class="tb"><thead><tr><th>Sección</th><th>Costo</th><th>' + esc(cabPrecio) + '</th><th class="mg4">Margen</th></tr></thead><tbody>' + filas + '</tbody>' +
       '<tfoot><tr><td>Total</td><td class="n">' + din(M.costo) + '</td><td class="n">' + din(M.precio) + '<small class="mg">margen ' + pc(M.margen) + '</small></td><td class="n mg4">' + pc(M.margen) + '</td></tr></tfoot></table>' +
       ((M.opciones || []).length ? '<p class="nota">Aparte (el cliente escoge una): ' + M.opciones.map(function (x) { return esc(x.nombre) + ' ' + (Number(x.precio) > 0 ? din(x.precio) : 'sin precio todavía'); }).join(' · ') + '</p>' : '') +
-      '<p class="nota">Margen después de la comisión FTS ' + ((M.comision_fts || 0.055) * 100).toFixed(1) + ' %' + (M.comision_total ? ' (' + din(M.comision_total) + ')' : '') + '. Calculado con el motor del machote de la suite (calc.js ' + esc((M.calc && M.calc.version) || '') + ')' +
-        (redondeo ? '; la suma de las secciones da ' + din(sumaSec) + ' por redondeo al centavo' : '') + '. Toca una sección para ver materiales, servicios, mano de obra y viaje.</p></div>';
+      '<p class="nota">' + notaDec + (notaDec ? ' ' : '') + 'Margen después de la comisión FTS ' + (comF * 100).toFixed(1) + ' %' + (V153 && comF === 0 ? ' (excepción autorizada)' : '') + (M.comision_total ? ' (' + din(M.comision_total) + ')' : '') + '. Calculado con el motor del machote de la suite (calc.js ' + esc((M.calc && M.calc.version) || '') + ')' +
+        (redondeo ? '; la suma de las secciones da ' + din(sumaSec) + ' por redondeo al centavo' : '') + '.' + notaOdoo + ' Toca una sección para ver materiales, servicios, mano de obra y viaje.</p></div>';
   }
 
   /** El BOM colapsado con los filtros. Renglones de materiales, servicios y viaje (la mano de obra va en la tabla). */
