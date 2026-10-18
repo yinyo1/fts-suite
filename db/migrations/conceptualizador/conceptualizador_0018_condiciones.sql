@@ -322,7 +322,8 @@ BEGIN
   IF v_modo = 'hilo' AND coalesce((v_r->>'ok')::boolean, false) AND conceptualizador.prendido('condiciones_caso') THEN
     v_caso := conceptualizador.a_uuid(p->>'caso_id');
     IF v_caso IS NOT NULL AND EXISTS (SELECT 1 FROM conceptualizador.condicion_propuesta WHERE caso_id = v_caso) THEN
-      v_r := v_r || jsonb_build_object('condiciones', conceptualizador.condiciones_de(v_caso), 'condiciones_listas', conceptualizador.condiciones_listas(v_caso));
+      -- Dentro de `hilo` (la pantalla lee r.hilo).
+      v_r := jsonb_set(v_r, ARRAY['hilo'], coalesce(v_r->'hilo', '{}'::jsonb) || jsonb_build_object('condiciones', conceptualizador.condiciones_de(v_caso), 'condiciones_listas', conceptualizador.condiciones_listas(v_caso)));
     END IF;
   END IF;
   RETURN v_r;
