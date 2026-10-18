@@ -2363,7 +2363,9 @@
         ((a.tipo === 'crear_machote' && a.id === ultimoCm) || a.tipo === 'crear_borrador' ? referenciasHtml(d.referencias, a.tipo === 'crear_borrador' && a.estado === 'propuesta', d.sensatez) + sensatezHtml(d.sensatez) : '') +
         (a.estado === 'hecha' ? '<span class="hecho">✓ ' + esc(r.texto || 'Hecho') + '</span>' + releidoOdoo(r) +
           // V1.51 · Frente 3: «Ver cotización» bajo el último borrador (cz-visor.js, prototipo aprobado), con lo que cambió.
-          (a.tipo === 'crear_borrador' && G.CzVisor && r.orden_id && a.id === ultimoBorrador() ? G.CzVisor.boton(ST.hilo) : '') :
+          (a.tipo === 'crear_borrador' && G.CzVisor && r.orden_id && a.id === ultimoBorrador() ? G.CzVisor.boton(ST.hilo) : '') +
+          // V1.54 E3 (`enviar_cliente`) · PDF de Odoo, descargar y enviar al cliente (cz-enviar.js). Apagado: nada.
+          (a.tipo === 'crear_borrador' && G.CzEnviar && r.orden_id && a.id === ultimoBorrador() ? G.CzEnviar.botones(ST.hilo) : '') :
          a.estado === 'descartada' ? '<span class="hecho gris">' + ((r.reemplazada_por_trabajo) ? 'Reemplazado por una propuesta más nueva' : 'Descartado') + '</span>' :
          espera ? '<p class="nota">Contesta primero las suposiciones pendientes: el machote se arma con lo que confirmes.</p>' :
          viejo ? '<p class="nota">Es de la versión anterior del machote: primero toca «' + esc(cmPend.titulo) + '».</p>' :
@@ -2507,6 +2509,7 @@
       bb.texto = L.length ? 'falta: ' + L.join(', ') : ''; pintarChat(); }; });
     GR.enlazar(M);
     if (G.CzTabla) G.CzTabla.enlazar(M, cambiarRenglon, pintarChat, machoteEnPopup);   // V1.48 · V1.54 E2 (popup)
+    if (G.CzEnviar) G.CzEnviar.enlazar(M, { caso: function () { return ST.hilo && ST.hilo.caso; }, repinta: function (recargar) { if (recargar) cargarHilo(); else pintarChat(); } });   // V1.54 E3
     $$('[data-vertodo]', M).forEach(function (b) { b.onclick = function () { (ST.verTodo = ST.verTodo || {})[b.dataset.vertodo] = true; pintarChat(); }; });
     var bl = $('#bListo', M); if (bl) bl.onclick = listoSigue;
     var be = $('#bEscribe', M); if (be) be.onclick = function () { var tq = trabajoQueContesta(); ST.abiertoReg = ST.abiertoReg === (tq && tq.id) ? null : (tq && tq.id); pintarChat(); };
@@ -3313,5 +3316,5 @@
   // V1.41 (cz-push.js) · al tocar un aviso: abrir ese caso, y «Adelante» con la confirmación de siempre (nunca dispara solo).
   abrirCaso: function (id) { return abrir({ id: id }); },
   disparo: function () { var m = modoDisparo(); if (!m) return toast('Esta sesión ya arrancó: no hay nada que confirmar.'); confirmarDisparo(m); },
-  _st: ST, nucleo: function () { return NUC; } };
+  _st: ST, nucleo: function () { return NUC; }, toast: function (t) { toast(t); } };
 })(window);

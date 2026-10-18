@@ -58,7 +58,7 @@
     var c = Object.assign({ token: token, modo: modo, ts: Date.now(), nonce: nonce() }, campos || {});
     try { c.firma = await firmar(token, canonica(c)); }
     catch (e) { return { ok: false, error: 'SIN_CRIPTO', clase: 'servidor', mensaje: 'Este navegador no puede firmar el pedido.' }; }
-    var r = await transportar(RUTA, JSON.stringify(c), opc.timeout || TIMEOUT_MS, opc.progreso);
+    var r = await transportar(opc.ruta || RUTA, JSON.stringify(c), opc.timeout || TIMEOUT_MS, opc.progreso);
     r = r || { ok: false, error: 'RESPUESTA_VACIA' };
     if (r.code === 404 && r.ok === undefined) r = { ok: false, error: 'NO_PUBLICADO', mensaje: 'El servicio del conceptualizador todavía no está encendido en n8n.' };
     r.clase = clase(r);
@@ -120,6 +120,8 @@
     nueva: function (campos) { return pedir('nueva', campos); },
     subir: function (campos, progreso) { return pedir('subir', campos, { timeout: TIMEOUT_SUBIR_MS, progreso: progreso }); },
     enviar: function (campos) { return pedir('enviar', campos); },
+    // V1.54 E3 · conceptualizador/cotizacion-cliente, firmado igual que el chat: ver | preparar | enviar.
+    cotizacion: function (modo, campos) { return pedir(modo, campos, { ruta: '/webhook/conceptualizador/cotizacion-cliente', timeout: 60000 }); },
     evento: function (campos) { return pedir('evento', campos); },
     accion: function (campos) { return pedir('accion', campos); },
     verAdjunto: function (id) { return pedir('ver_adjunto', { adjunto_id: id }, { timeout: TIMEOUT_SUBIR_MS }); },
