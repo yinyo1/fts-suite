@@ -189,6 +189,8 @@
   function releido(r) {
     var base = (r.renglones || []).filter(function (x) { return x.tipo === 'linea'; });
     return { orden_id: r.odoo_so_id, orden_nombre: r.odoo_so_name || null, estado: r.estado || null, partner: r.partner || null,
+      // V1.53b.1 (#6) · el RFC del cliente: orden-odoo ya lo trae (`rfc`, el `vat` del partner leído de Odoo); antes no se guardaba.
+      partner_vat: r.rfc || r.partner_vat || null,
       lista_precios: r.lista_precios || null, moneda: r.moneda || null, subtotal: r.subtotal, total: r.total, vence_el: r.vence_el || null,
       renglones: base.map(function (x) { return { texto: x.texto, precio: x.precio }; }),
       opcionales: (r.renglones || []).filter(function (x) { return x.tipo === 'line_note' && /no incluido en el total|not included in the total/.test(x.texto || ''); }).map(function (x) { return x.texto; }),
@@ -324,5 +326,5 @@
 
   G.CzAcciones = { crear_machote: crearMachote, crear_borrador: crearBorrador, alta_contacto: altaContacto, enviada: enviada,
     pendientes: pendientes, textoPendientes: textoPendientes, permiso: permiso, ordenDe: ordenDe,
-    _pdfCliente: pdfCliente, _bloques: bloques };
+    _pdfCliente: pdfCliente, _bloques: bloques, _releido: releido };
 })(window);

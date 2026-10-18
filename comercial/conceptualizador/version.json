@@ -1,6 +1,11 @@
 {
-  "version": "V1.53b",
+  "version": "V1.53b.1",
   "historial": [
+    {
+      "version": "V1.53b.1",
+      "fecha": "2026-10-18",
+      "nota": "El visor de la cotización muestra el RFC del cliente (con pantalla_v153): la orden de Odoo ya lo traía y la pantalla no lo guardaba. Respuesta 4 de Esteban en fts-conceptualizador#6."
+    },
     {
       "version": "V1.53b",
       "fecha": "2026-10-18",
