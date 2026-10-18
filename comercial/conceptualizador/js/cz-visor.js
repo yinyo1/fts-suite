@@ -212,8 +212,8 @@
     h += '<header class="vco-h-cab"><div class="vco-logo"><i>FTS</i></div><div class="vco-emp"><b>' + esc(emp.nombre) + '</b>' + esc(emp.lugar) + '</div></header>';
     if (on('pantalla_v153')) {
       cssV153();
-      // V1.53b (#6, punto 11) · datos fiscales de FTS y del cliente, y quién cotiza. El RFC del cliente sale del read-back de
-      // Odoo cuando lo traiga (`resultado.partner_vat`); mientras, su nombre como está en Odoo.
+      // V1.53b (#6, punto 11) · datos fiscales de FTS y del cliente, y quién cotiza. El RFC del cliente sale de lo que releyó
+      // orden-odoo (`resultado.partner_vat`, V1.53b.1); en una orden guardada antes, su nombre como está en Odoo.
       // Un nombre, nunca el usuario: «Esteban De La Cruz» si la base lo trae; si no, el nombre de pila del usuario («Esteban»).
       var cs = (hilo && hilo.caso) || {}, an = String(cs.autor_nombre || '').trim(), pila = String(cs.autor || '').split('.')[0];
       var quien = /\s/.test(an) ? an : pila ? pila.charAt(0).toUpperCase() + pila.slice(1) : '';
