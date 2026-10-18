@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.54';
+  var VERSION = 'V1.55';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -3156,7 +3156,7 @@
     var ALC = { universal: 'todos', pais: 'el país', autor: 'tú', tipo_trabajo: 'tipo de trabajo', cliente: 'cliente', ciudad: 'ciudad' };
     var criterio = function (i) {
       var est = i.estado || (i.casos >= 3 ? 'regla' : 'observación');
-      return '<div class="lec cri"><span class="al">' + esc(est) + '</span> <span class="al">' + esc((ALC[i.alcance] || i.alcance || '') + (i.dueno ? ': ' + i.dueno : '')) + '</span> ' + md(i.valor || '') +
+      return '<div class="lec cri"><span class="al">' + esc(est) + '</span> <span class="al">' + esc(i.alcance === 'autor' ? (i.persona && i.persona !== yo() ? 'de ' + nombreCorto(i.persona) : 'tú') : (ALC[i.alcance] || i.alcance || '') + (i.dueno ? ': ' + i.dueno : '')) + '</span> ' + md(i.valor || '') +
         '<div class="org">' + (i.condicion ? 'Cuándo aplica: ' + esc(i.condicion) + ' · ' : '') + 'Origen: ' + esc(i.origen_caso || '—') + ' · ' + (i.casos || 0) + ' casos' +
         (i.sostenido ? ' · sostenido ' + i.sostenido : '') + (i.corregido ? ' · corregido ' + i.corregido : '') + (i.confianza ? ' · confianza ' + esc(i.confianza) : '') + '</div>' +
         '<button class="boton" data-solo="' + esc(i.id) + '" data-origen="' + esc(i.origen_caso || '') + '">↺ Esto era solo de ese caso</button></div>';

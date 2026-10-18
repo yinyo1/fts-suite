@@ -1,6 +1,11 @@
 {
-  "version": "V1.54",
+  "version": "V1.55",
   "historial": [
+    {
+      "version": "V1.55",
+      "fecha": "2026-10-18",
+      "nota": "Tarjetas que ya no piden nada se cierran (cierre_tarjetas), menos texto repetido (menos_texto), ligas con foto y verificadas (ligas_v155), ficha del cliente en Odoo (ficha_cliente) y «Aprendió» con criterios de tus decisiones (aprende_v155), fts-conceptualizador#12. Todo apagado: con los interruptores en 0 la pantalla es la V1.54."
+    },
     {
       "version": "V1.54",
       "fecha": "2026-10-18",

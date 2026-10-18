@@ -341,7 +341,7 @@
       };
       C.ficha('buscar', f).then(function (r) {
         var bus = document.getElementById('fBus'), acc = document.getElementById('fAcc'); if (!bus || !acc) return;
-        if (!r.ok) { bus.textContent = 'No se pudo buscar en Odoo: ' + (r.mensaje || r.error || 'error') + '. No se escribe nada.'; return; }
+        if (!r.ok) { bus.textContent = 'No se pudo buscar en Odoo: ' + String(r.mensaje || r.error || 'error').replace(/[.\s]+$/, '') + '. No se escribe nada.'; return; }
         var L = r.candidatos || [], fuerte = L.filter(function (x) { return x.por === 'rfc' || x.por === 'alias'; })[0], POR = { rfc: 'el RFC', alias: 'el alias conocido', nombre: 'nombre parecido' };
         bus.innerHTML = !L.length ? 'No hay ninguna empresa con ese RFC ni con ese nombre en Odoo: se crea una nueva.' :
           '<b>Ya existe en Odoo:</b><ul>' + L.slice(0, 4).map(function (x) { return '<li><label><input type="radio" name="fPar" value="' + esc(x.id) + '"' + (x === (fuerte || L[0]) ? ' checked' : '') + '> ' +
