@@ -1,6 +1,11 @@
 {
-  "version": "V1.53b.1",
+  "version": "V1.53c",
   "historial": [
+    {
+      "version": "V1.53c",
+      "fecha": "2026-10-18",
+      "nota": "Pantalla sobre el núcleo de chat (fts-conceptualizador#11 E4), detrás del interruptor nucleo_chat (apagado): el conceptualizador se monta con ChatNucleo.crear en modo marco (el DOM y el look son de shared/chat; la conducta sigue igual) y el núcleo gana el popup superpuesto que usan el machote y la cotización. Apagado = V1.53b.1."
+    },
     {
       "version": "V1.53b.1",
       "fecha": "2026-10-18",

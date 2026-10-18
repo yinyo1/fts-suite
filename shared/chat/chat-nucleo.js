@@ -22,6 +22,15 @@
  *   N.mensajes(lista, { escribiendo: { texto, pasos: [{ t, s }] }, vacio })      // ver «mensaje» abajo
  *   N.chat() / N.lista() · N.pagina({ titulo, sub, atras, mas }) → el elemento de la página (formularios del producto)
  *   N.toast(t) · N.grabar() · N.escribir(t) · N.salida(itemsDeLaCola) · N.listaChat (ChatLista) · N.pieLista(html)
+ *   N.modal({ titulo, html, ancho, alCerrar }) → { el, cuerpo, cerrar }   // V1.54 · popup superpuesto (80 % en PC, casi completo en teléfono)
+ *
+ *   V1.53c (fts-conceptualizador#11 E4) · MODO MARCO, para un producto que ya trae su conducta (el conceptualizador):
+ *     ChatNucleo.crear(raiz, { marco: true, producto, vacioChat, placeholder, ranuras: { arriba, abajo, fijo }, fuera })
+ *     El núcleo arma el DOM y el look (lista, encabezado, franja, mensajes, ⇊, botón fijo, barra de escribir, velo y avisos)
+ *     y NO engancha conducta: ni lista, ni clics en los mensajes, ni la barra de escribir, ni «Leer más» ni la bolita; los
+ *     pone el producto sobre los mismos ids. `ranuras.arriba` va entre la franja y los mensajes; `ranuras.abajo`, entre la
+ *     flecha ⇊ y el botón fijo; `ranuras.fijo` es el contenido inicial del botón fijo; `fuera` va en la capa de avisos (sus
+ *     hojas y modales heredan el look). El clip y la cámara traen id (#lArch, #lCam). N.modal y N.toast funcionan igual.
  *
  * Un mensaje: { id, rol: 'yo'|'el'|'sistema', quien, texto, md, intro, at, llego_at, estado: 'enviado'|'recibido'|'leido'|'error'|
  *   'pendiente'|'enviando'|'subiendo', progreso, error, adjuntos: [{ id | local, clase, nombre, bytes, duracion_s, transcripcion, blob }],
@@ -53,8 +62,9 @@
     '@media(min-width:900px){:where(.chn-cz).app:not(.ver-chat) .chat::before{content:attr(data-vacio)}}',
     ':where(.chn-cz) .chn-franja{flex-shrink:0;background:var(--chn-sup);border-bottom:1px solid var(--chn-linea)}:where(.chn-cz) .chn-franja:empty{display:none}',
     ':where(.chn-cz) .chn-lado{display:none}',
-    '@media(min-width:900px){.chn-cz.con-lado .chat>*:not(#ch):not(.chg-barra):not(.chn-lado):not(.abajo){margin-right:300px}.chn-cz.con-lado .abajo{right:312px}',
-    '.chn-cz.con-lado .chn-lado{display:block;position:absolute;top:var(--chn-cab);right:0;bottom:0;width:300px;border-left:1px solid var(--chn-linea);background:var(--chn-sup);overflow-y:auto;z-index:4;padding:12px 16px}}',
+    // V1.53c · en modo marco (.chn-marco) el panel lateral es del producto (su #avance): el núcleo no corre nada ni pinta el suyo.
+    '@media(min-width:900px){.chn-cz:not(.chn-marco).con-lado .chat>*:not(#ch):not(.chg-barra):not(.chn-lado):not(.abajo){margin-right:300px}.chn-cz:not(.chn-marco).con-lado .abajo{right:312px}',
+    '.chn-cz:not(.chn-marco).con-lado .chn-lado{display:block;position:absolute;top:var(--chn-cab);right:0;bottom:0;width:300px;border-left:1px solid var(--chn-linea);background:var(--chn-sup);overflow-y:auto;z-index:4;padding:12px 16px}}',
     '@media(min-width:900px) and (max-width:1279px){.chn-cz.con-lado.ver-chat #lista{display:none!important}.chn-cz.con-lado.ver-chat #ch .vuelve{display:flex}}',
     // sistema con tono · etiquetas con tono · insignia del avatar
     ':where(.chn-cz) .sis.rojo span{background:#fff1f0;color:#8a1c14}:where(.chn-cz) .sis.azul span{background:#e3eefa;color:#1d4f8a}',
@@ -85,6 +95,16 @@
     ':where(.chn-cz) #fijo .chn-fijo-in button{flex-shrink:0;white-space:nowrap}:where(.chn-cz) #fijo button.fuerte{background:var(--chn-acento-osc);color:#fff;border-color:var(--chn-acento-osc)}',
     ':where(.chn-cz) .chn-pie-lista{padding:6px 14px 14px;font-size:12px;color:var(--chn-ter);text-align:center}:where(.chn-cz) .chn-pie-lista:empty{display:none}',
     ':where(.chn-cz) #lista .chl{background:transparent}',
+    // V1.53c · con la barra inferior del núcleo (ChatWA.barra), el marco cede sus 32 px (solo en teléfono, como el producto)
+    'body.con-barra .chn{height:calc(100dvh - 32px)}body.con-barra:has(.chwa-barra[hidden]) .chn{height:100dvh}@media(min-width:900px){body.con-barra .chn{height:100dvh}}',
+    // V1.54 · popup superpuesto (machote, vista previa del correo, PDF): 80 % de la pantalla en PC, casi completa en teléfono
+    '.chn-modal{position:fixed;inset:0;z-index:210;background:rgba(11,20,26,.45);display:flex;align-items:center;justify-content:center;padding:max(10px,env(safe-area-inset-top)) 10px max(10px,env(safe-area-inset-bottom))}',
+    '.chn-modal-c{background:#fff;color:#111b21;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.28);width:min(80vw,1200px);height:80vh;display:flex;flex-direction:column;overflow:hidden;font-family:Roboto,"Segoe UI",system-ui,-apple-system,sans-serif}',
+    '@media(max-width:759px){.chn-modal{padding:6px}.chn-modal-c{width:100%;height:calc(100dvh - 12px);border-radius:12px}}',
+    '.chn-modal-cab{display:flex;align-items:center;gap:6px;min-height:52px;padding:0 6px 0 16px;border-bottom:1px solid #e7e3dd;flex-shrink:0}',
+    '.chn-modal-cab b{flex:1;min-width:0;font-size:16.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.chn-modal-x{width:44px;height:44px;border-radius:50%;border:0;background:none;color:#3b4a54;font-size:22px;line-height:1;cursor:pointer;flex-shrink:0}.chn-modal-x:hover{background:rgba(11,20,26,.06)}',
+    '.chn-modal-cu{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}',
     // V1.53b (#6) · la bolita «+» redonda (también Marketing): el texto queda como nombre accesible y como aviso al pasar el mouse
     // «Leer más» / «Leer menos»: pegado al final del texto, verde WhatsApp y negrita, mismo tamaño, sin subrayado ni fondo
     // bolita de acciones sugeridas: arriba del micrófono; con la flecha ⇊ a la vista, se sube arriba de ella
@@ -166,6 +186,23 @@
     return { poner: function (lista, o2) { L = lista || []; if (o2) op = Object.assign({}, op0 || {}, o2); pintar(); }, abierta: function () { return ab; }, n: function () { return L.length; } };
   }
 
+  /** V1.54 · popup superpuesto con ✕ (Esc y tocar fuera también cierran). Devuelve { el, cuerpo, cerrar }. */
+  function modal(op) {
+    op = op || {}; cssPiezas(); if (!document.getElementById('chn-css')) { var s0 = document.createElement('style'); s0.id = 'chn-css'; s0.textContent = CSS; document.head.appendChild(s0); }
+    var f = document.createElement('div'); f.className = 'chn-modal' + (op.marca ? ' ' + op.marca : ''); f.setAttribute('role', 'dialog'); f.setAttribute('aria-modal', 'true');
+    f.innerHTML = '<div class="chn-modal-c"' + (op.ancho ? ' style="width:min(' + esc(op.ancho) + ',100%)"' : '') + '><div class="chn-modal-cab"><b>' + esc(op.titulo || '') + '</b>' + (op.cabecera || '') +
+      '<button type="button" class="chn-modal-x" data-chn="modal-x" aria-label="Cerrar">✕</button></div><div class="chn-modal-cu"></div></div>';
+    var cu = f.querySelector('.chn-modal-cu'); if (op.html != null) cu.innerHTML = op.html;
+    (op.dentro || document.body).appendChild(f);
+    var cerrado = false;
+    function cerrar() { if (cerrado) return; cerrado = true; f.remove(); document.removeEventListener('keydown', tecla); if (op.alCerrar) op.alCerrar(); }
+    function tecla(e) { if (e.key === 'Escape') cerrar(); }
+    document.addEventListener('keydown', tecla);
+    f.addEventListener('click', function (e) { if (e.target === f || (e.target.closest && e.target.closest('[data-chn="modal-x"]'))) cerrar(); });
+    var x = f.querySelector('[data-chn="modal-x"]'); if (x) x.focus();
+    return { el: f, cuerpo: cu, cerrar: cerrar };
+  }
+
   function attrs(a) { return Object.keys(a || {}).map(function (k) { return ' ' + k + '="' + esc(a[k]) + '"'; }).join(''); }
   function etiquetas(L) { return (L || []).map(function (e) { return '<span class="chn-et ' + esc(e.tono || '') + '">' + esc(e.texto) + '</span>'; }).join(''); }
   function avatar(a) { a = a || {}; return '<div class="av" style="background:' + esc(a.color || '#8696a0') + '">' + esc(a.texto || '?') +
@@ -183,24 +220,32 @@
     Z.ponerCss();
     if (!document.getElementById('chn-css')) { var s = document.createElement('style'); s.id = 'chn-css'; s.textContent = CSS; document.head.appendChild(s); }
     cssPiezas();
-    var ST = Z.ST, pag = document.getElementById(o.pagina || 'vista');
+    var ST = Z.ST, pag = document.getElementById(o.pagina || 'vista'), R = o.ranuras || {};
     ST.verAdjunto = o.verAdjunto; ST.toast = toast;
     raiz.classList.add('chn');
-    raiz.innerHTML = '<div class="app chn-cz" id="app"><aside id="lista"><div class="cab" id="lcab"></div><div class="scroll"><div id="lchl"></div><div class="chn-pie-lista" id="lpie"></div></div>' +
+    raiz.innerHTML = '<div class="app chn-cz' + (o.marco ? ' chn-marco' : '') + '" id="app"><aside id="lista"><div class="cab" id="lcab"></div><div class="scroll"><div id="lchl"></div><div class="chn-pie-lista" id="lpie"></div></div>' +
       (o.fab ? '<button class="fab nueva chn-mas" id="bNueva"' + attrs(Object.assign({ 'aria-label': o.fab.texto, title: o.fab.texto }, o.fab.attrs)) + '>' + ico('nuevo') + '</button>' : '') + '</aside>' +
       '<section class="chat" data-vacio="' + esc(o.vacioChat || 'Elige una conversación.') + '"><header class="cab" id="ch"></header><div class="chn-franja" id="chnFranja"></div>' +
-      '<div id="msgs"></div><div class="chn-lado" id="chnLado"></div><button class="abajo" id="bAbajo" type="button" aria-label="Ir al último mensaje">' + ico('abajo2') +
-      '<span class="badge" id="nAbajo" style="display:none"></span></button><div class="chn-acc" id="chnAcc"></div><div id="fijo"></div>' +
-      '<div class="compose"><div class="caja"><label class="btn-ic" title="Adjuntar fotos, PDFs o audios" aria-label="Adjuntar">' + ico('clip') +
-      '<input type="file" id="fArch" multiple hidden accept="image/*,application/pdf,audio/*,.doc,.docx,.xls,.xlsx,.csv,.txt"></label>' +
+      (R.arriba || '') + '<div id="msgs"></div>' + (o.marco ? '' : '<div class="chn-lado" id="chnLado"></div>') + '<button class="abajo" id="bAbajo" type="button" aria-label="Ir al último mensaje">' + ico('abajo2') +
+      '<span class="badge" id="nAbajo" style="display:none"></span></button>' + (R.abajo || '') + '<div class="chn-acc" id="chnAcc"></div><div id="fijo">' + (R.fijo || '') + '</div>' +
+      '<div class="compose"><div class="caja"><label class="btn-ic" title="Adjuntar fotos, PDFs o audios" aria-label="Adjuntar" id="lArch">' + ico('clip') +
+      '<input type="file" id="fArch" multiple hidden accept="' + esc(o.acepta || 'image/*,application/pdf,audio/*,.doc,.docx,.xls,.xlsx,.csv,.txt') + '"></label>' +
       '<textarea id="in" rows="1" placeholder="' + esc(o.placeholder || 'Mensaje') + '" maxlength="20000" aria-label="Mensaje"></textarea>' +
-      '<label class="btn-ic" title="Tomar foto" aria-label="Cámara">' + ico('camara') + '<input type="file" id="fCam" accept="image/*" capture="environment" multiple hidden></label></div>' +
+      '<label class="btn-ic" title="Tomar foto" aria-label="Cámara" id="lCam">' + ico('camara') + '<input type="file" id="fCam" accept="image/*" capture="environment" multiple hidden></label></div>' +
       '<div id="grab"></div><button class="redondo" id="bEnviar" data-b="mic" aria-label="Grabar nota de voz">' + ico('mic') + '</button></div></section>' +
       '</div><section class="chn-pag"><header class="chn-pcab" id="pcab"></header></section>' +
       // Fuera de .app (que se esconde en una página) pero dentro del alcance del look: avisos y velo.
-      '<div class="chn-cz chn-capa" style="display:contents"><div class="velo" id="velo"></div><div class="cz-toast" id="toast" role="status" aria-live="polite"></div></div>';
+      '<div class="chn-cz chn-capa" style="display:contents"><div class="velo" id="velo"></div><div class="cz-toast" id="toast" role="status" aria-live="polite"></div>' + (o.fuera || '') + '</div>';
     if (pag) raiz.querySelector('.chn-pag').appendChild(pag);
     var $ = function (s) { return raiz.querySelector(s); }, APP = $('.app'), M = $('#msgs'), TA = $('#in'), RD = $('#bEnviar');
+    // V1.53c · modo marco: el DOM y el look son del núcleo; la conducta la engancha el producto sobre los mismos ids.
+    if (o.marco) {
+      var tm = null;
+      return { raiz: raiz, marco: true, msgs: M, cabeceraEl: $('#ch'), pagEl: pag,
+        toast: function (t, ms) { var e = $('#toast'); e.textContent = t; e.classList.add('on'); clearTimeout(tm); tm = setTimeout(function () { e.classList.remove('on'); }, ms || 3400); },
+        modal: function (op) { return modal(Object.assign({ dentro: raiz.querySelector('.chn-capa') }, op)); },
+        franja: function (h) { $('#chnFranja').innerHTML = h || ''; } };
+    }
     var est = { cab: null, abajoN: 0, nEl: null, q: null, gz: null };
 
     var tt = null;
@@ -378,7 +423,8 @@
       salida: function (L) { ST.salida = (L || []).map(function (x) { return { archivos: x.archivos || [] }; }); },
       pieLista: function (h) { $('#lpie').innerHTML = h || ''; },
       irAbajo: function () { est.irAbajo = true; },
-      gestos: function () { return est.gz; }
+      gestos: function () { return est.gz; },
+      modal: function (op) { return modal(Object.assign({ dentro: raiz.querySelector('.chn-capa') }, op)); }
     };
     if (o.leerMas !== false) est.lm = LeerMas(M, { renglones: o.renglones || 5, alCambiar: actualizarAbajo });
     est.bolita = Bolita($('#chnAcc'), { alCambiar: actualizarAbajo });
@@ -391,5 +437,5 @@
     return N;
   }
 
-  G.ChatNucleo = { crear: crear, LeerMas: LeerMas, Bolita: Bolita, esc: esc, ico: ico, md: Z.md, hora: Z.hora, corto: Z.corto, separador: Z.separador, color: Z.color, iniciales: Z.iniciales, tick: tick };
+  G.ChatNucleo = { crear: crear, LeerMas: LeerMas, Bolita: Bolita, modal: modal, esc: esc, ico: ico, md: Z.md, hora: Z.hora, corto: Z.corto, separador: Z.separador, color: Z.color, iniciales: Z.iniciales, tick: tick };
 })(window);

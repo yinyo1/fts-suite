@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.53b.1';
+  var VERSION = 'V1.53c';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -107,7 +107,34 @@
    * menu_hoja y moneda_decreto. cz-avance, cz-acciones y cz-vista preguntan por G.CzInterruptor(nombre). */
   ST.int = {};
   function on(n) { return !!(ST.int && ST.int[n] === true); }
-  function ponInterruptores(r) { if (!r || !r.ok) return; var I = r.interruptores; ST.int = I && typeof I === 'object' && !Array.isArray(I) ? I : {}; }
+  function ponInterruptores(r) { if (!r || !r.ok) return; var I = r.interruptores; ST.int = I && typeof I === 'object' && !Array.isArray(I) ? I : {}; avisoNucleo(); }
+  /* V1.53c (fts-conceptualizador#11 E4) · `nucleo_chat`: la pantalla se monta sobre el núcleo de shared/chat (ChatNucleo.crear en
+   * modo marco: el DOM y el look son del núcleo; la conducta sigue aquí, sobre los mismos ids). El marco se decide ANTES de
+   * cargar los casos, así que se recuerda el último valor que dijo el servidor (comodidad de este aparato, apagado por omisión);
+   * si el servidor dice otra cosa, se guarda y se avisa «recarga». ?nucleo=1 / ?nucleo=0 lo fija a mano (pruebas). */
+  var NUC = null;
+  function quiereNucleo() {
+    try { var q = /[?&]nucleo=([01])\b/.exec(location.search); if (q) { localStorage.setItem('cz_nucleo_chat', q[1]); return q[1] === '1'; }
+      return localStorage.getItem('cz_nucleo_chat') === '1'; } catch (e) { return false; }
+  }
+  function avisoNucleo() {
+    if (!Object.prototype.hasOwnProperty.call(ST.int, 'nucleo_chat') || /[?&]nucleo=[01]/.test(location.search)) return;
+    var v = ST.int.nucleo_chat === true;
+    try { if ((localStorage.getItem('cz_nucleo_chat') === '1') !== v) localStorage.setItem('cz_nucleo_chat', v ? '1' : '0'); } catch (e) {}
+    if (v !== !!NUC && !ST.avisoNucleo) { ST.avisoNucleo = true; toast('Hay una versión nueva de la pantalla: recarga para verla.'); }
+  }
+  function montarNucleo() {
+    if (!G.ChatNucleo || !G.ChatNucleo.crear || !quiereNucleo()) return null;
+    ['app', 'velo', 'toast', 'rubHoja', 'modal', 'panel'].forEach(function (id) { var e = document.getElementById(id); if (e) e.remove(); });
+    var raiz = document.createElement('div'); raiz.id = 'raizNucleo'; document.body.insertBefore(raiz, document.body.firstChild);
+    var N = G.ChatNucleo.crear(raiz, { marco: true, producto: 'conceptualizador', vacioChat: 'Elige una cotización.',
+      acepta: 'image/*,application/pdf,audio/*,.doc,.docx,.xls,.xlsx,.csv,.txt,.dwg',
+      ranuras: { arriba: '<div id="senal"></div><div id="ciuF" role="status"></div><div id="avance" role="region" aria-label="Avance de la cotización"></div>',
+                 abajo: '<div id="bandeja"></div><div id="prep"></div><div id="estAg"></div><div id="czAcc"></div>', fijo: '<button id="bFijo" type="button"></button>' },
+      fuera: '<div class="rub-velo" id="rubHoja"></div><div class="modal" id="modal"></div><div class="panel" id="panel"></div>' });
+    document.body.classList.add('cz-nucleo');
+    return N;
+  }
   G.CzInterruptor = on;
 
   // ── iconos de línea (genéricos, los del prototipo) ─────────────────────
@@ -487,7 +514,7 @@
       { id: 'toca', texto: 'Me toca', al: function () { ST.meToca = true; volverALista(); pintarLista(); } },
       { id: 'mach', texto: 'Machotes', al: function () { location.href = '../machote/index.html'; } },
       { id: 'apr', texto: 'Aprendió', al: function () { verAprendio(); } }] });
-    var app = $('#app'); app.parentNode.insertBefore(ST.barra, app.nextSibling); document.body.classList.add('con-barra');
+    var app = NUC ? NUC.raiz : $('#app'); app.parentNode.insertBefore(ST.barra, app.nextSibling); document.body.classList.add('con-barra');   // V1.53c: después del marco
   }
   function itemIdioma() { return '<button data-a="idioma">' + ico('info', 's') + '<span>Idioma de las respuestas<small>' + IDIOMAS[idiomaElegido()][0] + ' · en todos tus casos</small></span></button>'; }
   function menuLista(btn) {
@@ -3193,7 +3220,8 @@
   function esCompu() { try { return !G.matchMedia('(pointer: coarse)').matches; } catch (e) { return innerWidth >= 900; } }
   G.CzApp = { VERSION: VERSION, arrancar: async function () {
     if (G.__ftsSinAcceso) return;
-    $('#lArch').insertAdjacentHTML('afterbegin', ico('clip')); $('#lCam').insertAdjacentHTML('afterbegin', ico('camara'));
+    NUC = montarNucleo();   // V1.53c · con el núcleo, el clip, la cámara y ⇊ ya traen su ícono
+    if (!NUC) { $('#lArch').insertAdjacentHTML('afterbegin', ico('clip')); $('#lCam').insertAdjacentHTML('afterbegin', ico('camara')); }
     // V1.51 · núcleo (shared/chat/chat-wa.js): «Instalar app», la explicación de los globitos y la barra inferior opcional.
     if (G.ChatWA) { G.ChatWA.instalar.escuchar(); G.ChatWA.enlazarGlobitos($('#lista')); montarBarra(); }
     revisarPanel();   // V1.52 · ¿panel_admin? (lo dice el servidor; sin esperar)
@@ -3256,7 +3284,7 @@
     $('#fCam').onchange = function () { agregarArchivos(this.files); this.value = ''; };
     G.addEventListener('online', function () { pintarSenal(); pintarCabecera(); revisarDictados(); });
     G.addEventListener('offline', function () { pintarSenal(); pintarCabecera(); });
-    $('#bAbajo').insertAdjacentHTML('afterbegin', ico('abajo2'));
+    if (!NUC) $('#bAbajo').insertAdjacentHTML('afterbegin', ico('abajo2'));
     $('#bAbajo').onclick = function () { var M = $('#msgs'); M.scrollTo({ top: M.scrollHeight, behavior: 'smooth' }); ST.abajoN = 0; };
     $('#msgs').addEventListener('scroll', actualizarAbajo, { passive: true });
     enlazarFranja();
@@ -3274,5 +3302,5 @@
   // V1.41 (cz-push.js) · al tocar un aviso: abrir ese caso, y «Adelante» con la confirmación de siempre (nunca dispara solo).
   abrirCaso: function (id) { return abrir({ id: id }); },
   disparo: function () { var m = modoDisparo(); if (!m) return toast('Esta sesión ya arrancó: no hay nada que confirmar.'); confirmarDisparo(m); },
-  _st: ST };
+  _st: ST, nucleo: function () { return NUC; } };
 })(window);
