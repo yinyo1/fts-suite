@@ -1,6 +1,11 @@
 {
-  "version": "V1.53c",
+  "version": "V1.54",
   "historial": [
+    {
+      "version": "V1.54",
+      "fecha": "2026-10-18",
+      "nota": "Condiciones de la cotización (tarjeta «Revisa las condiciones», detrás de condiciones_caso), tarjeta del machote en el chat (machote_chat), Ver / Descargar PDF de Odoo / Enviar al cliente (enviar_cliente) y la pantalla sobre el núcleo (nucleo_chat), fts-conceptualizador#11. Todo apagado: con los interruptores en 0 la pantalla es la V1.53b.2."
+    },
     {
       "version": "V1.53c",
       "fecha": "2026-10-18",
