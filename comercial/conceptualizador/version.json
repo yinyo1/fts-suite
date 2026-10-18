@@ -1,6 +1,11 @@
 {
-  "version": "V1.52.1",
+  "version": "V1.53a",
   "historial": [
+    {
+      "version": "V1.53a",
+      "fecha": "2026-10-18",
+      "nota": "Confiabilidad y tokens (fts-conceptualizador#6). Diez interruptores nuevos en el panel, todos apagados: bajar solo lo nuevo, contestar desde lo guardado, acciones sin modelo, robot quieto al 100 %, avisos y resumen V1.53, supuesto en USD, decretos en su destino, casos duplicados, «lo dijiste tú» en la vista y correo de salud de las 7:00. La tarjeta de pregunta con opciones (duplicado: avanzar / parar) lleva un botón por opción."
+    },
     {
       "version": "V1.52.1",
       "fecha": "2026-10-17",
