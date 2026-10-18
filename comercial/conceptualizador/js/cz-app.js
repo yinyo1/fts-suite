@@ -1253,6 +1253,8 @@
       h += R.lista.map(function (r) {
         var cls = r.estado === 'cerrado' ? ' cerrado' : r.estado === 'espera' ? ' espera' : '';
         var est = r.estado === 'cerrado' ? (r.id === 'fec' ? 'cerradas' : 'cerrado') : r.estado === 'espera' ? 'en espera' : (typeof r.pct === 'number' ? r.pct + ' %' : '');
+        // V1.55 (`cierre_tarjetas`, #12 D) · con tarjetas vivas adentro no dice «cerrado»: dice cuántas quedan (la misma cuenta del rayito).
+        if (on('cierre_tarjetas') && r.abiertas) est = plural(r.abiertas, 'abierta', 'abiertas');
         return '<button type="button" class="rub-fila' + cls + '" data-rub="' + esc(r.id) + '"><span class="rub-n"><b>' + esc(r.nombre) + '</b>' + barraRubro(r) + '</span><span class="rub-pct">' + esc(est) + '</span></button>';
       }).join('');
     } else h += '<div class="avl-nada">' + (av.oferta && av.oferta.estado === 'ofrecida' ? 'Los rubros salen cuando contestes la oferta.' : 'Los rubros salen cuando arranque con el machote.') + '</div>';
@@ -1355,7 +1357,8 @@
       else sub = plural(r.preguntas || 0, 'pregunta', 'preguntas') + ' · ' + plural(r.conceptos || 0, 'concepto', 'conceptos');
       if (env) sub = (env.tipo === 'cerrar' ? 'Confirmación enviada' : env.tipo === 'espera' ? 'En espera: enviado' : 'Reabrir: enviado') + ' · esperando al motor';
       h += '<button type="button" class="rub-fila' + (r.estado === 'cerrado' ? ' cerrado' : r.estado === 'espera' ? ' espera' : '') + '" data-rub="' + esc(r.id) + '"><span class="rub-n"><b>' + esc(r.nombre) +
-        (r.estado === 'cerrado' ? '<span class="rub-tag cerr">✓ cerrado</span>' : r.estado === 'espera' ? '<span class="rub-tag esp">en espera</span>' : '') + '</b><span class="rub-sub">' + esc(sub) + '</span>' + barraRubro(r) + '</span>' +
+        (r.estado === 'cerrado' ? '<span class="rub-tag cerr">✓ cerrado</span>' : r.estado === 'espera' ? '<span class="rub-tag esp">en espera</span>' :
+          on('cierre_tarjetas') && r.abiertas ? '<span class="rub-tag esp">' + esc(plural(r.abiertas, 'abierta', 'abiertas')) + '</span>' : '') + '</b><span class="rub-sub">' + esc(sub) + '</span>' + barraRubro(r) + '</span>' +
         '<span class="rub-pct">' + (r.estado === 'cerrado' ? '✓' : typeof r.pct === 'number' ? r.pct + ' %' : '') + '</span></button>';
     });
     var tit = 'Rubros ' + cerr + '/' + R.lista.length + ' · ' + (P ? G.CzAvance.textoPrecios(P) : 'Llevas ' + R.total_pct + ' %');
@@ -1817,10 +1820,21 @@
         if (U && U.trabajo_id === m.trabajo_id) aparte(tarjetasRespuesta(U));
         if (OFR && Number(OFR.trabajo_id) === Number(m.trabajo_id)) aparte(tarjetaOferta(OFR));
         // V1.40 · el resumen por rubro, una sola vez: bajo la respuesta más nueva del motor (trae el % al día).
-        if (RUB && H.ultima && ULT === Number(m.trabajo_id)) aparte(tarjetaRubros(RUB));
+        // V1.55 (`menos_texto`, #12 Mejora 4) · rubros y supuestos solo con «Dame los generales» o cuando CAMBIAN (lo dice el motor en
+        // `verifica.tarjetas`), y de supuestos solo lo nuevo («S19 nuevo · S4 cambió»). Apagado: bajo la respuesta más nueva, como antes.
+        var TJ = on('menos_texto') && H.ultima && H.ultima.verifica ? (H.ultima.verifica.tarjetas || null) : null;
+        if (RUB && H.ultima && ULT === Number(m.trabajo_id) && (!on('menos_texto') || (TJ && (TJ.rubros || TJ.generales)))) aparte(tarjetaRubros(RUB));
         // V1.43 · «Supuse esto»: lo deducible se asume con su fuente (viaja en cada respuesta); bajo la más nueva.
-        var SUP = (H.ultima && H.ultima.verifica && H.ultima.verifica.supuestos) || [];
-        if (SUP.length && ULT === Number(m.trabajo_id)) aparte(tarjetaSupuestos(SUP));
+        var SUP = supuestosVigentes(H);
+        if (SUP.length && ULT === Number(m.trabajo_id)) {
+          if (!on('menos_texto')) aparte(tarjetaSupuestos(SUP));
+          else if (TJ && (TJ.generales || (TJ.supuestos && TJ.supuestos.todos))) aparte(tarjetaSupuestos(SUP));
+          else if (TJ && TJ.supuestos && (TJ.supuestos.nuevos.length || TJ.supuestos.cambiados.length)) {
+            var nv = TJ.supuestos.nuevos, cb = TJ.supuestos.cambiados;
+            aparte(tarjetaSupuestos(SUP.filter(function (x) { return nv.indexOf(x.id) >= 0 || cb.indexOf(x.id) >= 0; }),
+              nv.map(function (x) { return x + ' nuevo'; }).concat(cb.map(function (x) { return x + ' cambió'; })).join(' · ')));
+          }
+        }
         // V1.53b · «Dame los generales» (de lo guardado, sin modelo): un bloque por tarjeta, colapsadas con su línea.
         var GEN = on('pantalla_v153') && H.ultima && H.ultima.verifica && H.ultima.verifica.generales;
         if (Array.isArray(GEN) && GEN.length && Number(H.ultima.trabajo_id) === Number(m.trabajo_id))
@@ -2201,8 +2215,15 @@
       return '<div class="' + (x.alerta ? 'sens-al' : 'sens-ok') + '">' + (x.alerta ? '⚠ <b>ALERTA</b> ' : '✓ ') + '<b>' + esc(x.seccion) + '</b>: ' + esc(x.cuenta).replace(/ %/g, '&nbsp;%') + '</div>'; }).join('') +
       '<span class="nota">Contra la venta parecida ya escalada; más de 50 % arriba o abajo es alerta.</span></div>';
   }
-  function tarjetaSupuestos(L) {
+  /** V1.55 · los supuestos vigentes: los de la respuesta más nueva, o (con `menos_texto`, que ya no los repite) los que trae el hilo. */
+  function supuestosVigentes(H) {
+    var v = H && H.ultima && H.ultima.verifica && H.ultima.verifica.supuestos;
+    if (Array.isArray(v) && v.length) return v;
+    return on('menos_texto') && H && Array.isArray(H.supuestos_vigentes) ? H.supuestos_vigentes : (v || []);
+  }
+  function tarjetaSupuestos(L, soloNuevo) {
     var puede = mia(ST.hilo && ST.hilo.caso), rs = resumenSupuestos(L);
+    if (soloNuevo) rs = { t: 'Supuse algo nuevo · ' + soloNuevo, s: rs.s };
     // V1.51 · colapsado por omisión; se abre solo si hay una corrección a medio escribir o enviándose.
     var activo = L.some(function (x) { var kk = 's:' + x.id; return (ST.borr[kk] || {}).abierto || ST.env[kk] || ST.errBt[kk]; });
     return '<div class="carta sup-carta">' + plegable('sup', '💡', esc(rs.t), esc(rs.s), '<p class="nota">No te lo pregunto: lo deduje. Si algo no va, cámbialo.</p>' + L.map(function (x) {
@@ -2316,17 +2337,25 @@
   function tarjetaAcciones(L) {
     var conj = L.filter(function (a) { return a.tipo === 'conjetura'; }), otras = L.filter(function (a) { return a.tipo !== 'conjetura'; }), h = '';
     if (conj.length) {
-      var pend = conj.filter(function (a) { return a.estado === 'propuesta'; }).length;
+      // V1.55 (`cierre_tarjetas`) · «faltan N» con la misma cuenta que la franja y el rayito (CzAvance.abiertas).
+      var pend = conj.filter(function (a) { return a.estado === 'propuesta' && !(G.CzAvance && G.CzAvance.yaNoPide(ST.hilo, a)); }).length;
       h += '<div class="carta"><h4>❓ Lo que supongo · confírmalo o corrígelo' + (pend ? ' · <span class="gris">faltan ' + pend + '</span>' : '') + '</h4>';
       var REP = reemplazosDe(ST.hilo), puede = mia(ST.hilo && ST.hilo.caso);
       conj.forEach(function (a) {
         var d = a.datos || {}, r = a.resultado || {}, kk = 'j:' + a.id, e = ST.env[kk], b = ST.borr[kk] || {};
         var rp = REP['conjetura:' + a.id], reab = !!ST.reab[kk] && a.estado !== 'propuesta', decidida = a.estado !== 'propuesta' && !reab;
+        // V1.55 (`cierre_tarjetas`, #12 D) · una tarjeta reemplazada (por chat o por una vista más nueva) o cerrada por el motor
+        // queda solo como registro, sin «Va / Corregir»: nunca se decide sobre algo viejo.
+        var noPide = on('cierre_tarjetas') && !!(G.CzAvance && G.CzAvance.yaNoPide(ST.hilo, a)), porMotor = on('cierre_tarjetas') && !!r.cerrada_por_motor;
+        if (noPide && !rp) noPide = 'vista';
+        if (noPide) decidida = true;
         h += '<div class="preg' + (rp ? ' reemplazada' : '') + (reab ? ' reabierta' : '') + '" data-preg="' + a.id + '"><p>' + esc(d.pregunta || a.titulo) + '</p>' + (d.conjetura ? '<div class="conj">Supongo: ' + (rp ? '<s>' + esc(d.conjetura) + '</s>' : esc(d.conjetura)) + (d.porque ? '<small> · ' + esc(d.porque) + '</small>' : '') + '</div>' : '') +
           (d.mueve ? '<div class="mueve">' + (/no mueve|sin estimar|^\s*mueve\b/i.test(d.mueve) ? '' : 'mueve ') + esc(d.mueve) + '</div>' : '') +
           (ST.vozCorr[kk] && a.estado === 'propuesta' ? '<span class="hecho corr">🎤 Corrección por voz ' + (ST.vozCorr[kk].decidido ? 'enviada' : 'en cola') + ' · se transcribe</span>' : '') +
           (reab ? '<p class="nota reab">↺ Reabierta: vale tu última decisión.' + (rp ? ' Hoy está: ' + esc(rp.vigente) + '.' : '') + '</p>' : '') +
-          (decidida && rp ? lineaReemplazo(rp) + (puede ? botonCambiar(kk) : '') :
+          (noPide === 'vista' || (porMotor && (r.motivo === 'vista_nueva' || r.motivo === 'superada')) ? '<span class="hecho gris">↺ Reemplazada por la vista más nueva de lo que voy a poner en Odoo · solo registro</span>' :
+           porMotor && r.motivo === 'reemplazo' && !rp ? '<span class="hecho repl">↺ Contestada por chat: ' + esc(r.valor || '') + '</span>' + (puede ? botonCambiar(kk) : '') :
+           decidida && rp ? lineaReemplazo(rp) + (puede && !(rp.vigente && /^\s*superad/i.test(rp.vigente)) ? botonCambiar(kk) : '') :
            decidida ? (a.estado === 'hecha' ? '<span class="hecho">✓ Confirmado</span>' : '<span class="hecho corr">✎ Corregido: ' + esc(r.correccion || '') + '</span>') + (puede ? botonCambiar(kk) : '') :
            b.abierto ? cajaRazon(kk, '¿Qué es lo correcto?', 'Mandar', false) :
            ST.vozCorr[kk] ? '' :
@@ -2342,7 +2371,7 @@
       h += (pend && !yaListo ? '<p class="nota">Cuando contestes todas, sigo con los conceptos.</p>' : '') + '</div>';
     }
     // Un machote o un borrador con suposiciones sin contestar saldría con números viejos.
-    var pendientes = ((ST.hilo && ST.hilo.acciones) || []).some(function (x) { return x.tipo === 'conjetura' && x.estado === 'propuesta'; });
+    var pendientes = ((ST.hilo && ST.hilo.acciones) || []).some(function (x) { return x.tipo === 'conjetura' && x.estado === 'propuesta' && !(G.CzAvance && G.CzAvance.yaNoPide(ST.hilo, x)); });
     // V1.36 · solo el machote más nuevo dice lo que falta: el de antes de actualizar ya no cuenta.
     var ultimoCm = (((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado !== 'descartada'; }).pop() || {}).id;
     var cmPend = ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'propuesta'; }).pop();
@@ -2577,7 +2606,7 @@
   function vigenteDe(objetivo) {
     var rp = reemplazosDe(ST.hilo)[objetivo]; if (rp) return rp.vigente;
     var ms = /^supuesto:(.+)$/.exec(objetivo);
-    if (ms) { var sp = ((ST.hilo && ST.hilo.ultima && ST.hilo.ultima.verifica && ST.hilo.ultima.verifica.supuestos) || []).filter(function (x) { return x.id === ms[1]; })[0]; return sp ? sp.vigente || sp.texto : ''; }
+    if (ms) { var sp = supuestosVigentes(ST.hilo).filter(function (x) { return x.id === ms[1]; })[0]; return sp ? sp.vigente || sp.texto : ''; }
     var m = /^conjetura:(.+)$/.exec(objetivo), a = m && accionPorId(m[1]); if (!a) return '';
     return a.estado === 'descartada' ? ((a.resultado || {}).correccion || '') : ((a.datos || {}).conjetura || '');
   }

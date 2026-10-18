@@ -34,6 +34,23 @@
   function specDelRobot(H) {
     return ((H && H.mensajes) || []).some(function (m) { return m && m.autor === 'motor-avance' && /\bBOM\b/.test(m.texto || '') && /machote/i.test(m.texto || ''); });
   }
+  /* V1.55 (`cierre_tarjetas`, fts-conceptualizador#12 D) · UN solo cálculo de «abiertas», el mismo que usa el motor
+   * (herramientas/motor/cierres-tarjetas.js): conjeturas `propuesta` que NO están ya contestadas por una corrección de chat
+   * (`verifica.reemplazos`) ni son una vista vieja de «Esto voy a poner en Odoo» (hay una más nueva). Lo usan la franja, el
+   * rayito, el rubro y la tarjeta; la base cierra esas mismas en su siguiente entrega. Apagado: todas las `propuesta`, como antes. */
+  function abiertas(H, rubro) {
+    var A = (H && H.acciones) || [], conj = A.filter(function (a) { return a.tipo === 'conjetura'; });
+    var ab = conj.filter(function (a) { return a.estado === 'propuesta'; });
+    if (intOn('cierre_tarjetas')) {
+      var R = {}; (((H && H.ultima && H.ultima.verifica && H.ultima.verifica.reemplazos) || [])).forEach(function (x) { if (x && x.objetivo) R[x.objetivo] = 1; });
+      var vistas = conj.filter(esVista).map(function (a) { return Number(a.id) || 0; }), ult = vistas.length ? Math.max.apply(null, vistas) : 0;
+      ab = ab.filter(function (a) { return !R['conjetura:' + a.id] && !(esVista(a) && Number(a.id) < ult); });
+    }
+    return rubro === undefined ? ab : ab.filter(function (a) { return a.datos && a.datos.rubro === rubro; });
+  }
+  function esVista(a) { return !!(a && a.tipo === 'conjetura' && a.datos && a.datos.campo === 'odoo.vista'); }
+  /** ¿Esta conjetura ya no pide nada aunque la base todavía diga `propuesta`? (reemplazada o vista vieja) */
+  function yaNoPide(H, a) { return !!(a && a.tipo === 'conjetura' && a.estado === 'propuesta' && intOn('cierre_tarjetas') && abiertas(H).indexOf(a) < 0); }
   /** caso + hilo → el estado de cada paso, el paso en que va, y el siguiente paso (UNO). */
   function avance(H) {
     var c = (H && H.caso) || {}, A = (H && H.acciones) || [];
@@ -41,7 +58,7 @@
     var conRes = [H && H.ultima, H && H.propuesta].filter(function (x) { return x && ((x.bom && Object.keys(x.bom).length) || x.machote); })[0] || {};
     var f = faltantes(H);
     var conj = A.filter(function (a) { return a.tipo === 'conjetura'; });
-    var conjAb = conj.filter(function (a) { return a.estado === 'propuesta'; }).length;
+    var conjAb = abiertas(H).length;
     var cs = P.conceptos || [];
     var dec = {}; ((H && H.eventos) || []).forEach(function (e) { if (e.concepto && (e.tipo === 'aceptar' || e.tipo === 'rechazar')) dec[e.concepto] = 1; });
     var sinDec = cs.filter(function (k) { return !dec[k.id]; }).length;
@@ -116,7 +133,7 @@
   var CLIC_PENDIENTE = ['conjetura', 'crear_machote', 'crear_borrador', 'enviada'];
   function cierrePosible(H) {
     if (((H && H.trabajos) || []).some(function (t) { return t.estado === 'pendiente' || t.estado === 'tomado'; })) return false;
-    return !((H && H.acciones) || []).some(function (a) { return a.estado === 'propuesta' && CLIC_PENDIENTE.indexOf(a.tipo) >= 0; });
+    return !((H && H.acciones) || []).some(function (a) { return a.estado === 'propuesta' && CLIC_PENDIENTE.indexOf(a.tipo) >= 0 && !yaNoPide(H, a); });
   }
   function intOn(n) { try { return !!(G.CzInterruptor && G.CzInterruptor(n)); } catch (e) { return false; } }
 
@@ -155,9 +172,17 @@
     var L = [H && H.ultima, H && H.propuesta];
     for (var i = 0; i < L.length; i++) {
       var r = L[i] && L[i].verifica && L[i].verifica.rubros;
-      if (r && Array.isArray(r.lista) && r.lista.length) return r;
+      if (r && Array.isArray(r.lista) && r.lista.length) return intOn('cierre_tarjetas') ? conAbiertas(H, r) : r;
     }
     return null;
+  }
+  /* V1.55 (#12 D) · un rubro no sale «cerrado» si le quedan tarjetas abiertas: sale abierto y dice cuántas. Es la misma cuenta
+   * de abiertas() (no la del motor de hace una respuesta), para que la franja, el rayito y el rubro digan lo mismo. */
+  function conAbiertas(H, r) {
+    return Object.assign({}, r, { lista: r.lista.map(function (x) {
+      var n = abiertas(H, x.id).length, y = Object.assign({}, x, { abiertas: n });
+      if (y.estado === 'cerrado' && n) { y.estado = 'abierto'; y.reabierto = true; }
+      return y; }) });
   }
   /* V1.45 (#4 punto 13) · los precios del machote, APARTE del avance: {con_precio, total, pct, n3, n4, alertas, sensatez}.
    * Los manda el motor en `verifica.precios` (y dentro de `verifica.rubros.precios`) cuando ya hay machote. */
@@ -199,10 +224,10 @@
     var K = (U.conceptos || []).filter(function (k) { return k.rubro === id; }).map(function (k) { return { k: k, d: dec[k.id] || null }; });
     var R = [].concat((B.materiales || []).map(function (m) { return { mo: false, r: m }; }), (B.mano_obra || []).map(function (m) { return { mo: true, r: m }; }))
       .filter(function (x) { return x.r && x.r.rubro === id; });
-    var abiertas = Q.filter(function (a) { return a.estado === 'propuesta'; }).length, sinDec = K.filter(function (x) { return !x.d; }).length;
+    var nAb = intOn('cierre_tarjetas') ? abiertas(H, id).length : Q.filter(function (a) { return a.estado === 'propuesta'; }).length, sinDec = K.filter(function (x) { return !x.d; }).length;
     var sinPrecio = R.filter(function (x) { return !conPrecio(x.r.importe) && !conPrecio(x.r.pu); }).length;
     var conocido = R.reduce(function (s, x) { var v = Number(x.r.importe); return s + (isFinite(v) && conPrecio(x.r.importe) ? v : 0); }, 0);
-    return { Q: Q, K: K, R: R, abiertas: abiertas, sinDec: sinDec, sinPrecio: sinPrecio, conocido: conocido };
+    return { Q: Q, K: K, R: R, abiertas: nAb, sinDec: sinDec, sinPrecio: sinPrecio, conocido: conocido };
   }
   /** La línea delgada de la franja colapsada: «44 % · Siguiente: Cerrar Mecánica». Sin rubros: el paso y el siguiente
    *  de avance() (sin %). `sig` es texto; `rojo` cuando el siguiente es la ciudad. */
@@ -226,6 +251,6 @@
              P: P, rubrosTxt: 'Rubros ' + cerr + '/' + R.lista.length, preciosTxt: textoPrecios(P) };
   }
 
-  G.CzAvance = { PASOS: PASOS, avance: avance, cierrePosible: cierrePosible, retomamos: retomamos, faltantes: faltantes, textoFaltantes: textoFaltantes, ultimaActividad: ultimaActividad,
+  G.CzAvance = { PASOS: PASOS, avance: avance, abiertas: abiertas, yaNoPide: yaNoPide, cierrePosible: cierrePosible, retomamos: retomamos, faltantes: faltantes, textoFaltantes: textoFaltantes, ultimaActividad: ultimaActividad,
                  rubros: rubros, delRubro: delRubro, linea: linea, corto: corto, precios: precios, textoPrecios: textoPrecios, indicadores: indicadores };
 })(window);
