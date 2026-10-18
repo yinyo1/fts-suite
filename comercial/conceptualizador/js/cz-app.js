@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.53b.1';
+  var VERSION = 'V1.53b.2';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -1099,7 +1099,9 @@
      * ancho a un toque accidental. Abajo solo queda la pastilla de espera (es estado, no acción). */
     if (on('bolita_acciones') && BOL) {
       var sug = [];
-      if (sg && !sg.espera) sug.push({ texto: sg.txt, fuerte: true, attrs: { 'data-sug': sg.acc }, hacer: function (bt) { lanzarSiguiente(sg, c, bt); } });
+      // V1.53b.2 (#12) · se congela el VALOR: dos líneas abajo `sg` se pone en null y el clic llegaba con lanzarSiguiente(null…).
+      var sgF = sg;
+      if (sgF && !sgF.espera) sug.push({ texto: sgF.txt, fuerte: true, attrs: { 'data-sug': sgF.acc }, hacer: function (bt) { lanzarSiguiente(sgF, c, bt); } });
       if (abierta && !(ST.sel || {}).menu && H.caso && !/^Dame los generales/.test((sg && sg.txt) || '')) sug.push({ texto: 'Dame los generales', attrs: { 'data-sug': 'generales' }, hacer: function () { mandar('Dame los generales'); } });
       BOL.poner(sug, { titulo: 'Sugerencias' });
       if (sg && !sg.espera) sg = null;

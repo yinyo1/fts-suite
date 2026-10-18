@@ -1,6 +1,11 @@
 {
-  "version": "V1.53b.1",
+  "version": "V1.53b.2",
   "historial": [
+    {
+      "version": "V1.53b.2",
+      "fecha": "2026-10-18",
+      "nota": "Arreglos de fts-conceptualizador#12: la sugerencia fuerte de la bolita ⚡ («Ya es todo», «Crear machote», «Haz la cotización», «Ya la mandé»…) ya ejecuta (el clic llegaba con la sugerencia en null); un caso con BOM y spec del robot y sin machote ya no se queda en «Armando el BOM…»: ofrece «Crear machote»."
+    },
     {
       "version": "V1.53b.1",
       "fecha": "2026-10-18",
