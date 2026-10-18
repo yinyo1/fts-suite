@@ -2119,7 +2119,7 @@
     }
     var Mq = U.machote, TB = Mq && Mq.tabla && G.CzTabla;
     // V1.48 · la tabla del machote (prototipo aprobado, #4): secciones → subgrupos → renglones, al peso con calc.js de la suite.
-    if (TB && (Mq.secciones || []).length) h += G.CzTabla.tabla(Mq, { analisis: analisis(), folio: folioCaso(), puede: mia(H.caso) });
+    if (TB && (Mq.secciones || []).length) h += G.CzTabla.tabla(Mq, { analisis: analisis(), folio: folioCaso(), puede: mia(H.caso), moneda: (H.caso && H.caso.moneda) || '' });
     else if (Mq && (Mq.secciones || []).length) {
       h += '<div class="carta"><h4>📐 Machote propuesto · ' + (Mq.margen_objetivo ? Math.round(Mq.margen_objetivo * 100) + '%' : '40%') + ' con comisión FTS ' + ((Mq.comision_fts || 0.055) * 100).toFixed(1) + '% por sección</h4>' +
         '<table class="tabla"><tr><th>Sección</th><th class="r">Costo</th><th class="r">Precio</th><th class="r">Margen</th></tr>' +
@@ -2506,7 +2506,7 @@
       L = L.indexOf(f) >= 0 ? L.filter(function (x) { return x !== f; }) : L.concat(f);
       bb.texto = L.length ? 'falta: ' + L.join(', ') : ''; pintarChat(); }; });
     GR.enlazar(M);
-    if (G.CzTabla) G.CzTabla.enlazar(M, cambiarRenglon, pintarChat);   // V1.48
+    if (G.CzTabla) G.CzTabla.enlazar(M, cambiarRenglon, pintarChat, machoteEnPopup);   // V1.48 · V1.54 E2 (popup)
     $$('[data-vertodo]', M).forEach(function (b) { b.onclick = function () { (ST.verTodo = ST.verTodo || {})[b.dataset.vertodo] = true; pintarChat(); }; });
     var bl = $('#bListo', M); if (bl) bl.onclick = listoSigue;
     var be = $('#bEscribe', M); if (be) be.onclick = function () { var tq = trabajoQueContesta(); ST.abiertoReg = ST.abiertoReg === (tq && tq.id) ? null : (tq && tq.id); pintarChat(); };
@@ -2923,6 +2923,17 @@
     if (!r.ok) return aviso(r);
     await refrescarSesiones();
     toast(r.demo ? 'Es una prueba: no enseña. El motor marca lo ya escrito.' : 'Ya no es prueba: sí enseña.', 'Deshacer', function () { marcarPrueba(); });
+  }
+  /** V1.54 E2 (`machote_chat`) · el mismo editor de machotes, en el popup del núcleo (✕ o Esc lo cierran) sin salir del chat. */
+  function machoteEnPopup() {
+    var c = (ST.hilo && ST.hilo.caso) || {};
+    var hm = ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'hecha'; }).pop();
+    var r = (hm && hm.resultado) || {}, id = r.id_local || c.machote_id || r.machote_id;
+    var md = (NUC && NUC.modal) || (G.ChatNucleo && G.ChatNucleo.modal);
+    if (!md) return abrirEditor(hm || null);
+    md({ titulo: (r.folio || c.machote_folio || 'Machote') + (c.demo ? ' · PRUEBA' : '') + ' · machote', marca: 'cz-mach',
+      html: '<iframe title="Editor de machotes" style="display:block;width:100%;height:100%;border:0" src="../machote/index.html' + (id ? '#/m/' + encodeURIComponent(id) : '') + '"></iframe>',
+      alCerrar: function () { toast('De regreso en el chat. Toca «Haz la cotización» y releo el machote como quedó.'); } });
   }
   /** 9b · el editor de machotes que YA existe (comercial/machote), en ventana, con la misma sesión. */
   function abrirEditor(hecho) {

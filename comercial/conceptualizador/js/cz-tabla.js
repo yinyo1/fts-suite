@@ -79,9 +79,34 @@
     return '<div class="tb-arriba">' + (pct ? '<b>' + esc(pct) + '</b>' : '') + (partes.length ? (pct ? ' · ' : '') + contra + esc(partes.join(' · ')) + '.' : '') + '</div>';
   }
 
+  /* V1.54 E2 (`machote_chat`, fts-conceptualizador#11) · la tarjeta del machote en el chat: tabla de 3 columnas (Costo · Precio ·
+   * Margen) a cualquier ancho, por sección y total; cada sección se abre en materiales, servicios, mano de obra y viaje (con su
+   * margen después de la comisión de la sección). Sin el texto largo de abajo: un decreto es una marca corta (D7). La liga
+   * «Abrir machote» abre el editor de la suite en el popup del núcleo, sin salir del chat. */
+  function tabla3(M, o) {
+    var filas = (M.secciones || []).map(function (s, i) {
+      var ab = !!S.abiertas[i], g = (s.grupos || []), cr = Number(s.precio) ? Number(s.comision_fts || 0) / Number(s.precio) : 0;
+      var sub = !ab ? '' : g.filter(function (x) { return Number(x.costo) || Number(x.precio); }).map(function (x) {
+        var p = Number(x.precio) || 0, mgx = p ? (p - Number(x.costo || 0) - p * cr) / p : null;
+        return '<tr class="tb-g"><td><span class="tb-gn">' + esc(SUB[x.k] || x.nombre) + '</span></td><td class="n">' + din(x.costo) + '</td><td class="n">' + din(x.precio) + '</td><td class="n">' + (mgx === null ? '—' : pc(mgx)) + '</td></tr>';
+      }).join('');
+      var d = s.decreto ? decDe(s) : '';
+      return '<tr class="tb-s"><td><button type="button" class="tb-ex" data-tb-ab="' + i + '" aria-expanded="' + ab + '"' + (g.length ? '' : ' disabled') + '><span class="tb-chev">▸</span><span class="tb-n">' + esc(s.nombre) +
+        (d ? ' <span class="tb-dec" title="Precio por decreto ' + esc(d) + '">' + esc(d) + '</span>' : '') + (s.sin_precio ? ' <span class="mal">· ' + s.sin_precio + ' sin precio</span>' : '') + '</span></button></td>' +
+        '<td class="n">' + din(s.costo) + '</td><td class="n"><b>' + din(s.precio) + '</b></td><td class="n">' + pc(s.margen) + '</td></tr>' + sub;
+    }).join('');
+    return '<div class="carta tb-carta tb3-carta"><h4>📐 Machote' + (o.folio ? ' ' + esc(o.folio) : '') + (M.version ? ' · v' + esc(M.version) : '') + '</h4>' +
+      '<div class="tb-arriba">' + esc([M.moneda || o.moneda, (M.secciones || []).length + ((M.secciones || []).length === 1 ? ' sección' : ' secciones'), din(M.precio), 'margen ' + pc(M.margen)].filter(Boolean).join(' · ')) + '</div>' +
+      '<table class="tb tb3"><thead><tr><th>Sección</th><th>Costo</th><th>Precio</th><th>Margen</th></tr></thead><tbody>' + filas + '</tbody>' +
+      '<tfoot><tr><td>Total</td><td class="n">' + din(M.costo) + '</td><td class="n">' + din(M.precio) + '</td><td class="n">' + pc(M.margen) + '</td></tr></tfoot></table>' +
+      ((M.opciones || []).length ? '<p class="nota">Aparte (el cliente escoge una): ' + M.opciones.map(function (x) { return esc(x.nombre) + ' ' + (Number(x.precio) > 0 ? din(x.precio) : 'sin precio todavía'); }).join(' · ') + '</p>' : '') +
+      '<p class="tb3-pie"><button type="button" class="link" data-tb-abrir="1">Abrir machote ↗</button></p></div>';
+  }
+
   /** La tarjeta de la tabla del machote. `o`: { analisis, folio }. */
   function tabla(M, o) {
     o = o || {};
+    if (on('machote_chat')) return tabla3(M, o);
     var REF = M.decretos_ref || {}, puede = !!o.puede;
     var filas = (M.secciones || []).map(function (s, i) {
       var ab = !!S.abiertas[i], g = (s.grupos || []);
@@ -144,7 +169,7 @@
   }
 
   /** Los clics. `alCambiar(descripcion)` lo pone cz-app.js (abre la caja de texto con el renglón). `repinta()` repinta el chat. */
-  function enlazar(M, alCambiar, repinta) {
+  function enlazar(M, alCambiar, repinta, alAbrir) {
     var $$ = function (s) { return Array.prototype.slice.call(M.querySelectorAll(s)); };
     $$('[data-tb-ab]').forEach(function (b) { b.onclick = function () { var k = b.dataset.tbAb; S.abiertas[k] = !S.abiertas[k];
       if (!S.abiertas[k] && k.indexOf(':') < 0) Object.keys(S.abiertas).forEach(function (x) { if (x.indexOf(k + ':') === 0) delete S.abiertas[x]; }); repinta(); }; });
@@ -154,6 +179,7 @@
     $$('[data-tb-quitar]').forEach(function (b) { b.onclick = function () { S.f = { origen: {}, estado: {} }; S.secAbiertas = {}; repinta(); }; });
     $$('[data-tb-al]').forEach(function (b) { b.onclick = function () { b.closest('.tb-r').classList.toggle('ver-alerta'); }; });
     $$('[data-tb-cam]').forEach(function (b) { b.onclick = function () { if (alCambiar) alCambiar(b.dataset.tbCam); }; });
+    $$('[data-tb-abrir]').forEach(function (b) { b.onclick = function () { if (alAbrir) alAbrir(); }; });
   }
   /** Para pruebas: el estado de los filtros y lo abierto. */
   function estado() { return JSON.parse(JSON.stringify(S)); }
