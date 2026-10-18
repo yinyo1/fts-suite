@@ -7,6 +7,11 @@
       "nota": "Pantalla sobre el núcleo de chat (fts-conceptualizador#11 E4), detrás del interruptor nucleo_chat (apagado): el conceptualizador se monta con ChatNucleo.crear en modo marco (el DOM y el look son de shared/chat; la conducta sigue igual) y el núcleo gana el popup superpuesto que usan el machote y la cotización. Apagado = V1.53b.1."
     },
     {
+      "version": "V1.53b.2",
+      "fecha": "2026-10-18",
+      "nota": "Arreglos de fts-conceptualizador#12: la sugerencia fuerte de la bolita ⚡ («Ya es todo», «Crear machote», «Haz la cotización», «Ya la mandé»…) ya ejecuta (el clic llegaba con la sugerencia en null); un caso con BOM y spec del robot y sin machote ya no se queda en «Armando el BOM…»: ofrece «Crear machote»."
+    },
+    {
       "version": "V1.53b.1",
       "fecha": "2026-10-18",
       "nota": "El visor de la cotización muestra el RFC del cliente (con pantalla_v153): la orden de Odoo ya lo traía y la pantalla no lo guardaba. Respuesta 4 de Esteban en fts-conceptualizador#6."

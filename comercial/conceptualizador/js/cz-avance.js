@@ -30,6 +30,10 @@
     return 'faltan ' + f.total + (f.a_medias ? ' · ' + f.abiertos + ' sin nada · ' + f.a_medias + ' a medias' : '');
   }
 
+  /** ¿El robot (modo avance) ya dejó BOM y machote al día? Lo dice su mensaje publicado («armé el BOM… machote…»). */
+  function specDelRobot(H) {
+    return ((H && H.mensajes) || []).some(function (m) { return m && m.autor === 'motor-avance' && /\bBOM\b/.test(m.texto || '') && /machote/i.test(m.texto || ''); });
+  }
   /** caso + hilo → el estado de cada paso, el paso en que va, y el siguiente paso (UNO). */
   function avance(H) {
     var c = (H && H.caso) || {}, A = (H && H.acciones) || [];
@@ -65,6 +69,9 @@
       cmP ? 'Listo para crear' + (pendCot ? ', con ' + plural(pendCot, 'pendiente', 'pendientes') : '') + '.' : 'Se crea aunque falten precios.';
     e[6] = c.orden_nombre ? 'hecho' : cmH && !pendCot ? 'actual' : 'futuro';
     det[6] = c.orden_nombre ? c.orden_nombre + '.' : cmH && pendCot ? 'Espera ' + plural(pendCot, 'pendiente', 'pendientes') + '. Nunca se estima un precio.' : 'Con el machote sin pendientes.';
+    // V1.53b.2 (#12) · BOM y spec del robot sin machote: los pasos dicen lo mismo que el siguiente («Crear machote»).
+    var robotSpec = disparo && !mat.length && !cmP && !cmH && specDelRobot(H);
+    if (robotSpec) { if (!conjAb) { e[2] = 'hecho'; det[2] = conj.length ? det[2] : 'Sin preguntas abiertas.'; } e[3] = e[3] === 'futuro' ? 'hecho' : e[3]; e[4] = 'hecho'; det[4] = 'Lo armó el agente.'; e[5] = 'actual'; det[5] = 'Listo para crear.'; }
     if (!ciudad && !disparo) e[0] = 'falta';
     var actual = Math.max(e.lastIndexOf('actual'), e.lastIndexOf('falta'));
     if (actual < 0) actual = Math.max(0, e.lastIndexOf('hecho'));
@@ -77,6 +84,9 @@
     else if (!disparo && (c.modo === 'acompanamiento' || c.modo === 'levantamiento')) sig = { txt: c.modo === 'acompanamiento' ? 'Ya terminé, cotiza' : 'Ya es todo', acc: 'disparo' };
     else if (conjAb) sig = { txt: 'Contestar ' + plural(conjAb, 'pregunta', 'preguntas'), acc: 'ir', a: 'conjetura' };
     else if (cs.length && sinDec) sig = { txt: 'Palomear ' + plural(sinDec, 'concepto', 'conceptos'), acc: 'ir', a: 'conceptos' };
+    // V1.53b.2 (#12, Xignux de9756) · el robot ya armó el BOM y la spec (su mensaje lo dice) pero no hay machote ni botón: no es
+    // «Armando el BOM…» para siempre. Se pide el botón con el verbo del método («Arma el machote» lo contesta el motor sin modelo).
+    else if (robotSpec) sig = { txt: 'Crear machote', acc: 'mandar', texto: 'Arma el machote' };
     else if (disparo && !mat.length && !cmP && !cmH) sig = { txt: 'Armando el BOM…', espera: true };
     else if (cmP) sig = { txt: ((cmP.datos || {}).actualiza ? 'Actualizar ' + ((cmP.datos.actualiza.folio) || 'machote') : 'Crear machote') + (pendCot ? ' · ' + plural(pendCot, 'pendiente', 'pendientes') : ''), acc: 'machote', id: cmP.id };
     else if (cmH && pendCot) sig = { txt: 'Ver los ' + pendCot + ' pendientes para cotizar', acc: 'ir', a: 'pendientes' };
