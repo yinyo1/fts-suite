@@ -295,6 +295,66 @@
     });
   }
 
+  // ── V1.55 (`ficha_cliente`, #12 Mejora 5) · «Esto voy a poner en la ficha de <cliente>» ─────────────────
+  /* La tarjeta enseña lo que va a quedar en Odoo (razón social, RFC, dirección fiscal, régimen y el contacto por su
+   * puesto). El clic abre el modal: primero BUSCA (RFC exacto → alias conocido → nombre parecido) y, si encuentra, propone
+   * ligar en vez de crear. Escribe solo con «Ligar…» o «Crear», relee la ficha y compara. El contacto se da de alta como
+   * hijo de la empresa con odoo-alta; su correo y su teléfono se escriben aquí y van del navegador a Odoo: nunca al repo. */
+  var REGIMEN = { '601': 'General de Ley Personas Morales', '603': 'Personas Morales con Fines no Lucrativos', '612': 'Personas Físicas con Actividades Empresariales y Profesionales', '626': 'Régimen Simplificado de Confianza' };
+  function fichaCampos(d, caso) {
+    var dir = d.direccion || {};
+    return { razon_social: d.razon_social || '', nombre: d.nombre || caso.cliente || '', rfc: String(d.rfc || '').toUpperCase().replace(/[\s-]/g, ''),
+      calle: dir.calle || '', ciudad: dir.ciudad || '', cp: dir.cp || '', estado: dir.estado || '', pais: dir.pais === 'usa' || caso.pais === 'usa' ? 'usa' : 'mx',
+      regimen: d.regimen ? String(d.regimen) : '', alias_id: d.alias_id ? String(d.alias_id) : '' };
+  }
+  function fichaHtml(d, caso) {
+    var f = fichaCampos(d || {}, caso || {}), c = (d && d.contacto) || {};
+    var fila = function (k, v) { return v ? '<dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd>' : ''; };
+    return '<dl class="cz-ficha">' + fila('Razón social', f.razon_social) + fila('RFC', f.rfc) +
+      fila('Dirección fiscal', [f.calle, f.ciudad, f.cp, f.estado].filter(Boolean).join(', ')) +
+      fila('Régimen', f.regimen ? f.regimen + (REGIMEN[f.regimen] ? ' · ' + REGIMEN[f.regimen] : '') : '') +
+      fila('Contacto', [c.puesto, c.nombre].filter(Boolean).join(' · ') + (c.puesto || c.nombre ? ' · hijo de la empresa' : '')) + '</dl>';
+  }
+  function actualizarCliente(a, ctx) {
+    var d = a.datos || {}, caso = ctx.caso || {}, f = fichaCampos(d, caso), c = d.contacto || {};
+    return new Promise(function (listo) {
+      ctx.modal('<h3>Ficha de ' + esc(f.nombre || f.razon_social) + ' en Odoo</h3>' + fichaHtml(d, caso) +
+        '<div id="fBus" class="nota">Buscando si ya existe en Odoo…</div>' +
+        (c.puesto || c.nombre ? '<label class="lb">Correo del contacto (opcional, no se guarda en el repo)<input id="fCor" type="email" maxlength="120" autocomplete="off"></label>' +
+          '<label class="lb">Teléfono (opcional, no se guarda en el repo)<input id="fTel" type="tel" maxlength="40" autocomplete="off"></label>' : '') +
+        '<div class="acc der" id="fAcc"><button class="boton" id="fNo">Cancelar</button></div>');
+      var cerrar = function (x) { ctx.cerrarModal(); listo(x); };
+      document.getElementById('fNo').onclick = function () { cerrar({ ok: false }); };
+      var v = function (id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; };
+      var escribir = async function (btn, partnerId) {
+        btn.disabled = true;
+        var r = await C.ficha('escribir', Object.assign({}, f, { partner_id: partnerId ? String(partnerId) : '' }));
+        if (!r.ok) { btn.disabled = false; ctx.toast(r.mensaje || ('No se escribió en Odoo: ' + (r.error || 'error'))); return; }
+        var res = { partner_id: r.partner_id, partner_nombre: r.partner_nombre, ligada: !!partnerId, creada: !!r.creada, leido: r.leido, cambio: r.cambio || null,
+          texto: (partnerId ? 'Ligada y actualizada' : 'Creada') + ' en Odoo: ' + r.partner_nombre + ' (id ' + r.partner_id + ')' };
+        if (c.puesto || c.nombre) {
+          var k = await C.alta({ tipo: 'contacto', empresa_id: String(r.partner_id), nombre: c.nombre || '', puesto: c.puesto || '', email: v('fCor'), telefono: v('fTel') });
+          if (k.ok) { res.contacto_id = k.contacto_id; res.texto += ' · contacto ' + (k.ya_existia ? 'ya existía' : 'dado de alta') + ' (id ' + k.contacto_id + ')'; }
+          else res.texto += ' · el contacto no se dio de alta: ' + (k.mensaje || k.error || 'error');
+        }
+        cerrar({ ok: true, resultado: res });
+      };
+      C.ficha('buscar', f).then(function (r) {
+        var bus = document.getElementById('fBus'), acc = document.getElementById('fAcc'); if (!bus || !acc) return;
+        if (!r.ok) { bus.textContent = 'No se pudo buscar en Odoo: ' + (r.mensaje || r.error || 'error') + '. No se escribe nada.'; return; }
+        var L = r.candidatos || [], fuerte = L.filter(function (x) { return x.por === 'rfc' || x.por === 'alias'; })[0], POR = { rfc: 'el RFC', alias: 'el alias conocido', nombre: 'nombre parecido' };
+        bus.innerHTML = !L.length ? 'No hay ninguna empresa con ese RFC ni con ese nombre en Odoo: se crea una nueva.' :
+          '<b>Ya existe en Odoo:</b><ul>' + L.slice(0, 4).map(function (x) { return '<li><label><input type="radio" name="fPar" value="' + esc(x.id) + '"' + (x === (fuerte || L[0]) ? ' checked' : '') + '> ' +
+            esc(x.nombre) + ' (id ' + esc(x.id) + (x.rfc ? ' · ' + esc(x.rfc) : '') + ') · por ' + esc(POR[x.por] || x.por) + '</label></li>'; }).join('') + '</ul>Propongo ligarla en vez de crear otra.';
+        var b1 = document.createElement('button'); b1.className = 'boton si';
+        b1.textContent = L.length ? 'Ligar y actualizar' : 'Crear en Odoo';
+        b1.onclick = function () { var sel = document.querySelector('input[name="fPar"]:checked'); escribir(b1, L.length && sel ? Number(sel.value) : 0); };
+        acc.appendChild(b1);
+        if (L.length && !fuerte) { var b2 = document.createElement('button'); b2.className = 'boton'; b2.textContent = 'Crear otra'; b2.onclick = function () { escribir(b2, 0); }; acc.appendChild(b2); }
+      });
+    });
+  }
+
   // ── lo que ve el cliente ────────────────────────────────────────────────
   function md(t) {
     return esc(t).split('\n').map(function (l) {
@@ -324,7 +384,7 @@
       '</div>';
   }
 
-  G.CzAcciones = { crear_machote: crearMachote, crear_borrador: crearBorrador, alta_contacto: altaContacto, enviada: enviada,
+  G.CzAcciones = { crear_machote: crearMachote, crear_borrador: crearBorrador, alta_contacto: altaContacto, actualizar_cliente: actualizarCliente, fichaHtml: fichaHtml, enviada: enviada,
     pendientes: pendientes, textoPendientes: textoPendientes, permiso: permiso, ordenDe: ordenDe,
     _pdfCliente: pdfCliente, _bloques: bloques, _releido: releido };
 })(window);

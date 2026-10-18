@@ -2154,7 +2154,7 @@
     }
     var B = U.bom || {}, mat = B.materiales || [], mo = B.mano_obra || [];
     // V1.48 · con la tabla, el BOM va abajo, colapsado y con filtros combinables (origen Y estado).
-    if (TB && (Mq.secciones || []).some(function (s) { return (s.grupos || []).length; })) h += G.CzTabla.bom(Mq, { puede: mia(H.caso) });
+    if (TB && (Mq.secciones || []).some(function (s) { return (s.grupos || []).length; })) h += G.CzTabla.bom(Mq, { puede: mia(H.caso), ligas: (U.verifica && U.verifica.ligas) || verUlt().ligas || null });
     else if (mat.length || mo.length) {
       h += '<details class="carta"' + (nivelesDe(mat).n.N3 ? ' open' : '') + '><summary><b>BOM a costo</b> · ' + mat.length + ' renglones + ' + mo.length + ' de mano de obra</summary>';
       var NIV = nivelesDe(mat);
@@ -2163,12 +2163,15 @@
       // V1.47 (#4 regla de oro 1) · los renglones que la persona decidió: «lo dijiste tú», con el mensaje de donde salió.
       // `propuesta` (la del BOM) no trae `verifica`: los decretos vigentes salen de la última respuesta que los mandó.
       var DEC = ((U.verifica && U.verifica.decretos) || verUlt().decretos || {}).renglones || [];
+      // V1.55 (`ligas_v155`) · la miniatura de cada liga (la manda el motor en verifica.ligas de la última respuesta).
+      var LIG = (U.verifica && U.verifica.ligas) || verUlt().ligas || null;
       var decDe = function (d) { var k = String(d || '').slice(0, 60); return DEC.filter(function (x) { return x.descripcion && String(x.descripcion).slice(0, 60) === k; })[0]; };
       mat.forEach(function (r) {
         var te = r.tienda_existencia || r.tienda || '', sin = /sin existencia|solo (hay )?en|otra ciudad/i.test(te), nv = nivelDe(r), dj = decDe(r.descripcion);
         h += '<div class="bom' + (nv === 'N3' ? ' alerta-n3' : '') + '"><div>' + (NIV.con ? '<span class="niv niv-' + nv + '">' + nv + '</span> ' : '') + '<b>' + esc(r.descripcion) + '</b>' + (r.sku ? ' <span class="sku">' + esc(r.sku) + '</span>' : '') + '</div><div>' + esc(r.qty) + ' ' + esc(r.unidad) + ' · ' + esc(r.tipo) + ' · <b>' + dinero(r.importe, r.moneda) + '</b></div>' +
           '<div class="org">' + [r.formula ? esc(r.formula) : '', r.liga && /^https?:/.test(r.liga) ? '<a href="' + esc(r.liga) + '" target="_blank" rel="noopener">' + esc(r.fuente) + '</a>' :
             /pendiente/i.test(r.fuente || '') ? '<b class="mal">' + esc(r.fuente) + '</b>' : esc(r.fuente || 'sin fuente')].filter(Boolean).join(' · ') + '</div>' +
+          (G.CzLigas ? G.CzLigas.chip(r.liga, LIG, r.descripcion) : '') +
           (te ? '<span class="tienda' + (sin ? ' sin' : '') + '">' + esc(te) + '</span>' : '') +
           (NIV.con && (nv === 'N3' || nv === 'N4') && r.riesgo ? '<div class="riesgo">⚠ ' + esc(r.riesgo) + '</div>' : '') +
           (dj ? '<div class="dijiste" title="' + esc(dj.decretos.map(function (x) { return x.texto; }).join(' · ')) + '">🔒 lo dijiste tú · ' + esc(dj.decretos.map(function (x) { return x.origen; }).join(', ')) + ': «' + esc(String(dj.decretos[0].texto).replace(/^[«"\s]+|[»"\s]+$/g, '').slice(0, 90)) + '»</div>' : '') + '</div>';
@@ -2238,7 +2241,7 @@
     }).join(''), activo) + '</div>';
   }
 
-  var ETIQ = { alta_contacto: 'Sí, dar de alta', crear_machote: 'Crear machote', crear_borrador: 'Crear borrador en Odoo',
+  var ETIQ = { alta_contacto: 'Sí, dar de alta', actualizar_cliente: 'Revisar y escribir en Odoo', crear_machote: 'Crear machote', crear_borrador: 'Crear borrador en Odoo',
                enviada: 'Ya la mandé', cerrar: 'Sí, ciérrala' };
 
   /* ── V1.42 · qué gana (#4, correcciones del ingeniero de campo) ───────────────────────────────────────────────
@@ -2387,10 +2390,12 @@
       var viejo = a.tipo === 'crear_borrador' && a.estado === 'propuesta' && cmPend && cmPend.id > a.id;
       // V1.48 · «Actualizar COT-XXXX» que se entienda: «El agente tiene una versión nueva (total, diferencia) · Guardar en el machote».
       var nueva = a.tipo === 'crear_machote' && a.estado === 'propuesta' && d.actualiza && a.id === ultimoCm ? versionNueva() : null;
-      h += '<div class="carta' + (nueva ? ' tb-nueva' : '') + '"><h4>' + ({ alta_contacto: '👤', crear_machote: '📐', crear_borrador: '🧾', enviada: '📨', cerrar: '🔒' }[a.tipo] || '•') + ' ' +
+      h += '<div class="carta' + (nueva ? ' tb-nueva' : '') + '"><h4>' + ({ alta_contacto: '👤', actualizar_cliente: '🏢', crear_machote: '📐', crear_borrador: '🧾', enviada: '📨', cerrar: '🔒' }[a.tipo] || '•') + ' ' +
         (nueva ? 'El agente tiene una versión nueva de ' + esc(folioCaso() || 'tu machote') : esc(a.titulo)) + '</h4>' +
         (nueva ? '<p class="tb-dif">' + esc(nueva) + '</p><p class="nota">Tu machote guardado sigue en la versión anterior. Cuando el machote acepte al agente, esto se guarda solo y la tarjeta desaparece.</p>' : '') +
         (d.detalle ? '<div class="odoo">' + md(d.detalle) + '</div>' : '') +
+        // V1.55 (`ficha_cliente`) · lo que va a quedar en la ficha de la empresa en Odoo.
+        (a.tipo === 'actualizar_cliente' && G.CzAcciones && G.CzAcciones.fichaHtml ? G.CzAcciones.fichaHtml(d, ST.hilo && ST.hilo.caso) : '') +
         // V1.36 · lo que falta para cotizar en Odoo, con su número y renglón por renglón.
         (a.tipo === 'crear_machote' && Number(d.n_pendientes) > 0 && a.estado !== 'descartada' && a.id === ultimoCm ? '<div class="pend-cot"><b>' + esc(G.CzAcciones.textoPendientes({ n: Number(d.n_pendientes), lista: d.pendientes || [] })) + '</b>' +
           '<ul>' + (d.pendientes || []).map(function (hh) { return (hh.items && hh.items.length ? hh.items : [hh.titulo]).map(function (it) { return '<li>' + esc(it) + '</li>'; }).join(''); }).join('') + '</ul>' +
@@ -3143,16 +3148,34 @@
     if (!A) return modal('<h3>Lo que aprendió</h3><p class="sub">El motor todavía no ha mandado lo aprendido. Aparece con la primera respuesta.</p><div class="acc der"><button class="boton si" data-cierra>Listo</button></div>');
     var grupos = [['reglas', 'Reglas', A.reglas], ['observaciones', 'Observaciones', A.observaciones], ['en_disputa', 'En disputa', A.en_disputa],
                   ['superadas', 'Superadas', A.superadas], ['cuarentena', 'Cuarentena', A.cuarentena]];
-    var sel = 'reglas';
+    // V1.55 (`aprende_v155`, #12 F) · lo que aprendió de las DECISIONES: alcance, cuándo aplica, de dónde salió y cuántas
+    // veces se sostuvo. «↺ Esto era solo de ese caso» manda ese mensaje al caso de origen; el motor lo angosta sin modelo.
+    var CR = on('aprende_v155') && Array.isArray(A.criterios) ? A.criterios : null;
+    if (CR) grupos.unshift(['criterios', 'De tus decisiones', CR]);
+    var sel = CR && CR.length ? 'criterios' : 'reglas';
+    var ALC = { universal: 'todos', pais: 'el país', autor: 'tú', tipo_trabajo: 'tipo de trabajo', cliente: 'cliente', ciudad: 'ciudad' };
+    var criterio = function (i) {
+      var est = i.estado || (i.casos >= 3 ? 'regla' : 'observación');
+      return '<div class="lec cri"><span class="al">' + esc(est) + '</span> <span class="al">' + esc((ALC[i.alcance] || i.alcance || '') + (i.dueno ? ': ' + i.dueno : '')) + '</span> ' + md(i.valor || '') +
+        '<div class="org">' + (i.condicion ? 'Cuándo aplica: ' + esc(i.condicion) + ' · ' : '') + 'Origen: ' + esc(i.origen_caso || '—') + ' · ' + (i.casos || 0) + ' casos' +
+        (i.sostenido ? ' · sostenido ' + i.sostenido : '') + (i.corregido ? ' · corregido ' + i.corregido : '') + (i.confianza ? ' · confianza ' + esc(i.confianza) : '') + '</div>' +
+        '<button class="boton" data-solo="' + esc(i.id) + '" data-origen="' + esc(i.origen_caso || '') + '">↺ Esto era solo de ese caso</button></div>';
+    };
     var pinta = function () {
       var g = grupos.filter(function (x) { return x[0] === sel; })[0], items = g[2] || [];
       modal('<h3>Lo que aprendió</h3><p class="sub">Regla = 3 casos a favor y lo que va en contra menos de la mitad. Actualizado ' + esc(diaDe(r.aprendizaje.created_at)) + '.</p>' +
         (A.examen ? '<p class="nota">Examen a ciegas: ' + esc(A.examen.ultima) + '/100 · promedio ' + esc(A.examen.promedio) + '</p>' : '') +
         '<div class="filtros">' + grupos.map(function (x) { return '<button data-g="' + x[0] + '" class="' + (x[0] === sel ? 'on' : '') + '">' + x[1] + ' <b>' + (x[2] || []).length + '</b></button>'; }).join('') + '</div>' +
-        (items.length ? items.map(function (i) { return '<div class="lec">' + md(i.texto || '') + '<div class="org">' + (i.conteo ? i.conteo + ' casos' + (i.en_contra ? ' · ' + i.en_contra + ' en contra' : '') + ' · ' : '') +
+        (items.length && sel === 'criterios' ? items.map(criterio).join('') : items.length ? items.map(function (i) { return '<div class="lec">' + md(i.texto || '') + '<div class="org">' + (i.conteo ? i.conteo + ' casos' + (i.en_contra ? ' · ' + i.en_contra + ' en contra' : '') + ' · ' : '') +
           esc(i.alcance || '') + (i.especialidad ? ' · ' + esc(i.especialidad) : '') + (i.razon ? ' · ' + esc(i.razon) : '') + '</div></div>'; }).join('') : '<p class="vacio">Nada aquí.</p>') +
         '<div class="acc der"><button class="boton si" data-cierra>Listo</button></div>');
       $$('.hoja [data-g]').forEach(function (b) { b.onclick = function () { sel = b.dataset.g; pinta(); }; });
+      $$('.hoja [data-solo]').forEach(function (b) { b.onclick = async function () {
+        var org = b.dataset.origen, c = (ST.casos || []).filter(function (x) { return org && x.carpeta && String(x.carpeta).indexOf(org) >= 0; })[0];
+        var dest = c ? { caso_id: c.id } : destino();
+        if (!dest.caso_id && !dest.local_id) return toast('Abre un caso para mandarlo.');
+        b.disabled = true; await Q.encolar(dest, '↺ Esto era solo de ese caso: ' + b.dataset.solo, [], undefined, null);
+        b.textContent = '✓ Mandado' + (c ? ' al caso de origen' : ''); await refrescarSalida(); }; });
     };
     pinta();
   }

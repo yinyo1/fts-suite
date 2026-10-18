@@ -54,7 +54,7 @@
   function renglon(r, REF, conPrecio, puede) {
     var al = conAlerta(r), sinP = esN5(r) && r.tipo !== 'Mano de obra';
     return '<div class="tb-r' + (al ? ' con-alerta' : '') + '"><span class="tb-d">' + esc(r.d) +
-      '<small>' + (r.qty ? esc(Number(r.qty).toLocaleString('es-MX')) + ' ' + esc(r.unidad || '') : '') + (r.pu !== null && r.pu !== undefined ? ' × ' + din(r.pu) : '') + (r.liga ? ' · ' + esc(r.liga) : '') + '</small></span>' +
+      '<small>' + (r.qty ? esc(Number(r.qty).toLocaleString('es-MX')) + ' ' + esc(r.unidad || '') : '') + (r.pu !== null && r.pu !== undefined ? ' × ' + din(r.pu) : '') + (r.liga && !(G.CzLigas && G.CzLigas.info(r.liga, S.ligas)) ? ' · ' + esc(r.liga) : '') + '</small>' + (r.liga && G.CzLigas ? G.CzLigas.chip(r.liga, S.ligas, r.d) : '') + '</span>' +
       '<span class="tb-i">' + (sinP ? '<b class="mal">sin precio</b>' : conPrecio ? din(r.precio) + '<small>costo ' + din(r.costo) + '</small>' : din(r.costo)) + '</span>' +
       (r.tipo === 'Mano de obra' ? '' : '<span class="tb-meta">' + marcas(r, REF) + (al ? '<button type="button" class="tb-al" data-tb-al="1">⚠ alerta</button>' : '') +
         (r.o === 'agente' && puede ? '<button type="button" class="tb-cam" data-tb-cam="' + esc(String(r.d).slice(0, 120)) + '">↺ Cambiar</button>' : '') + '</span>') +
@@ -141,7 +141,7 @@
   /** El BOM colapsado con los filtros. Renglones de materiales, servicios y viaje (la mano de obra va en la tabla). */
   function bom(M, o) {
     o = o || {};
-    var REF = M.decretos_ref || {}, puede = !!o.puede;
+    var REF = M.decretos_ref || {}, puede = !!o.puede; S.ligas = o.ligas || null;
     var SEC = (M.secciones || []).map(function (s) {
       var g = s.grupos || [];
       return { nombre: s.nombre, costo: s.costo, filas: g.filter(function (x) { return x.k !== 'mo'; }).reduce(function (a, x) { return a.concat(x.renglones || []); }, []),

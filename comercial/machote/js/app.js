@@ -662,6 +662,25 @@
   const cel = (path, val, cls, ph) =>
     '<input class="cel ' + (cls || '') + '" data-cel="' + path + '" value="' + esc(nn(val)) + '"' +
     (ph ? ' placeholder="' + esc(ph) + '"' : '') + '>';
+  /* V1.55 (fts-conceptualizador#12 G) · la celda Link: con una liga, se ve «↗ dominio» clicable (la liga completa en el
+   * tooltip, la foto del producto al pasar el mouse si el conceptualizador la verificó) y ✎ para editarla. Sin liga, o
+   * mientras se edita, es la misma celda de siempre. `link_estado` y `link_foto` los pone el conceptualizador; un renglón
+   * capturado a mano no los trae y se ve sin ✓ ni foto. */
+  const celLink = (path, l) => {
+    const u = String((l && l.link) || '').trim();
+    if (!/^https?:\/\//i.test(u)) return cel(path, l && l.link, 'w80', 'https://…');
+    let dom = ''; try { dom = new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return cel(path, l.link, 'w80', 'https://…'); }
+    const odoo = /(^|\.)odoo\.com$/.test(dom), est = l.link_estado, ok = est === 'verificada', mal = est && !ok;
+    const foto = /^https:\/\//.test(l.link_foto || '') ? '<span class="lk-pv"><img alt="" loading="lazy" referrerpolicy="no-referrer" src="' + esc(l.link_foto) + '"></span>' : '';
+    return '<span class="lk con"><a href="' + esc(u) + '" target="_blank" rel="noopener" title="' + esc(u) + (mal ? ' · ⚠ ' + esc(est.replace(/_/g, ' ')) : '') + '">' +
+      (ok ? '✓ ' : mal ? '⚠ ' : '') + esc(odoo ? 'Odoo' : dom) + ' ↗</a><button type="button" class="ico lk-ed" data-lked title="Editar la liga" aria-label="Editar la liga">✎</button>' + foto +
+      cel(path, l.link, 'w80 lk-in', 'https://…') + '</span>';
+  };
+  // ✎ muestra la celda para editar la liga (y la enfoca). Al cambiarla, el refresco vuelve a pintar el enlace.
+  if (typeof document !== 'undefined') document.addEventListener('click', ev => {
+    const b = ev.target && ev.target.closest && ev.target.closest('[data-lked]'); if (!b) return;
+    const sp = b.closest('.lk'); if (!sp) return; sp.classList.remove('con'); const i = sp.querySelector('input'); if (i) { i.focus(); i.select(); }
+  });
   /* Los números que se capturan aquí son cantidades, personas, precios y
    * multiplicadores. Ninguno tiene sentido en negativo, y un precio negativo
    * no da un error: da un total más chico y nadie lo nota. `min=0` frena las
@@ -3275,7 +3294,7 @@
           (cl.pisado ? '<span class="pisado-marca" title="Escrito a mano encima de la fórmula. Por Tipo le tocaría ' +
             cl.porTipo + '.">≠ ' + cl.porTipo + '</span>' : '') + '</td>' +
         '<td class="vl mono calc fuerte" data-l="Precio con utilidad">' + mx(cl.conUtilidad) + '</td>' +
-        '<td data-l="Link">' + cel(p + 'link', l.link, 'w80', 'https://…') + '</td>' +
+        '<td data-l="Link">' + celLink(p + 'link', l) + '</td>' +
         '<td data-l="Comentario">' + cel(p + 'comentario', l.comentario, 'w80') + '</td>' +
         '<td class="acc" data-l="">' +
           '<button class="ico" data-mov="' + s.id + '#' + j + '|-1" title="Subir"' + (j === 0 ? ' disabled' : '') + '>↑</button>' +

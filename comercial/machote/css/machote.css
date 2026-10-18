@@ -2843,3 +2843,14 @@ table.or-tab td.or-tot, table.or-tab th.num {
   white-space: nowrap; text-align: right; max-width: none; width: 1%;
   overflow: visible; text-overflow: clip;
 }
+
+/* V1.55 (fts-conceptualizador#12 G) · celda Link: enlace clicable + ✎; la celda de captura aparece al editar. */
+.lk { display: inline-flex; align-items: center; gap: 4px; max-width: 160px; position: relative; }
+.lk > a { color: var(--acento, #0b6b45); font-weight: 600; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.lk > a:hover { text-decoration: underline; }
+.lk .lk-ed { flex-shrink: 0; }
+.lk.con .lk-in { display: none; }
+.lk:not(.con) > a, .lk:not(.con) .lk-ed, .lk:not(.con) .lk-pv { display: none; }
+.lk .lk-pv { display: none; position: absolute; top: 100%; left: 0; z-index: 30; background: var(--fondo, #fff); border: 1px solid var(--linea, #ddd); border-radius: 8px; padding: 4px; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+.lk.con:hover .lk-pv { display: block; }
+.lk .lk-pv img { width: 120px; height: 120px; object-fit: cover; display: block; border-radius: 4px; }

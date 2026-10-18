@@ -114,8 +114,18 @@
     return cerrar(await transportar('/webhook/conceptualizador/odoo-alta', JSON.stringify(c), 30000));
   }
 
+  /** V1.55 (#12 Mejora 5) · ficha de la empresa (conceptualizador/odoo-ficha): modo 'buscar' (solo lee) o 'escribir' (el clic). */
+  async function ficha(modo, campos) {
+    var A = G.SuiteAuth, token = A && A.getToken();
+    if (!token) return { ok: false, error: 'SIN_SESION', clase: 'sesion' };
+    var c = Object.assign({ token: token, ts: Date.now(), nonce: nonce(), modo: modo === 'escribir' ? 'escribir' : 'buscar' }, campos);
+    c.firma = await firmar(token, [c.ts, c.nonce, 'ficha', S(c.modo), S(c.partner_id), S(c.rfc), S(c.razon_social), S(c.calle), S(c.ciudad), S(c.cp), S(c.estado), S(c.pais), S(c.regimen), S(c.alias_id), S(c.nombre)].join('\n'));
+    return cerrar(await transportar('/webhook/conceptualizador/odoo-ficha', JSON.stringify(c), 45000));
+  }
+
   G.CzCliente = {
     alta: alta,
+    ficha: ficha,
     suite: conToken,
     nueva: function (campos) { return pedir('nueva', campos); },
     subir: function (campos, progreso) { return pedir('subir', campos, { timeout: TIMEOUT_SUBIR_MS, progreso: progreso }); },
