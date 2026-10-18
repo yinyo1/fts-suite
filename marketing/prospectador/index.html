@@ -7,7 +7,7 @@
 <title>FTS Suite · Marketing · Prospectador</title>
 <!-- Los formularios (ficha, Enviar a CRM, empresa nueva, tablero) siguen con estas dos hojas; el CHAT no: lo pinta el núcleo (#428). -->
 <link rel="stylesheet" href="../../shared/fts-styles.css" />
-<link rel="stylesheet" href="../../shared/chat/chat.css?v=20261015-mkt-prospectador-v4-nucleo" />
+<link rel="stylesheet" href="../../shared/chat/chat.css?v=20261018-mkt-prospectador-v4-v153b" />
 <!-- Gate ANTES de pintar (patrón de la suite). La app no arranca si el gate negó. -->
 <script src="../../shared/auth-jwt.js"></script>
 <script>if (!window.SuiteAuth.requerir('marketing:usar', '../../shared/login.html')) { throw new Error('sin sesion'); }</script>
@@ -17,26 +17,26 @@
 <!-- v4 (#428): un solo marco, el núcleo de chat de la suite (look del conceptualizador). #vista es la página de los formularios. -->
 <div id="raiz"></div>
 <main id="vista"></main>
-<script src="../../shared/chat/chat-firma.js?v=20261015-mkt-prospectador-v4-nucleo"></script>
-<script src="../../shared/chat/chat-cliente.js?v=20261015-mkt-prospectador-v4-nucleo"></script>
-<script src="../../shared/chat/chat-medios.js?v=20261015-mkt-prospectador-v4-nucleo"></script>
-<script src="../../shared/chat/chat-cola.js?v=20261015-mkt-prospectador-v4-nucleo"></script>
-<script src="../../shared/chat/chat-shell.js?v=20261015-mkt-prospectador-v4-nucleo"></script>
-<script src="../../shared/chat/chat-archivos.js?v=20261015-mkt-prospectador-v4-nucleo"></script>
-<script src="../../shared/chat/chat-grabadora.js?v=20261015-mkt-prospectador-v4-nucleo"></script>
-<script src="../../shared/chat/chat-gestos.js?v=20261015-mkt-prospectador-v4-nucleo"></script>
-<script src="../../shared/chat/chat-lista.js?v=20261015-mkt-prospectador-v4-nucleo"></script>
-<script src="../../shared/chat/chat-panel.js?v=20261015-mkt-prospectador-v4-nucleo"></script>
-<script src="../../shared/chat/chat-nucleo-cz.js?v=20261015-mkt-prospectador-v4-nucleo"></script>
-<script src="../../shared/chat/chat-nucleo-grabadora.js?v=20261015-mkt-prospectador-v4-nucleo"></script>
-<script src="../../shared/chat/chat-nucleo-archivos.js?v=20261015-mkt-prospectador-v4-nucleo"></script>
-<script src="../../shared/chat/chat-nucleo.js?v=20261015-mkt-prospectador-v4-nucleo"></script>
+<script src="../../shared/chat/chat-firma.js?v=20261018-mkt-prospectador-v4-v153b"></script>
+<script src="../../shared/chat/chat-cliente.js?v=20261018-mkt-prospectador-v4-v153b"></script>
+<script src="../../shared/chat/chat-medios.js?v=20261018-mkt-prospectador-v4-v153b"></script>
+<script src="../../shared/chat/chat-cola.js?v=20261018-mkt-prospectador-v4-v153b"></script>
+<script src="../../shared/chat/chat-shell.js?v=20261018-mkt-prospectador-v4-v153b"></script>
+<script src="../../shared/chat/chat-archivos.js?v=20261018-mkt-prospectador-v4-v153b"></script>
+<script src="../../shared/chat/chat-grabadora.js?v=20261018-mkt-prospectador-v4-v153b"></script>
+<script src="../../shared/chat/chat-gestos.js?v=20261018-mkt-prospectador-v4-v153b"></script>
+<script src="../../shared/chat/chat-lista.js?v=20261018-mkt-prospectador-v4-v153b"></script>
+<script src="../../shared/chat/chat-panel.js?v=20261018-mkt-prospectador-v4-v153b"></script>
+<script src="../../shared/chat/chat-nucleo-cz.js?v=20261018-mkt-prospectador-v4-v153b"></script>
+<script src="../../shared/chat/chat-nucleo-grabadora.js?v=20261018-mkt-prospectador-v4-v153b"></script>
+<script src="../../shared/chat/chat-nucleo-archivos.js?v=20261018-mkt-prospectador-v4-v153b"></script>
+<script src="../../shared/chat/chat-nucleo.js?v=20261018-mkt-prospectador-v4-v153b"></script>
 <script src="../../shared/version-check.js"></script>
-<script>window.MKT_BUILD = '20261015-mkt-prospectador-v4-nucleo';</script>
-<script src="../js/mkt-comun.js?v=20261015-mkt-prospectador-v4-nucleo"></script>
-<script src="../js/toque-base.js?v=20261015-mkt-prospectador-v4-nucleo"></script>
-<script src="../js/conversaciones.js?v=20261015-mkt-prospectador-v4-nucleo"></script>
-<script src="../js/prospectador.js?v=20261015-mkt-prospectador-v4-nucleo"></script>
+<script>window.MKT_BUILD = '20261018-mkt-prospectador-v4-v153b';</script>
+<script src="../js/mkt-comun.js?v=20261018-mkt-prospectador-v4-v153b"></script>
+<script src="../js/toque-base.js?v=20261018-mkt-prospectador-v4-v153b"></script>
+<script src="../js/conversaciones.js?v=20261018-mkt-prospectador-v4-v153b"></script>
+<script src="../js/prospectador.js?v=20261018-mkt-prospectador-v4-v153b"></script>
 <script>
   try { FTSVersionCheck.run({ versionUrl: 'version.json', localBuild: MKT_BUILD, tag: 'mkt-prospectador' }); } catch (e) {}
   if (!window.__ftsSinAcceso) window.MktProspectador.arrancar();

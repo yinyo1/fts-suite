@@ -217,6 +217,8 @@
     if (est.conv !== id) return;
     est.det = r;
     var h = await C.pedir('hilo', { sesion_id: r.conversacion.sesion_id });
+    // V1.53b · si mientras llegaba el hilo se abrió otra conversación (vConv pone det = null), ésta ya no pinta
+    if (est.conv !== id || est.det !== r) return;
     if (h.ok) est.hilo = h.hilo;
     pintarConv();
     var ult = est.hilo && est.hilo.mensajes.length ? est.hilo.mensajes[est.hilo.mensajes.length - 1].id : 0;
