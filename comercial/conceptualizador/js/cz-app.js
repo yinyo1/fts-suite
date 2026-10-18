@@ -2294,7 +2294,7 @@
         var d = a.datos || {}, r = a.resultado || {}, kk = 'j:' + a.id, e = ST.env[kk], b = ST.borr[kk] || {};
         var rp = REP['conjetura:' + a.id], reab = !!ST.reab[kk] && a.estado !== 'propuesta', decidida = a.estado !== 'propuesta' && !reab;
         h += '<div class="preg' + (rp ? ' reemplazada' : '') + (reab ? ' reabierta' : '') + '" data-preg="' + a.id + '"><p>' + esc(d.pregunta || a.titulo) + '</p>' + (d.conjetura ? '<div class="conj">Supongo: ' + (rp ? '<s>' + esc(d.conjetura) + '</s>' : esc(d.conjetura)) + (d.porque ? '<small> · ' + esc(d.porque) + '</small>' : '') + '</div>' : '') +
-          (d.mueve ? '<div class="mueve">' + (/no mueve|sin estimar/i.test(d.mueve) ? '' : 'mueve ') + esc(d.mueve) + '</div>' : '') +
+          (d.mueve ? '<div class="mueve">' + (/no mueve|sin estimar|^\s*mueve\b/i.test(d.mueve) ? '' : 'mueve ') + esc(d.mueve) + '</div>' : '') +
           (ST.vozCorr[kk] && a.estado === 'propuesta' ? '<span class="hecho corr">🎤 Corrección por voz ' + (ST.vozCorr[kk].decidido ? 'enviada' : 'en cola') + ' · se transcribe</span>' : '') +
           (reab ? '<p class="nota reab">↺ Reabierta: vale tu última decisión.' + (rp ? ' Hoy está: ' + esc(rp.vigente) + '.' : '') + '</p>' : '') +
           (decidida && rp ? lineaReemplazo(rp) + (puede ? botonCambiar(kk) : '') :
