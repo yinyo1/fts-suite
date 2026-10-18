@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.52.1';
+  var VERSION = 'V1.53a';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -647,7 +647,18 @@
     ['margen_por_seccion', 'Margen por sección por decreto', 'Precio de venta o margen por sección decretado por el dueño, solo en ese caso (§14).'],
     ['un_solo_dato', 'Un solo dato', 'Alertas, % de referencia y avance salen de una sola cuenta en el mensaje, la tarjeta, la franja y la vista ejecutiva (§14).'],
     ['menu_hoja', 'Menú ⋮ como hoja', 'En el teléfono el ⋮ sube como hoja desde abajo; en PC sigue siendo el menú de siempre (§14).'],
-    ['robot_config_base', 'Robot con la configuración del panel', 'Robot con la configuración del panel (horario, zona, topes, ritmo y freno). Apagado: usa la de hoy.']
+    ['robot_config_base', 'Robot con la configuración del panel', 'Robot con la configuración del panel (horario, zona, topes, ritmo y freno). Apagado: usa la de hoy.'],
+    // V1.53a (#6): todo entra apagado; el orden de prendido va en el plan de despliegue del #6.
+    ['bajar_solo_nuevo', 'Bajar solo lo nuevo', 'Al tomar un trabajo no se bajan fotos, audios ni PDFs ya analizados o transcritos; si hace falta uno, se baja ese.'],
+    ['contestar_guardado', 'Contestar desde lo guardado', 'Costo o precio por sección, total, anticipo, supuestos, moneda, «en qué va» y «Dame los generales» se contestan del machote y lo guardado, sin modelo.'],
+    ['acciones_sin_modelo', 'Acciones sin modelo', '«Ya la mandé al cliente» tras el borrador y «Actualizar SO… en Odoo» tras la vista confirmada se ofrecen solos, sin modelo.'],
+    ['robot_al_100', 'Robot quieto al 100 %', 'El robot no propaga ni aprende sobre un caso listo al 100 % que nadie le pidió.'],
+    ['motor_v153', 'Avisos y resumen V1.53', 'El resumen lleno no frena la respuesta mecánica; los avisos de trabajos fallidos van un párrafo por trabajo con su fecha y se descartan al contestar.'],
+    ['supuesto_usd', 'Supuesto en USD', 'En USD: «Pagadero en USD o en MXN al tipo de cambio FIX del día de pago» en lugar de «sujeto al tipo de cambio del día de la orden».'],
+    ['decretos_destino', 'Decretos en su destino', 'El motor publica qué debe verse por cada decisión; la revisión diaria avisa al dueño en el chat si no llegó (una vez por falla).'],
+    ['duplicados', 'Casos duplicados', 'Después del primer mensaje, si hay un caso casi igual del mismo cliente, pregunta avanzar o parar.'],
+    ['vista_decretos', 'Vista: lo dijiste tú', 'En la vista ejecutiva, los renglones con precio decretado salen como «lo dijiste tú».'],
+    ['salud_diaria', 'Correo de salud 7:00', 'El correo diario a Esteban (motor, fallidos, consumo, decretos, avisos viejos, atorados). Apagado, el workflow no manda.']
   ];
   /** Los interruptores que conoce el servidor (valores `interruptor:*` y `interruptores`), en el orden de arriba; uno nuevo
    * que la pantalla todavía no describe sale al final con su nombre, para que se pueda prender igual. */
@@ -2193,8 +2204,12 @@
            decidida ? (a.estado === 'hecha' ? '<span class="hecho">✓ Confirmado</span>' : '<span class="hecho corr">✎ Corregido: ' + esc(r.correccion || '') + '</span>') + (puede ? botonCambiar(kk) : '') :
            b.abierto ? cajaRazon(kk, '¿Qué es lo correcto?', 'Mandar', false) :
            ST.vozCorr[kk] ? '' :
+           // V1.53a · una pregunta con opciones (p. ej. duplicado: avanzar / parar) lleva un botón por opción.
+           (Array.isArray(d.opciones) && d.opciones.length && !reab ? '<div class="acc" data-acc="' + a.id + '">' + (e ? '<button class="si enviando" disabled>' + GIRO + 'enviando…</button>' :
+             d.opciones.slice(0, 4).map(function (o, i) { return '<button' + (i ? '' : ' class="si"') + ' data-opc="' + a.id + '" data-opi="' + i + '">' + esc(o.texto || o.id) + '</button>'; }).join('')) +
+             '<button data-corr="' + a.id + '"' + (e ? ' disabled' : '') + '>✎ Otra cosa</button></div>' :
            '<div class="acc" data-acc="' + a.id + '">' + (e === 'confirma' ? '<button class="si enviando" disabled>' + GIRO + 'enviando…</button>' : '<button class="si" data-conf="' + a.id + '">✓ Va</button>') +
-           '<button data-corr="' + a.id + '"' + (e ? ' disabled' : '') + '>✎ Corregir</button></div>' + (ST.errBt[kk] ? '<span class="err-bt">' + esc(ST.errBt[kk]) + '</span>' : '')) + '</div>';
+           '<button data-corr="' + a.id + '"' + (e ? ' disabled' : '') + '>✎ Corregir</button></div>') + (ST.errBt[kk] ? '<span class="err-bt">' + esc(ST.errBt[kk]) + '</span>' : '')) + '</div>';
       });
       h += (pend ? '<p class="nota">Cuando contestes todas, sigo con los conceptos.</p>' : '') + '</div>';
     }
@@ -2345,6 +2360,11 @@
       if (ST.reab[k]) { var a = accionPorId(b.dataset.conf); return cambiar(k, 'conjetura:' + b.dataset.conf, ((a && a.datos) || {}).conjetura || 'lo que supuse', 'boton'); }
       responder(k, b.dataset.conf, 'hecha', { confirma: true }, 'confirma'); }; });
     $$('[data-corr]', M).forEach(function (b) { b.onclick = function () { abrirCaja('j:' + b.dataset.corr); }; });
+    $$('[data-opc]', M).forEach(function (b) { b.onclick = function () {
+      var a = accionPorId(b.dataset.opc), o = a && ((a.datos || {}).opciones || [])[Number(b.dataset.opi)]; if (!o) return;
+      var k = 'j:' + b.dataset.opc;
+      if (Number(b.dataset.opi) === 0) responder(k, b.dataset.opc, 'hecha', { confirma: true, opcion: String(o.id) }, 'confirma');
+      else responder(k, b.dataset.opc, 'descartada', { correccion: String(o.texto || o.id), opcion: String(o.id) }, 'corrige'); }; });
     // V1.42 · «↺ Cambiar» reabre el renglón con «✓ Va / ✎ Corregir». No manda nada hasta que decidas.
     $$('[data-cambia]', M).forEach(function (b) { b.onclick = function () { ST.reab[b.dataset.cambia] = true; delete ST.borr[b.dataset.cambia]; pintarChat(); if (ST.rubHoja) pintarHojaRubro(); }; });
     $$('[data-supc]', M).forEach(function (b) { b.onclick = function () { abrirCaja('s:' + b.dataset.supc); }; });   // V1.43
