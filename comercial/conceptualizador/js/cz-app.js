@@ -2344,6 +2344,11 @@
     // V1.36 · solo el machote más nuevo dice lo que falta: el de antes de actualizar ya no cuenta.
     var ultimoCm = (((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado !== 'descartada'; }).pop() || {}).id;
     var cmPend = ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'propuesta'; }).pop();
+    // V1.54 E1 (`condiciones_caso`) · «Revisa las condiciones» antes de las acciones; su candado cierra «Crear borrador».
+    // Una sola vez: en el grupo que trae la acción más nueva del caso (tarjetaAcciones se pinta por cada respuesta).
+    var idsAcc = ((ST.hilo && ST.hilo.acciones) || []).map(function (x) { return Number(x.id) || 0; }), ultAcc = idsAcc.length ? Math.max.apply(null, idsAcc) : 0;
+    if (G.CzCondiciones && L.some(function (x) { return Number(x.id) === ultAcc; })) h += G.CzCondiciones.tarjeta(ST.hilo, mia(ST.hilo && ST.hilo.caso));
+    var candCond = !!(G.CzCondiciones && G.CzCondiciones.cerrado(ST.hilo));
     otras.forEach(function (a) {
       var d = a.datos || {}, r = a.resultado || {}, manejador = G.CzAcciones && G.CzAcciones[a.tipo];
       var espera = pendientes && (a.tipo === 'crear_machote' || a.tipo === 'crear_borrador');
@@ -2369,6 +2374,7 @@
          a.estado === 'descartada' ? '<span class="hecho gris">' + ((r.reemplazada_por_trabajo) ? 'Reemplazado por una propuesta más nueva' : 'Descartado') + '</span>' :
          espera ? '<p class="nota">Contesta primero las suposiciones pendientes: el machote se arma con lo que confirmes.</p>' :
          viejo ? '<p class="nota">Es de la versión anterior del machote: primero toca «' + esc(cmPend.titulo) + '».</p>' :
+         candCond && a.tipo === 'crear_borrador' && a.estado === 'propuesta' ? '<p class="nota">🔒 Primero revisa las condiciones de arriba: el borrador espera a que estén listas.</p>' :
          (a.tipo === 'enviada' || a.tipo === 'cerrar' || manejador) ?
            (a.tipo === 'crear_borrador' && d.referencias && d.referencias.n ? botonReferencias(a) :
            '<div class="acc"><button class="si" data-hacer="' + a.id + '">' + esc(nueva ? 'Guardar en el machote' : (d.boton || ETIQ[a.tipo] || 'Hacer')) + '</button><button data-descartar="' + a.id + '">' + (a.tipo === 'cerrar' ? 'Todavía no' : 'No') + '</button></div>') +
@@ -2509,6 +2515,7 @@
       bb.texto = L.length ? 'falta: ' + L.join(', ') : ''; pintarChat(); }; });
     GR.enlazar(M);
     if (G.CzTabla) G.CzTabla.enlazar(M, cambiarRenglon, pintarChat, machoteEnPopup);   // V1.48 · V1.54 E2 (popup)
+    if (G.CzCondiciones) G.CzCondiciones.enlazar(M, { caso: function () { return ST.hilo && ST.hilo.caso; }, hilo: function () { return ST.hilo; }, repinta: function (recargar) { if (recargar) cargarHilo(); else pintarChat(); } });   // V1.54 E1
     if (G.CzEnviar) G.CzEnviar.enlazar(M, { caso: function () { return ST.hilo && ST.hilo.caso; }, repinta: function (recargar) { if (recargar) cargarHilo(); else pintarChat(); } });   // V1.54 E3
     $$('[data-vertodo]', M).forEach(function (b) { b.onclick = function () { (ST.verTodo = ST.verTodo || {})[b.dataset.vertodo] = true; pintarChat(); }; });
     var bl = $('#bListo', M); if (bl) bl.onclick = listoSigue;
