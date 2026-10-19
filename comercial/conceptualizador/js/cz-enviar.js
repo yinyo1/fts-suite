@@ -49,7 +49,11 @@
     if (!c.orden_id || puede === false) return '';
     css();
     var L = (H && H.envios_cliente) || [], enviada = L.some(function (x) { return x.estado === 'enviado'; });
-    var h = '<div class="ce-bts"><button type="button" class="ce-bt' + (on() ? '' : ' si') + '" data-ce="ver">📄 Ver cotización</button><button type="button" class="ce-bt" data-ce="bajar">⬇ Descargar PDF</button>' +
+    // V1.57a (#12 acumulado 7, `recalculo_v157`) · si la orden en Odoo quedó atrás del machote, se dice ANTES de abrirla.
+    var od = G.CzInterruptor && G.CzInterruptor('recalculo_v157') && G.CzAvance && G.CzAvance.odooDesactualizada ? G.CzAvance.odooDesactualizada(H) : null;
+    var din = function (n, m) { return n == null ? '' : '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + (m && m !== 'MXN' ? ' ' + m : ''); };
+    var hOd = od ? '<div class="ce-env ce-mal" data-ce-viejo="1">⚠ Versión en Odoo: ' + esc(din(od.monto, od.moneda) || od.orden) + ' · desactualizada, falta Actualizar' + (od.propuesto ? ' (toca «Actualizar ' + esc(od.orden) + ' en Odoo» arriba)' : '') + '</div>' : '';
+    var h = hOd + '<div class="ce-bts"><button type="button" class="ce-bt' + (on() ? '' : ' si') + '" data-ce="ver">📄 Ver cotización</button><button type="button" class="ce-bt" data-ce="bajar">⬇ Descargar PDF</button>' +
       (on() ? '<button type="button" class="ce-bt' + (enviada ? '' : ' si') + '" data-ce="enviar">✉ ' + (enviada ? 'Enviar otra vez' : 'Enviar al cliente') + '</button>' : '') + '</div>';
     if (!on()) return h + '<div class="ce-nota">El PDF es el de Odoo: se abre aquí mismo y se cierra con ✕.</div>';
     if (S.caja) h += '<div class="ce-caja"><label for="ceTx">Mensaje para el cliente (lo puedes cambiar)</label><textarea id="ceTx">' + esc(S.caja.cuerpo) + '</textarea>' +

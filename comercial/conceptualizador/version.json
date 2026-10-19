@@ -1,6 +1,11 @@
 {
-  "version": "V1.56",
+  "version": "V1.57a",
   "historial": [
+    {
+      "version": "V1.57a",
+      "fecha": "2026-10-19",
+      "nota": "fts-conceptualizador#12 (V1.57a): la pantalla nunca se queda quieta («✓ Recibido · en cola», luego «Tomado por el motor» o «Tomado por el respaldo» con sus pasos); la tarjeta del machote con un cálculo viejo dice «Recalculando…» y se reemplaza sola; «Ver cotización» avisa «Versión en Odoo: $X · desactualizada, falta Actualizar» y el rayito trae «Actualizar SO… en Odoo». Todo detrás de interruptores apagados (acuse_v157, recalculo_v157)."
+    },
     {
       "version": "V1.56",
       "fecha": "2026-10-19",

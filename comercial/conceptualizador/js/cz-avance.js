@@ -132,6 +132,22 @@
    *   Ya la mandé. Cada uno trae lo que la pantalla necesita para hacer el MISMO clic que su tarjeta (acción y su id). Un
    *   borrador propuesto antes del machote que falta guardar no se ofrece (es de la versión anterior, como en la tarjeta);
    *   con preguntas abiertas, el machote y el borrador esperan (la tarjeta tampoco deja). */
+  /* V1.57a (#12 acumulado 7, `recalculo_v157`) · ¿la orden en Odoo ya quedó atrás? Sí cuando, después del último borrador
+   * hecho, se guardó un machote más nuevo o hay un borrador propuesto más nuevo. c663eb, 19-oct: el machote v3 quedó a las 14:24
+   * y SO11927 siguió en $330,585 hasta las 14:36; «Ver cotización» abrió la versión vieja y Esteban creyó que ya había terminado.
+   * → { orden, monto, moneda, propuesto } o null. */
+  function odooDesactualizada(H) {
+    var c = (H && H.caso) || {}, A = (H && H.acciones) || [];
+    if (!c.orden_id) return null;
+    var t = function (a) { return Date.parse(a.hecha_at || a.created_at || '') || 0; };
+    var bh = A.filter(function (a) { return a.tipo === 'crear_borrador' && a.estado === 'hecha'; }).sort(function (x, y) { return t(x) - t(y); }).pop();
+    if (!bh) return null;
+    var cm = A.filter(function (a) { return a.tipo === 'crear_machote' && a.estado === 'hecha' && t(a) > t(bh); }).pop();
+    var bp = A.filter(function (a) { return a.tipo === 'crear_borrador' && a.estado === 'propuesta' && Number(a.id) > Number(bh.id); }).pop();
+    if (!cm && !bp) return null;
+    var cot = (bh.datos && bh.datos.cotizacion) || {};
+    return { orden: c.orden_nombre || 'la cotización', monto: typeof cot.suma === 'number' ? cot.suma : null, moneda: cot.moneda || c.moneda || 'MXN', propuesto: bp ? bp.id : null };
+  }
   function clics(H) {
     var c = (H && H.caso) || {}, A = (H && H.acciones) || [], L = [];
     var prop = function (t) { return A.filter(function (a) { return a.tipo === t && a.estado === 'propuesta'; }).pop(); };
@@ -143,7 +159,10 @@
       L.push(refs ? { txt: 'Cotizar con referencias', acc: 'refok', id: brP.id } :
         { txt: c.orden_nombre ? 'Actualizar ' + c.orden_nombre + ' en Odoo' : 'Crear la cotización en Odoo', acc: 'hacer', id: brP.id });
     }
-    if (c.orden_id) L.push({ txt: 'Ver cotización', acc: 'ver_cot', ico: '📄' });
+    // V1.57a · con la orden atrás del machote y sin borrador propuesto, el clic fuerte es pedir la actualización (va al motor).
+    var od = intOn('recalculo_v157') ? odooDesactualizada(H) : null;
+    if (od && !od.propuesto && !espera) L.push({ txt: 'Actualizar ' + od.orden + ' en Odoo', acc: 'mandar', texto: 'Actualiza ' + od.orden + ' en Odoo con el machote nuevo' });
+    if (c.orden_id) L.push({ txt: 'Ver cotización' + (od ? ' (versión vieja en Odoo)' : ''), acc: 'ver_cot', ico: '📄' });
     if (env) L.push({ txt: 'Ya la mandé al cliente', acc: 'hacer', id: env.id });
     return L;
   }
@@ -272,6 +291,6 @@
              P: P, rubrosTxt: 'Rubros ' + cerr + '/' + R.lista.length, preciosTxt: textoPrecios(P) };
   }
 
-  G.CzAvance = { PASOS: PASOS, avance: avance, clics: clics, abiertas: abiertas, yaNoPide: yaNoPide, cierrePosible: cierrePosible, retomamos: retomamos, faltantes: faltantes, textoFaltantes: textoFaltantes, ultimaActividad: ultimaActividad,
+  G.CzAvance = { PASOS: PASOS, avance: avance, clics: clics, odooDesactualizada: odooDesactualizada, abiertas: abiertas, yaNoPide: yaNoPide, cierrePosible: cierrePosible, retomamos: retomamos, faltantes: faltantes, textoFaltantes: textoFaltantes, ultimaActividad: ultimaActividad,
                  rubros: rubros, delRubro: delRubro, linea: linea, corto: corto, precios: precios, textoPrecios: textoPrecios, indicadores: indicadores };
 })(window);

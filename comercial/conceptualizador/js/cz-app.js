@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.56';
+  var VERSION = 'V1.57a';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -351,7 +351,7 @@
       // V1.51 · H · en la fila, como WhatsApp: «🤖 escribiendo…» / «Richard está escribiendo…» en vez de la vista previa.
       var esF = Object.prototype.hasOwnProperty.call(c, 'agente') && G.ChatWA ? estadoDelServidor(c.agente, c.escriben) : null;
       // V1.52.1 · con estados_reales, la fila solo dice «escribiendo…» (robot, agente o persona); lo demás, la vista previa.
-      if (esF && ST.int && ST.int.estados_reales === true && esF.k === 'cola') esF = null;
+      if (esF && ST.int && ST.int.estados_reales === true && esF.k === 'cola' && ST.int.acuse_v157 !== true) esF = null;
       var ef = esF ? G.ChatWA.escrituraFilaHtml(esF) : '';
       h += '<div class="ses' + (on ? ' on' : '') + '" data-id="' + esc(c.id || '') + '" data-local="' + esc(c.local || '') + '" role="button" tabindex="0">' +
         '<div class="av" style="background:' + color(c.titulo) + '">' + esc(iniciales(c.cliente || c.titulo)) + '</div>' +
@@ -724,6 +724,14 @@
     ['bolita_acciones', 'Bolita de acciones', 'Las sugerencias van en la bolita ⚡ arriba del micrófono (sube sobre ⇊); «Ya está todo ok» solo cuando se puede cerrar.'],
     ['tarjetas_colapsadas', 'Tarjetas colapsadas', 'Las tarjetas de datos salen cerradas (título y una línea); la que pide un clic sale abierta.'],
     ['pantalla_v153', 'Pantalla V1.53', 'Bolita «+», nombre «Cliente corto · proyecto», tarjeta de estado vigente, una sola señal, permiso del robot con la razón arriba, textos sin contradicciones, generales y el PDF del visor.']
+    // V1.57a (#12) · todo entra apagado; el orden de prendido va en el plan de despliegue del #12 (manual: motor/OPERACION.md).
+    ['arriendo_v157', 'Un solo motor principal', 'Solo la sesión con el arriendo toma trabajo; un «arranca motor» le gana a la anterior y la que pierde se retira sola.'],
+    ['alarmas_v157', 'Alarmas del motor', 'Relevo que no late, principal sin tomar con cola, permiso pendiente, commits sin subir y dos principales: correo inmediato y #4, con su «qué hacer».'],
+    ['git_v157', 'Git del motor sin stash', 'El motor nunca usa stash: regenera los archivos generados, guarda las dos versiones de un caso, aborta un rebase a medias y sube sus archivos.'],
+    ['juntar_revisa', 'Juntar «revisa» repetidos', 'Dos «revisa» del mismo caso en 2 min sin nada en medio se contestan una vez.'],
+    ['acuse_v157', 'Recibido · en cola', 'Al guardar un mensaje: «Recibido · en cola», luego «Tomado por el motor / el respaldo» con sus pasos, hasta la respuesta.'],
+    ['recalculo_v157', 'Recálculo sin tarjetas viejas', 'La tarjeta del machote viejo se reemplaza sola, los supuestos que citan un número que cambió se revisan, y «Ver cotización» avisa si Odoo quedó atrás.'],
+    ['tokens_v157', 'Menos tokens por vuelta', 'Clics que no piden criterio sin modelo, recálculo como parche de la spec, «Esto voy a poner en Odoo» compacto y cada sugerencia una vez por caso.'],
   ];
   /** Los interruptores que conoce el servidor (valores `interruptor:*` y `interruptores`), en el orden de arriba; uno nuevo
    * que la pantalla todavía no describe sale al final con su nombre, para que se pueda prender igual. */
@@ -1179,6 +1187,7 @@
     var bt = b || document.createElement('button');
     if (x.acc === 'ver_cot') return G.CzEnviar && G.CzEnviar.ver ? G.CzEnviar.ver(c) : toast('No pude abrir la cotización.');
     if (x.acc === 'machote') return lanzarSiguiente({ txt: x.txt, acc: 'machote', id: x.id }, c, bt);
+    if (x.acc === 'mandar') return lanzarSiguiente({ txt: x.txt, acc: 'mandar', texto: x.texto }, c, bt);   // V1.57a · «Actualizar SO… en Odoo» sin borrador propuesto: se le pide al motor
     if (x.acc === 'refok') ST.refAcepta[x.id] = true;
     return hacer(x.id, bt).then(function () { pintarFijo(); });
   }
@@ -1557,11 +1566,18 @@
       return G.ChatWA.estadoEscritura({ trabajos: [], escriben: gente.map(function (e) { return { actor: e.actor, nombre: nombrePersona(e.actor), at: e.at }; }), yo: yo() });
     }
     var av = agenteVivo(ag);
-    if (av) return { k: 'agente', texto: av.quien === 'robot' ? '🤖 El robot asistente está trabajando…' : '🤖 El agente está escribiendo…', paso: av.paso || null, trabajo_id: av.trabajo_id, quien: av.quien };
-    if (ag && ag.estado === 'cola') return { k: 'cola', texto: '🤖 En la cola del agente', trabajo_id: ag.trabajo_id };
+    if (av) return { k: 'agente', texto: av.quien === 'robot' ? '🤖 El robot asistente está trabajando…' : on('acuse_v157') ? textoTomado(av.quien) : '🤖 El agente está escribiendo…', paso: av.paso || null, trabajo_id: av.trabajo_id, quien: av.quien };
+    if (ag && ag.estado === 'cola') return { k: 'cola', texto: on('acuse_v157') ? textoCola() : '🤖 En la cola del agente', trabajo_id: ag.trabajo_id };
     if (!gente.length || !G.ChatWA) return null;
     return G.ChatWA.estadoEscritura({ trabajos: [], escriben: gente.map(function (e) { return { actor: e.actor, nombre: nombrePersona(e.actor), at: e.at }; }), yo: yo() });
   }
+  /* V1.57a (#12 punto J y acumulado 1, `acuse_v157`) · la pantalla nunca se queda quieta. El servidor ya decide los dos estados al
+   * guardar el mensaje: `cola` (hay un trabajo pendiente del caso) y `trabajando` (un proceso vivo, con quién: motor o respaldo).
+   * Antes, con `estados_reales`, la cola no se pintaba: el respaldo tarda 1–2 min en abrir su sesión y en ese rato la pantalla se
+   * veía muerta (c663eb, 19-oct 08:05–08:07). Ahora: «Recibido · en cola» → «Tomado por el motor/respaldo» y sus pasos → la respuesta. */
+  function principalCaido() { var P = ST.motorTxt && ST.motorTxt.principal; return !!(P && P.estado && P.estado !== 'activo'); }
+  function textoCola() { return '✓ Recibido · en cola' + (principalCaido() ? ' (respaldo)' : ''); }
+  function textoTomado(quien) { return quien === 'respaldo' ? '🤖 Tomado por el respaldo' : '🤖 Tomado por el motor'; }
   function escrituraChat() {
     var H = ST.hilo; if (!H || (ST.sel || {}).menu) return null;
     if (Object.prototype.hasOwnProperty.call(ST, 'srvAgente')) return estadoDelServidor(ST.srvAgente, ST.srvEscriben);
@@ -1627,7 +1643,7 @@
       sub = !navigator.onLine ? 'sin señal · lo que mandes se guarda en el teléfono' : emp.replace(/ · $/, '');
       ew = navigator.onLine ? escrituraChat() : null;
       // V1.52 · arriba «escribiendo…» SOLO con un proceso vivo en la base (o una persona tecleando, que dice el servidor).
-      if (ew && G.ChatWA && (ew.k === 'agente' || ew.k === 'persona')) {
+      if (ew && G.ChatWA && (ew.k === 'agente' || ew.k === 'persona' || (ew.k === 'cola' && on('acuse_v157')))) {
         var ew2 = ew.k === 'agente' && ew.paso ? Object.assign({}, ew, { texto: ew.texto + ' · ' + ew.paso }) : ew;
         subHtml = G.ChatWA.escrituraCabeceraHtml(ew2); vivo = true;
       }
@@ -1655,7 +1671,8 @@
     var box = $('#estAg'); if (!box || !G.ChatWA || !G.ChatWA.barraEstado) return;
     if (!on('estados_reales')) { if (ST.barraEst) ST.barraEst.chwaPoner(null); return; }   // V1.51: no hay barra
     if (!ST.barraEst) {
-      ST.barraEst = G.ChatWA.barraEstado({ textoSinPermiso: 'Solo el dueño del caso o Esteban pueden detenerlo.', hora: hora, alDetener: async function (a) {
+      ST.textosBarra = {};
+      ST.barraEst = G.ChatWA.barraEstado({ textos: ST.textosBarra, textoSinPermiso: 'Solo el dueño del caso o Esteban pueden detenerlo.', hora: hora, alDetener: async function (a) {
         var cid = (ST.sel || {}).id; if (!cid || a.proceso_id == null) return { ok: false, mensaje: 'Este proceso todavía no se puede detener desde aquí.' };
         var r = await C.detener(cid, a.proceso_id);
         if (!r.ok) return { ok: false, mensaje: r.error === 'MODO_DESCONOCIDO' || r.error === 'TIPO_INVALIDO' ? 'Esto se activa cuando se actualice el servidor.' : (r.mensaje || 'No se pudo detener: ' + (r.error || 'error')) };
@@ -1663,6 +1680,9 @@
       } });
       box.appendChild(ST.barraEst);
     }
+    // V1.57a · `acuse_v157`: la barra dice quién lo tomó (motor o respaldo); apagado, los textos de siempre del núcleo.
+    if (ST.textosBarra) { if (on('acuse_v157')) { ST.textosBarra.motor = 'Tomado por el motor'; ST.textosBarra.respaldo = 'Tomado por el respaldo · tarda unos minutos'; }
+      else { delete ST.textosBarra.motor; delete ST.textosBarra.respaldo; } }
     var ag = navigator.onLine && !(ST.sel || {}).menu ? agenteVivo(ST.srvAgente) : null;
     // V1.52.1 · con permiso de administrador, la barra del robot dice hasta qué hora (el núcleo no cambia: va en el paso).
     var pmB = ag && ag.quien === 'robot' ? permisoRobot() : null;
@@ -2430,6 +2450,10 @@
       var espera = pendientes && (a.tipo === 'crear_machote' || a.tipo === 'crear_borrador');
       // V1.46 · un borrador propuesto ANTES de la versión del machote que falta guardar es de la versión anterior.
       var viejo = a.tipo === 'crear_borrador' && a.estado === 'propuesta' && cmPend && cmPend.id > a.id;
+      // V1.57a (#12 acumulado 5, `recalculo_v157`) · una tarjeta del machote mientras el motor ya trabaja algo más nuevo del caso (tu
+      // corrección): no se toca, porque sus números pueden ser los de antes. Se reemplaza sola cuando llega el cálculo nuevo.
+      var recalc = on('recalculo_v157') && a.tipo === 'crear_machote' && a.estado === 'propuesta' &&
+        ((ST.hilo && ST.hilo.trabajos) || []).some(function (t) { return !t.lote_de && (t.estado === 'pendiente' || t.estado === 'tomado') && Number(t.id) > Number(a.trabajo_id || 0); });
       // V1.48 · «Actualizar COT-XXXX» que se entienda: «El agente tiene una versión nueva (total, diferencia) · Guardar en el machote».
       var nueva = a.tipo === 'crear_machote' && a.estado === 'propuesta' && d.actualiza && a.id === ultimoCm ? versionNueva() : null;
       h += '<div class="carta' + (nueva ? ' tb-nueva' : '') + '"><h4>' + ({ alta_contacto: '👤', actualizar_cliente: '🏢', crear_machote: '📐', crear_borrador: '🧾', enviada: '📨', cerrar: '🔒' }[a.tipo] || '•') + ' ' +
@@ -2449,7 +2473,8 @@
           (a.tipo === 'crear_borrador' && G.CzVisor && r.orden_id && a.id === ultimoBorrador() ? G.CzVisor.boton(ST.hilo) : '') +
           // V1.54 E3 (`enviar_cliente`) · PDF de Odoo, descargar y enviar al cliente (cz-enviar.js). Apagado: nada.
           (a.tipo === 'crear_borrador' && G.CzEnviar && r.orden_id && a.id === ultimoBorrador() ? G.CzEnviar.botones(ST.hilo, mia(ST.hilo && ST.hilo.caso) || ST.admin === true || ST.panelAdmin === true) : '') :
-         a.estado === 'descartada' ? '<span class="hecho gris">' + ((r.reemplazada_por_trabajo) ? 'Reemplazado por una propuesta más nueva' : 'Descartado') + '</span>' :
+         a.estado === 'descartada' ? '<span class="hecho gris">' + ((r.reemplazada_por_trabajo) ? 'Reemplazado por una propuesta más nueva' : r.reemplazada_por_calculo ? 'Reemplazado por un cálculo más nuevo' : 'Descartado') + '</span>' :
+         recalc ? '<p class="nota" data-recalc="' + a.id + '">⏳ Recalculando con lo último que mandaste: esta tarjeta se reemplaza sola en cuanto llegue el cálculo nuevo.</p>' :
          espera ? '<p class="nota">Contesta primero las suposiciones pendientes: el machote se arma con lo que confirmes.</p>' :
          viejo ? '<p class="nota">Es de la versión anterior del machote: primero toca «' + esc(cmPend.titulo) + '».</p>' :
          candCond && a.tipo === 'crear_borrador' && a.estado === 'propuesta' ? '<p class="nota">🔒 Primero revisa las condiciones de arriba: el borrador espera a que estén listas.</p>' :
