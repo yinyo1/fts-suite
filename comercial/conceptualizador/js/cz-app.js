@@ -723,7 +723,7 @@
     ['leer_mas', 'Leer más', 'Los mensajes del agente se cortan a 5 renglones con «… Leer más» verde y en negrita, pegado al texto; abierto, «Leer menos».'],
     ['bolita_acciones', 'Bolita de acciones', 'Las sugerencias van en la bolita ⚡ arriba del micrófono (sube sobre ⇊); «Ya está todo ok» solo cuando se puede cerrar.'],
     ['tarjetas_colapsadas', 'Tarjetas colapsadas', 'Las tarjetas de datos salen cerradas (título y una línea); la que pide un clic sale abierta.'],
-    ['pantalla_v153', 'Pantalla V1.53', 'Bolita «+», nombre «Cliente corto · proyecto», tarjeta de estado vigente, una sola señal, permiso del robot con la razón arriba, textos sin contradicciones, generales y el PDF del visor.']
+    ['pantalla_v153', 'Pantalla V1.53', 'Bolita «+», nombre «Cliente corto · proyecto», tarjeta de estado vigente, una sola señal, permiso del robot con la razón arriba, textos sin contradicciones, generales y el PDF del visor.'],
     // V1.57a (#12) · todo entra apagado; el orden de prendido va en el plan de despliegue del #12 (manual: motor/OPERACION.md).
     ['arriendo_v157', 'Un solo motor principal', 'Solo la sesión con el arriendo toma trabajo; un «arranca motor» le gana a la anterior y la que pierde se retira sola.'],
     ['alarmas_v157', 'Alarmas del motor', 'Relevo que no late, principal sin tomar con cola, permiso pendiente, commits sin subir y dos principales: correo inmediato y #4, con su «qué hacer».'],
