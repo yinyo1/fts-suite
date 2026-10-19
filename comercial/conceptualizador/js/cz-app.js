@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.55.1';
+  var VERSION = 'V1.56';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -1128,7 +1128,16 @@
       var sug = [];
       // V1.53b.2 (#12) · se congela el VALOR: dos líneas abajo `sg` se pone en null y el clic llegaba con lanzarSiguiente(null…).
       var sgF = sg;
-      if (sgF && !sgF.espera) sug.push({ texto: sgF.txt, fuerte: true, attrs: { 'data-sug': sgF.acc }, hacer: function (bt) { lanzarSiguiente(sgF, c, bt); } });
+      /* V1.56 (#12 punto I) · el rayito trae SIEMPRE los clics que el flujo pide (machote → cotizar con referencias / crear la
+       * cotización en Odoo → Ver cotización → Ya la mandé), con el MISMO efecto que el botón de su tarjeta: nunca esconde una
+       * acción que pide clic. El siguiente paso de la franja va primero, salvo que ya sea uno de esos clics. Las acciones
+       * solo para el dueño del caso; «Ver cotización» también para Esteban. Y «Dame los generales» siempre. */
+      var CL = abierta && !(ST.sel || {}).menu && G.CzAvance.clics ? G.CzAvance.clics(H) : [], yoDueno = mia(c), adm = ST.admin === true || ST.panelAdmin === true;
+      CL = CL.filter(function (x) { return x.acc === 'ver_cot' ? (yoDueno || adm) : yoDueno; });
+      var cubierto = !!sgF && ((sgF.acc === 'machote' && CL.some(function (x) { return x.acc === 'machote'; })) || (sgF.acc === 'ir' && sgF.a === 'accion') ||
+        (sgF.acc === 'cotiza' && CL.some(function (x) { return x.acc === 'hacer' || x.acc === 'refok'; })));
+      if (sgF && !sgF.espera && !cubierto) sug.push({ texto: sgF.txt, fuerte: true, attrs: { 'data-sug': sgF.acc }, hacer: function (bt) { lanzarSiguiente(sgF, c, bt); } });
+      CL.forEach(function (x) { sug.push({ texto: (x.ico ? x.ico + ' ' : '') + x.txt, fuerte: true, attrs: { 'data-sug': x.acc, 'data-sug-id': x.id || '' }, hacer: function (bt) { lanzarClic(x, c, bt); } }); });
       if (abierta && !(ST.sel || {}).menu && H.caso && !/^Dame los generales/.test((sg && sg.txt) || '')) sug.push({ texto: 'Dame los generales', attrs: { 'data-sug': 'generales' }, hacer: function () { mandar('Dame los generales'); } });
       BOL.poner(sug, { titulo: 'Sugerencias' });
       if (sg && !sg.espera) sg = null;
@@ -1142,6 +1151,36 @@
         e || (sg.espera && agenteTrabajando()) ? GIRO : ico(sg.espera ? 'reloj' : ic, 's')) +'<span class="fx">' + esc(e || sg.txt) + '</span></button>';
     var b = $('#bFijo');
     b.onclick = function () { lanzarSiguiente(sg, c, b); };
+  }
+  /* V1.56 (#12 punto I) · «Dame los generales» dice también qué le falta a la ficha del cliente en Odoo (la calle de Armatec) y
+   * quién lo debe. Se lee EN VIVO de Odoo (conceptualizador/cotizacion-cliente, modo `ficha`, solo lectura) y se guarda 5 min. */
+  function fichaOdooHtml(H) {
+    var c = (H && H.caso) || {};
+    if (!c.cliente_odoo_id || !G.CzCliente || !G.CzCliente.cotizacion || !(mia(c) || ST.admin === true || ST.panelAdmin === true)) return '';
+    ST.fichaOdoo = ST.fichaOdoo || {};
+    var f = ST.fichaOdoo[c.id], cab = '<div class="carta gen ficha-odoo"><h4>Cliente en Odoo';
+    if (!f || (f.t && Date.now() - f.t > 300000 && !f.cargando)) {
+      ST.fichaOdoo[c.id] = { cargando: true, t: Date.now() };
+      G.CzCliente.cotizacion('ficha', { caso_id: c.id }).then(function (r) {
+        ST.fichaOdoo[c.id] = r && r.ok && r.ficha ? { ficha: r.ficha, t: Date.now() } : { error: (r && (r.mensaje || r.error)) || 'sin respuesta', t: Date.now() };
+        pintarChat();
+      });
+      f = ST.fichaOdoo[c.id];
+    }
+    if (f.cargando) return cab + '</h4><p class="nota">' + GIRO + 'revisando su ficha…</p></div>';
+    if (f.error) return cab + '</h4><p class="nota">No pude leer su ficha en Odoo (' + esc(f.error) + ').</p></div>';
+    var x = f.ficha, au = String(c.autor || ''), quien = c.apodo || ({ 'esteban.delacruz': 'Esteban', 'francisco.montalvo': 'Montalvo', 'ricardo.hernandez': 'Richard' })[au] || (au.split('.')[0] ? au.charAt(0).toUpperCase() + au.split('.')[0].slice(1) : 'el dueño del caso');
+    var dir = [x.calle, x.ciudad, x.estado, x.cp ? 'C.P. ' + x.cp : ''].filter(Boolean).join(' · ');
+    return cab + ' · ' + esc(x.cliente) + '</h4><p class="nota">' + ((x.faltan || []).length ? '<b>Falta: ' + esc(x.faltan.join(', ')) + '</b> · lo captura ' + esc(quien) + ' en Odoo' : 'Su ficha está completa (RFC y dirección).') +
+      '</p><p class="nota">' + esc([x.rfc ? 'RFC ' + x.rfc : 'sin RFC', dir].filter(Boolean).join(' · ')) + '</p></div>';
+  }
+  /** V1.56 · un clic del rayito hace lo mismo que el botón de su tarjeta (cz-avance.js clics()). */
+  function lanzarClic(x, c, b) {
+    var bt = b || document.createElement('button');
+    if (x.acc === 'ver_cot') return G.CzEnviar && G.CzEnviar.ver ? G.CzEnviar.ver(c) : toast('No pude abrir la cotización.');
+    if (x.acc === 'machote') return lanzarSiguiente({ txt: x.txt, acc: 'machote', id: x.id }, c, bt);
+    if (x.acc === 'refok') ST.refAcepta[x.id] = true;
+    return hacer(x.id, bt).then(function () { pintarFijo(); });
   }
   /** El «siguiente» de la franja: lo dispara el botón de abajo o (V1.53b) la bolita de acciones. */
   function lanzarSiguiente(sg, c, b) {
@@ -1688,7 +1727,7 @@
       (G.CzVista ? '<button data-a="vista">' + ico('pagina', 's') + '<span>Vista ejecutiva del proyecto<small>Costo, precio y margen por nivel, en vivo</small></span></button>' : '') +
       (hayM ? '<button data-a="ir_machote">' + ico('docs', 's') + '<span>Ir al machote<small>' + esc((cs.machote_folio || 'Machote') + (verMachote() ? ' · versión ' + verMachote() : '')) + '</small></span></button>'
         : '<button data-a="ir_machote" disabled aria-disabled="true">' + ico('docs', 's') + '<span>Ir al machote<small>Aún no hay machote</small></span></button>') +
-      (G.CzVisor && ultimoBorrador() ? '<button data-a="visor">' + ico('pagina', 's') + '<span>Ver cotización<small>Como la verá el cliente, desde Odoo</small></span></button>' : '') +
+      (G.CzVisor && ultimoBorrador() ? '<button data-a="visor">' + ico('pagina', 's') + '<span>Vista rápida de la cotización<small>Lo que hay en Odoo y qué cambió; el PDF oficial está en «Ver cotización»</small></span></button>' : '') +
       '<button data-a="pagina">' + ico('pagina', 's') + '<span>Lo considerado, con versiones<small>La vista en página de antes</small></span></button><hr>' +
       '<button data-a="archivos">' + ico('docs', 's') + '<span>Archivos, enlaces y docs.</span></button>' +
       '<button data-a="multimedia">' + ico('bajar', 's') + '<span>Descargar todo lo multimedia<small>Fotos, audios y PDFs en un ZIP</small></span></button>' +
@@ -1841,7 +1880,7 @@
         // V1.53b · «Dame los generales» (de lo guardado, sin modelo): un bloque por tarjeta, colapsadas con su línea.
         var GEN = on('pantalla_v153') && H.ultima && H.ultima.verifica && H.ultima.verifica.generales;
         if (Array.isArray(GEN) && GEN.length && Number(H.ultima.trabajo_id) === Number(m.trabajo_id))
-          aparte('<div class="fila el"><div class="gen-blq">' + GEN.map(function (g) { return '<div class="carta gen"><h4>' + esc(g.titulo) + '</h4><p class="nota">' + esc(g.resumen || '') + '</p>' + (g.cuerpo ? '<div class="txt">' + md(g.cuerpo) + '</div>' : '') + '</div>'; }).join('') + '</div></div>');
+          aparte('<div class="fila el"><div class="gen-blq">' + GEN.map(function (g) { return '<div class="carta gen"><h4>' + esc(g.titulo) + '</h4><p class="nota">' + esc(g.resumen || '') + '</p>' + (g.cuerpo ? '<div class="txt">' + md(g.cuerpo) + '</div>' : '') + '</div>'; }).join('') + fichaOdooHtml(H) + '</div></div>');
         if (acc[m.trabajo_id]) { aparte(tarjetaAcciones(acc[m.trabajo_id].filter(function (a) { return a.tipo !== 'conjetura'; }))); pintadas[m.trabajo_id] = 1; }
       }
     });
@@ -2409,7 +2448,7 @@
           // V1.51 · Frente 3: «Ver cotización» bajo el último borrador (cz-visor.js, prototipo aprobado), con lo que cambió.
           (a.tipo === 'crear_borrador' && G.CzVisor && r.orden_id && a.id === ultimoBorrador() ? G.CzVisor.boton(ST.hilo) : '') +
           // V1.54 E3 (`enviar_cliente`) · PDF de Odoo, descargar y enviar al cliente (cz-enviar.js). Apagado: nada.
-          (a.tipo === 'crear_borrador' && G.CzEnviar && r.orden_id && a.id === ultimoBorrador() ? G.CzEnviar.botones(ST.hilo) : '') :
+          (a.tipo === 'crear_borrador' && G.CzEnviar && r.orden_id && a.id === ultimoBorrador() ? G.CzEnviar.botones(ST.hilo, mia(ST.hilo && ST.hilo.caso) || ST.admin === true || ST.panelAdmin === true) : '') :
          a.estado === 'descartada' ? '<span class="hecho gris">' + ((r.reemplazada_por_trabajo) ? 'Reemplazado por una propuesta más nueva' : 'Descartado') + '</span>' :
          espera ? '<p class="nota">Contesta primero las suposiciones pendientes: el machote se arma con lo que confirmes.</p>' :
          viejo ? '<p class="nota">Es de la versión anterior del machote: primero toca «' + esc(cmPend.titulo) + '».</p>' :

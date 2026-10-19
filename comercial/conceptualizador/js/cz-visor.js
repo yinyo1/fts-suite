@@ -154,7 +154,7 @@
     return '<div class="vco-doc"><div class="vco-doc-top"><div class="vco-doc-ic">PDF</div><div class="vco-doc-tx"><b>Cotización ' + esc(nom) + ' · ' + estadoTxt(estadoDe(hilo, v, true)) + '</b>' +
       '<span>' + plural(n, 'partida', 'partidas') + ' · Total ' + esc(din(totalDe(v), monedaDe(v))) + '</span>' +
       (cam ? '<span class="vco-cambio">Cambió: ' + esc(cam) + '</span>' : '') + '</div></div>' +
-      '<button type="button" class="vco-doc-ver" data-cz-visor="' + esc(v.accion_id == null ? '' : v.accion_id) + '">' + ICO.ojo + 'Ver cotización</button></div>';
+      '<button type="button" class="vco-doc-ver" data-cz-visor="' + esc(v.accion_id == null ? '' : v.accion_id) + '">' + ICO.ojo + 'Vista rápida</button></div>';   // V1.56 · «Ver cotización» es el PDF de Odoo (cz-enviar.js)
   }
 
   // ── la hoja ─────────────────────────────────────────────────────────────

@@ -10,6 +10,9 @@
  *    (De sales@, Para entre los contactos del cliente en Odoo, CC quien cotiza + ingeniero comercial, Responder a sales@,
  *    asunto, cuerpo, firma de quien cotiza y el PDF) → SOLO con «Enviar» sale. El agente nunca envía: no hay otro camino.
  *  · Debajo, una línea por envío: quién, cuándo, a quién y el folio (de `hilo.envios_cliente`).
+ * V1.56 (fts-conceptualizador#12, punto 4) · «Ver cotización» y «Descargar PDF» ya NO dependen de `enviar_cliente`: salen en
+ * todos los chats en cuanto el caso tiene orden en Odoo, para el dueño y para Esteban (la base lo decide, db/022). Solo
+ * «Enviar al cliente» sigue detrás del interruptor (y de MODO_PRUEBA en el workflow).
  */
 (function (G) {
   'use strict';
@@ -41,12 +44,14 @@
 
   function hora(iso) { try { return new Date(iso).toLocaleString('es-MX', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
   /** Los botones bajo el último borrador hecho, y la línea de cada envío. Vacío con el interruptor apagado. */
-  function botones(H) {
-    if (!on()) return '';
+  function botones(H, puede) {
+    var c = (H && H.caso) || {};
+    if (!c.orden_id || puede === false) return '';
     css();
     var L = (H && H.envios_cliente) || [], enviada = L.some(function (x) { return x.estado === 'enviado'; });
-    var h = '<div class="ce-bts"><button type="button" class="ce-bt" data-ce="ver">📄 PDF de Odoo</button><button type="button" class="ce-bt" data-ce="bajar">⬇ Descargar PDF</button>' +
-      '<button type="button" class="ce-bt' + (enviada ? '' : ' si') + '" data-ce="enviar">✉ ' + (enviada ? 'Enviar otra vez' : 'Enviar al cliente') + '</button></div>';
+    var h = '<div class="ce-bts"><button type="button" class="ce-bt' + (on() ? '' : ' si') + '" data-ce="ver">📄 Ver cotización</button><button type="button" class="ce-bt" data-ce="bajar">⬇ Descargar PDF</button>' +
+      (on() ? '<button type="button" class="ce-bt' + (enviada ? '' : ' si') + '" data-ce="enviar">✉ ' + (enviada ? 'Enviar otra vez' : 'Enviar al cliente') + '</button>' : '') + '</div>';
+    if (!on()) return h + '<div class="ce-nota">El PDF es el de Odoo: se abre aquí mismo y se cierra con ✕.</div>';
     if (S.caja) h += '<div class="ce-caja"><label for="ceTx">Mensaje para el cliente (lo puedes cambiar)</label><textarea id="ceTx">' + esc(S.caja.cuerpo) + '</textarea>' +
       '<div class="ce-bts"><button type="button" class="ce-bt si" data-ce="previa">Enviar…</button><button type="button" class="ce-bt" data-ce="cancelar">Cancelar</button></div>' +
       '<div class="ce-nota">Antes de que salga ves el correo completo. Solo sale con tu clic.</div></div>';
@@ -65,7 +70,7 @@
     var bin = atob(r.pdf.b64), u8 = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
     var url = URL.createObjectURL(new Blob([u8], { type: 'application/pdf' }));
     if (bajar) { var a = document.createElement('a'); a.href = url; a.download = r.pdf.nombre || 'cotizacion.pdf'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000); return; }
-    var m = modal({ titulo: (r.pdf.nombre || 'Cotización') + ' · PDF de Odoo', marca: 'ce-modal-pdf',
+    var m = modal({ titulo: (r.pdf.nombre || 'Cotización') + ' · cotización de Odoo', marca: 'ce-modal-pdf',
       cabecera: '<a class="ce-bt" style="min-height:32px;padding:4px 12px" href="' + url + '" download="' + esc(r.pdf.nombre || 'cotizacion.pdf') + '">⬇</a>',
       html: '<iframe class="ce-pdf" title="PDF de la cotización" src="' + url + '"></iframe>', alCerrar: function () { URL.revokeObjectURL(url); } });
     if (!m) G.open(url, '_blank');
@@ -107,13 +112,14 @@
 
   /** Enlaza los botones dentro de `raiz`. `ctx`: { caso, repinta(recargar) }. */
   function enlazar(raiz, ctx) {
-    if (!on() || !raiz) return;
+    if (!raiz) return;
     Array.prototype.forEach.call(raiz.querySelectorAll('[data-ce]'), function (b) {
       b.onclick = function () {
         var c = ctx.caso(); if (!c) return;
         var k = b.dataset.ce;
         if (k === 'ver') return pdf(c, false);
         if (k === 'bajar') return pdf(c, true);
+        if (!on()) return;   // enviar, cancelar y la vista previa siguen detrás de enviar_cliente
         if (k === 'enviar') return preparar(c, ctx.repinta);
         if (k === 'cancelar') { S.caja = null; S.borrador = null; return ctx.repinta(); }
         if (k === 'previa') return vistaPrevia(c, ctx.repinta);
@@ -122,5 +128,7 @@
     var tx = raiz.querySelector('#ceTx'); if (tx) tx.oninput = function () { if (S.caja) S.caja.cuerpo = tx.value; };
   }
 
-  G.CzEnviar = { botones: botones, enlazar: enlazar, _estado: S };
+  /* V1.56 · el rayito («Ver cotización») abre el mismo PDF; `bajar` lo descarga. */
+  function ver(c, bajar) { return c ? pdf(c, !!bajar) : null; }
+  G.CzEnviar = { botones: botones, enlazar: enlazar, ver: ver, _estado: S };
 })(window);

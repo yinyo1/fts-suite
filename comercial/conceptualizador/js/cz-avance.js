@@ -127,6 +127,27 @@
     return { oferta: of, e: e, det: det, actual: actual, sig: sig, ciudad: ciudad, faltan: f, pendCot: pendCot, conjAb: conjAb, sinDec: sinDec, machote: cmH || null };
   }
 
+  /* V1.56 (fts-conceptualizador#12, punto I/5) · los CLICS que el flujo pide, en su orden, para el rayito: ninguno se esconde.
+   *   Crear / Actualizar machote → Cotizar con referencias o Crear la cotización en Odoo (o Actualizar SO…) → Ver cotización →
+   *   Ya la mandé. Cada uno trae lo que la pantalla necesita para hacer el MISMO clic que su tarjeta (acción y su id). Un
+   *   borrador propuesto antes del machote que falta guardar no se ofrece (es de la versión anterior, como en la tarjeta);
+   *   con preguntas abiertas, el machote y el borrador esperan (la tarjeta tampoco deja). */
+  function clics(H) {
+    var c = (H && H.caso) || {}, A = (H && H.acciones) || [], L = [];
+    var prop = function (t) { return A.filter(function (a) { return a.tipo === t && a.estado === 'propuesta'; }).pop(); };
+    var cmP = prop('crear_machote'), brP = prop('crear_borrador'), env = prop('enviada');
+    var espera = abiertas(H).length > 0;
+    if (cmP && !espera) L.push({ txt: (cmP.datos || {}).actualiza ? 'Actualizar ' + ((cmP.datos.actualiza.folio) || 'el machote') : 'Crear machote', acc: 'machote', id: cmP.id });
+    if (brP && !espera && !(cmP && cmP.id > brP.id)) {
+      var refs = brP.datos && brP.datos.referencias && brP.datos.referencias.n;
+      L.push(refs ? { txt: 'Cotizar con referencias', acc: 'refok', id: brP.id } :
+        { txt: c.orden_nombre ? 'Actualizar ' + c.orden_nombre + ' en Odoo' : 'Crear la cotización en Odoo', acc: 'hacer', id: brP.id });
+    }
+    if (c.orden_id) L.push({ txt: 'Ver cotización', acc: 'ver_cot', ico: '📄' });
+    if (env) L.push({ txt: 'Ya la mandé al cliente', acc: 'hacer', id: env.id });
+    return L;
+  }
+
   /* V1.52.1 (#5) · ¿se puede sugerir «Ya está todo ok, ya no muevas nada»? Cierra el caso: nunca con un trabajo pendiente o
    * tomado en la base, ni con un clic pendiente de la persona (una acción `propuesta`: «Va» de una conjetura, Guardar en el
    * machote, Cotizar con referencias / Actualizar SO, Ya la mandé). El proceso vivo del robot lo revisa la pantalla. */
@@ -251,6 +272,6 @@
              P: P, rubrosTxt: 'Rubros ' + cerr + '/' + R.lista.length, preciosTxt: textoPrecios(P) };
   }
 
-  G.CzAvance = { PASOS: PASOS, avance: avance, abiertas: abiertas, yaNoPide: yaNoPide, cierrePosible: cierrePosible, retomamos: retomamos, faltantes: faltantes, textoFaltantes: textoFaltantes, ultimaActividad: ultimaActividad,
+  G.CzAvance = { PASOS: PASOS, avance: avance, clics: clics, abiertas: abiertas, yaNoPide: yaNoPide, cierrePosible: cierrePosible, retomamos: retomamos, faltantes: faltantes, textoFaltantes: textoFaltantes, ultimaActividad: ultimaActividad,
                  rubros: rubros, delRubro: delRubro, linea: linea, corto: corto, precios: precios, textoPrecios: textoPrecios, indicadores: indicadores };
 })(window);

@@ -1,6 +1,11 @@
 {
-  "version": "V1.55.1",
+  "version": "V1.56",
   "historial": [
+    {
+      "version": "V1.56",
+      "fecha": "2026-10-19",
+      "nota": "fts-conceptualizador#12 (V1.56): «Ver cotización» y «Descargar PDF» en todos los chats en cuanto el caso tiene orden en Odoo (el PDF oficial de Odoo en el popup), sin depender de «Enviar al cliente»; el rayito ⚡ trae siempre el siguiente clic del flujo (crear o actualizar machote, cotizar con referencias o crear la cotización en Odoo, ver cotización, ya la mandé) y «Dame los generales», que ahora dice qué falta, quién lo debe y qué le falta a la ficha del cliente en Odoo."
+    },
     {
       "version": "V1.55.1",
       "fecha": "2026-10-19",
