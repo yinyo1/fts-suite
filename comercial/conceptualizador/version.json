@@ -1,6 +1,11 @@
 {
-  "version": "V1.55",
+  "version": "V1.55.1",
   "historial": [
+    {
+      "version": "V1.55.1",
+      "fecha": "2026-10-19",
+      "nota": "Arreglo de menos_texto (fts-conceptualizador#12): con el interruptor prendido, un caso cuya respuesta más nueva es de antes de prenderlo ya no pierde las tarjetas de rubros ni «Supuse esto». Si la respuesta no dice qué cambió, la pantalla las pinta como antes; las respuestas nuevas del motor siguen mandando solo lo que cambió."
+    },
     {
       "version": "V1.55",
       "fecha": "2026-10-18",

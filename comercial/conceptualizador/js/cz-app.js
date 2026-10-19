@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.55';
+  var VERSION = 'V1.55.1';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -1822,12 +1822,15 @@
         // V1.40 · el resumen por rubro, una sola vez: bajo la respuesta más nueva del motor (trae el % al día).
         // V1.55 (`menos_texto`, #12 Mejora 4) · rubros y supuestos solo con «Dame los generales» o cuando CAMBIAN (lo dice el motor en
         // `verifica.tarjetas`), y de supuestos solo lo nuevo («S19 nuevo · S4 cambió»). Apagado: bajo la respuesta más nueva, como antes.
+        // V1.55.1 · una respuesta sin `verifica.tarjetas` (anterior al interruptor, o de un motor sin V1.55) no dice qué cambió:
+        // se pinta como antes. Sin esto, al prender `menos_texto` los casos perdían rubros y «Supuse esto» hasta su siguiente respuesta.
         var TJ = on('menos_texto') && H.ultima && H.ultima.verifica ? (H.ultima.verifica.tarjetas || null) : null;
-        if (RUB && H.ultima && ULT === Number(m.trabajo_id) && (!on('menos_texto') || (TJ && (TJ.rubros || TJ.generales)))) aparte(tarjetaRubros(RUB));
+        var MT = on('menos_texto') && !!TJ;
+        if (RUB && H.ultima && ULT === Number(m.trabajo_id) && (!MT || TJ.rubros || TJ.generales)) aparte(tarjetaRubros(RUB));
         // V1.43 · «Supuse esto»: lo deducible se asume con su fuente (viaja en cada respuesta); bajo la más nueva.
         var SUP = supuestosVigentes(H);
         if (SUP.length && ULT === Number(m.trabajo_id)) {
-          if (!on('menos_texto')) aparte(tarjetaSupuestos(SUP));
+          if (!MT) aparte(tarjetaSupuestos(SUP));
           else if (TJ && (TJ.generales || (TJ.supuestos && TJ.supuestos.todos))) aparte(tarjetaSupuestos(SUP));
           else if (TJ && TJ.supuestos && (TJ.supuestos.nuevos.length || TJ.supuestos.cambiados.length)) {
             var nv = TJ.supuestos.nuevos, cb = TJ.supuestos.cambiados;
