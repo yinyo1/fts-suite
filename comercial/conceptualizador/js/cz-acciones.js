@@ -229,6 +229,11 @@
     var R = (a.datos || {}).referencias, conRef = !!(R && R.n);
     if (conRef && !p.referencias) return { ok: false, mensaje: 'El servidor de Odoo todavía no acepta cotizar con referencias (falta publicar el workflow). El machote sí está al día.' };
     if (conRef && !ctx.aceptaReferencias) return { ok: false, mensaje: 'Revisa las referencias y toca «Cotizar con referencias».' };
+    // V1.57b (`regla15_v157`) · los textos limpios elegidos se aplican aquí con CzRegla15 (el mismo código que el motor y el
+    // servidor) y las frases liberadas viajan con su razón; el servidor vuelve a revisar y no escribe si falta una.
+    var R15 = ctx.r15 || null;
+    if (R15 && R15.faltan) return { ok: false, mensaje: 'Primero decide las frases de la regla 15: texto limpio o liberar con su razón.' };
+    if (R15) cot = R15.cotizacion;
     var prev = ordenDe(H), modo = prev ? 'actualizar' : 'crear';
     var cuerpo = { modo: modo, machote_id: caso.machote_id, version_leida: (cm.resultado || {}).version || 1,
       caso_id: caso.id, cotizacion: cot, acepta_referencias: conRef },
@@ -236,7 +241,10 @@
       // Solo con el interruptor `moneda_decreto` prendido; apagado, el cuerpo es el de V1.51.
       md = prendido('moneda_decreto');
     if (md) cuerpo.moneda_caso = monedaCaso(caso);
+    if (R15 && R15.liberadas.length) cuerpo.regla15_liberadas = R15.liberadas;
     var r = await C.suite(RUTA_ORDEN, cuerpo, 120000);
+    // El servidor encontró una frase que la pantalla no vio (la cotización cambió): se dice cuál, no se escribe nada.
+    if (!r.ok && r.error === 'REGLA15_CALCULOS') return { ok: false, error: r.error, mensaje: r.mensaje || 'La cotización trae cálculos que vería el cliente.' };
     if (md && !r.ok && r.error === 'MONEDA_DISTINTA_AL_CASO') {
       var mm = r.moneda_machote || (cot && cot.moneda) || '¿?', mc = r.moneda_caso || monedaCaso(caso) || '¿?';
       return { ok: false, error: r.error, mensaje: 'El machote está en ' + mm + ' y el caso en ' + mc + ': actualiza el machote antes de crear la cotización.' };
@@ -244,6 +252,8 @@
     if (!r.ok || !r.odoo_so_id) return { ok: false, mensaje: r.mensaje || ('No se creó el borrador: ' + (r.error || 'sin orden')) };
     var o = releido(r);
     o.texto = textoOrden(o, modo === 'crear' ? 'Borrador' : 'Actualizado');
+    // Queda en la acción (y por ella en hilo.md): qué frase, qué se hizo, quién y por qué. El motor lo lee en la vuelta siguiente.
+    if (R15 && R15.registro.hallazgos) { o.regla15 = R15.registro; o.texto += ' Regla 15: ' + R15.registro.limpios + ' texto' + (R15.registro.limpios === 1 ? '' : 's') + ' limpio' + (R15.registro.limpios === 1 ? '' : 's') + (R15.registro.liberadas ? ', ' + R15.registro.liberadas + ' liberada' + (R15.registro.liberadas === 1 ? '' : 's') : '') + '.'; }
     if (conRef) {   // queda en la acción y por ella en hilo.md: quién aceptó qué y cuándo
       var S = G.SuiteAuth.getSession() || {};
       o.referencias_aceptadas = { pct: R.pct, n3: R.n3, n4: R.n4, importe: R.importe, por: S.actor || null, at: new Date().toISOString() };

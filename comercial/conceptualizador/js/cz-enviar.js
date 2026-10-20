@@ -19,6 +19,11 @@
   var S = { caja: null, borrador: null, ocupado: false };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var on = function () { try { return !!(G.CzInterruptor && G.CzInterruptor('enviar_cliente')); } catch (e) { return false; } };
+  // V1.57b (#12) · `tarjeta_v157`: sin «Ver cotización» (repetía a «Vista rápida»), y el giro va en el mismo botón mientras trabaja.
+  // `correo_v157`: «✉ Correo para envío» abre la vista previa editable de cz-correo.js en lugar de la caja de V1.54.
+  var pr = function (n) { try { return !!(G.CzInterruptor && G.CzInterruptor(n)); } catch (e) { return false; } };
+  var nuevoCorreo = function () { return on() && pr('correo_v157') && !!G.CzCorreo; };
+  var GIRO = '<span class="giro" aria-hidden="true"></span>';
   var CSS = '.ce-bts{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}' +
     '.ce-bt{border-radius:18px;padding:7px 14px;font-weight:600;font-size:14px;border:1px solid var(--acento-osc,#008069);color:var(--acento-osc,#008069);background:#fff;display:inline-flex;gap:6px;align-items:center;min-height:36px}' +
     '.ce-bt.si{background:var(--acento-osc,#008069);color:#fff}.ce-bt[disabled]{opacity:.45;cursor:not-allowed}' +
@@ -53,9 +58,12 @@
     var od = G.CzInterruptor && G.CzInterruptor('recalculo_v157') && G.CzAvance && G.CzAvance.odooDesactualizada ? G.CzAvance.odooDesactualizada(H) : null;
     var din = function (n, m) { return n == null ? '' : '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + (m && m !== 'MXN' ? ' ' + m : ''); };
     var hOd = od ? '<div class="ce-env ce-mal" data-ce-viejo="1">⚠ Versión en Odoo: ' + esc(din(od.monto, od.moneda) || od.orden) + ' · desactualizada, falta Actualizar' + (od.propuesto ? ' (toca «Actualizar ' + esc(od.orden) + ' en Odoo» arriba)' : '') + '</div>' : '';
-    var h = hOd + '<div class="ce-bts"><button type="button" class="ce-bt' + (on() ? '' : ' si') + '" data-ce="ver">📄 Ver cotización</button><button type="button" class="ce-bt" data-ce="bajar">⬇ Descargar PDF</button>' +
-      (on() ? '<button type="button" class="ce-bt' + (enviada ? '' : ' si') + '" data-ce="enviar">✉ ' + (enviada ? 'Enviar otra vez' : 'Enviar al cliente') + '</button>' : '') + '</div>';
-    if (!on()) return h + '<div class="ce-nota">El PDF es el de Odoo: se abre aquí mismo y se cierra con ✕.</div>';
+    var t157 = pr('tarjeta_v157'), nc = nuevoCorreo();
+    var h = hOd + '<div class="ce-bts">' + (t157 ? '' : '<button type="button" class="ce-bt' + (on() ? '' : ' si') + '" data-ce="ver">📄 Ver cotización</button>') +
+      '<button type="button" class="ce-bt" data-ce="bajar" data-espera="Trayendo el PDF de Odoo…">⬇ Descargar PDF</button>' +
+      (on() ? '<button type="button" class="ce-bt' + (enviada ? '' : ' si') + '" data-ce="enviar" data-espera="Armando el correo…">✉ ' + (enviada ? 'Enviar otra vez' : nc ? 'Correo para envío' : 'Enviar al cliente') + '</button>' : '') + '</div>';
+    if (!on()) return h + '<div class="ce-nota">' + (t157 ? 'Descargar PDF baja el formato final de Odoo.' : 'El PDF es el de Odoo: se abre aquí mismo y se cierra con ✕.') + '</div>';
+    if (nc) return h + G.CzCorreo.html(H, puede === true && G.CzApp && G.CzApp._st && (G.CzApp._st.admin === true || G.CzApp._st.panelAdmin === true)) + G.CzCorreo.lineas(H);
     if (S.caja) h += '<div class="ce-caja"><label for="ceTx">Mensaje para el cliente (lo puedes cambiar)</label><textarea id="ceTx">' + esc(S.caja.cuerpo) + '</textarea>' +
       '<div class="ce-bts"><button type="button" class="ce-bt si" data-ce="previa">Enviar…</button><button type="button" class="ce-bt" data-ce="cancelar">Cancelar</button></div>' +
       '<div class="ce-nota">Antes de que salga ves el correo completo. Solo sale con tu clic.</div></div>';
@@ -121,15 +129,20 @@
       b.onclick = function () {
         var c = ctx.caso(); if (!c) return;
         var k = b.dataset.ce;
+        // V1.57b (`tarjeta_v157`) · el giro en el mismo botón hasta que termine (antes no pasaba nada visible por segundos).
+        var gira = function (p) { if (!pr('tarjeta_v157') || !b.dataset.espera || b.disabled) return p; var t0 = b.innerHTML; b.disabled = true; b.innerHTML = GIRO + ' ' + b.dataset.espera;
+          return Promise.resolve(p).then(function (x) { if (b.isConnected) { b.disabled = false; b.innerHTML = t0; } return x; }, function (e) { if (b.isConnected) { b.disabled = false; b.innerHTML = t0; } throw e; }); };
         if (k === 'ver') return pdf(c, false);
-        if (k === 'bajar') return pdf(c, true);
+        if (k === 'bajar') return gira(pdf(c, true));
         if (!on()) return;   // enviar, cancelar y la vista previa siguen detrás de enviar_cliente
-        if (k === 'enviar') return preparar(c, ctx.repinta);
+        if (k === 'enviar' && nuevoCorreo()) return gira(G.CzCorreo.preparar(c, ctx.hilo ? ctx.hilo() : null, ctx.repinta, b));
+        if (k === 'enviar') return gira(preparar(c, ctx.repinta));
         if (k === 'cancelar') { S.caja = null; S.borrador = null; return ctx.repinta(); }
         if (k === 'previa') return vistaPrevia(c, ctx.repinta);
       };
     });
     var tx = raiz.querySelector('#ceTx'); if (tx) tx.oninput = function () { if (S.caja) S.caja.cuerpo = tx.value; };
+    if (nuevoCorreo()) G.CzCorreo.enlazar(raiz, { caso: ctx.caso, hilo: ctx.hilo || function () { return null; }, repinta: ctx.repinta });
   }
 
   /* V1.56 · el rayito («Ver cotización») abre el mismo PDF; `bajar` lo descarga. */

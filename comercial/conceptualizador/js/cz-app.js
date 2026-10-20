@@ -732,6 +732,13 @@
     ['acuse_v157', 'Recibido · en cola', 'Al guardar un mensaje: «Recibido · en cola», luego «Tomado por el motor / el respaldo» con sus pasos, hasta la respuesta.'],
     ['recalculo_v157', 'Recálculo sin tarjetas viejas', 'La tarjeta del machote viejo se reemplaza sola, los supuestos que citan un número que cambió se revisan, y «Ver cotización» avisa si Odoo quedó atrás.'],
     ['tokens_v157', 'Menos tokens por vuelta', 'Clics que no piden criterio sin modelo, recálculo como parche de la spec, «Esto voy a poner en Odoo» compacto y cada sugerencia una vez por caso.'],
+    // V1.57b (#12) · lo que ve el cliente. Todo entra apagado; orden de prendido en el plan de despliegue del #12.
+    ['regla15_v157', 'Regla 15: sin cálculos al cliente', 'El motor marca los cálculos en renglones, nota, descripción y PDF; la tarjeta del borrador pide «texto limpio» o «Liberar…» con razón, y el servidor no escribe con uno sin decidir.'],
+    ['pago_decreto', 'Pago del decreto', 'La nota de la orden lleva solo la condición de pago decretada (sin la línea automática ni el supuesto repetido); la revisión diaria la compara con Odoo.'],
+    ['horario_autor', 'Horario como criterio', 'Horario, comida y traslado se aprenden del autor y cada partida lo dice en una viñeta, sin cuentas.'],
+    ['tarjeta_v157', 'Tarjeta de la cotización V1.57b', 'Sin «Ver cotización», giro en el mismo botón mientras trabaja y nombres de partida cortados por palabra con «…».'],
+    ['correo_v157', 'Correo para envío', 'Para y CC editables con aviso de no-contacto y alta, asunto y cuerpo editables con Guardar, tono por tipo de cliente, firma en imagen y una segunda vista con «Confirmar envío».'],
+    ['vista_cliente', 'Vista ejecutiva cliente', 'La vista ejecutiva con versión FTS y versión cliente (sin costos ni márgenes, revisada por la regla 15) y descarga en Excel.'],
   ];
   /** Los interruptores que conoce el servidor (valores `interruptor:*` y `interruptores`), en el orden de arriba; uno nuevo
    * que la pantalla todavía no describe sale al final con su nombre, para que se pueda prender igual. */
@@ -1768,6 +1775,8 @@
         '<small>' + esc(presupuesto() ? presupuesto().linea : 'El trabajo proactivo del motor (sin presupuesto leído todavía)') + '</small></span></button>' : '') +
       (abierta && c.id ? '<button data-a="cierre">' + ico('candado', 's') + '<span>Cerrar con /cierre</span></button>' : '') +
       (G.CzPush ? G.CzPush.menuHtml('chat') : '') +   // V1.41 · «Permisos y avisos» (cz-push.js)
+      // V1.57b (`correo_v157`) · la firma en imagen de quien cotiza (cz-correo.js); sin datos en el repo: vive en la base.
+      (G.CzCorreo && G.CzCorreo.on() ? '<button data-a="mi_firma">' + ico('ficha', 's') + '<span>Mi firma del correo<small>La imagen al final de tus correos de cotización</small></span></button>' : '') +
       itemIdioma() + itemsApp() +                     // V1.51 · E, «Instalar app» y la barra inferior
       '<button data-a="aprendio">' + ico('libro', 's') + '<span>Lo que aprendió</span></button>';
     var v = enMenu(btn, h);
@@ -1786,6 +1795,7 @@
       if (a === 'detalles') return menuSesion();
       if (a === 'aprendio') return verAprendio();
       if (a === 'idioma') return dlgIdioma();
+      if (a === 'mi_firma') return G.CzCorreo.dlgFirma({ caso_id: c.id || '' });
       if (accionApp(a)) return;
       if (a === 'ficha') return hojaFicha();
       if (a === 'empresa') return dlgEmpresa();
@@ -2383,7 +2393,9 @@
   function releidoOdoo(r) {
     if (!r || !r.orden_id || !(r.renglones || []).length) return '';
     var din = function (n) { return '$' + Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
-    return '<div class="odoo-rb">' + r.renglones.map(function (x) { return esc(String(x.texto || '').slice(0, 70)) + ' · ' + din(x.precio); }).join('<br>') +
+    // V1.57b (`tarjeta_v157`) · el nombre se corta por palabra y con «…», nunca a media palabra («Horas de lunes a vie · $…»).
+    var corta = function (t, n) { t = String(t || '').split('\n')[0].trim(); if (!on('tarjeta_v157')) return String(t).slice(0, 70); if (t.length <= n) return t; var c = t.slice(0, n + 1), i = c.lastIndexOf(' '); return (i > n * 0.5 ? c.slice(0, i) : t.slice(0, n)).replace(/(^|\s)[^\s]{1,2}$/, '').replace(/[\s,;:.·-]+$/, '') + '…'; };
+    return '<div class="odoo-rb">' + r.renglones.map(function (x) { return esc(on('tarjeta_v157') ? corta(x.texto, 70) : String(x.texto || '').slice(0, 70)) + ' · ' + din(x.precio); }).join('<br>') +
       '<br><b>' + r.renglones.map(function (x) { return Number(x.precio || 0).toLocaleString('es-MX'); }).join(' + ') + ' = ' + din(r.subtotal) + ' ' + esc(r.moneda || '') + '</b>' +
       ((r.opcionales || []).length ? '<br>Fuera del total: ' + r.opcionales.map(function (o) { return esc(String(o).slice(0, 60)); }).join(' · ') : '') +
       (r.estado ? '<br>Estado en Odoo: ' + esc(r.estado === 'sent' ? 'Cotización enviada' : r.estado === 'draft' ? 'Borrador' : r.estado) : '') + '</div>';
@@ -2469,6 +2481,8 @@
           '<span class="nota">El machote sí se crea: esos renglones van sin precio y marcados (N5).</span></div>' : '') +
         // V1.43 · qué parte del costo es referencia (N3/N4), con las alertas N3 arriba.
         ((a.tipo === 'crear_machote' && a.id === ultimoCm) || a.tipo === 'crear_borrador' ? referenciasHtml(d.referencias, a.tipo === 'crear_borrador' && a.estado === 'propuesta', d.sensatez) + sensatezHtml(d.sensatez) : '') +
+        // V1.57b (`regla15_v157`) · los cálculos que vería el cliente, con «texto limpio» o «Liberar…» (cz-regla15-ui.js).
+        (a.tipo === 'crear_borrador' && G.CzR15 && !espera && !viejo && !recalc ? G.CzR15.html(a) : '') +
         (a.estado === 'hecha' ? '<span class="hecho">✓ ' + esc(r.texto || 'Hecho') + '</span>' + releidoOdoo(r) +
           // V1.51 · Frente 3: «Ver cotización» bajo el último borrador (cz-visor.js, prototipo aprobado), con lo que cambió.
           (a.tipo === 'crear_borrador' && G.CzVisor && r.orden_id && a.id === ultimoBorrador() ? G.CzVisor.boton(ST.hilo) : '') +
@@ -2620,7 +2634,8 @@
     GR.enlazar(M);
     if (G.CzTabla) G.CzTabla.enlazar(M, cambiarRenglon, pintarChat, machoteEnPopup);   // V1.48 · V1.54 E2 (popup)
     if (G.CzCondiciones) G.CzCondiciones.enlazar(M, { caso: function () { return ST.hilo && ST.hilo.caso; }, hilo: function () { return ST.hilo; }, repinta: function (recargar) { if (recargar) cargarHilo(); else pintarChat(); } });   // V1.54 E1
-    if (G.CzEnviar) G.CzEnviar.enlazar(M, { caso: function () { return ST.hilo && ST.hilo.caso; }, repinta: function (recargar) { if (recargar) cargarHilo(); else pintarChat(); } });   // V1.54 E3
+    if (G.CzEnviar) G.CzEnviar.enlazar(M, { caso: function () { return ST.hilo && ST.hilo.caso; }, hilo: function () { return ST.hilo; }, modal: modal, cerrarModal: cerrarModal, toast: toast, repinta: function (recargar) { if (recargar) cargarHilo(); else pintarChat(); } });   // V1.54 E3
+    if (G.CzR15) G.CzR15.enlazar(M, { accion: accionPorId, modal: modal, cerrarModal: cerrarModal, repinta: pintarChat });   // V1.57b
     $$('[data-vertodo]', M).forEach(function (b) { b.onclick = function () { (ST.verTodo = ST.verTodo || {})[b.dataset.vertodo] = true; pintarChat(); }; });
     var bl = $('#bListo', M); if (bl) bl.onclick = listoSigue;
     var be = $('#bEscribe', M); if (be) be.onclick = function () { var tq = trabajoQueContesta(); ST.abiertoReg = ST.abiertoReg === (tq && tq.id) ? null : (tq && tq.id); pintarChat(); };
@@ -2826,15 +2841,21 @@
     if (a.tipo === 'enviada' && !(G.CzAcciones && G.CzAcciones.enviada)) return resolver(id, 'hecha', { texto: 'Marcada como enviada al cliente' }, b);
     if (a.tipo === 'cerrar') return confirmarCierre(function () { return resolver(id, 'hecha', { texto: 'Cerrada a mano' }, b); });
     var m = G.CzAcciones && G.CzAcciones[a.tipo]; if (!m) return;
+    // V1.57b · regla 15: sin decidir cada frase no se manda (el servidor también lo frena).
+    if (a.tipo === 'crear_borrador' && G.CzR15 && !G.CzR15.listo(a)) { toast('Primero decide las frases de la regla 15: texto limpio o liberar con su razón.'); return; }
     b.disabled = true;
+    // V1.57b (`tarjeta_v157`) · el giro va en el MISMO botón mientras trabaja; si falla, vuelve su texto.
+    var txt0 = b.innerHTML; if (on('tarjeta_v157')) b.innerHTML = GIRO + ' ' + ({ crear_borrador: 'Escribiendo en Odoo…', crear_machote: 'Guardando el machote…', enviada: 'Marcando en Odoo…', alta_contacto: 'Dando de alta…', actualizar_cliente: 'Actualizando la ficha…' }[a.tipo] || 'Trabajando…');
+    var vuelve = function () { b.disabled = false; if (on('tarjeta_v157')) b.innerHTML = txt0; };
     try {
       // El manejador hace la escritura con su propio endpoint (machote-guardar,
       // orden-crear-v2, odoo-alta) y devuelve {ok, resultado} o {ok:false, mensaje}.
-      var r = await m(a, { caso: ST.hilo.caso, hilo: ST.hilo, toast: toast, modal: modal, cerrarModal: cerrarModal, aceptaReferencias: !!ST.refAcepta[id] });
+      var r = await m(a, { caso: ST.hilo.caso, hilo: ST.hilo, toast: toast, modal: modal, cerrarModal: cerrarModal, aceptaReferencias: !!ST.refAcepta[id],
+        r15: a.tipo === 'crear_borrador' && G.CzR15 ? G.CzR15.paraEnviar(a) : null });
       delete ST.refAcepta[id];
-      if (!r || !r.ok) { if (r && r.mensaje) toast(r.mensaje); b.disabled = false; return; }
+      if (!r || !r.ok) { if (r && r.mensaje) toast(r.mensaje); vuelve(); return; }
       await resolver(id, 'hecha', r.resultado || {}, null);
-    } catch (e) { toast('No se pudo: ' + (e && e.message || e)); b.disabled = false; }
+    } catch (e) { toast('No se pudo: ' + (e && e.message || e)); vuelve(); }
   }
 
   async function verPdf() {
