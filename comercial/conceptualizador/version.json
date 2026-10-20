@@ -1,6 +1,11 @@
 {
-  "version": "V1.57a",
+  "version": "V1.57b",
   "historial": [
+    {
+      "version": "V1.57b",
+      "fecha": "2026-10-20",
+      "nota": "fts-conceptualizador#12 (V1.57b, lo que ve el cliente): regla 15 en la tarjeta del borrador (cada cálculo que vería el cliente con «Usar el texto limpio» o «Liberar…» con su razón; el borrador espera a que estén todos); tarjeta de la cotización sin «Ver cotización», con el giro en el mismo botón y nombres cortados por palabra; «✉ Correo para envío» con Para y CC editables, aviso de no-contacto y alta que aprueba Esteban, Guardar, tono y una segunda vista con «Confirmar envío»; «Mi firma del correo» en imagen; vista ejecutiva con versión cliente (doble confirmación, marca de agua y revisor) y Excel. Todo detrás de interruptores apagados (regla15_v157, tarjeta_v157, correo_v157, vista_cliente)."
+    },
     {
       "version": "V1.57a",
       "fecha": "2026-10-19",

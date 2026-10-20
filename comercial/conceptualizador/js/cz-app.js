@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.57a';
+  var VERSION = 'V1.57b';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -2374,6 +2374,7 @@
     var imp = cot.impuesto; if (imp) t.impuestos = imp.decision === 'aplicar' ? imp.tasa + ' %' : (imp.leyenda && (imp.leyenda.es || imp.leyenda.en)) || (imp.decision === 'proponer' ? 'Propuesto, sin dar de alta' : '—');
     return t;
   }
+  function brUlt() { return ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return x.tipo === 'crear_borrador' && x.estado !== 'descartada' && x.datos && x.datos.cotizacion; }).pop() || null; }
   function abrirVista() {
     if (!G.CzVista || !ST.hilo) return;
     var H = ST.hilo, U = H.propuesta || H.ultima || {}, A = H.acciones || [], cs = H.caso || {};
@@ -2385,7 +2386,10 @@
         // V1.52 · el % y las alertas de la vista: los MISMOS de la franja y el mensaje (CzIndicadores).
         pct: on('un_solo_dato') ? pctAv() : undefined, indicadores: indicHilo(),
         decisionesPendientes: (H2.acciones || []).filter(function (x) { return x.estado === 'propuesta'; }).map(function (x) { return { titulo: x.titulo }; }),
-        terminos: br ? terminosDe(br.datos.cotizacion) : null };
+        terminos: br ? terminosDe(br.datos.cotizacion) : null,
+        // V1.57b (`vista_cliente`) · la versión cliente sale de la cotización armada para Odoo, con las decisiones de la regla 15.
+        cotizacion: on('vista_cliente') ? ((brUlt() || {}).datos || {}).cotizacion || null : undefined,
+        regla15: on('vista_cliente') ? ((((brUlt() || {}).resultado || {}).regla15 || {}).decisiones || null) : undefined };
     };
     G.CzVista.abrir(Object.assign(datos(), { al: { actualizar: async function () { await cargarHilo(); return datos(); } } }));
     void U;

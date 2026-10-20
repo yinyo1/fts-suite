@@ -31,7 +31,110 @@
   var NIVEL = { N1: 'N1 · Proveedor', N2: 'N2 · Web MX', N3: 'N3 · Lista de referencia de otro país', N4: 'N4 · Paramétrico', N5: 'N5 · Pendiente: sin precio' };
   var CHEV = '<svg class="vz-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
 
-  var S = { abierto: false, o: null, M: null, abiertos: {}, f: { origen: {}, estado: {} }, el: null, hist: false, token: '', hora: '', leyendo: false };
+  var S = { abierto: false, o: null, M: null, abiertos: {}, f: { origen: {}, estado: {} }, el: null, hist: false, token: '', hora: '', leyendo: false,
+    v: 'fts', aviso: 0, ok2: false };   // V1.57b · versión FTS o cliente, y el paso de la doble confirmación
+
+  /* ═══ V1.57b (fts-conceptualizador#12 punto 14, `vista_cliente`) · versión cliente y Excel ═══
+   * Prototipo aprobado: prototipos/v157/vista-ejecutiva.html. La versión cliente es lo que el cliente puede ver: secciones,
+   * conceptos, cantidad e importe, sacados de la cotización armada para Odoo (con las decisiones de la regla 15 aplicadas) y
+   * revisados OTRA vez con CzRegla15 sobre el texto que se pinta; un banner dice si pasó. Para verla hay doble confirmación
+   * (aviso → palomita «ya revisé») y la página lleva marca de agua «VERSIÓN CLIENTE». Excel con SheetJS 0.18.5 (cdnjs), que
+   * se carga solo al tocar el botón; si no carga, CSV con BOM (lo abre Excel). Apagado: la vista de V1.57a. */
+  var prendido = function (n) { try { return typeof G.CzInterruptor === 'function' && G.CzInterruptor(n) === true; } catch (e) { return false; } };
+  function modeloCliente(o) {
+    var c = o && o.cotizacion; if (!c || !(c.bloques || []).length) return null;
+    var dec = (o.regla15 || []).filter(function (d) { return d && d.uso === 'limpio'; });
+    if (G.CzRegla15 && dec.length) { try { c = G.CzRegla15.aplicar(c, dec); } catch (e) { /* sin aplicar: el revisor lo marca */ } }
+    var secs = [], cur = null, lineas = function (t) { return String(t || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean); };
+    (c.bloques || []).forEach(function (b) {
+      if (b.display_type === 'line_section') { cur = { nombre: b.nombre, partidas: [], p: 0 }; secs.push(cur); return; }
+      if (!cur) { cur = { nombre: '', partidas: [], p: 0 }; secs.push(cur); }
+      if (b.display_type === 'line_note') { cur.partidas.push({ nota: b.nombre }); return; }
+      var L = lineas(b.nombre), q = Number(b.cantidad || 1), imp = cent(Number(b.precio || 0) * q);
+      cur.partidas.push({ titulo: L[0] || '', vi: L.slice(1).filter(function (x) { return !/:$/.test(x); }).map(function (x) { return x.replace(/^[-•*] */, ''); }), q: q, imp: imp });
+      cur.p += imp;
+    });
+    var op = c.opcionales && (c.opcionales.lineas || []).length ? c.opcionales : null;
+    return { secs: secs, total: cent(c.suma), op: op, moneda: c.moneda || '', idioma: c.idioma || 'es' };
+  }
+  function textoCliente(C, T) {
+    var t = [T.lugar, T.tiempo].concat(C.secs.map(function (s) { return [s.nombre].concat(s.partidas.map(function (p) { return p.nota || [p.titulo].concat(p.vi).join(' '); })).join(' '); }));
+    if (C.op) t.push(C.op.titulo || '', C.op.nota || '', (C.op.lineas || []).map(function (l) { return l.nombre; }).join(' '));
+    return t.filter(Boolean).join(' ');
+  }
+  function pintarCliente(o, T, folio, verTxt) {
+    var C = modeloCliente(o), h = '<div class="vz-agua" aria-hidden="true"><span>VERSIÓN CLIENTE</span></div>';
+    h += '<div class="vz-mcli"><span>VERSIÓN CLIENTE</span><span>' + esc(folio) + (verTxt ? ' · ' + esc(verTxt) : '') + '</span></div>';
+    if (!C) return h + '<p class="vz-vacio">Todavía no hay cotización armada para el cliente. Sale en cuanto el agente proponga «Crear borrador en Odoo».</p>';
+    // Lo liberado a propósito en la tarjeta del borrador (con su razón) no se vuelve a reclamar; se dice cuántas y quién.
+    var lib = (o.regla15 || []).filter(function (d) { return d && d.uso === 'liberada' && d.original; });
+    var tx = textoCliente(C, T); lib.forEach(function (d) { tx = tx.split(String(d.original).split('\n')[0]).join(' '); });
+    var malos = G.CzRegla15 ? G.CzRegla15.revisar(tx).map(function (x) { return x.frase; }) : [];
+    var quien = lib.map(function (d) { return d.por; }).filter(function (x, i, a) { return x && a.indexOf(x) === i; });
+    h += '<div class="vz-rev' + (malos.length ? ' mal' : '') + '" id="vzRevisor">' + (malos.length ? '⚠ El revisor encontró texto interno: «' + malos.slice(0, 6).map(esc).join('», «') + '». No la compartas así: corrígelo en la tarjeta del borrador (regla 15).'
+      : '✓ Revisada: sin costos, márgenes, proveedores ni cálculos internos.') +
+      (lib.length ? ' ' + lib.length + (lib.length === 1 ? ' frase liberada' : ' frases liberadas') + ' a propósito' + (quien.length ? ' por ' + quien.map(esc).join(', ') : '') + '.' : '') + '</div>';
+    var mon = C.moneda ? ' ' + esc(C.moneda) : '';
+    h += '<section class="vz-tiles"><div class="vz-tile"><small>Total (más IVA)</small><b>' + dinero(C.total) + mon + '</b></div>' +
+      (T.tiempo ? '<div class="vz-tile"><small>Tiempo</small><b class="t">' + texto(T.tiempo) + '</b></div>' : '') +
+      (T.lugar ? '<div class="vz-tile"><small>Lugar</small><b class="t">' + texto(T.lugar) + '</b></div>' : '') + '</section>';
+    h += '<div class="vz-cli">' + C.secs.map(function (s, i) {
+      return '<section class="vz-csec"><div class="vz-csec-t"><b>' + (s.nombre ? (i + 1) + ' · ' + esc(s.nombre) : 'Conceptos') + '</b><span>' + dinero(s.p) + '</span></div>' +
+        '<table><thead><tr><th>Concepto</th><th class="n">Cant.</th><th class="n">Importe</th></tr></thead><tbody>' + s.partidas.map(function (p) {
+          if (p.nota) return '<tr><td colspan="3" class="nota">' + esc(p.nota) + '</td></tr>';
+          return '<tr><td><b>' + esc(p.titulo) + '</b>' + (p.vi.length ? '<ul>' + p.vi.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '') + '</td>' +
+            '<td class="n">' + (p.q === 1 ? '1 lote' : esc(p.q)) + '</td><td class="n">' + dinero(p.imp) + '</td></tr>';
+        }).join('') + '</tbody></table></section>';
+    }).join('') + '</div>';
+    if (C.op) h += '<section class="vz-caja"><h2>' + esc(C.op.titulo || 'Opcionales') + ' (no suman al total)</h2>' + (C.op.nota ? '<p class="vz-nada">' + esc(C.op.nota) + '</p>' : '') +
+      '<ul class="vz-ops">' + C.op.lineas.map(function (l) { return '<li><span>' + esc(String(l.nombre || '').split('\n')[0]) + '</span><b>' + dinero(cent(l.precio)) + '</b></li>'; }).join('') + '</ul></section>';
+    h += '<section class="vz-total"><b>Total (más IVA)</b><span class="vz-nums"><span class="p">' + dinero(C.total) + mon + '</span></span></section>';
+    return h;
+  }
+  function avisoHtml() {
+    if (!S.aviso) return '';
+    return '<div class="vz-velo" role="dialog" aria-modal="true" aria-label="Pasar a la versión cliente"><div class="vz-modal"><div class="vz-paso">Paso ' + S.aviso + ' de 2</div>' +
+      '<p class="vz-alerta">Esta es la versión que se le puede mostrar al cliente.</p>' +
+      (S.aviso === 1 ? '<p>Vas a ver solo secciones, conceptos, cantidades e importes. Revisa que no quede nada interno antes de compartir pantalla o mandar el Excel.</p>'
+        : '<label class="vz-check"><input type="checkbox" id="vzOk2"' + (S.ok2 ? ' checked' : '') + '> Revisé que esta vista no lleva costos, márgenes, comisión, proveedores ni cálculos internos.</label>') +
+      '<div class="vz-pie"><button type="button" class="vz-bt" data-vz="aviso-no">Cancelar</button><button type="button" class="vz-bt lleno" data-vz="aviso-si"' + (S.aviso === 2 && !S.ok2 ? ' disabled' : '') + '>' +
+      (S.aviso === 1 ? 'Aceptar' : 'Mostrar versión cliente') + '</button></div></div></div>';
+  }
+  /** Las filas del Excel (todo expandido). FTS: costo, precio, margen, nivel y liga; cliente: solo lo que ve el cliente. */
+  function filasExcel(v) {
+    var o = S.o || {}, M = S.M || {};
+    if (v === 'cliente') {
+      var C = modeloCliente(o); if (!C) return [['Sin cotización armada para el cliente']];
+      var out = [['Sección', 'Concepto', 'Incluye', 'Cantidad', 'Importe']];
+      C.secs.forEach(function (s, i) { s.partidas.forEach(function (p) {
+        if (p.nota) { out.push([(i + 1) + ' · ' + s.nombre, p.nota, '', '', '']); return; }
+        out.push([(i + 1) + ' · ' + s.nombre, p.titulo, p.vi[0] || '', p.q, p.imp / 100]);
+        p.vi.slice(1).forEach(function (x) { out.push(['', '', x, '', '']); });
+      }); });
+      if (C.op) C.op.lineas.forEach(function (l) { out.push(['Opcional (no suma)', String(l.nombre || '').split('\n')[0], '', 1, cent(l.precio) / 100]); });
+      out.push(['Total (más IVA)', '', '', '', C.total / 100]);
+      return out;
+    }
+    var D = modelo(M), f = [['Sección', 'Subgrupo', 'Descripción', 'Cantidad', 'Unidad', 'P.U. costo', 'Costo', 'Precio', 'Margen', 'Nivel', 'Liga', 'Origen', 'Alerta']];
+    D.secs.forEach(function (s, i) {
+      s.grupos.forEach(function (g) { g.filas.forEach(function (x) { var r = x.r;
+        f.push([(i + 1) + ' · ' + s.nombre, g.nombre, r.d || '', r.qty == null ? '' : Number(r.qty), r.unidad || '', r.pu == null ? '' : Number(r.pu), x.c / 100, x.sin ? '' : x.p / 100,
+          x.sin ? '' : Number((margen(x.c, x.p, D.com(x.p)) || 0).toFixed(4)), r.nivel || '', r.liga || '', r.o === 'tu' ? 'lo dijiste tú' : r.o === 'agente' ? 'lo supuso el agente' : '', r.alerta || '']); }); });
+      f.push([(i + 1) + ' · ' + s.nombre + ' (subtotal)', '', '', '', '', '', s.c / 100, s.p / 100, Number((margen(s.c, s.p, s.com) || 0).toFixed(4)), '', '', '', '']);
+    });
+    f.push(['Total', '', '', '', '', '', D.tot.c / 100, D.tot.p / 100, Number((margen(D.tot.c, D.tot.p, D.tot.com) || 0).toFixed(4)), '', '', '', '']);
+    return f;
+  }
+  function excel() {
+    var o = S.o || {}, caso = o.caso || {}, v = S.v;
+    var nombre = String((caso.machote_folio || 'vista') + (o.version ? '_v' + o.version : '') + '_' + (v === 'cliente' ? 'cliente' : 'FTS')).replace(/[^A-Za-z0-9_-]+/g, '-');
+    var F = filasExcel(v);
+    var baja = function (blob, ext) { var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre + ext; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000); };
+    var csv = function () { baja(new Blob(['\ufeff' + F.map(function (r) { return r.map(function (x) { return '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"'; }).join(','); }).join('\r\n')], { type: 'text/csv;charset=utf-8' }), '.csv'); };
+    var hoja = function () { try { var wb = G.XLSX.utils.book_new(); G.XLSX.utils.book_append_sheet(wb, G.XLSX.utils.aoa_to_sheet(F), v === 'cliente' ? 'Cotización' : 'Machote'); G.XLSX.writeFile(wb, nombre + '.xlsx'); } catch (e) { csv(); } };
+    if (G.XLSX) return hoja();
+    var sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; sc.onload = hoja; sc.onerror = csv; document.head.appendChild(sc);
+  }
 
   /* ── utilidades ── */
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
@@ -152,8 +255,17 @@
       '<div class="vz-vivo"><span class="vz-dato" id="vzDatos"><i></i>' + (S.leyendo ? 'Leyendo la versión vigente…' :
         'Datos de las ' + esc(S.hora) + (folio || verTxt ? ' · machote ' + esc([folio, verTxt].filter(Boolean).join(' ')) : '')) + '</span>' +
       (o.al && typeof o.al.actualizar === 'function' ? '<button type="button" data-vz="actualizar"' + (S.leyendo ? ' disabled' : '') + '>Actualizar</button>' : '') + '</div></header>';
-    h += '<div class="vz-acc"><button type="button" class="vz-bt" data-vz="expandir">Expandir todo</button><button type="button" class="vz-bt" data-vz="colapsar">Colapsar todo</button>' +
-      '<button type="button" class="vz-bt lleno" data-vz="imprimir">Descargar / imprimir</button></div>';
+    var VC = prendido('vista_cliente'); if (!VC) S.v = 'fts';
+    h += '<div class="vz-acc">' + (VC ? '<div class="vz-seg" role="tablist" aria-label="Versión"><button type="button" role="tab" data-vz="v-fts" aria-selected="' + (S.v === 'fts') + '">Versión FTS</button>' +
+      '<button type="button" role="tab" data-vz="v-cliente" aria-selected="' + (S.v === 'cliente') + '">Versión cliente</button></div>' : '') +
+      (S.v === 'cliente' ? '' : '<button type="button" class="vz-bt" data-vz="expandir">Expandir todo</button><button type="button" class="vz-bt" data-vz="colapsar">Colapsar todo</button>') +
+      '<button type="button" class="vz-bt' + (VC ? '' : ' lleno') + '" data-vz="imprimir">Descargar / imprimir</button>' +
+      (VC ? '<button type="button" class="vz-bt lleno" data-vz="excel">⬇ Descargar Excel' + (S.v === 'cliente' ? ' (cliente)' : '') + '</button>' : '') + '</div>';
+    if (VC && S.v === 'cliente') {
+      h += pintarCliente(o, T, folio, verTxt) + '</main>' + avisoHtml();
+      var y0 = S.el.scrollTop; S.el.innerHTML = h; S.el.classList.add('vz-ver-cliente'); S.el.scrollTop = y0; return;
+    }
+    S.el.classList.remove('vz-ver-cliente');
     if (!todas.length) h += '<p class="vz-vacio">Todavía no hay machote en esta conversación. Cuando el agente mande el BOM, aquí sale todo.</p>';
     h += '<section class="vz-tiles" id="vzResumen" data-costo="' + D.tot.c + '" data-precio="' + D.tot.p + '">' +
       '<div class="vz-tile"><small>Precio a cliente (total' + (mon ? ', ' + esc(mon) : '') + ')</small><b>' + dinero(D.tot.p) + '</b></div>' +
@@ -211,7 +323,7 @@
         }).join('') + '</div></section>';
     }).join('') + '</div>';
     h += '<section class="vz-total" id="vzTotal" data-costo="' + D.tot.c + '" data-precio="' + D.tot.p + '"><b>Total</b>' + nums(D.tot.c, D.tot.p, D.tot.com) + '</section>';
-    h += '</main>';
+    h += '</main>' + avisoHtml();
     var y = S.el.scrollTop;
     S.el.innerHTML = h;
     S.el.scrollTop = y;
@@ -252,9 +364,15 @@
     else if (a === 'colapsar') todo(false);
     else if (a === 'quitar') { S.f = { origen: {}, estado: {} }; Object.keys(S.abiertos).forEach(function (x) { if (x.charAt(0) === 's') delete S.abiertos[x]; }); pintar(); }
     else if (a === 'actualizar') actualizar();
+    else if (a === 'v-fts') { S.v = 'fts'; S.aviso = 0; pintar(); }
+    else if (a === 'v-cliente') { if (S.v !== 'cliente') { S.aviso = 1; S.ok2 = false; pintar(); } }
+    else if (a === 'aviso-no') { S.aviso = 0; pintar(); }
+    else if (a === 'aviso-si') { if (S.aviso === 1) { S.aviso = 2; pintar(); } else if (S.ok2) { S.aviso = 0; S.v = 'cliente'; S.el.scrollTop = 0; pintar(); } }
+    else if (a === 'excel') excel();
     else if (a === 'imprimir') { S.el.classList.add('vz-imp'); try { G.print(); } finally { setTimeout(function () { if (S.el) S.el.classList.remove('vz-imp'); }, 0); } }
   }
-  function tecla(e) { if (S.abierto && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cerrar(); } }
+  function tecla(e) { if (S.abierto && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (S.aviso) { S.aviso = 0; pintar(); return; } cerrar(); } }
+  function cambio(e) { if (e.target && e.target.id === 'vzOk2') { S.ok2 = !!e.target.checked; var b = S.el.querySelector('[data-vz="aviso-si"]'); if (b) b.disabled = !S.ok2; } }
   function pop() { if (S.abierto && S.hist && !(G.history.state && G.history.state.czVista === S.token)) { S.hist = false; quitar(); } }
   function antesImp() { if (S.el) S.el.classList.add('vz-imp'); }
   function despuesImp() { if (S.el) S.el.classList.remove('vz-imp'); }
@@ -271,12 +389,12 @@
   function abrir(o) {
     css(); datos(o);
     if (S.abierto) { pintar(); return; }
-    S.abiertos = {}; S.f = { origen: {}, estado: {} }; S.leyendo = false;
+    S.abiertos = {}; S.f = { origen: {}, estado: {} }; S.leyendo = false; S.v = 'fts'; S.aviso = 0; S.ok2 = false;
     var el = document.createElement('div');
     el.id = 'cz-vista'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Vista ejecutiva del proyecto'); el.tabIndex = -1;
     document.body.appendChild(el); S.el = el; S.abierto = true;
     document.documentElement.classList.add('cz-vista-abierta');
-    el.addEventListener('click', clic);
+    el.addEventListener('click', clic); el.addEventListener('change', cambio);
     document.addEventListener('keydown', tecla, true);
     G.addEventListener('popstate', pop);
     G.addEventListener('beforeprint', antesImp); G.addEventListener('afterprint', despuesImp);
@@ -399,6 +517,34 @@
     '#cz-vista .vz-total>b{font-size:15px}',
     '#cz-vista .vz-filtros,#cz-vista .vz-niv,#cz-vista .vz-caja{scroll-margin-top:64px}',
     '#cz-vista .vz-marca{display:none}',
+    // V1.57b · versión cliente, doble confirmación y marca de agua
+    '#cz-vista .vz-seg{display:inline-flex;border:1px solid var(--vz-linea);border-radius:18px;overflow:hidden;background:var(--vz-sup)}',
+    '#cz-vista .vz-seg button{padding:6px 12px;font-weight:600;font-size:13.5px;min-height:36px}',
+    '#cz-vista .vz-seg button[aria-selected="true"]{background:var(--vz-marca);color:#fff}',
+    '#cz-vista .vz-mcli{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:space-between;background:#b42318;color:#fff;font-weight:800;letter-spacing:.06em;font-size:12.5px;padding:5px 12px;border-radius:8px;margin:10px 0 6px}',
+    '#cz-vista .vz-agua{position:fixed;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center;z-index:0;overflow:hidden}',
+    '#cz-vista .vz-agua span{transform:rotate(-24deg);font-weight:900;font-size:clamp(34px,9vw,96px);color:rgba(180,35,24,.08);letter-spacing:.06em;white-space:nowrap}',
+    '#cz-vista .vz-pag{position:relative;z-index:1}',
+    '#cz-vista .vz-rev{background:var(--vz-ok);color:var(--vz-ok-t);border-radius:8px;padding:7px 10px;font-size:13px;margin:8px 0;font-weight:600}',
+    '#cz-vista .vz-rev.mal{background:var(--vz-rojo);color:var(--vz-rojo-t);border:1px solid var(--vz-rojo-b)}',
+    '#cz-vista .vz-tile b.t{font-size:14px;line-height:1.3;overflow-wrap:anywhere}',
+    '#cz-vista.vz-ver-cliente .vz-tile b{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}',
+    '#cz-vista .vz-csec{background:var(--vz-sup);border:1px solid var(--vz-linea);border-radius:10px;margin:10px 0;overflow:hidden}',
+    '#cz-vista .vz-csec-t{display:flex;justify-content:space-between;gap:10px;padding:9px 12px;background:var(--vz-n1);font-size:14px}',
+    '#cz-vista .vz-csec-t b{min-width:0;overflow-wrap:anywhere}#cz-vista .vz-csec-t span{white-space:nowrap;font-weight:700}',
+    '#cz-vista .vz-csec table{width:100%;border-collapse:collapse;font-size:13.5px}',
+    '#cz-vista .vz-csec th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--vz-sec);padding:6px 12px;border-bottom:1px solid var(--vz-linea)}',
+    '#cz-vista .vz-csec td{padding:8px 12px;vertical-align:top;border-bottom:1px solid var(--vz-linea);overflow-wrap:anywhere}',
+    '#cz-vista .vz-csec .n{text-align:right;white-space:nowrap}#cz-vista .vz-csec td.nota{font-style:italic;color:var(--vz-sec)}',
+    '#cz-vista .vz-csec ul{margin:4px 0 0 18px;color:var(--vz-sec)}',
+    '#cz-vista .vz-velo{position:fixed;inset:0;z-index:10;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px}',
+    '#cz-vista .vz-modal{background:var(--vz-sup);border-radius:12px;max-width:440px;width:100%;padding:16px}',
+    '#cz-vista .vz-paso{font-size:12px;color:var(--vz-sec);font-weight:600;text-transform:uppercase;letter-spacing:.05em}',
+    '#cz-vista .vz-alerta{color:#b42318;font-weight:800;font-size:16px;line-height:1.35;margin:6px 0 8px}',
+    '#cz-vista .vz-modal p{margin:6px 0;font-size:14px}',
+    '#cz-vista .vz-check{display:flex;gap:8px;align-items:flex-start;margin-top:10px;font-size:14px}#cz-vista .vz-check input{width:20px;height:20px;margin-top:1px;flex-shrink:0}',
+    '#cz-vista .vz-pie{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:12px}',
+    '@media (max-width:560px){#cz-vista .vz-csec th:nth-child(2),#cz-vista .vz-csec td.n:nth-child(2){display:none}}',
     '#cz-vista .vz-oculto{display:none !important}',
     /* hasta 900 px: los números bajan debajo del nombre (721–980 es donde se rompían las páginas, §20 #20) */
     '@media (max-width:900px){',
