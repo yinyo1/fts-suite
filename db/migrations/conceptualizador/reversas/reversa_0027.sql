@@ -46,3 +46,14 @@ LANGUAGE sql IMMUTABLE AS $inr27$
                'arriendo_v157','alarmas_v157','git_v157','juntar_revisa','acuse_v157','recalculo_v157','tokens_v157']
 $inr27$;
 GRANT EXECUTE ON FUNCTION conceptualizador.api_correo(jsonb), conceptualizador.api_suite(jsonb), conceptualizador.api_motor(jsonb) TO conceptualizador_app;
+
+-- V1.57b · «Le atiende»: comercial_app deja de leer la firma. (Antes de esta reversa, regresar orden-odoo a su versión anterior:
+-- su «Postgres - Leer machote» lee conceptualizador.firma.) Ninguna otra migración le da el esquema a comercial_app.
+DO $atn27r$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'comercial_app') THEN
+    REVOKE SELECT (actor, empleado_id) ON conceptualizador.firma FROM comercial_app;
+    REVOKE USAGE ON SCHEMA conceptualizador FROM comercial_app;
+  END IF;
+END
+$atn27r$;

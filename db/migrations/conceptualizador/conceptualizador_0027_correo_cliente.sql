@@ -365,3 +365,15 @@ REVOKE ALL ON FUNCTION conceptualizador.api_correo_0027prev(jsonb), conceptualiz
   conceptualizador.lista_correos(jsonb), conceptualizador.correo_valido(text) FROM conceptualizador_app;
 GRANT EXECUTE ON FUNCTION conceptualizador.api_correo(jsonb), conceptualizador.api_suite(jsonb), conceptualizador.api_motor(jsonb) TO conceptualizador_app;
 REVOKE ALL ON conceptualizador.contacto_propuesto FROM PUBLIC;
+
+-- ── V1.57b (Esteban 21-oct) · «Le atiende» del PDF = el ingeniero DUEÑO DEL CASO ────────────────────────────────
+-- orden-odoo lee con la credencial de comercial (comercial_app) el empleado de Odoo del dueño del machote, de su firma.
+-- Solo esas dos columnas: ni correo, ni puesto, ni nada más de la firma.
+DO $atn27$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'comercial_app') THEN
+    GRANT USAGE ON SCHEMA conceptualizador TO comercial_app;
+    GRANT SELECT (actor, empleado_id) ON conceptualizador.firma TO comercial_app;
+  END IF;
+END
+$atn27$;
