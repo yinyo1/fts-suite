@@ -223,6 +223,8 @@
     if (pend.n) return { ok: false, mensaje: textoPendientes(pend) + ' Nunca se estima un precio: cuando lleguen, se actualiza el machote y aquí se enciende.' };
     var cot = (a.datos || {}).cotizacion;
     if (!cot || !(cot.bloques || []).length) return { ok: false, mensaje: 'El motor no mandó la cotización armada (renglones, suma y anticipo). Pídele el botón otra vez.' };
+    // V1.57b (#12, Esteban 21-oct) · sin la tabla de pagos (hitos) no se crea ni se actualiza el borrador; el servidor también lo frena.
+    if (!String(((cot.x_fts || {}).x_fts_hitos) || '').trim()) return { ok: false, mensaje: 'Esta cotización no trae la tabla de pagos (hitos). Pídele al agente que la vuelva a armar con la condición de pago del caso.' };
     var p = await permiso();
     if (!p.habilitado) return { ok: false, mensaje: p.error && p.mensaje ? p.mensaje : 'Crear la cotización en Odoo todavía no está habilitado para tu usuario.' };
     // V1.43 · precios de referencia (N3/N4): cuentan como precio, pero los acepta quien cotiza con «Cotizar con referencias».
