@@ -5256,7 +5256,10 @@ await sembrarMachotes(q);
 
       // Y vuelve a la PANTALLA, no sólo al cajón: si hay que abrir la consola
       // para recuperarlo, no está recuperado.
-      await q.click('tr.rw:has-text("Lifter leveling") a');
+      // V1.58 (fts-conceptualizador#12 A) · la recarga ya no cae a la lista: se
+      // queda en el machote ajeno (se nombra con su uuid y llega con `bajar`).
+      // Sólo si no está ahí, se entra desde la lista como antes.
+      if (!(await q.$('#hoja input.cel'))) await q.click('tr.rw:has-text("Lifter leveling") a');
       await q.waitForTimeout(900);
       const enPantalla = await q.evaluate(() =>
         [].some.call(document.querySelectorAll('#hoja input.cel'),

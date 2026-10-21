@@ -159,8 +159,10 @@
       return cadena.then(function () { if (g === st.gen) lz.setAttribute('data-cze-visor', 'listo'); });
     };
     sc.addEventListener('scroll', function () {
-      var L = lz.querySelectorAll('canvas'), y0 = sc.getBoundingClientRect().top + Math.min(120, sc.clientHeight / 3), k = 1;
+      // La hoja que cruza la mitad de la ventana; hasta abajo, la última.
+      var L = lz.querySelectorAll('canvas'), y0 = sc.getBoundingClientRect().top + sc.clientHeight / 2, k = 1;
       for (var i = 0; i < L.length; i++) if (L[i].getBoundingClientRect().top <= y0) k = i + 1;
+      if (sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 4) k = L.length || 1;
       iEl.textContent = k;
     }, { passive: true });
     Array.prototype.forEach.call(m.el.querySelectorAll('[data-cze-z]'), function (b) {

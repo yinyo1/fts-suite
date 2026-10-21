@@ -29,6 +29,7 @@
   function nombre(n) { var k = valido(n); return k ? k + ' · ' + NIVELES[k][0] : String(n || ''); }
   function nota(n) { var k = valido(n); return k ? NIVELES[k][1] : ''; }
   var pct = function (x) { var v = Math.round(Number(x || 0) * 10) / 10; return (v % 1 ? v.toFixed(1) : String(Math.round(v))); };
+  var pctH = function (x) { return pct(x) + '&nbsp;%'; };   // en HTML, el número y su % no se separan de renglón
 
   var CSS = '.czn-niv{display:inline-flex;align-items:center;gap:4px;border-radius:10px;padding:0 8px;font-size:12px;font-weight:600;line-height:20px;cursor:pointer;border:1px solid transparent;white-space:nowrap;vertical-align:1px;user-select:none;-webkit-user-select:none}' +
     '.czn-niv:focus-visible{outline:2px solid #00a884;outline-offset:1px}.czn-niv[aria-expanded="true"]{border-color:currentColor}' +
@@ -38,7 +39,7 @@
     '.czn-nota b{color:#fff}' +
     // «Cotizar con referencias» en palabras (prototipo, escena referencias)
     '.czn-refs{border:1px solid #e9edef;border-radius:10px;padding:10px 12px;background:#fff;margin:6px 0;font-size:13.5px;color:#111b21;overflow-wrap:anywhere}' +
-    '.czn-refs h5{margin:0 0 4px;font-size:14.5px}.czn-refs p{margin:4px 0}' +
+    '.czn-refs .alerta{color:#a33a00;font-weight:600}.czn-refs h5{margin:0 0 4px;font-size:14.5px}.czn-refs p{margin:4px 0}' +
     '.czn-med{height:10px;border-radius:5px;background:#e9edef;overflow:hidden;display:flex;margin:8px 0 4px}.czn-med span{display:block;height:100%}' +
     '.czn-ley{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:#667781}.czn-ley i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:0}' +
     '.czn-refs ol{margin:6px 0 6px 20px;padding:0}.czn-refs li{margin:3px 0}.czn-refs .czn-sec{color:#667781;font-size:12.5px}' +
@@ -56,11 +57,17 @@
       ' aria-label="' + esc(nombre(k)) + ': toca para ver qué significa">' + esc(o.corto ? k : nombre(k)) + (o.cuenta != null ? ' <i>' + esc(o.cuenta) + '</i>' : '') + '</span>';
   }
   function notaHtml(k) { return '<span class="czn-nota" role="note"><b>' + esc(nombre(k)) + '.</b> ' + esc(nota(k)) + '</span>'; }
-  /** Dónde va la nota: debajo de la insignia; si la insignia vive dentro de un botón o un <summary>, después de él. */
-  function ancla(c) { var a = c.parentNode && c.parentNode.closest ? c.parentNode.closest('button, summary') : null; return a || c; }
+  /** Dónde va la nota: al final del renglón (el bloque que contiene la insignia), para no partir el texto de la línea; si la
+   *  insignia vive dentro de un botón o un <summary> (la fila de la vista ejecutiva), justo después de él. */
+  function ponerNota(c, html) {
+    var a = c.parentNode && c.parentNode.closest ? c.parentNode.closest('button, summary') : null;
+    if (a) return a.insertAdjacentHTML('afterend', html);
+    var b = c.parentNode && c.parentNode.closest ? c.parentNode.closest('div, li, td, p') : null;
+    return b ? b.insertAdjacentHTML('beforeend', html) : c.insertAdjacentHTML('afterend', html);
+  }
   function quitarNotas() { Array.prototype.forEach.call(document.querySelectorAll('.czn-nota'), function (x) { x.remove(); });
     Array.prototype.forEach.call(document.querySelectorAll('.czn-niv[aria-expanded="true"]'), function (x) { x.setAttribute('aria-expanded', 'false'); }); }
-  function abrirEn(c) { var k = c.getAttribute('data-czn'); c.setAttribute('aria-expanded', 'true'); ancla(c).insertAdjacentHTML('afterend', notaHtml(k)); }
+  function abrirEn(c) { var k = c.getAttribute('data-czn'); c.setAttribute('aria-expanded', 'true'); ponerNota(c, notaHtml(k)); }
   function alternar(c) {
     var k = c.getAttribute('data-czn-k'), ya = S.abierta && S.abierta.k === k && c.getAttribute('aria-expanded') === 'true';
     quitarNotas();
@@ -112,13 +119,13 @@
     var corta = function (t, n) { t = String(t || '').split('\n')[0].trim(); if (t.length <= n) return t; var c = t.slice(0, n + 1), i = c.lastIndexOf(' '); return (i > n * 0.5 ? c.slice(0, i) : t.slice(0, n)).replace(/[\s,;:.·-]+$/, '') + '…'; };
     var partes = []; if (n3) partes.push(n3 + (n3 === 1 ? ' renglón de ' : ' renglones de ') + chip('N3', { k: 'refs-n3' })); if (n4) partes.push(n4 + (n4 === 1 ? ' renglón de ' : ' renglones de ') + chip('N4', { k: 'refs-n4' }));
     return '<div class="czn-refs"><h5>Cotizar con referencias</h5>' +
-      '<p>El <b>' + pct(p) + ' % del costo</b>' + (costo ? ' (' + din(ref) + ' de ' + din(costo) + ')' : '') + ' todavía es <b>precio de referencia</b>, no de proveedor' +
+      '<p>El <b>' + pctH(p) + ' del costo</b>' + (costo ? ' (' + din(ref) + ' de ' + din(costo) + ')' : '') + ' todavía es <b>precio de referencia</b>, no de proveedor' +
         (partes.length ? ': ' + partes.join(' y ') : '') + '.' + (opc.alertas ? ' <span class="alerta">⚠ ' + esc(opc.alertas) + '</span>' : '') + '</p>' +
       (costo ? '<div class="czn-med" aria-hidden="true"><span style="width:' + pOk.toFixed(1) + '%;background:#00a884"></span><span style="width:' + p3.toFixed(1) + '%;background:#d97706"></span><span style="width:' + p4.toFixed(1) + '%;background:#1d4ed8"></span></div>' +
-        '<div class="czn-ley"><span><i style="background:#00a884"></i>Proveedor o web MX ' + Math.round(pOk) + ' %</span><span><i style="background:#d97706"></i>Lista extranjera ' + Math.round(p3) + ' %</span><span><i style="background:#1d4ed8"></i>Estimado ' + Math.round(p4) + ' %</span></div>' : '') +
+        '<div class="czn-ley"><span><i style="background:#00a884"></i>Proveedor o web MX ' + Math.round(pOk) + '&nbsp;%</span><span><i style="background:#d97706"></i>Lista extranjera ' + Math.round(p3) + '&nbsp;%</span><span><i style="background:#1d4ed8"></i>Estimado ' + Math.round(p4) + '&nbsp;%</span></div>' : '') +
       (top.length ? '<p style="margin-top:10px"><b>Para bajarlo, pide cotización a un proveedor de</b> (los que más pesan):</p><ol>' + top.map(function (x, i) {
         return '<li>' + esc(corta(x.descripcion, 80)) + ' · ' + din(x.importe) + ' ' + chip(x.nivel, { k: 'refs-top-' + i, corto: true }) + '</li>'; }).join('') + '</ol>' +
-        (baja != null ? '<p class="czn-sec">Con ' + (top.length === 1 ? 'ese' : 'esos ' + top.length) + ', lo estimado baja de ' + pct(p) + ' % a ' + pct(baja) + ' %. Cuando llegue el folio, mándalo al chat: el renglón pasa a N1 y se actualiza el mismo machote.</p>' : '') : '') +
+        (baja != null ? '<p class="czn-sec">Con ' + (top.length === 1 ? 'ese' : 'esos ' + top.length) + ', lo estimado baja de ' + pctH(p) + ' a ' + pctH(baja) + '. Cuando llegue el folio, mándalo al chat: el renglón pasa a N1 y se actualiza el mismo machote.</p>' : '') : '') +
       '</div>';
   }
 
