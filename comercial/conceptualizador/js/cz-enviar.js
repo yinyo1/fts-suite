@@ -76,6 +76,8 @@
   }
 
   async function pdf(c, bajar) {
+    // V1.58 (`estado_odoo_v158`, #12 punto e) · el estado sale en el MISMO instante del clic y el PDF se ve en el visor propio.
+    if (G.CzEstado && G.CzEstado.on()) return pdf158(c, bajar);
     if (S.ocupado) return; S.ocupado = true;
     var r = await G.CzCliente.cotizacion('ver', { caso_id: c.id }); S.ocupado = false;
     if (!r.ok || !r.pdf) return aviso(r.mensaje || 'No pude traer el PDF de Odoo (' + (r.error || 'sin respuesta') + ').');
@@ -86,6 +88,26 @@
       cabecera: '<a class="ce-bt" style="min-height:32px;padding:4px 12px" href="' + url + '" download="' + esc(r.pdf.nombre || 'cotizacion.pdf') + '">⬇</a>',
       html: '<iframe class="ce-pdf" title="PDF de la cotización" src="' + url + '"></iframe>', alCerrar: function () { URL.revokeObjectURL(url); } });
     if (!m) G.open(url, '_blank');
+  }
+
+  /** V1.58 · «Generando el PDF de SO#### en Odoo…» con su hora y segundos, y «✓ Listo» (Abrir · ⬇ Descargar) o «✕ No se generó…»
+   *  con Reintentar. «Ver cotización» abre el visor propio (pdf.js); «Descargar PDF» baja el archivo. */
+  async function pdf158(c, bajar) {
+    var E = G.CzEstado, so = c.orden_nombre || 'la cotización';
+    if (S.ocupado) return; S.ocupado = true;
+    var est = E.inicio({ titulo: 'Generando el PDF de ' + so + ' en Odoo…', tipico: 'suele tardar de 4 a 8 s', caso: c.id });
+    var r = await G.CzCliente.cotizacion('ver', { caso_id: c.id }); S.ocupado = false;
+    if (!r.ok || !r.pdf) {
+      var rapida = G.CzApp && G.CzApp.vistaRapida && G.CzApp.vistaRapida(true) ? [{ txt: 'Vista rápida (sin Odoo)', fn: function () { G.CzApp.vistaRapida(); } }] : [];
+      return est.error({ titulo: 'No se generó el PDF de ' + so, motivo: r.mensaje || 'Odoo no mandó el PDF', codigo: r.error || 'SIN_PDF',
+        reintentar: function () { return pdf158(c, bajar); }, acciones: rapida });
+    }
+    var bin = atob(r.pdf.b64), u8 = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    var nombre = r.pdf.nombre || 'cotizacion.pdf', n = E.hojas(u8);
+    var abrir = function () { return E.visorPdf({ u8: u8, nombre: nombre, titulo: so + ' · PDF de Odoo' }); };
+    var baja = function () { var url = URL.createObjectURL(new Blob([u8], { type: 'application/pdf' })); E.descargar(url, nombre); setTimeout(function () { URL.revokeObjectURL(url); }, 4000); };
+    est.listo({ titulo: 'Listo · PDF de ' + so, sub: n ? n + (n === 1 ? ' hoja' : ' hojas') : '', acciones: [{ txt: 'Abrir', si: true, fn: abrir }, { txt: '⬇ Descargar', fn: baja }] });
+    if (bajar) baja(); else abrir();
   }
 
   async function preparar(c, repinta) {

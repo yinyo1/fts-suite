@@ -136,17 +136,34 @@
    * hecho, se guardó un machote más nuevo o hay un borrador propuesto más nuevo. c663eb, 19-oct: el machote v3 quedó a las 14:24
    * y SO11927 siguió en $330,585 hasta las 14:36; «Ver cotización» abrió la versión vieja y Esteban creyó que ya había terminado.
    * → { orden, monto, moneda, propuesto } o null. */
-  function odooDesactualizada(H) {
+  function odooDesactualizada(H, op) {
     var c = (H && H.caso) || {}, A = (H && H.acciones) || [];
     if (!c.orden_id) return null;
     var t = function (a) { return Date.parse(a.hecha_at || a.created_at || '') || 0; };
     var bh = A.filter(function (a) { return a.tipo === 'crear_borrador' && a.estado === 'hecha'; }).sort(function (x, y) { return t(x) - t(y); }).pop();
     if (!bh) return null;
-    var cm = A.filter(function (a) { return a.tipo === 'crear_machote' && a.estado === 'hecha' && t(a) > t(bh); }).pop();
+    var soloHueco = !!(op && op.soloHueco);
+    // V1.58 (#12 B, `actualizar_v158`) · la orden también quedó atrás si salió sin tabla de pagos o antes de la condición única.
+    var hueco = intOn('actualizar_v158') ? huecoDeBorrador(bh) : null;
+    var cm = soloHueco ? null : A.filter(function (a) { return a.tipo === 'crear_machote' && a.estado === 'hecha' && t(a) > t(bh); }).pop();
     var bp = A.filter(function (a) { return a.tipo === 'crear_borrador' && a.estado === 'propuesta' && Number(a.id) > Number(bh.id); }).pop();
-    if (!cm && !bp) return null;
+    if (!cm && !(bp && !soloHueco) && !hueco) return null;
     var cot = (bh.datos && bh.datos.cotizacion) || {};
-    return { orden: c.orden_nombre || 'la cotización', monto: typeof cot.suma === 'number' ? cot.suma : null, moneda: cot.moneda || c.moneda || 'MXN', propuesto: bp ? bp.id : null };
+    var od = { orden: c.orden_nombre || (hueco && bh.resultado && bh.resultado.orden_nombre) || 'la cotización', monto: typeof cot.suma === 'number' ? cot.suma : null, moneda: cot.moneda || c.moneda || 'MXN', propuesto: bp ? bp.id : null };
+    if (hueco) { od.hueco = true; od.razon = hueco; }
+    return od;
+  }
+  /* V1.58 (#12 B) · ¿el borrador hecho salió con hueco? → la razón visible, o null.
+   *   · sin `x_fts.x_fts_hitos` ni `regla15` (en datos o en resultado): se hizo antes de la V1.57b → «salió antes de la condición
+   *     única de pago» (de9756 y f56c71 tienen x_fts, 21fec6 no);
+   *   · con la marca de la V1.57b pero `x_fts_hitos` vacío → «salió sin tabla de pagos» (de9756 #284, f56c71 #303). */
+  function huecoDeBorrador(bh) {
+    var d = (bh && bh.datos) || {}, cot = d.cotizacion || {}, xf = cot.x_fts || {}, res = (bh && bh.resultado) || {};
+    var tieneCampo = Object.prototype.hasOwnProperty.call(xf, 'x_fts_hitos'), h = xf.x_fts_hitos;
+    var lleno = Array.isArray(h) ? h.length > 0 : !!String(h == null ? '' : h).trim();
+    if (!tieneCampo && !res.regla15 && !cot.regla15) return 'salió antes de la condición única de pago';
+    if (!lleno) return 'salió sin tabla de pagos';
+    return null;
   }
   function clics(H) {
     var c = (H && H.caso) || {}, A = (H && H.acciones) || [], L = [];
@@ -160,9 +177,14 @@
         { txt: c.orden_nombre ? 'Actualizar ' + c.orden_nombre + ' en Odoo' : 'Crear la cotización en Odoo', acc: 'hacer', id: brP.id });
     }
     // V1.57a · con la orden atrás del machote y sin borrador propuesto, el clic fuerte es pedir la actualización (va al motor).
-    var od = intOn('recalculo_v157') ? odooDesactualizada(H) : null;
-    if (od && !od.propuesto && !espera) L.push({ txt: 'Actualizar ' + od.orden + ' en Odoo', acc: 'mandar', texto: 'Actualiza ' + od.orden + ' en Odoo con el machote nuevo' });
-    if (c.orden_id) L.push({ txt: 'Ver cotización' + (od ? ' (versión vieja en Odoo)' : ''), acc: 'ver_cot', ico: '📄' });
+    var od = intOn('recalculo_v157') ? odooDesactualizada(H) : (intOn('actualizar_v158') ? odooDesactualizada(H, { soloHueco: true }) : null);
+    // V1.58 (#12 B) · si la orden salió con hueco, el mismo clic pide rearmarla con la tabla de pagos; con un borrador ya
+    // propuesto (de la versión que sea) no se pide otro: ese botón ya está arriba, como hoy.
+    if (od && od.hueco && !od.propuesto && !brP && !espera)
+      L.push({ txt: 'Actualizar ' + od.orden + ' en Odoo · ' + od.razon, acc: 'mandar', razon: od.razon,
+        texto: 'Vuelve a armar la cotización de ' + od.orden + ' con la tabla de pagos y una sola condición de pago, y propón actualizarla en Odoo.' });
+    else if (od && !od.hueco && !od.propuesto && !espera) L.push({ txt: 'Actualizar ' + od.orden + ' en Odoo', acc: 'mandar', texto: 'Actualiza ' + od.orden + ' en Odoo con el machote nuevo' });
+    if (c.orden_id) L.push({ txt: 'Ver cotización' + (od ? (od.hueco ? ' (' + od.razon + ')' : ' (versión vieja en Odoo)') : ''), acc: 'ver_cot', ico: '📄' });
     if (env) L.push({ txt: 'Ya la mandé al cliente', acc: 'hacer', id: env.id });
     return L;
   }
@@ -291,6 +313,6 @@
              P: P, rubrosTxt: 'Rubros ' + cerr + '/' + R.lista.length, preciosTxt: textoPrecios(P) };
   }
 
-  G.CzAvance = { PASOS: PASOS, avance: avance, clics: clics, odooDesactualizada: odooDesactualizada, abiertas: abiertas, yaNoPide: yaNoPide, cierrePosible: cierrePosible, retomamos: retomamos, faltantes: faltantes, textoFaltantes: textoFaltantes, ultimaActividad: ultimaActividad,
+  G.CzAvance = { PASOS: PASOS, avance: avance, clics: clics, odooDesactualizada: odooDesactualizada, huecoDeBorrador: huecoDeBorrador, abiertas: abiertas, yaNoPide: yaNoPide, cierrePosible: cierrePosible, retomamos: retomamos, faltantes: faltantes, textoFaltantes: textoFaltantes, ultimaActividad: ultimaActividad,
                  rubros: rubros, delRubro: delRubro, linea: linea, corto: corto, precios: precios, textoPrecios: textoPrecios, indicadores: indicadores };
 })(window);

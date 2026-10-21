@@ -1,6 +1,11 @@
 {
-  "version": "V1.57b",
+  "version": "V1.58",
   "historial": [
+    {
+      "version": "V1.58",
+      "fecha": "2026-10-21",
+      "nota": "fts-conceptualizador#12 (V1.58, destrabar cotizaciones): estado inmediato de lo que espera a Odoo (Ver cotización, Descargar PDF y Crear / Actualizar borrador, desde el botón y desde el rayito: «Generando el PDF de SO…» con hora y segundos, «✓ Listo» o «✕ No se … (CÓDIGO). La orden no cambió.» con Reintentar) y visor propio del PDF con pdf.js; niveles de precio en un solo lugar (N1 Proveedor · N2 Web MX · N3 Lista extranjera · N4 Estimado · N5 Falta precio) con su nota al tocarlos, «Cotizar con referencias» en palabras y «Ayuda · niveles de precio» en ⋮; y en ⋮ «Vista ejecutiva para el cliente» directa e «interna» que pregunta antes, igual que su Excel. Todo detrás de interruptores apagados (estado_odoo_v158, niveles_v158, menu_vista_v158; migración 0028)."
+    },
     {
       "version": "V1.57b",
       "fecha": "2026-10-20",

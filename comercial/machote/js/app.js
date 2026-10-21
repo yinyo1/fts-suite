@@ -496,6 +496,29 @@
   const mach  = (id) => ST.machotes.find(m => m.id === id) ||
                         ST.ajenos.find(m => m.id === id);
   const ajeno = (m) => !!(m && m._ajeno === true);
+
+  /* ── V1.58 · el machote por CUALQUIERA de sus nombres (fts-conceptualizador#12 A) ──
+   * `mach` sólo sabe del id DE PANTALLA, y la misma cotización tiene dos: lo
+   * propio se nombra aquí con su `id_local` ('M-<epoch>') y lo ajeno con el
+   * uuid del servidor (su `id_local` del dueño va en `_id_local`). Quien abre
+   * desde fuera —el conceptualizador, una liga pegada— trae uno u otro según
+   * de dónde lo sacó, y con `mach` a secas el que no calzaba caía a la lista
+   * sin decir nada (§20 #13: un índice parcial contesta «no» por lo que no
+   * cubre). Aquí se reconoce el id por su FORMA antes de buscar:
+   *   · uuid      → lo ajeno por su id; lo propio por la libreta (`machote_id`).
+   *   · id_local  → lo propio por su id; lo ajeno por `_id_local`, sólo si es
+   *                 UNO (dos dueños pueden repetir id_local: ver `bajar`).
+   * Un solo resolvedor, para que las rutas no puedan discrepar. */
+  const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  function machPorId(id) {
+    if (!id) return null;
+    id = String(id);
+    const directo = mach(id);
+    if (directo) return directo;
+    if (ES_UUID.test(id)) return machotePorUuid(id) || null;
+    const porDueno = ST.ajenos.filter(m => m && m._id_local === id);
+    return porDueno.length === 1 ? porDueno[0] : null;
+  }
   /* Ajeno ya no implica sólo lectura: con un préstamo vigente se edita.
    * La decisión de verdad la toma el SERVIDOR en cada guardado, contra la
    * base y con su propio reloj; esto es para no hacerle perder el rato a
@@ -2023,8 +2046,35 @@
   }
 
   /* ── El libro ────────────────────────────────────────────────────────── */
+  /* V1.58 · un id que no está en lo que este navegador ya tiene NO manda a la
+   * lista: mientras el servidor no contesta se dice «Buscando…», y si después
+   * de bajar tampoco está, se dice que no está y por qué podría ser. Mandar a
+   * la lista en silencio se leía como «abrió otra cosa» (#12 A). */
+  function vMachoteFalta(id) {
+    const buscando = ST.bajando === true;
+    ST.esperandoMachote = buscando ? id : null;
+    ST.libroAbierto = null;
+    top('Machote', buscando ? 'Buscando…' : 'No encontrado', null, '#/');
+    $('#fija').innerHTML = '';
+    $('#vista').innerHTML = '<div class="pad" id="machFalta" data-estado="' + (buscando ? 'buscando' : 'no-esta') + '">' +
+      (buscando
+        ? '<div class="aviso pend" role="status">Buscando el machote <b>' + esc(id) + '</b>… Lo pido al servidor.</div>'
+        : '<div class="aviso bad" role="alert">No encontré el machote <b>' + esc(id) + '</b>. Puede que esté archivado o que no tengas acceso.' +
+          (ST.bajarFallo ? ' Además no pude consultar el servidor: con lo que hay en este navegador no está.' : '') + '</div>' +
+          '<a class="btn" id="machFaltaLista" href="#/">Ir a la lista de machotes</a>') +
+      '</div>';
+  }
+
   function vMachote(id) {
-    const m = mach(id); if (!m) { location.hash = '#/'; return; }
+    try { id = decodeURIComponent(id || ''); } catch (e) { /* se queda como llegó */ }
+    const m = machPorId(id); if (!m) return vMachoteFalta(id);
+    ST.esperandoMachote = null;
+    if (m.id !== id) {
+      /* Llegó por el otro nombre: la ruta queda con el id de pantalla, que es
+       * el que usan todos los enlaces y botones de adentro. Sin `hashchange`. */
+      try { history.replaceState(null, '', '#/m/' + m.id); } catch (e) { /* sin historial: sigue igual */ }
+      id = m.id;
+    }
     /* ── Dónde se aterriza al abrir una cotización ──────────────────────
      * Al cambiar de cotización NO se arrastra la hoja abierta de la anterior:
      * dejaría al analista en una sección que no pidió.
@@ -5327,6 +5377,9 @@
     personas: personasDelEquipo
   };
 
+  /* V1.58 · mientras `bajar()` no conteste, un machote que no está en la caché
+   * se pinta como «Buscando…» y no como «no existe» (ver `vMachoteFalta`). */
+  ST.bajando = !!(A && A.bajar);
   render();
   /* PRIMERO el aviso de media versión, antes que cualquier otro: si la pantalla
    * está corriendo dos versiones, eso manda sobre todo lo demás que se pueda
@@ -5355,6 +5408,8 @@
 
   if (A && A.bajar) {
     A.bajar().then(r => {
+      ST.bajando = false;
+      ST.bajarFallo = !r || !r.ok;
       if (!r || !r.ok) {
         // Sin servidor se sigue trabajando con lo local. Sólo se dice si hay
         // sesión: sin sesión el gate de la página ya mandó al login.
@@ -5388,7 +5443,11 @@
       // Lo que quedó pendiente de subir (de una sesión anterior sin red) sale
       // ahora, sin que nadie tenga que acordarse de tocar algo.
       if (A.pendientes(ST.machotes)) guardarYa();
-    });
+    }).catch(() => { ST.bajando = false; ST.bajarFallo = true; })
+      /* V1.58 · si la pantalla quedó esperando un machote, se vuelve a pintar
+       * pase lo que pase: o ya llegó, o se dice que no está. Nunca se queda en
+       * «Buscando…» ni cae a la lista en silencio. */
+      .then(() => { if (ST.esperandoMachote) render(); });
   }
 
   /* El catálogo se pide UNA vez al arrancar, en segundo plano. La pantalla no

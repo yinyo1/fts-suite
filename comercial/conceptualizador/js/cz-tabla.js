@@ -48,13 +48,17 @@
       var tit = (r.dec || []).map(function (k) { var d = REF[k] || {}; return (/^dato:/.test(k) ? '' : k + ' · ') + (d.origen || '') + (d.texto ? ': ' + d.texto : ''); }).join('\n');
       t.push('<span class="tb-tag tu" title="' + esc(tit) + '">🔒 ' + esc(ids.slice(0, 2).join(', ') + (ids.length > 2 ? ' +' + (ids.length - 2) : '')) + '</span>');
     } else if (r.tipo !== 'Mano de obra') t.push('<span class="tb-tag ag">🤖 supuesto</span>');
-    if (r.nivel) t.push('<span class="tb-tag ' + esc(String(r.nivel).toLowerCase()) + '">' + (r.nivel === 'N5' ? '⛔ ' : esRef(r) ? '🔎 ' : '') + esc(r.nivel) + '</span>');
+    // V1.58 (`niveles_v158`) · la insignia con su nombre corto, y su nota al tocarla (cz-niveles.js).
+    if (r.nivel && on('niveles_v158') && G.CzNiveles) t.push(G.CzNiveles.chip(r.nivel, { k: 'tb-' + String(r.d || '').slice(0, 60) + '|' + (r.pu == null ? '' : r.pu) }));
+    else if (r.nivel) t.push('<span class="tb-tag ' + esc(String(r.nivel).toLowerCase()) + '">' + (r.nivel === 'N5' ? '⛔ ' : esRef(r) ? '🔎 ' : '') + esc(r.nivel) + '</span>');
     return t.join('');
   }
   function renglon(r, REF, conPrecio, puede) {
     var al = conAlerta(r), sinP = esN5(r) && r.tipo !== 'Mano de obra';
     return '<div class="tb-r' + (al ? ' con-alerta' : '') + '"><span class="tb-d">' + esc(r.d) +
-      '<small>' + (r.qty ? esc(Number(r.qty).toLocaleString('es-MX')) + ' ' + esc(r.unidad || '') : '') + (r.pu !== null && r.pu !== undefined ? ' × ' + din(r.pu) : '') + (r.liga && !(G.CzLigas && G.CzLigas.info(r.liga, S.ligas)) ? ' · ' + esc(r.liga) : '') + '</small>' + (r.liga && G.CzLigas ? G.CzLigas.chip(r.liga, S.ligas, r.d) : '') + '</span>' +
+      '<small>' + (r.qty ? esc(Number(r.qty).toLocaleString('es-MX')) + ' ' + esc(r.unidad || '') : '') + (r.pu !== null && r.pu !== undefined ? ' × ' + din(r.pu) : '') + (r.liga && !(G.CzLigas && G.CzLigas.info(r.liga, S.ligas)) && !(G.CzLigas && G.CzLigas.on158 && G.CzLigas.on158()) ? ' · ' + esc(r.liga) : '') + '</small>' + (r.liga && G.CzLigas ? G.CzLigas.chip(r.liga, S.ligas, r.d) : '') +
+        /* V1.58 (`ligas_v158`) · liga completa recortada a la vista (href entero), SKU, tienda, fecha y 🔴 con su motivo */
+        (G.CzLigas && G.CzLigas.piezas ? G.CzLigas.piezas(r, { sinLiga: !!G.CzLigas.info(r.liga, S.ligas) }) : '') + '</span>' +
       '<span class="tb-i">' + (sinP ? '<b class="mal">sin precio</b>' : conPrecio ? din(r.precio) + '<small>costo ' + din(r.costo) + '</small>' : din(r.costo)) + '</span>' +
       (r.tipo === 'Mano de obra' ? '' : '<span class="tb-meta">' + marcas(r, REF) + (al ? '<button type="button" class="tb-al" data-tb-al="1">⚠ alerta</button>' : '') +
         (r.o === 'agente' && puede ? '<button type="button" class="tb-cam" data-tb-cam="' + esc(String(r.d).slice(0, 120)) + '">↺ Cambiar</button>' : '') + '</span>') +

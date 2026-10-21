@@ -32,7 +32,8 @@
   var CHEV = '<svg class="vz-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
 
   var S = { abierto: false, o: null, M: null, abiertos: {}, f: { origen: {}, estado: {} }, el: null, hist: false, token: '', hora: '', leyendo: false,
-    v: 'fts', aviso: 0, ok2: false };   // V1.57b · versión FTS o cliente, y el paso de la doble confirmación
+    v: 'fts', aviso: 0, ok2: false,
+    preg: null, okInt: false };   // V1.58 (`menu_vista_v158`) · la pregunta antes de lo interno (vista o Excel) y si ya se dijo que sí   // V1.57b · versión FTS o cliente, y el paso de la doble confirmación
 
   /* ═══ V1.57b (fts-conceptualizador#12 punto 14, `vista_cliente`) · versión cliente y Excel ═══
    * Prototipo aprobado: prototipos/v157/vista-ejecutiva.html. La versión cliente es lo que el cliente puede ver: secciones,
@@ -91,8 +92,22 @@
     h += '<section class="vz-total"><b>Total (más IVA)</b><span class="vz-nums"><span class="p">' + dinero(C.total) + mon + '</span></span></section>';
     return h;
   }
+  /* V1.58 (`menu_vista_v158`, #12 punto g) · la versión cliente se abre DIRECTO (sin la doble confirmación de V1.57b): es la que se
+   * puede enseñar. Lo que pregunta antes es lo INTERNO: pasar a la versión FTS desde la del cliente y bajar su Excel. */
+  var menuV158 = function () { return prendido('menu_vista_v158'); };
+  function preguntaHtml() {
+    if (!S.preg) return '';
+    var ex = S.preg === 'excel';
+    return '<div class="vz-velo" role="dialog" aria-modal="true" aria-label="' + (ex ? 'Excel con datos internos' : 'Vista con datos internos') + '"><div class="vz-modal">' +
+      '<p class="vz-alerta">' + (ex ? '¿Descargar el Excel con datos internos?' : '¿Abrir la vista con datos internos?') + '</p>' +
+      '<p>' + (ex ? 'Trae costos, precio, margen, nivel y liga de cada renglón. Para mandárselo al cliente, baja el de la versión cliente.'
+        : 'Trae <b>costos, márgenes, comisión FTS y fuentes</b> del proyecto. Si estás compartiendo pantalla con el cliente, quédate en la versión cliente.') + '</p>' +
+      '<div class="vz-pie"><button type="button" class="vz-bt" data-vz="preg-no">Cancelar</button>' +
+      (ex ? '<button type="button" class="vz-bt" data-vz="preg-cli">Bajar el del cliente</button>' : '') +
+      '<button type="button" class="vz-bt lleno" data-vz="preg-si">' + (ex ? 'Sí, descargar el interno' : 'Sí, ver la interna') + '</button></div></div></div>';
+  }
   function avisoHtml() {
-    if (!S.aviso) return '';
+    if (!S.aviso) return preguntaHtml();
     return '<div class="vz-velo" role="dialog" aria-modal="true" aria-label="Pasar a la versión cliente"><div class="vz-modal"><div class="vz-paso">Paso ' + S.aviso + ' de 2</div>' +
       '<p class="vz-alerta">Esta es la versión que se le puede mostrar al cliente.</p>' +
       (S.aviso === 1 ? '<p>Vas a ver solo secciones, conceptos, cantidades e importes. Revisa que no quede nada interno antes de compartir pantalla o mandar el Excel.</p>'
@@ -125,8 +140,8 @@
     f.push(['Total', '', '', '', '', '', D.tot.c / 100, D.tot.p / 100, Number((margen(D.tot.c, D.tot.p, D.tot.com) || 0).toFixed(4)), '', '', '', '']);
     return f;
   }
-  function excel() {
-    var o = S.o || {}, caso = o.caso || {}, v = S.v;
+  function excel(vForzada) {
+    var o = S.o || {}, caso = o.caso || {}, v = vForzada || S.v;
     var nombre = String((caso.machote_folio || 'vista') + (o.version ? '_v' + o.version : '') + '_' + (v === 'cliente' ? 'cliente' : 'FTS')).replace(/[^A-Za-z0-9_-]+/g, '-');
     var F = filasExcel(v);
     var baja = function (blob, ext) { var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre + ext; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000); };
@@ -209,7 +224,9 @@
   function liga(h) {
     var s = String(h || '').trim(); if (!s) return '';
     var url = /^https?:\/\//i.test(s) ? s : (/^[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i.test(s) ? 'https://' + s : '');
-    return url ? ' · <a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(s.replace(/^https?:\/\//i, '')) + '</a>' : ' · ' + esc(s);
+    // V1.58 (`ligas_v158`) · el motor manda la liga COMPLETA: el texto se recorta a la vista y el href va entero.
+    var L8 = prendido('ligas_v158') && G.CzLigas && G.CzLigas.recorta, txt = L8 ? G.CzLigas.recorta(s) : s.replace(/^https?:\/\//i, '');
+    return url ? ' · <a href="' + esc(url) + '" target="_blank" rel="noopener"' + (L8 ? ' title="' + esc(url) + '"' : '') + '>' + esc(txt) + '</a>' : ' · ' + esc(s);
   }
   function detalle(f, REF, mon) {
     var r = f.r, pu = r.pu === null || r.pu === undefined ? 'sin precio' : dinero(cent(r.pu));
@@ -220,8 +237,10 @@
       : '🤖 Lo supuso el agente' + (r.tipo === 'Mano de obra' ? ' (tarifa de plantilla del machote)' : ', con la fuente de arriba');
     return '<dl><dt>Descripción completa</dt><dd>' + esc(r.d) + '</dd>' +
       '<dt>Cantidad</dt><dd>' + esc(qty) + ' ' + esc(r.unidad || '') + ' · P. unitario ' + pu + (r.moneda || mon ? ' ' + esc(r.moneda || mon) : '') + '</dd>' +
-      '<dt>Nivel</dt><dd>' + (r.nivel ? esc(NIVEL[r.nivel] || r.nivel) : (r.tipo === 'Mano de obra' ? 'Mano de obra (sin nivel)' : 'Sin nivel')) + '</dd>' +
-      '<dt>Fuente</dt><dd>' + (r.liga ? 'Liga' + liga(r.liga) : (f.sin ? 'PENDIENTE PROVEEDOR' : 'sin liga')) + '</dd>' +
+      '<dt>Nivel</dt><dd>' + (r.nivel && prendido('niveles_v158') && G.CzNiveles ? esc(G.CzNiveles.nombre(r.nivel)) + '<br><small>' + esc(G.CzNiveles.nota(r.nivel)) + '</small>' :
+        r.nivel ? esc(NIVEL[r.nivel] || r.nivel) : (r.tipo === 'Mano de obra' ? 'Mano de obra (sin nivel)' : 'Sin nivel')) + '</dd>' +
+      '<dt>Fuente</dt><dd>' + (r.liga ? 'Liga' + liga(r.liga) : (f.sin ? 'PENDIENTE PROVEEDOR' : 'sin liga')) +
+        (prendido('ligas_v158') && G.CzLigas && G.CzLigas.piezas ? G.CzLigas.piezas(r, { sinLiga: true }) : '') + '</dd>' +
       '<dt>Fórmula</dt><dd><code>' + form + '</code></dd>' +
       '<dt>Quién</dt><dd>' + quien + '</dd>' +
       (conAlerta(r) ? '<dt>Alerta</dt><dd class="al">⚠ ' + esc(r.alerta) + '</dd>' : '') + '</dl>';
@@ -255,7 +274,7 @@
       '<div class="vz-vivo"><span class="vz-dato" id="vzDatos"><i></i>' + (S.leyendo ? 'Leyendo la versión vigente…' :
         'Datos de las ' + esc(S.hora) + (folio || verTxt ? ' · machote ' + esc([folio, verTxt].filter(Boolean).join(' ')) : '')) + '</span>' +
       (o.al && typeof o.al.actualizar === 'function' ? '<button type="button" data-vz="actualizar"' + (S.leyendo ? ' disabled' : '') + '>Actualizar</button>' : '') + '</div></header>';
-    var VC = prendido('vista_cliente'); if (!VC) S.v = 'fts';
+    var VC = prendido('vista_cliente') || menuV158(); if (!VC) S.v = 'fts';
     h += '<div class="vz-acc">' + (VC ? '<div class="vz-seg" role="tablist" aria-label="Versión"><button type="button" role="tab" data-vz="v-fts" aria-selected="' + (S.v === 'fts') + '">Versión FTS</button>' +
       '<button type="button" role="tab" data-vz="v-cliente" aria-selected="' + (S.v === 'cliente') + '">Versión cliente</button></div>' : '') +
       (S.v === 'cliente' ? '' : '<button type="button" class="vz-bt" data-vz="expandir">Expandir todo</button><button type="button" class="vz-bt" data-vz="colapsar">Colapsar todo</button>') +
@@ -316,7 +335,7 @@
               var r = f.r, a3 = S.abiertos[f.k] === true;
               return '<div class="vz-niv vz-n3' + (cumple(r, S.f) ? '' : ' vz-oculto') + '" data-k="' + esc(f.k) + '" data-nivel="renglon" data-costo="' + f.c + '" data-precio="' + f.p + '">' +
                 '<button type="button" class="vz-fila" aria-expanded="' + a3 + '" data-k="' + esc(f.k) + '">' + CHEV +
-                '<span class="vz-nom"><span class="d">' + (r.nivel ? '<span class="vz-badge ' + esc(r.nivel) + '">' + esc(r.nivel) + '</span>' : '') + esc(r.d) + '</span>' +
+                '<span class="vz-nom"><span class="d">' + (r.nivel ? (prendido('niveles_v158') && G.CzNiveles ? G.CzNiveles.chip(r.nivel, { k: 'vz-' + f.k, corto: true }) + ' ' : '<span class="vz-badge ' + esc(r.nivel) + '">' + esc(r.nivel) + '</span>') : '') + esc(r.d) + '</span>' +
                 '<small>' + (r.qty != null ? esc(Number(r.qty).toLocaleString('es-MX')) + ' ' + esc(r.unidad || '') : '') + ' <span class="vz-flags">' + flags(r) + '</span></small></span>' +
                 nums(f.c, f.p, D.com(f.p), f.sin) + '</button><div class="vz-det"' + (a3 ? '' : ' hidden') + '>' + detalle(f, REF, mon) + '</div></div>';
             }).join('') + '</div></div>';
@@ -364,14 +383,20 @@
     else if (a === 'colapsar') todo(false);
     else if (a === 'quitar') { S.f = { origen: {}, estado: {} }; Object.keys(S.abiertos).forEach(function (x) { if (x.charAt(0) === 's') delete S.abiertos[x]; }); pintar(); }
     else if (a === 'actualizar') actualizar();
+    else if (a === 'v-fts' && menuV158() && S.v === 'cliente' && !S.okInt) { S.preg = 'interno'; pintar(); }
     else if (a === 'v-fts') { S.v = 'fts'; S.aviso = 0; pintar(); }
+    else if (a === 'v-cliente' && menuV158()) { if (S.v !== 'cliente') { S.v = 'cliente'; S.aviso = 0; S.el.scrollTop = 0; pintar(); } }
     else if (a === 'v-cliente') { if (S.v !== 'cliente') { S.aviso = 1; S.ok2 = false; pintar(); } }
+    else if (a === 'preg-no') { S.preg = null; pintar(); }
+    else if (a === 'preg-cli') { S.preg = null; pintar(); excel('cliente'); }
+    else if (a === 'preg-si') { var q = S.preg; S.preg = null; if (q === 'excel') { pintar(); excel(); } else { S.okInt = true; S.v = 'fts'; S.el.scrollTop = 0; pintar(); } }
+    else if (a === 'excel' && menuV158() && S.v !== 'cliente') { S.preg = 'excel'; pintar(); }
     else if (a === 'aviso-no') { S.aviso = 0; pintar(); }
     else if (a === 'aviso-si') { if (S.aviso === 1) { S.aviso = 2; pintar(); } else if (S.ok2) { S.aviso = 0; S.v = 'cliente'; S.el.scrollTop = 0; pintar(); } }
     else if (a === 'excel') excel();
     else if (a === 'imprimir') { S.el.classList.add('vz-imp'); try { G.print(); } finally { setTimeout(function () { if (S.el) S.el.classList.remove('vz-imp'); }, 0); } }
   }
-  function tecla(e) { if (S.abierto && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (S.aviso) { S.aviso = 0; pintar(); return; } cerrar(); } }
+  function tecla(e) { if (S.abierto && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (S.aviso || S.preg) { S.aviso = 0; S.preg = null; pintar(); return; } cerrar(); } }
   function cambio(e) { if (e.target && e.target.id === 'vzOk2') { S.ok2 = !!e.target.checked; var b = S.el.querySelector('[data-vz="aviso-si"]'); if (b) b.disabled = !S.ok2; } }
   function pop() { if (S.abierto && S.hist && !(G.history.state && G.history.state.czVista === S.token)) { S.hist = false; quitar(); } }
   function antesImp() { if (S.el) S.el.classList.add('vz-imp'); }
@@ -389,7 +414,10 @@
   function abrir(o) {
     css(); datos(o);
     if (S.abierto) { pintar(); return; }
-    S.abiertos = {}; S.f = { origen: {}, estado: {} }; S.leyendo = false; S.v = 'fts'; S.aviso = 0; S.ok2 = false;
+    S.abiertos = {}; S.f = { origen: {}, estado: {} }; S.leyendo = false; S.v = 'fts'; S.aviso = 0; S.ok2 = false; S.preg = null; S.okInt = false;
+    // V1.58 (`menu_vista_v158`) · desde el ⋮: «para el cliente» abre en su versión; «interno» ya se confirmó antes de abrir.
+    if (menuV158() && S.o.inicio === 'cliente') S.v = 'cliente';
+    if (menuV158() && S.o.inicio === 'interna') S.okInt = true;
     var el = document.createElement('div');
     el.id = 'cz-vista'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Vista ejecutiva del proyecto'); el.tabIndex = -1;
     document.body.appendChild(el); S.el = el; S.abierto = true;

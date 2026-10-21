@@ -251,7 +251,7 @@
       var mm = r.moneda_machote || (cot && cot.moneda) || '¿?', mc = r.moneda_caso || monedaCaso(caso) || '¿?';
       return { ok: false, error: r.error, mensaje: 'El machote está en ' + mm + ' y el caso en ' + mc + ': actualiza el machote antes de crear la cotización.' };
     }
-    if (!r.ok || !r.odoo_so_id) return { ok: false, mensaje: r.mensaje || ('No se creó el borrador: ' + (r.error || 'sin orden')) };
+    if (!r.ok || !r.odoo_so_id) return { ok: false, error: r.error || 'SIN_ORDEN', mensaje: r.mensaje || ('No se creó el borrador: ' + (r.error || 'sin orden')) };   // V1.58 · el código va a la tarjeta de estado
     var o = releido(r);
     o.texto = textoOrden(o, modo === 'crear' ? 'Borrador' : 'Actualizado');
     // Queda en la acción (y por ella en hilo.md): qué frase, qué se hizo, quién y por qué. El motor lo lee en la vuelta siguiente.

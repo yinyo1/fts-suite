@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.57b';
+  var VERSION = 'V1.58';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -739,6 +739,13 @@
     ['tarjeta_v157', 'Tarjeta de la cotización V1.57b', 'Sin «Ver cotización», giro en el mismo botón mientras trabaja y nombres de partida cortados por palabra con «…».'],
     ['correo_v157', 'Correo para envío', 'Para y CC editables con aviso de no-contacto y alta, asunto y cuerpo editables con Guardar, tono por tipo de cliente, firma en imagen y una segunda vista con «Confirmar envío».'],
     ['vista_cliente', 'Vista ejecutiva cliente', 'La vista ejecutiva con versión FTS y versión cliente (sin costos ni márgenes, revisada por la regla 15) y descarga en Excel.'],
+    // V1.58 (#12) · destrabar cotizaciones. Todo entra apagado (migración 0028); orden de prendido en el plan de despliegue del #12.
+    ['piso_v158', 'Piso de margen con decreto', 'El piso de margen deja pasar solo con decreto escrito de Esteban.'],
+    ['estado_odoo_v158', 'Estado inmediato de Odoo', 'Ver cotización, Descargar PDF y Crear / Actualizar borrador dicen al instante qué hacen, cuánto llevan y si quedó o por qué no; el PDF se ve en un visor propio.'],
+    ['niveles_v158', 'Niveles de precio en palabras', 'N1 Proveedor · N2 Web MX · N3 Lista extranjera · N4 Estimado · N5 Falta precio, con su nota al tocarlos, «Cotizar con referencias» en palabras y la ayuda en ⋮.'],
+    ['menu_vista_v158', 'Vistas ejecutivas en ⋮', 'Vista para el cliente directa (sin doble confirmación) e interna que pregunta antes de abrir; su Excel interno también pregunta.'],
+    ['actualizar_v158', 'Actualizar SO en el rayito', 'El rayito ofrece Actualizar SO cuando la orden salió sin tabla de pagos o sin condición única.'],
+    ['ligas_v158', 'Ligas completas', 'Liga completa con SKU, tienda y fecha en la vista interna; 🔴 en renglones viejos sin liga de producto.'],
   ];
   /** Los interruptores que conoce el servidor (valores `interruptor:*` y `interruptores`), en el orden de arriba; uno nuevo
    * que la pantalla todavía no describe sale al final con su nombre, para que se pueda prender igual. */
@@ -1352,8 +1359,12 @@
   function pctAv() { var I = indicHilo(), AN = analisis(); if (I && I.avance_pct !== null) return I.avance_pct; return AN ? (AN.estado === 'cerrado' || AN.estado === 'listo' ? 100 : AN.pct) : null; }
   function preciosFranja(P, sig) {
     var S = P.sensatez || [], IN = on('un_solo_dato') ? G.CzIndicadores : null, I = IN ? IN.calcular({ precios: P }) : null;
+    // V1.58 (`niveles_v158`) · «56 % del costo es estimado» y las insignias N3/N4 con su cuenta (se tocan para ver qué son).
+    var NV = on('niveles_v158') && G.CzNiveles ? G.CzNiveles : null, pR = I ? I.referencia_pct : P.pct;
+    var txNiv = NV && pR ? ' · ' + esc(NV.textoReferencia(pR)) + ' ' + (P.n3 ? NV.chip('N3', { k: 'franja-n3', cuenta: P.n3 }) + ' ' : '') + (P.n4 ? NV.chip('N4', { k: 'franja-n4', cuenta: P.n4 }) : '') : null;
     return '<div class="avl-precios"><b>Precios</b> ' + esc(P.con_precio + ' de ' + P.total + ' renglones con precio') +
-      (I ? (I.referencia_pct ? ' · ' + esc(IN.textoReferencia(I)) : '') + (I.alertas.total ? ' · <span class="alerta">⚠ ' + esc(IN.textoAlertas(I)) + '</span>' : '') :
+      (txNiv !== null ? txNiv + (I ? (I.alertas.total ? ' · <span class="alerta">⚠ ' + esc(IN.textoAlertas(I)) + '</span>' : '') : (P.n3 ? ' · <span class="alerta">⚠ ' + esc(P.n3 + (P.n3 === 1 ? ' alerta N3' : ' alertas N3')) + '</span>' : '')) :
+      I ? (I.referencia_pct ? ' · ' + esc(IN.textoReferencia(I)) : '') + (I.alertas.total ? ' · <span class="alerta">⚠ ' + esc(IN.textoAlertas(I)) + '</span>' : '') :
         (P.pct ? ' · ' + esc(P.pct + ' % del costo es referencia (N3/N4)') : '') + (P.n3 ? ' · <span class="alerta">⚠ ' + esc(P.n3 + (P.n3 === 1 ? ' alerta N3' : ' alertas N3')) + '</span>' : '')) +
       S.map(function (x) { return '<span class="avl-sens">⚠ ALERTA ' + esc(x.seccion) + ': ' + esc(x.cuenta).replace(/ %/g, '&nbsp;%') + '</span>'; }).join('') +
       (sig ? '<span class="avl-sig">Siguiente: ' + esc(sig) + '</span>' : '') + '</div>';
@@ -1675,6 +1686,7 @@
    * (motor · robot · respaldo) y el paso exacto; «Detener» para el dueño del caso o un administrador. */
   function puedeDetener() { var c = (ST.hilo && ST.hilo.caso) || {}; return mia(c) || ST.admin === true || ST.panelAdmin === true; }
   function pintarEstado() {
+    if (G.CzEstado) G.CzEstado.caso((ST.sel || {}).id);   // V1.58 · la tarjeta de Odoo es del caso abierto
     var box = $('#estAg'); if (!box || !G.ChatWA || !G.ChatWA.barraEstado) return;
     if (!on('estados_reales')) { if (ST.barraEst) ST.barraEst.chwaPoner(null); return; }   // V1.51: no hay barra
     if (!ST.barraEst) {
@@ -1751,11 +1763,17 @@
         '<small>' + (hayM ? 'Ya hay machote: no se cambia aquí' : !mia ? 'Solo quien la abrió o Esteban' : 'Cambiar mientras no haya machote') + '</small></span></button>' +
       '<button data-a="prueba"' + (mia ? '' : ' disabled') + '>' + ico('prueba', 's') + '<span>' + (cs.demo ? 'Ya no es prueba (sí enseña)' : 'Es una prueba (no enseña)') + '<small>Solo quien la abrió o Esteban</small></span></button>' +
       // V1.51 · F «Vista ejecutiva del proyecto» (antes «Ver en página»), G «Ir al machote» y el visor de la cotización.
-      (G.CzVista ? '<button data-a="vista">' + ico('pagina', 's') + '<span>Vista ejecutiva del proyecto<small>Costo, precio y margen por nivel, en vivo</small></span></button>' : '') +
+      // V1.58 (`menu_vista_v158`) · dos entradas: la del cliente abre directo; la interna pregunta antes de abrir.
+      (G.CzVista && on('menu_vista_v158') ? '<button data-a="vista_cliente" class="czm-dest">' + ico('pagina', 's') + '<span>Vista ejecutiva para el cliente<small>Lo que verá el cliente: secciones, alcance e importes. Con «Descargar Excel».</small>' +
+          (brUlt() ? '' : '<small class="czm-aviso">' + esc(SIN_COT_CLIENTE) + '</small>') + '</span></button>' +
+        '<button data-a="vista_interna">' + ico('pagina', 's') + '<span>Vista ejecutiva del proyecto (interno)<small>Costos, márgenes, comisión, niveles y fuentes. Pregunta antes de abrir.</small></span></button>' :
+      G.CzVista ? '<button data-a="vista">' + ico('pagina', 's') + '<span>Vista ejecutiva del proyecto<small>Costo, precio y margen por nivel, en vivo</small></span></button>' : '') +
       (hayM ? '<button data-a="ir_machote">' + ico('docs', 's') + '<span>Ir al machote<small>' + esc((cs.machote_folio || 'Machote') + (verMachote() ? ' · versión ' + verMachote() : '')) + '</small></span></button>'
         : '<button data-a="ir_machote" disabled aria-disabled="true">' + ico('docs', 's') + '<span>Ir al machote<small>Aún no hay machote</small></span></button>') +
       (G.CzVisor && ultimoBorrador() ? '<button data-a="visor">' + ico('pagina', 's') + '<span>Vista rápida de la cotización<small>Lo que hay en Odoo y qué cambió; el PDF oficial está en «Ver cotización»</small></span></button>' : '') +
-      '<button data-a="pagina">' + ico('pagina', 's') + '<span>Lo considerado, con versiones<small>La vista en página de antes</small></span></button><hr>' +
+      '<button data-a="pagina">' + ico('pagina', 's') + '<span>Lo considerado, con versiones<small>La vista en página de antes</small></span></button>' +
+      // V1.58 (`niveles_v158`) · qué quiere decir cada nivel de precio.
+      (on('niveles_v158') && G.CzNiveles ? '<button data-a="ayuda_niveles">' + ico('info', 's') + '<span>Ayuda · niveles de precio<small>N1 Proveedor · N2 Web MX · N3 Lista extranjera · N4 Estimado · N5 Falta precio</small></span></button>' : '') + '<hr>' +
       '<button data-a="archivos">' + ico('docs', 's') + '<span>Archivos, enlaces y docs.</span></button>' +
       '<button data-a="multimedia">' + ico('bajar', 's') + '<span>Descargar todo lo multimedia<small>Fotos, audios y PDFs en un ZIP</small></span></button>' +
       '<button data-a="exportar">' + ico('exportar', 's') + '<span>Exportar chat<small>JSON o TXT, con o sin multimedia</small></span></button><hr>') : '');
@@ -1802,6 +1820,9 @@
       if (a === 'prueba') return marcarPrueba();
       if (a === 'pagina') return abrirPagina('considerado');
       if (a === 'vista') return abrirVista();
+      if (a === 'vista_cliente') return brUlt() ? abrirVista('cliente') : toast(SIN_COT_CLIENTE);
+      if (a === 'vista_interna') return preguntarInterna();
+      if (a === 'ayuda_niveles') return G.CzNiveles.ayuda();
       if (a === 'visor') return abrirVisor();
       if (a === 'ir_machote') { var hm = ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'hecha'; }).pop(); return abrirEditor(hm || null); }
       if (a === 'archivos') return abrirArchivos();
@@ -2230,17 +2251,19 @@
     else if (mat.length || mo.length) {
       h += '<details class="carta"' + (nivelesDe(mat).n.N3 ? ' open' : '') + '><summary><b>BOM a costo</b> · ' + mat.length + ' renglones + ' + mo.length + ' de mano de obra</summary>';
       var NIV = nivelesDe(mat);
+      var NVb = on('niveles_v158') && G.CzNiveles ? G.CzNiveles : null;   // V1.58 · insignias que se tocan (sin `title`)
       if (NIV.con) h += '<div class="niv-res">' + ['N1', 'N2', 'N3', 'N4', 'N5'].filter(function (k) { return NIV.n[k]; }).map(function (k) {
-        return '<span class="niv niv-' + k + '" title="' + esc(NIVEL[k][1]) + '">' + k + ' ' + esc(NIVEL[k][0]) + ' · ' + NIV.n[k] + '</span>'; }).join('') + '</div>';
+        if (NVb) return NVb.chip(k, { k: 'bomres-' + U.trabajo_id + '-' + k, cuenta: NIV.n[k] });
+        return '<span class="niv niv-' + k + '" title="' + esc(NIVEL[k][1]) + '">' + k + ' ' + esc(NIVEL[k][0]) + ' · ' + NIV.n[k] + '</span>'; }).join('') + (NVb ? '<small class="niv-toca">Toca un nivel para ver qué significa</small>' : '') + '</div>';
       // V1.47 (#4 regla de oro 1) · los renglones que la persona decidió: «lo dijiste tú», con el mensaje de donde salió.
       // `propuesta` (la del BOM) no trae `verifica`: los decretos vigentes salen de la última respuesta que los mandó.
       var DEC = ((U.verifica && U.verifica.decretos) || verUlt().decretos || {}).renglones || [];
       // V1.55 (`ligas_v155`) · la miniatura de cada liga (la manda el motor en verifica.ligas de la última respuesta).
       var LIG = (U.verifica && U.verifica.ligas) || verUlt().ligas || null;
       var decDe = function (d) { var k = String(d || '').slice(0, 60); return DEC.filter(function (x) { return x.descripcion && String(x.descripcion).slice(0, 60) === k; })[0]; };
-      mat.forEach(function (r) {
+      mat.forEach(function (r, iR) {
         var te = r.tienda_existencia || r.tienda || '', sin = /sin existencia|solo (hay )?en|otra ciudad/i.test(te), nv = nivelDe(r), dj = decDe(r.descripcion);
-        h += '<div class="bom' + (nv === 'N3' ? ' alerta-n3' : '') + '"><div>' + (NIV.con ? '<span class="niv niv-' + nv + '">' + nv + '</span> ' : '') + '<b>' + esc(r.descripcion) + '</b>' + (r.sku ? ' <span class="sku">' + esc(r.sku) + '</span>' : '') + '</div><div>' + esc(r.qty) + ' ' + esc(r.unidad) + ' · ' + esc(r.tipo) + ' · <b>' + dinero(r.importe, r.moneda) + '</b></div>' +
+        h += '<div class="bom' + (nv === 'N3' ? ' alerta-n3' : '') + '"><div>' + (NIV.con ? (NVb ? NVb.chip(nv, { k: 'bom-' + U.trabajo_id + '-' + iR }) : '<span class="niv niv-' + nv + '">' + nv + '</span>') + ' ' : '') + '<b>' + esc(r.descripcion) + '</b>' + (r.sku ? ' <span class="sku">' + esc(r.sku) + '</span>' : '') + '</div><div>' + esc(r.qty) + ' ' + esc(r.unidad) + ' · ' + esc(r.tipo) + ' · <b>' + dinero(r.importe, r.moneda) + '</b></div>' +
           '<div class="org">' + [r.formula ? esc(r.formula) : '', r.liga && /^https?:/.test(r.liga) ? '<a href="' + esc(r.liga) + '" target="_blank" rel="noopener">' + esc(r.fuente) + '</a>' :
             /pendiente/i.test(r.fuente || '') ? '<b class="mal">' + esc(r.fuente) + '</b>' : esc(r.fuente || 'sin fuente')].filter(Boolean).join(' · ') + '</div>' +
           (G.CzLigas ? G.CzLigas.chip(r.liga, LIG, r.descripcion) : '') +
@@ -2275,6 +2298,9 @@
     if (!R || !R.n) return '';
     // V1.52 · el encabezado con los MISMOS números que el mensaje y la franja (CzIndicadores): alertas = N3 + secciones.
     var IN = on('un_solo_dato') ? G.CzIndicadores : null, I = IN ? IN.calcular({ referencias: R, sensatez: (S || []).filter(function (x) { return x && x.alerta; }) }) : null;
+    // V1.58 (`niveles_v158`) · en palabras: el % estimado con montos, la barra por nivel y a qué proveedores pedir para bajarlo.
+    if (on('niveles_v158') && G.CzNiveles) return G.CzNiveles.referenciasHtml(R, { pct: I ? I.referencia_pct : R.pct, moneda: ((ST.hilo && ST.hilo.caso) || {}).moneda,
+      alertas: I ? IN.textoAlertas(I) : (R.n3 ? R.n3 + (R.n3 === 1 ? ' alerta N3' : ' alertas N3') : '') });
     var din = function (x) { return '$' + Number(x || 0).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); };
     var lista = conLista ? (R.lista || []).map(function (x) { return '<li class="' + (x.nivel === 'N3' ? 'n3' : '') + '"><span class="niv niv-' + esc(x.nivel) + '">' + esc(x.nivel) + '</span> ' +
       esc(x.descripcion) + ' · ' + din(x.importe) + (x.riesgo ? '<small> ⚠ ' + esc(x.riesgo) + '</small>' : '') + '</li>'; }).join('') : '';
@@ -2375,8 +2401,19 @@
     return t;
   }
   function brUlt() { return ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return x.tipo === 'crear_borrador' && x.estado !== 'descartada' && x.datos && x.datos.cotizacion; }).pop() || null; }
-  function abrirVista() {
+  /* V1.58 (`menu_vista_v158`) · la vista del cliente sale de la cotización armada para Odoo; sin ella no hay qué enseñar. */
+  var SIN_COT_CLIENTE = 'Se arma con la cotización para Odoo: pídele al agente «Haz la cotización».';
+  /** La vista interna trae costos y márgenes: se pregunta antes (por si se está compartiendo pantalla con el cliente). */
+  function preguntarInterna() {
+    var hay = !!brUlt();
+    modal('<h3>¿Abrir la vista con datos internos?</h3><p class="sub">Trae <b>costos, márgenes, comisión FTS y fuentes</b> del proyecto. Si estás compartiendo pantalla con el cliente, usa mejor la vista para el cliente.</p>' +
+      '<div class="acc der"><button class="boton" data-cierra>Cancelar</button><button class="boton" id="czVzCli"' + (hay ? '' : ' disabled title="' + esc(SIN_COT_CLIENTE) + '"') + '>Abrir la del cliente</button><button class="boton si" id="czVzInt">Sí, abrir la interna</button></div>');
+    $('#czVzCli').onclick = function () { cerrarModal(); abrirVista('cliente'); };
+    $('#czVzInt').onclick = function () { cerrarModal(); abrirVista('interna'); };
+  }
+  function abrirVista(inicio) {
     if (!G.CzVista || !ST.hilo) return;
+    var VC = on('vista_cliente') || on('menu_vista_v158');
     var H = ST.hilo, U = H.propuesta || H.ultima || {}, A = H.acciones || [], cs = H.caso || {};
     var cm = A.filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'hecha'; }).pop(), br = A.filter(function (x) { return x.tipo === 'crear_borrador' && x.datos && x.datos.cotizacion; }).pop();
     var datos = function () {
@@ -2388,10 +2425,10 @@
         decisionesPendientes: (H2.acciones || []).filter(function (x) { return x.estado === 'propuesta'; }).map(function (x) { return { titulo: x.titulo }; }),
         terminos: br ? terminosDe(br.datos.cotizacion) : null,
         // V1.57b (`vista_cliente`) · la versión cliente sale de la cotización armada para Odoo, con las decisiones de la regla 15.
-        cotizacion: on('vista_cliente') ? ((brUlt() || {}).datos || {}).cotizacion || null : undefined,
-        regla15: on('vista_cliente') ? ((((brUlt() || {}).resultado || {}).regla15 || {}).decisiones || null) : undefined };
+        cotizacion: VC ? ((brUlt() || {}).datos || {}).cotizacion || null : undefined,
+        regla15: VC ? ((((brUlt() || {}).resultado || {}).regla15 || {}).decisiones || null) : undefined };
     };
-    G.CzVista.abrir(Object.assign(datos(), { al: { actualizar: async function () { await cargarHilo(); return datos(); } } }));
+    G.CzVista.abrir(Object.assign(datos(), { inicio: inicio || null, al: { actualizar: async function () { await cargarHilo(); return datos(); } } }));
     void U;
   }
   function releidoOdoo(r) {
@@ -2412,7 +2449,8 @@
     if (!p.habilitado) return '<div class="acc"><button class="si" data-hacer="' + a.id + '">Cotizar con referencias</button><button data-descartar="' + a.id + '">No</button></div>' + leyendaOdoo('crear_borrador');
     if (!p.referencias) return '<p class="nota mal">El servidor de Odoo todavía no acepta cotizar con referencias: falta publicar el workflow nuevo. Por ahora este borrador no se crea; el machote sí está al día.</p>' +
       '<div class="acc"><button data-descartar="' + a.id + '">No</button></div>';
-    return '<div class="acc"><button class="si" data-refok="' + a.id + '">Cotizar con referencias</button><button data-descartar="' + a.id + '">No</button></div>' +
+    var pR = on('niveles_v158') && (a.datos || {}).referencias ? (indicHilo() && G.CzIndicadores ? G.CzIndicadores.calcular({ referencias: a.datos.referencias }).referencia_pct : a.datos.referencias.pct) : null;
+    return '<div class="acc"><button class="si" data-refok="' + a.id + '">Cotizar con referencias' + (pR ? ' (' + esc(G.CzIndicadores ? G.CzIndicadores.pct(pR) : pR) + ' %)' : '') + '</button><button data-descartar="' + a.id + '">No</button></div>' +
       '<p class="nota">Al tocarlo aceptas las referencias de arriba; queda registrado en el hilo.</p>';
   }
   function botonCambiar(kk) { return '<button type="button" class="cambiar" data-cambia="' + esc(kk) + '" aria-label="Cambiar esta respuesta">↺ Cambiar</button>'; }
@@ -2851,15 +2889,36 @@
     // V1.57b (`tarjeta_v157`) · el giro va en el MISMO botón mientras trabaja; si falla, vuelve su texto.
     var txt0 = b.innerHTML; if (on('tarjeta_v157')) b.innerHTML = GIRO + ' ' + ({ crear_borrador: 'Escribiendo en Odoo…', crear_machote: 'Guardando el machote…', enviada: 'Marcando en Odoo…', alta_contacto: 'Dando de alta…', actualizar_cliente: 'Actualizando la ficha…' }[a.tipo] || 'Trabajando…');
     var vuelve = function () { b.disabled = false; if (on('tarjeta_v157')) b.innerHTML = txt0; };
+    /* V1.58 (`estado_odoo_v158`, #12 punto e) · el borrador dice al INSTANTE qué hace, cuánto lleva y cómo acabó, en la tarjeta de
+     * estado de abajo: se ve igual desde el botón de la tarjeta que desde el rayito (la bolita cierra su menú antes del clic). */
+    var est = null, acepta0 = !!ST.refAcepta[id];
+    if (a.tipo === 'crear_borrador' && G.CzEstado && G.CzEstado.on()) {
+      var cs0 = (ST.hilo && ST.hilo.caso) || {}, so0 = cs0.orden_nombre, cot0 = (a.datos || {}).cotizacion || {};
+      var nR = (cot0.bloques || []).filter(function (x) { return !x.display_type; }).length;
+      est = G.CzEstado.inicio({ titulo: so0 ? 'Actualizando ' + so0 + ' en Odoo…' : 'Creando la cotización en Odoo…', caso: cs0.id,
+        detalle: 'escribiendo ' + nR + (nR === 1 ? ' renglón' : ' renglones') + ', la nota y la tabla de pagos' });
+    }
+    var reintenta = function () { if (acepta0) ST.refAcepta[id] = true; return hacer(id, document.createElement('button')); };
+    var falla = function (r) {
+      if (!est) return;
+      var so = ((ST.hilo && ST.hilo.caso) || {}).orden_nombre;
+      est.error({ titulo: so ? 'No se actualizó ' + so + ' en Odoo' : 'No se creó la cotización en Odoo', motivo: (r && r.mensaje) || 'sin respuesta', codigo: (r && r.error) || 'NO_SE_ESCRIBIO',
+        nota: so ? 'La orden no cambió.' : 'No se escribió nada en Odoo.', reintentar: reintenta });
+    };
     try {
       // El manejador hace la escritura con su propio endpoint (machote-guardar,
       // orden-crear-v2, odoo-alta) y devuelve {ok, resultado} o {ok:false, mensaje}.
       var r = await m(a, { caso: ST.hilo.caso, hilo: ST.hilo, toast: toast, modal: modal, cerrarModal: cerrarModal, aceptaReferencias: !!ST.refAcepta[id],
         r15: a.tipo === 'crear_borrador' && G.CzR15 ? G.CzR15.paraEnviar(a) : null });
       delete ST.refAcepta[id];
-      if (!r || !r.ok) { if (r && r.mensaje) toast(r.mensaje); vuelve(); return; }
-      await resolver(id, 'hecha', r.resultado || {}, null);
-    } catch (e) { toast('No se pudo: ' + (e && e.message || e)); vuelve(); }
+      if (!r || !r.ok) { if (r && r.mensaje && !est) toast(r.mensaje); falla(r); vuelve(); return; }
+      var okR = await resolver(id, 'hecha', r.resultado || {}, null);
+      if (est && !okR) est.error({ titulo: 'Odoo sí quedó, pero aquí no se guardó', motivo: 'el chat no registró el resultado', codigo: 'SIN_REGISTRO', nota: 'Recarga para verlo; no lo vuelvas a crear.' });
+      else if (est) { var o = r.resultado || {}, cs1 = (ST.hilo && ST.hilo.caso) || {}, so1 = o.orden_nombre || cs1.orden_nombre || 'la cotización';
+        var din1 = function (n) { return n == null ? '' : '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (o.moneda ? ' ' + o.moneda : ''); };
+        est.listo({ titulo: 'Listo · ' + so1 + (cs0.orden_nombre ? ' actualizada' : ' creada') + ' en Odoo', sub: o.subtotal != null ? 'subtotal ' + din1(o.subtotal) : '',
+          acciones: G.CzEnviar && G.CzEnviar.ver ? [{ txt: 'Ver cotización', si: true, fn: function () { G.CzEnviar.ver(Object.assign({}, cs1, { orden_nombre: so1 })); } }] : [] }); }
+    } catch (e) { if (!est) toast('No se pudo: ' + (e && e.message || e)); falla({ mensaje: String(e && e.message || e), error: 'ERROR_PANTALLA' }); vuelve(); }
   }
 
   async function verPdf() {
@@ -3063,25 +3122,39 @@
     await refrescarSesiones();
     toast(r.demo ? 'Es una prueba: no enseña. El motor marca lo ya escrito.' : 'Ya no es prueba: sí enseña.', 'Deshacer', function () { marcarPrueba(); });
   }
+  /** V1.58 (#12 A) · el id con que se abre el machote del caso. Gana el uuid del SERVIDOR (`caso.machote_id`): es el
+   *  mismo para todos, mientras que el `id_local` ('M-…') solo existe en el navegador del dueño y en otro aparato la app
+   *  del machote no lo tenía y caía a la lista. La app del machote reconoce las dos formas; el uuid es el que no falla. */
+  function idMachoteDelCaso(hecho) {
+    var c = (ST.hilo && ST.hilo.caso) || {}, r = (hecho && hecho.resultado) || {};
+    return c.machote_id || r.machote_id || r.id_local || null;
+  }
+  function urlMachote(id) { return '../machote/index.html#/m/' + encodeURIComponent(id); }
+  function sinMachote() { toast('Este caso todavía no tiene machote.'); }
   /** V1.54 E2 (`machote_chat`) · el mismo editor de machotes, en el popup del núcleo (✕ o Esc lo cierran) sin salir del chat. */
   function machoteEnPopup() {
     var c = (ST.hilo && ST.hilo.caso) || {};
     var hm = ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'hecha'; }).pop();
-    var r = (hm && hm.resultado) || {}, id = r.id_local || c.machote_id || r.machote_id;
+    var r = (hm && hm.resultado) || {}, id = idMachoteDelCaso(hm);
+    if (!id) return sinMachote();
     var md = (NUC && NUC.modal) || (G.ChatNucleo && G.ChatNucleo.modal);
     if (!md) return abrirEditor(hm || null);
+    var url = urlMachote(id);
     md({ titulo: (r.folio || c.machote_folio || 'Machote') + (c.demo ? ' · PRUEBA' : '') + ' · machote', marca: 'cz-mach',
-      html: '<iframe title="Editor de machotes" style="display:block;width:100%;height:100%;border:0" src="../machote/index.html' + (id ? '#/m/' + encodeURIComponent(id) : '') + '"></iframe>',
+      // V1.58 · el mismo machote en otra pestaña: el núcleo deja una ranura en la cabecera (`cabecera`), sin tocar shared/chat.
+      cabecera: '<a class="cz-mach-nueva" href="' + esc(url) + '" target="_blank" rel="noopener" style="flex-shrink:0;font-size:13px;color:#027eb5;text-decoration:none;white-space:nowrap;padding:8px 4px">Abrir en pestaña nueva ↗</a>',
+      html: '<iframe title="Editor de machotes" style="display:block;width:100%;height:100%;border:0" src="' + esc(url) + '"></iframe>',
       alCerrar: function () { toast('De regreso en el chat. Toca «Haz la cotización» y releo el machote como quedó.'); } });
   }
   /** 9b · el editor de machotes que YA existe (comercial/machote), en ventana, con la misma sesión. */
   function abrirEditor(hecho) {
     var c = (ST.hilo && ST.hilo.caso) || {}, r = (hecho && hecho.resultado) || {};
-    var id = r.id_local || c.machote_id || r.machote_id;
+    var id = idMachoteDelCaso(hecho);
+    if (!id) return sinMachote();
     var p = $('#panel'); p.className = 'panel on';
     p.innerHTML = '<div class="marco" role="dialog" aria-label="Editor de machotes"><div class="cabp"><button type="button" class="volver" id="pVolver">' + ico('atras', 's') + 'Volver al chat</button><b>' +
       esc((r.folio || c.machote_folio || 'Machote') + (c.demo ? ' · PRUEBA' : '')) + ' · editor de machotes</b></div>' +
-      '<div class="cuerpo"><iframe title="Editor de machotes" src="../machote/index.html' + (id ? '#/m/' + encodeURIComponent(id) : '') + '"></iframe></div></div>';
+      '<div class="cuerpo"><iframe title="Editor de machotes" src="' + esc(urlMachote(id)) + '"></iframe></div></div>';
     $('#pVolver').onclick = function () { p.className = 'panel'; p.innerHTML = ''; toast('De regreso en el chat. Toca «Haz la cotización» y releo el machote como quedó.'); };
   }
   /** 9g · vista en página, solo a pedido: Lo considerado y Machote. Cada versión que se ve se guarda EN ESTE
@@ -3470,5 +3543,7 @@
   // V1.41 (cz-push.js) · al tocar un aviso: abrir ese caso, y «Adelante» con la confirmación de siempre (nunca dispara solo).
   abrirCaso: function (id) { return abrir({ id: id }); },
   disparo: function () { var m = modoDisparo(); if (!m) return toast('Esta sesión ya arrancó: no hay nada que confirmar.'); confirmarDisparo(m); },
-  _st: ST, nucleo: function () { return NUC; }, toast: function (t) { toast(t); } };
+  _st: ST, nucleo: function () { return NUC; }, toast: function (t) { toast(t); },
+  // V1.58 · «Vista rápida (sin Odoo)» cuando el PDF de Odoo no sale; `solo` = ¿se puede? (sin abrir nada).
+  vistaRapida: function (solo) { var p = !!(G.CzVisor && ultimoBorrador()); if (solo) return p; if (p) abrirVisor(); } };
 })(window);
