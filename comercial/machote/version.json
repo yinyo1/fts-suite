@@ -1,11 +1,16 @@
 {
-  "version": "V1.54",
-  "build": "V1.54",
-  "fecha": "2026-10-18",
+  "version": "V1.55",
+  "build": "V1.55",
+  "fecha": "2026-10-21",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.55",
+      "fecha": "2026-10-21",
+      "nota": "«Abrir machote» abre el machote del caso aunque llegue por su uuid o sea de otra persona, y espera a bajarlo antes de rendirse («Buscando el machote…» / «No encontré el machote…»); nunca cae solo a la lista. Piso de margen: margen-bajo-duro deja pasar solo con excepcion_margen de un decreto escrito de Esteban, como aviso margen-bajo-autorizado (fts-conceptualizador#12, V1.58)."
+    },
     {
       "version": "V1.54",
       "fecha": "2026-10-18",

@@ -161,7 +161,9 @@
     var d = (bh && bh.datos) || {}, cot = d.cotizacion || {}, xf = cot.x_fts || {}, res = (bh && bh.resultado) || {};
     var tieneCampo = Object.prototype.hasOwnProperty.call(xf, 'x_fts_hitos'), h = xf.x_fts_hitos;
     var lleno = Array.isArray(h) ? h.length > 0 : !!String(h == null ? '' : h).trim();
-    if (!tieneCampo && !res.regla15 && !cot.regla15) return 'salió antes de la condición única de pago';
+    // Esteban 21-oct (decisión 5): solo las órdenes que salieron con la tabla de pagos VACÍA (SO11928, SO11930). Un borrador anterior
+    // a la V1.57b, sin el campo, no se ofrece aquí: su orden en Odoo puede traer la tabla por otro camino (SO11926, 90/10).
+    if (!tieneCampo) return null;
     if (!lleno) return 'salió sin tabla de pagos';
     return null;
   }
