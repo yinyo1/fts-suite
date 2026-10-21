@@ -219,7 +219,9 @@
   function flags(r) {
     return (r.o === 'tu' ? '<span title="Lo dijiste tú">🔒</span>' : r.o === 'agente' ? '<span title="Lo supuso el agente">🤖</span>' : '') +
       (conAlerta(r) ? '<span title="Alerta">⚠</span>' : '') + (esRef(r) ? '<span title="Referencia">🔎</span>' : '') +
-      (esN5(r) && r.tipo !== 'Mano de obra' ? '<span title="Sin precio">⛔</span>' : '');
+      (esN5(r) && r.tipo !== 'Mano de obra' ? '<span title="Sin precio">⛔</span>' : '') +
+      // V1.58 (`ligas_v158`) · el 🔴 de una liga que no abre el producto también en la fila cerrada; el motivo completo, en el detalle.
+      (r.liga_mala && G.CzLigas && G.CzLigas.on158 && G.CzLigas.on158() ? '<span title="Liga sin producto: ' + esc(r.liga_mala) + '" data-lg8-fila="1">🔴</span>' : '');
   }
   function liga(h) {
     var s = String(h || '').trim(); if (!s) return '';
