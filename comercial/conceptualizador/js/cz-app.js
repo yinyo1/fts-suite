@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.58';
+  var VERSION = 'V1.59';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -746,6 +746,11 @@
     ['menu_vista_v158', 'Vistas ejecutivas en ⋮', 'Vista para el cliente directa (sin doble confirmación) e interna que pregunta antes de abrir; su Excel interno también pregunta.'],
     ['actualizar_v158', 'Actualizar SO en el rayito', 'El rayito ofrece Actualizar SO cuando la orden salió sin tabla de pagos o sin condición única.'],
     ['ligas_v158', 'Ligas completas', 'Liga completa con SKU, tienda y fecha en la vista interna; 🔴 en renglones viejos sin liga de producto.'],
+    // V1.59 (#12) · cotización correcta en Odoo. Todo entra apagado (migración 0029); orden de prendido en el plan del #12.
+    ['delegacion_v159', 'Delegación', 'Quién mueve el machote y la orden de otro sale de «Delegación y vendedor» (abajo), igual en el machote y en la orden; apagado, solo el dueño.'],
+    ['vendedor_v159', 'Vendedor y oportunidad', 'La orden sale con el vendedor del autor del caso, su oportunidad y «Le atiende» del autor; sin oportunidad, la tarjeta ofrece ligar o crear una.'],
+    ['bom_observado_v159', 'BOM observado aparte', 'Un BOM que no pasa la revisión va a bom-observado.md y se ve con sus 🔴; bom.md se queda con el último que sí pasó.'],
+    ['tarjetas_v159', 'Tarjetas resueltas', 'El botón dice «Actualizar SO… en Odoo» si la orden existe; una tarjeta hecha queda resuelta en su lugar y el clic no genera un mensaje doble.'],
   ];
   /** Los interruptores que conoce el servidor (valores `interruptor:*` y `interruptores`), en el orden de arriba; uno nuevo
    * que la pantalla todavía no describe sale al final con su nombre, para que se pueda prender igual. */
@@ -764,7 +769,9 @@
       ['arranque_auto_min', 'Arranque automático (min sin nada nuevo)', 'n'], ['pasada_sin_novedad_salta', 'Saltar la pasada sin nada nuevo (1 = sí)', 'n']]],
     ['Freno de consumo', [['consumo_tope_semana', 'Freno total semanal (ponderados)', 'n'], ['consumo_aviso_pct', 'Aviso al (%)', 'n']]],
     ['Experimento de contexto', [['contexto_modo', 'Modo de contexto', 's'], ['experimento_pct', 'Trabajos con sombra (%)', 'n'], ['experimento_techo_semana', 'Techo semanal de la sombra (ponderados)', 'n']]],
-    ['Aviso de motor caído', [['motor_caido_aviso_min', 'Avisar tras (min sin procesar)', 'n'], ['motor_caido_desde', 'Ventana desde', 'h'], ['motor_caido_hasta', 'Ventana hasta', 'h']]]
+    ['Aviso de motor caído', [['motor_caido_aviso_min', 'Avisar tras (min sin procesar)', 'n'], ['motor_caido_desde', 'Ventana desde', 'h'], ['motor_caido_hasta', 'Ventana hasta', 'h']]],
+    // V1.59 (#12) · los dos mapas por persona de la 0029. `todos`: aquí también sale la clave del administrador del panel.
+    ['Delegación y vendedor', [['puede_mover:*', 'Mueve machotes y órdenes de (* = todos; usuarios con coma)', 't', 'todos'], ['vendedor_odoo:*', 'Vendedor en Odoo (id de usuario) para los casos de', 'n', 'todos']], 'persona']
   ];
   async function dlgPanel(msg) {
     var hj = hojaCfg('Configuración del conceptualizador', '<p class="czc-k">Leyendo del servidor…</p>', '520px');
@@ -806,9 +813,13 @@
         if (f[0].slice(-7) === ':@admin') { if (adm0) h += campo(f[0].slice(0, -6) + adm0, f[1] + ' ' + nombreCorto(adm0) + ' (vacío = el general)', f[2]); return; }
         if (f[0].slice(-2) === ':*') {
           var pre = f[0].slice(0, -1);
-          Object.keys(V).filter(function (k) { return k.indexOf(pre) === 0 && k !== pre + adm0; }).sort().forEach(function (k) { h += campo(k, f[1] + ' ' + nombreCorto(k.slice(pre.length)), f[2]); });
+          Object.keys(V).filter(function (k) { return k.indexOf(pre) === 0 && (k !== pre + adm0 || f[3] === 'todos'); }).sort().forEach(function (k) { h += campo(k, f[1] + ' ' + nombreCorto(k.slice(pre.length)), f[2]); });
         } else h += campo(f[0], f[1], f[2]);
       });
+      // V1.59 · una persona nueva en la delegación: su usuario y sus dos valores; sin esto, solo lo suyo (lo decide la base).
+      if (g[2] === 'persona') h += '<div class="czc-nuevo"><label class="czc-campo" for="czcNuevoU"><span>Agregar persona<small>usuario de la suite</small></span><input id="czcNuevoU" maxlength="60" autocomplete="off" placeholder="nombre.apellido"></label>' +
+        '<label class="czc-campo" for="czcNuevoP"><span>Mueve lo de<small>puede_mover</small></span><input id="czcNuevoP" maxlength="200" autocomplete="off" placeholder="nombre.apellido,esteban.delacruz"></label>' +
+        '<label class="czc-campo" for="czcNuevoV"><span>Vendedor en Odoo<small>vendedor_odoo</small></span><input id="czcNuevoV" maxlength="9" inputmode="numeric" autocomplete="off" placeholder="12"></label></div>';
       h += '</div>';
     });
     h += '<div class="czc-k">Administrador del panel: <b>' + esc(V.panel_admin || '—') + '</b>. Freno arriba de ' + millones(L.freno_max_sin_confirmar || 100000000) +
@@ -824,6 +835,11 @@
     var guardar = async function (confirmar) {
       var cambios = {};
       $$('[data-k]', E).forEach(function (i) { var k = i.dataset.k, v = String(i.value).trim(), b0 = i.dataset.base != null ? i.dataset.base : (V[k] == null ? '' : String(V[k])); if (v !== b0) cambios[k] = v; });
+      var nu = $('#czcNuevoU', E), nuV = nu ? nu.value.trim().toLowerCase() : '';
+      if (nuV) {   // la base valida el usuario y los valores (config_valida 0029): aquí solo se arma la clave
+        if ($('#czcNuevoP', E).value.trim()) cambios['puede_mover:' + nuV] = $('#czcNuevoP', E).value.trim();
+        if ($('#czcNuevoV', E).value.trim()) cambios['vendedor_odoo:' + nuV] = $('#czcNuevoV', E).value.trim();
+      }
       var rz = $('#czcRazonP', E).value.replace(/\s+/g, ' ').trim();
       if (!Object.keys(cambios).length) return err('No cambiaste ningún valor.');
       if (rz.length < 3 || rz.length > 200) { err('Escribe la razón del cambio (3 a 200 letras).'); return $('#czcRazonP', E).focus(); }
@@ -2245,6 +2261,13 @@
         '<textarea class="copia" readonly>' + esc(Mq.entrega.correo) + '</textarea>' +
         '<div class="acc"><button class="si" data-copia="1">Copiar correo</button></div></div>';
     }
+    // V1.59 (`bom_observado_v159`) · el BOM de esta respuesta no pasó la revisión: se ve aquí con sus 🔴 (en el mensaje), pero
+    // NO es el vigente: bom.md se quedó con el último que sí pasó, y es el que vale para cotizar.
+    // `propuesta` (la que trae el BOM) no trae `verifica`: es el de `ultima` cuando las dos son la misma respuesta.
+    var VU = U.verifica || (ST.hilo && ST.hilo.ultima && Number(ST.hilo.ultima.trabajo_id) === Number(U.trabajo_id) ? ST.hilo.ultima.verifica : null);
+    var BO = on('bom_observado_v159') && VU && VU.bom_observado;
+    if (BO) h += '<div class="carta bom-obs" data-bom-obs="' + Number(BO.errores || 0) + '"><h4>🔴 BOM observado · ' + Number(BO.errores || 0) + ' por corregir</h4><p class="nota">Este BOM no pasó mi revisión: lo que falta está en rojo en mi mensaje. ' +
+      (BO.bom_vigente ? 'Para cotizar sigue valiendo el BOM anterior, el último que sí pasó.' : 'Todavía no hay un BOM que haya pasado: no se cotiza hasta corregirlo.') + ' Cuando lo corrija, este reemplaza al vigente.</p></div>';
     var B = U.bom || {}, mat = B.materiales || [], mo = B.mano_obra || [];
     // V1.48 · con la tabla, el BOM va abajo, colapsado y con filtros combinables (origen Y estado).
     if (TB && (Mq.secciones || []).some(function (s) { return (s.grupos || []).length; })) h += G.CzTabla.bom(Mq, { puede: mia(H.caso), ligas: (U.verifica && U.verifica.ligas) || verUlt().ligas || null });
@@ -2339,6 +2362,31 @@
     }).join(''), activo) + '</div>';
   }
 
+  /** V1.59 (`tarjetas_v159`) · el botón dice lo que hace: con la orden ya en Odoo, «Actualizar SO… en Odoo», no «Crear borrador». */
+  function etiqueta(a) {
+    var d = a.datos || {}, so = ((ST.hilo && ST.hilo.caso) || {}).orden_nombre || (ultimoBorrador() && ((ST.hilo.acciones || []).filter(function (x) { return x.id === ultimoBorrador(); })[0] || {}).resultado || {}).orden_nombre;
+    if (on('tarjetas_v159') && a.tipo === 'crear_borrador' && so) return 'Actualizar ' + so + ' en Odoo';
+    return d.boton || ETIQ[a.tipo] || 'Hacer';
+  }
+  /** La hecha del mismo tipo y título, hecha DESPUÉS de que se propuso ésta (Calbee 337/338). */
+  function yaHecha(a) {
+    if (!on('tarjetas_v159') || a.estado !== 'propuesta' || a.tipo !== 'crear_borrador') return null;
+    // Igual que la base (0029): contra la hora en que EMPEZÓ el trabajo que la propuso, no la de la tarjeta (la 338 nació 39 s
+    // después de que se hizo la 337, pero su trabajo, el 494, empezó antes).
+    var tr = ((ST.hilo && ST.hilo.trabajos) || []).filter(function (x) { return Number(x.id) === Number(a.trabajo_id); })[0];
+    var t = Date.parse((tr && tr.created_at) || a.created_at || '') || 0;
+    return ((ST.hilo && ST.hilo.acciones) || []).filter(function (h) { return h.id !== a.id && h.tipo === a.tipo && h.estado === 'hecha' && h.titulo === a.titulo && (Date.parse(h.hecha_at || '') || 0) >= t; })[0] || null;
+  }
+  function yaHechaTxt(id) {
+    var h = ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return String(x.id) === String(id); })[0];
+    return h && h.hecha_at ? 'a las ' + horaDe(h.hecha_at) + ', en la tarjeta de arriba' : 'en la tarjeta de arriba';
+  }
+  /** V1.59 · ¿esta tarjeta mueve un machote que el servidor dice que no puedes mover? (hilo.machote_mueve, db 0029) */
+  function noMueve(a) {
+    var M = ST.hilo && ST.hilo.machote_mueve;
+    return on('delegacion_v159') && !!M && M.puede === false && a.estado === 'propuesta' &&
+      (a.tipo === 'crear_borrador' || a.tipo === 'enviada' || (a.tipo === 'crear_machote' && !!(a.datos || {}).actualiza));
+  }
   var ETIQ = { alta_contacto: 'Sí, dar de alta', actualizar_cliente: 'Revisar y escribir en Odoo', crear_machote: 'Crear machote', crear_borrador: 'Crear borrador en Odoo',
                enviada: 'Ya la mandé', cerrar: 'Sí, ciérrala' };
 
@@ -2525,19 +2573,24 @@
         ((a.tipo === 'crear_machote' && a.id === ultimoCm) || a.tipo === 'crear_borrador' ? referenciasHtml(d.referencias, a.tipo === 'crear_borrador' && a.estado === 'propuesta', d.sensatez) + sensatezHtml(d.sensatez) : '') +
         // V1.57b (`regla15_v157`) · los cálculos que vería el cliente, con «texto limpio» o «Liberar…» (cz-regla15-ui.js).
         (a.tipo === 'crear_borrador' && G.CzR15 && !espera && !viejo && !recalc ? G.CzR15.html(a) : '') +
-        (a.estado === 'hecha' ? '<span class="hecho">✓ ' + esc(r.texto || 'Hecho') + '</span>' + releidoOdoo(r) +
+        (a.estado === 'hecha' ? '<span class="hecho">✓ ' + (on('tarjetas_v159') && a.hecha_at ? esc(horaDe(a.hecha_at)) + ' · ' : '') + esc(r.texto || 'Hecho') + '</span>' + releidoOdoo(r) +
           // V1.51 · Frente 3: «Ver cotización» bajo el último borrador (cz-visor.js, prototipo aprobado), con lo que cambió.
           (a.tipo === 'crear_borrador' && G.CzVisor && r.orden_id && a.id === ultimoBorrador() ? G.CzVisor.boton(ST.hilo) : '') +
           // V1.54 E3 (`enviar_cliente`) · PDF de Odoo, descargar y enviar al cliente (cz-enviar.js). Apagado: nada.
           (a.tipo === 'crear_borrador' && G.CzEnviar && r.orden_id && a.id === ultimoBorrador() ? G.CzEnviar.botones(ST.hilo, mia(ST.hilo && ST.hilo.caso) || ST.admin === true || ST.panelAdmin === true) : '') :
-         a.estado === 'descartada' ? '<span class="hecho gris">' + ((r.reemplazada_por_trabajo) ? 'Reemplazado por una propuesta más nueva' : r.reemplazada_por_calculo ? 'Reemplazado por un cálculo más nuevo' : 'Descartado') + '</span>' :
+         a.estado === 'descartada' ? '<span class="hecho gris">' + (r.ya_hecha_por ? '✓ Ya se hizo (' + esc(yaHechaTxt(r.ya_hecha_por)) + ')' : (r.reemplazada_por_trabajo) ? 'Reemplazado por una propuesta más nueva' : r.reemplazada_por_calculo ? 'Reemplazado por un cálculo más nuevo' : 'Descartado') + '</span>' :
+         // V1.59 (`tarjetas_v159`) · una propuesta igual a una que ya se hizo mientras el motor trabajaba: resuelta, sin botones (si la
+         // base todavía no la descartó con `ya_hecha_por`, la pantalla igual no la ofrece de nuevo).
+         yaHecha(a) ? '<span class="hecho gris" data-ya-hecha="' + a.id + '">✓ Ya se hizo (' + esc(yaHechaTxt(yaHecha(a).id)) + ')</span>' :
          recalc ? '<p class="nota" data-recalc="' + a.id + '">⏳ Recalculando con lo último que mandaste: esta tarjeta se reemplaza sola en cuanto llegue el cálculo nuevo.</p>' :
          espera ? '<p class="nota">Contesta primero las suposiciones pendientes: el machote se arma con lo que confirmes.</p>' :
          viejo ? '<p class="nota">Es de la versión anterior del machote: primero toca «' + esc(cmPend.titulo) + '».</p>' :
          candCond && a.tipo === 'crear_borrador' && a.estado === 'propuesta' ? '<p class="nota">🔒 Primero revisa las condiciones de arriba: el borrador espera a que estén listas.</p>' :
+         // V1.59 (`delegacion_v159`) · el botón no se ofrece a quien el servidor va a rechazar (y si lo llaman directo, lo rechaza igual).
+         noMueve(a) ? '<p class="nota" data-no-mueve="' + a.id + '">🔒 El machote es de ' + esc(nombreCorto(ST.hilo.machote_mueve.dueno)) + ': tu usuario no lo puede mover. Esteban lo configura en el panel (Delegación y vendedor).</p>' :
          (a.tipo === 'enviada' || a.tipo === 'cerrar' || manejador) ?
            (a.tipo === 'crear_borrador' && d.referencias && d.referencias.n ? botonReferencias(a) :
-           '<div class="acc"><button class="si" data-hacer="' + a.id + '">' + esc(nueva ? 'Guardar en el machote' : (d.boton || ETIQ[a.tipo] || 'Hacer')) + '</button><button data-descartar="' + a.id + '">' + (a.tipo === 'cerrar' ? 'Todavía no' : 'No') + '</button></div>') +
+           '<div class="acc"><button class="si" data-hacer="' + a.id + '">' + esc(nueva ? 'Guardar en el machote' : etiqueta(a)) + '</button><button data-descartar="' + a.id + '">' + (a.tipo === 'cerrar' ? 'Todavía no' : 'No') + '</button></div>') +
            (a.tipo === 'crear_borrador' || a.tipo === 'enviada' ? leyendaOdoo(a.tipo) : '') :
            '<p class="nota">Este botón se enciende cuando se active la escritura a Odoo correspondiente.</p>') + '</div>';
     });

@@ -134,8 +134,11 @@
     var d = a.datos || {}, u = d.actualiza || {};
     var l = await C.suite('/webhook/comercial/machotes-leer', {});
     if (!l.ok || !Array.isArray(l.machotes)) return { ok: false, mensaje: l.mensaje || ('No se pudo leer el machote: ' + (l.error || 'error')) };
-    var fila = l.machotes.filter(function (f) { return f && !f.ajeno && ((u.machote_id && f.id === u.machote_id) || (u.id_local && f.id_local === u.id_local)); })[0];
-    if (!fila || !fila.documento) return { ok: false, mensaje: 'No encontré el machote ' + (u.folio || '') + ' entre los tuyos. Si es de otra persona, que lo actualice ella.' };
+    // V1.59 (`delegacion_v159`) · el machote de otro se actualiza si la base dice que puedes (hilo.machote_mueve, la misma regla
+    // que machote-guardar y orden-odoo). La pantalla solo deja intentarlo: quien decide sigue siendo el servidor.
+    var M = (ctx && ctx.hilo && ctx.hilo.machote_mueve) || null, ajenoOk = prendido('delegacion_v159') && !!M && M.puede === true;
+    var fila = l.machotes.filter(function (f) { return f && (!f.ajeno || ajenoOk) && ((u.machote_id && f.id === u.machote_id) || (u.id_local && f.id_local === u.id_local)); })[0];
+    if (!fila || !fila.documento) return { ok: false, mensaje: 'No encontré el machote ' + (u.folio || '') + ' entre los tuyos. Si es de otra persona, que lo actualice ella' + (prendido('delegacion_v159') ? ' o que Esteban te lo delegue en el panel.' : '.') };
     var actual = fila.documento, nuevo = JSON.parse(JSON.stringify(d.documento)), doc, llenos = [], sinLugar = [];
     var intacto = u.version && Number(fila.version) === Number(u.version);
     if (intacto) {
@@ -158,13 +161,17 @@
     }
     var r = await C.suite('/webhook/comercial/machote-guardar', { id_local: fila.id_local, cliente_odoo_id: doc.cliente_id || null, version_leida: Number(fila.version) || 0,
       estado: fila.estado || 'borrador', motivo: 'Actualizado desde el conceptualizador', documento: doc, resumen: intacto ? (d.resumen || null) : await resumenDe(doc) });
-    if (!r.ok) return { ok: false, mensaje: r.error === 'CONFLICTO_DE_VERSION' ? 'Alguien guardó el machote en este momento. Vuelve a tocar «Actualizar machote».' : (r.mensaje || ('No se actualizó el machote: ' + (r.error || 'error'))) };
+    if (!r.ok) return { ok: false, error: r.error, mensaje: r.error === 'CONFLICTO_DE_VERSION' ? 'Alguien guardó el machote en este momento. Vuelve a tocar «Actualizar machote».' :
+      r.error === 'MACHOTE_DE_OTRA_PERSONA' ? 'El servidor no te deja guardar el machote de ' + (fila.dueno_nombre || fila.dueno || 'otra persona') + ' (MACHOTE_DE_OTRA_PERSONA). Esteban lo configura en el panel.' :
+      (r.mensaje || ('No se actualizó el machote: ' + (r.error || 'error'))) };
+    var S0 = G.SuiteAuth.getSession() || {}, deOtro = fila.ajeno ? (S0.nombre || S0.actor || 'Alguien') + ' actualizó el machote de ' + (fila.dueno_nombre || fila.dueno || 'otra persona') + '. ' : '';
     var tp = textoPendientes({ n: Number(d.n_pendientes) || 0, lista: d.pendientes || [] });
     var folio = r.folio_txt || fila.folio_txt || u.folio || '';
     return { ok: true, resultado: { machote_id: r.machote_id || fila.id, folio: folio, version: r.version, id_local: fila.id_local, actualizado: true, intacto: !!intacto,
       llenos: intacto ? undefined : llenos.length,
       sin_lugar: intacto ? undefined : sinLugar,
-      texto: 'Machote ' + folio + ' actualizado (versión ' + r.version + ')' + (intacto ? '' : ': ' + llenos.length + ' precio' + (llenos.length === 1 ? '' : 's') + ' en renglones que seguían sin precio; lo que editaste a mano no se tocó') +
+      ajeno: fila.ajeno ? { dueno: fila.dueno || null, dueno_nombre: fila.dueno_nombre || null, por: S0.actor || null } : undefined,
+      texto: deOtro + 'Machote ' + folio + ' actualizado (versión ' + r.version + ')' + (intacto ? '' : ': ' + llenos.length + ' precio' + (llenos.length === 1 ? '' : 's') + ' en renglones que seguían sin precio; lo que editaste a mano no se tocó') +
         '.' + (sinLugar.length ? ' No encontré en el machote (¿le cambiaste el nombre?): ' + sinLugar.join('; ') + '. Captúralo a mano.' : '') +
         (tp ? ' ' + tp : ' Ya no falta nada para cotizar en Odoo.') } };
   }
@@ -236,6 +243,16 @@
     var R15 = ctx.r15 || null;
     if (R15 && R15.faltan) return { ok: false, mensaje: 'Primero decide las frases de la regla 15: texto limpio o liberar con su razón.' };
     if (R15) cot = R15.cotizacion;
+    // V1.59 (`vendedor_v159`) · la oportunidad del caso; si no tiene, la ligada al machote; si tampoco, se pregunta: ligar una
+    // del cliente o crear una a nombre del dueño. Nunca se adivina, y si la persona cierra la ventana no se escribe nada.
+    if (prendido('vendedor_v159') && !caso.oportunidad_id && !ctx.oportunidadLista) {
+      var op = await oportunidadDelMachote(caso.machote_id);
+      if (!op.ok) return { ok: false, error: op.error || 'SIN_OPORTUNIDAD', mensaje: op.mensaje };
+      if (!op.lead_id) {
+        var el = await elegirOportunidad(caso, ctx);
+        if (!el.ok) return { ok: false, error: el.error || 'SIN_OPORTUNIDAD', mensaje: el.mensaje || 'Sin oportunidad no se crea el borrador: liga una del cliente o crea una.' };
+      }
+    }
     var prev = ordenDe(H), modo = prev ? 'actualizar' : 'crear';
     var cuerpo = { modo: modo, machote_id: caso.machote_id, version_leida: (cm.resultado || {}).version || 1,
       caso_id: caso.id, cotizacion: cot, acepta_referencias: conRef },
@@ -254,6 +271,11 @@
     if (!r.ok || !r.odoo_so_id) return { ok: false, error: r.error || 'SIN_ORDEN', mensaje: r.mensaje || ('No se creó el borrador: ' + (r.error || 'sin orden')) };   // V1.58 · el código va a la tarjeta de estado
     var o = releido(r);
     o.texto = textoOrden(o, modo === 'crear' ? 'Borrador' : 'Actualizado');
+    // V1.59 · lo releído de Odoo: vendedor, oportunidad y quién movió lo de quién (orden-odoo lo devuelve con los interruptores prendidos).
+    if (r.vendedor) o.vendedor = r.vendedor;
+    if (r.oportunidad) o.oportunidad = r.oportunidad;
+    if (r.ajeno) { o.ajeno = r.ajeno; o.texto = (r.ajeno.actor_nombre || r.ajeno.actor) + ' movió la cotización del machote de ' + (r.ajeno.dueno_nombre || r.ajeno.dueno) + '. ' + o.texto; }
+    if (r.vendedor && r.vendedor.nombre) o.texto += ' Vendedor: ' + r.vendedor.nombre + (r.oportunidad && r.oportunidad.id ? ' · oportunidad ' + (r.oportunidad.nombre || r.oportunidad.id) : ' · sin oportunidad') + '.';
     // Queda en la acción (y por ella en hilo.md): qué frase, qué se hizo, quién y por qué. El motor lo lee en la vuelta siguiente.
     if (R15 && R15.registro.hallazgos) { o.regla15 = R15.registro; o.texto += ' Regla 15: ' + R15.registro.limpios + ' texto' + (R15.registro.limpios === 1 ? '' : 's') + ' limpio' + (R15.registro.limpios === 1 ? '' : 's') + (R15.registro.liberadas ? ', ' + R15.registro.liberadas + ' liberada' + (R15.registro.liberadas === 1 ? '' : 's') : '') + '.'; }
     if (conRef) {   // queda en la acción y por ella en hilo.md: quién aceptó qué y cuándo
@@ -265,6 +287,51 @@
         : ' Cotizada con referencias: ' + R.pct + ' % del costo' + (R.n3 ? ', ' + R.n3 + ' alerta' + (R.n3 === 1 ? '' : 's') + ' N3' : '') + ' (aceptado).';
     }
     return { ok: true, resultado: o };
+  }
+
+  // ── V1.59 · la oportunidad de la orden ─────────────────────────────────
+  /** ¿El machote ya está ligado a una oportunidad? (comercial.machote.odoo_lead_id, la escribe SOLO comercial/oportunidades). */
+  async function oportunidadDelMachote(machoteId) {
+    var l = await C.suite('/webhook/comercial/machotes-leer', {});
+    if (!l.ok || !Array.isArray(l.machotes)) return { ok: false, error: l.error || 'SIN_LECTURA', mensaje: l.mensaje || 'No se pudo leer el machote para ver su oportunidad.' };
+    var f = l.machotes.filter(function (x) { return x && x.id === machoteId; })[0];
+    return { ok: true, lead_id: f && Number(f.odoo_lead_id) > 0 ? Number(f.odoo_lead_id) : null, version: f ? Number(f.version) || 0 : 0 };
+  }
+  /** La ventana: las del cliente (puntuadas por el servidor) o «Crear» con el nombre del caso. Al elegir, liga al machote. */
+  function elegirOportunidad(caso, ctx) {
+    // El nombre de la persona, no su usuario de la suite («Francisco Montalvo», no «francisco.montalvo»).
+    var esNombre = function (x) { return !!x && /\s/.test(String(x).trim()) && !/^[a-z0-9._-]+$/.test(String(x).trim()); };
+    var S1 = G.SuiteAuth.getSession() || {}, dueno = (esNombre(caso.autor_nombre) && caso.autor_nombre) || (caso.autor && caso.autor === S1.actor && esNombre(S1.nombre) && S1.nombre) ||
+      String(caso.autor || 'el dueño del caso').split('.')[0].replace(/^./, function (c) { return c.toUpperCase(); });
+    return new Promise(async function (listo) {
+      ctx.modal('<h3>¿De qué oportunidad es esta cotización?</h3><p class="sub">La orden en Odoo va ligada a su oportunidad. Elige una del cliente o crea una a nombre de ' + esc(dueno) + '.</p><div id="opLista"><p class="sub">Buscando las del cliente…</p></div>');
+      var c = caso.cliente_odoo_id ? await C.suite('/webhook/comercial/oportunidades', { modo: 'candidatas', cliente_id: Number(caso.cliente_odoo_id), q: caso.titulo || '', limite: 8 }) : { ok: true, candidatas: [] };
+      var L = (c.ok && Array.isArray(c.candidatas)) ? c.candidatas : [];
+      var caja = document.getElementById('opLista'); if (!caja) return listo({ ok: false, error: 'SIN_OPORTUNIDAD' });
+      var fila = 'display:flex;gap:8px;align-items:flex-start;margin:6px 0;cursor:pointer', rad = 'flex:0 0 auto;margin-top:3px';
+      caja.innerHTML = (L.length ? '<div class="op-lista" role="radiogroup">' + L.map(function (o, i) { return '<label style="' + fila + '"><input style="' + rad + '" type="radio" name="opSel" value="' + Number(o.id) + '"' + (i === 0 ? ' checked' : '') + '><span><b>' + esc(o.nombre) + '</b> <small>' + esc([o.etapa, o.por_que].filter(Boolean).join(' · ')) + '</small></span></label>'; }).join('') + '</div>' :
+          '<p class="sub">' + esc(c.ok ? 'Este cliente no tiene oportunidades abiertas.' : (c.mensaje || 'No se pudieron leer las del cliente.')) + '</p>') +
+        '<label style="' + fila + '"><input style="' + rad + '" type="radio" name="opSel" value="nueva"' + (L.length ? '' : ' checked') + '><span><b>Crear una nueva</b> <small>a nombre de ' + esc(dueno) + '</small></span></label>' +
+        '<label class="lb">Nombre de la oportunidad nueva<input id="opNom" maxlength="240" value="' + esc(caso.titulo || '') + '"></label>' +
+        '<p class="err-bt" id="opErr" hidden></p><div class="acc der"><button class="boton" id="opNo">Cancelar</button><button class="boton si" id="opOk">Ligar y seguir</button></div>';
+      var err = function (t) { var e = document.getElementById('opErr'); e.textContent = t; e.hidden = !t; };
+      document.getElementById('opNo').onclick = function () { ctx.cerrarModal(); listo({ ok: false, error: 'SIN_OPORTUNIDAD', mensaje: 'No se creó el borrador: falta elegir la oportunidad.' }); };
+      document.getElementById('opOk').onclick = async function () {
+        var b = this, sel = (document.querySelector('input[name="opSel"]:checked') || {}).value, lead = Number(sel) || 0;
+        b.disabled = true; err('');
+        if (sel === 'nueva') {
+          var nom = document.getElementById('opNom').value.trim();
+          if (nom.length < 3) { b.disabled = false; return err('Escribe el nombre de la oportunidad.'); }
+          var n = await C.suite('/webhook/comercial/oportunidades', { modo: 'crear', nombre: nom, cliente_id: Number(caso.cliente_odoo_id) || null, machote_id: caso.machote_id });
+          if (!n.ok || !n.id) { b.disabled = false; return err(n.mensaje || ('No se creó la oportunidad: ' + (n.error || 'error'))); }
+          lead = Number(n.id);
+        }
+        if (!lead) { b.disabled = false; return err('Elige una oportunidad.'); }
+        var g = await C.suite('/webhook/comercial/oportunidades', { modo: 'ligar', machote_id: caso.machote_id, lead_id: lead });
+        if (!g.ok) { b.disabled = false; return err(g.mensaje || ('No se ligó: ' + (g.error || 'error'))); }
+        ctx.cerrarModal(); listo({ ok: true, lead_id: lead, nueva: sel === 'nueva' });
+      };
+    });
   }
 
   // ── «Ya la mandé»: state=sent, sin correo desde Odoo ─────────────────────

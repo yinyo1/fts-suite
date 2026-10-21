@@ -1,6 +1,11 @@
 {
-  "version": "V1.58",
+  "version": "V1.59",
   "historial": [
+    {
+      "version": "V1.59",
+      "fecha": "2026-10-21",
+      "nota": "fts-conceptualizador#12 (V1.59, cotización correcta en Odoo): delegación (quién mueve el machote y la orden de otro, igual en las dos puertas y desde el panel: «Delegación y vendedor»), vendedor y oportunidad del autor del caso con «¿De qué oportunidad es?» antes del borrador, BOM observado aparte con sus 🔴, y tarjetas resueltas en su lugar («Actualizar SO… en Odoo», «✓ Ya se hizo»). Todo detrás de interruptores apagados (delegacion_v159, vendedor_v159, bom_observado_v159, tarjetas_v159; migración 0029)."
+    },
     {
       "version": "V1.58",
       "fecha": "2026-10-21",
