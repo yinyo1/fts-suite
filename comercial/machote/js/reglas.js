@@ -29,6 +29,12 @@
   };
 
   const pct = (x) => (x * 100).toFixed(1).replace(/\.0$/, '') + '%';
+  // V1.58 · `excepcion_margen` válida para el margen calculado: decreto escrito de Esteban y el mismo margen (±0.001).
+  const excepcionMargen = (m, c) => {
+    const x = m && m.excepcion_margen, d = x && x.decreto;
+    return (d && d.quien === 'esteban.delacruz' && d.escrito === true && d.id && c.margen !== null &&
+            isFinite(Number(x.margen)) && Math.abs(c.margen - Number(x.margen)) <= 0.001) ? x : null;
+  };
   const mx  = (x) => '$' + Math.round(x).toLocaleString('es-MX');
   const secs = (m) => (m.secciones || []);
   const partidas = (m) => secs(m).flatMap(s => (s.partidas || []).map(l => ({ s, l })));
@@ -125,9 +131,22 @@
       destino: () => ({ tab: 'gen' }),
       id: 'margen-bajo-duro', severidad: 'dura', area: 'Precio',
       titulo: 'Margen por debajo del piso',
-      evaluar: (m, c) => (c.margen !== null && c.margen < UMBRALES.margen_minimo_duro)
+      evaluar: (m, c) => (c.margen !== null && c.margen < UMBRALES.margen_minimo_duro && !excepcionMargen(m, c))
         ? { detalle: 'Margen ' + pct(c.margen) + ', piso ' + pct(UMBRALES.margen_minimo_duro) + '. SUPUESTO: el piso está inventado.' }
         : null
+    },
+    /* V1.58 (fts-conceptualizador#12, decisión de Esteban) · el piso solo lo pasa un decreto ESCRITO de Esteban, citado
+     * en el propio machote (`excepcion_margen`, lo escribe el motor del conceptualizador) y para ESE margen (±0.001).
+     * Entonces la dura se vuelve esta blanda: queda a la vista quién lo autorizó. Sin el campo, no puede dispararse. */
+    {
+      destino: () => ({ tab: 'gen' }),
+      id: 'margen-bajo-autorizado', severidad: 'blanda', area: 'Precio',
+      titulo: 'Margen abajo del piso, autorizado',
+      evaluar: (m, c) => {
+        const x = (c.margen !== null && c.margen < UMBRALES.margen_minimo_duro) ? excepcionMargen(m, c) : null;
+        return x ? { detalle: 'Margen ' + pct(c.margen) + ', piso ' + pct(UMBRALES.margen_minimo_duro) + '. Autorizado por Esteban en ' +
+          x.decreto.id + (x.decreto.msg ? ' (msg ' + x.decreto.msg + ')' : '') + '.' } : null;
+      }
     },
     {
       destino: () => ({ tab: 'gen' }),
