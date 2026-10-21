@@ -2332,7 +2332,8 @@
     if (ST.permOdoo === null) { ST.permOdoo = 'cargando'; G.CzAcciones.permiso().then(function (p) { ST.permOdoo = p; pintarChat(); }); return ''; }
     var p = ST.permOdoo; if (!p || p === 'cargando' || p.habilitado) return '';
     if (tipo === 'enviada') return '<p class="nota">En Odoo la marca quien tiene la emisión habilitada: crear y mover la cotización en Odoo todavía no está habilitado para tu usuario.</p>';
-    return '<p class="nota">' + esc(p.mensaje || 'Crear la cotización en Odoo todavía no está habilitado para tu usuario.') + '</p>';
+    // 21-oct (#12): «no habilitado» lo dice la pantalla con su propio texto; el del servidor solo cuando hubo error (sesión vencida…).
+    return '<p class="nota">' + esc(p.error && p.mensaje ? p.mensaje : 'Crear la cotización en Odoo todavía no está habilitado para tu usuario.') + '</p>';
   }
   /** Lo releído de Odoo (no el 200): renglón por renglón, la suma y los opcionales fuera del total. */
   /* ── V1.51 · Frente 3: el visor de la cotización y el ciclo ver → corregir → misma orden ─────────────────────────────

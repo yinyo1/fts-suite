@@ -224,7 +224,7 @@
     var cot = (a.datos || {}).cotizacion;
     if (!cot || !(cot.bloques || []).length) return { ok: false, mensaje: 'El motor no mandó la cotización armada (renglones, suma y anticipo). Pídele el botón otra vez.' };
     var p = await permiso();
-    if (!p.habilitado) return { ok: false, mensaje: p.mensaje || 'Crear la cotización en Odoo todavía no está habilitado para tu usuario.' };
+    if (!p.habilitado) return { ok: false, mensaje: p.error && p.mensaje ? p.mensaje : 'Crear la cotización en Odoo todavía no está habilitado para tu usuario.' };
     // V1.43 · precios de referencia (N3/N4): cuentan como precio, pero los acepta quien cotiza con «Cotizar con referencias».
     var R = (a.datos || {}).referencias, conRef = !!(R && R.n);
     if (conRef && !p.referencias) return { ok: false, mensaje: 'El servidor de Odoo todavía no acepta cotizar con referencias (falta publicar el workflow). El machote sí está al día.' };
