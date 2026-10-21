@@ -243,17 +243,20 @@
     var R15 = ctx.r15 || null;
     if (R15 && R15.faltan) return { ok: false, mensaje: 'Primero decide las frases de la regla 15: texto limpio o liberar con su razón.' };
     if (R15) cot = R15.cotizacion;
-    // V1.59 (`vendedor_v159`) · la oportunidad del caso; si no tiene, la ligada al machote; si tampoco, se pregunta: ligar una
-    // del cliente o crear una a nombre del dueño. Nunca se adivina, y si la persona cierra la ventana no se escribe nada.
-    if (prendido('vendedor_v159') && !caso.oportunidad_id && !ctx.oportunidadLista) {
+    // V1.59 (`vendedor_v159`) · la oportunidad del caso; si no tiene, la ligada al machote o la que ya tiene la orden; si tampoco,
+    // se pregunta: ligar una del cliente o crear una a nombre del autor del caso. Nunca se adivina, y si la persona cierra la
+    // ventana no se escribe nada. La elección la crea o la liga orden-odoo del lado del servidor (opción b de Esteban, #12): con la
+    // misma regla de quién mueve qué y sin pedir comercial:write. Aquí solo se leen las candidatas.
+    var prev = ordenDe(H), modo = prev ? 'actualizar' : 'crear', eleccion = null;
+    if (prendido('vendedor_v159') && !caso.oportunidad_id && !ctx.oportunidadLista && !(prev && prev.oportunidad && prev.oportunidad.id)) {
       var op = await oportunidadDelMachote(caso.machote_id);
       if (!op.ok) return { ok: false, error: op.error || 'SIN_OPORTUNIDAD', mensaje: op.mensaje };
       if (!op.lead_id) {
         var el = await elegirOportunidad(caso, ctx);
         if (!el.ok) return { ok: false, error: el.error || 'SIN_OPORTUNIDAD', mensaje: el.mensaje || 'Sin oportunidad no se crea el borrador: liga una del cliente o crea una.' };
+        eleccion = el.oportunidad;
       }
     }
-    var prev = ordenDe(H), modo = prev ? 'actualizar' : 'crear';
     var cuerpo = { modo: modo, machote_id: caso.machote_id, version_leida: (cm.resultado || {}).version || 1,
       caso_id: caso.id, cotizacion: cot, acepta_referencias: conRef },
       // V1.52 §12 · la moneda del caso (la decide el servidor, p. ej. por decreto): orden-odoo la compara con la del machote.
@@ -261,6 +264,7 @@
       md = prendido('moneda_decreto');
     if (md) cuerpo.moneda_caso = monedaCaso(caso);
     if (R15 && R15.liberadas.length) cuerpo.regla15_liberadas = R15.liberadas;
+    if (eleccion) cuerpo.oportunidad = eleccion;
     var r = await C.suite(RUTA_ORDEN, cuerpo, 120000);
     // El servidor encontró una frase que la pantalla no vio (la cotización cambió): se dice cuál, no se escribe nada.
     if (!r.ok && r.error === 'REGLA15_CALCULOS') return { ok: false, error: r.error, mensaje: r.mensaje || 'La cotización trae cálculos que vería el cliente.' };
@@ -297,7 +301,8 @@
     var f = l.machotes.filter(function (x) { return x && x.id === machoteId; })[0];
     return { ok: true, lead_id: f && Number(f.odoo_lead_id) > 0 ? Number(f.odoo_lead_id) : null, version: f ? Number(f.version) || 0 : 0 };
   }
-  /** La ventana: las del cliente (puntuadas por el servidor) o «Crear» con el nombre del caso. Al elegir, liga al machote. */
+  /** La ventana: las del cliente (puntuadas por el servidor) o «Crear» con el nombre del caso. NO escribe nada: devuelve la
+   *  elección ({modo:'ligar', id} o {modo:'crear', nombre}) y orden-odoo la valida, la crea o la liga al escribir la orden. */
   function elegirOportunidad(caso, ctx) {
     // El nombre de la persona, no su usuario de la suite («Francisco Montalvo», no «francisco.montalvo»).
     var esNombre = function (x) { return !!x && /\s/.test(String(x).trim()) && !/^[a-z0-9._-]+$/.test(String(x).trim()); };
@@ -313,7 +318,7 @@
           '<p class="sub">' + esc(c.ok ? 'Este cliente no tiene oportunidades abiertas.' : (c.mensaje || 'No se pudieron leer las del cliente.')) + '</p>') +
         '<label style="' + fila + '"><input style="' + rad + '" type="radio" name="opSel" value="nueva"' + (L.length ? '' : ' checked') + '><span><b>Crear una nueva</b> <small>a nombre de ' + esc(dueno) + '</small></span></label>' +
         '<label class="lb">Nombre de la oportunidad nueva<input id="opNom" maxlength="240" value="' + esc(caso.titulo || '') + '"></label>' +
-        '<p class="err-bt" id="opErr" hidden></p><div class="acc der"><button class="boton" id="opNo">Cancelar</button><button class="boton si" id="opOk">Ligar y seguir</button></div>';
+        '<p class="err-bt" id="opErr" hidden></p><div class="acc der"><button class="boton" id="opNo">Cancelar</button><button class="boton si" id="opOk">Seguir</button></div>';
       var err = function (t) { var e = document.getElementById('opErr'); e.textContent = t; e.hidden = !t; };
       document.getElementById('opNo').onclick = function () { ctx.cerrarModal(); listo({ ok: false, error: 'SIN_OPORTUNIDAD', mensaje: 'No se creó el borrador: falta elegir la oportunidad.' }); };
       document.getElementById('opOk').onclick = async function () {
@@ -322,14 +327,10 @@
         if (sel === 'nueva') {
           var nom = document.getElementById('opNom').value.trim();
           if (nom.length < 3) { b.disabled = false; return err('Escribe el nombre de la oportunidad.'); }
-          var n = await C.suite('/webhook/comercial/oportunidades', { modo: 'crear', nombre: nom, cliente_id: Number(caso.cliente_odoo_id) || null, machote_id: caso.machote_id });
-          if (!n.ok || !n.id) { b.disabled = false; return err(n.mensaje || ('No se creó la oportunidad: ' + (n.error || 'error'))); }
-          lead = Number(n.id);
+          ctx.cerrarModal(); return listo({ ok: true, oportunidad: { modo: 'crear', nombre: nom } });
         }
         if (!lead) { b.disabled = false; return err('Elige una oportunidad.'); }
-        var g = await C.suite('/webhook/comercial/oportunidades', { modo: 'ligar', machote_id: caso.machote_id, lead_id: lead });
-        if (!g.ok) { b.disabled = false; return err(g.mensaje || ('No se ligó: ' + (g.error || 'error'))); }
-        ctx.cerrarModal(); listo({ ok: true, lead_id: lead, nueva: sel === 'nueva' });
+        ctx.cerrarModal(); listo({ ok: true, oportunidad: { modo: 'ligar', id: lead } });
       };
     });
   }
