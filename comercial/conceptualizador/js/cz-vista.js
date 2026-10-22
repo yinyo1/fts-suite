@@ -28,12 +28,13 @@
   var ORDEN = ['mat', 'serv', 'mo', 'viaje'];
   var CHIPS = [['origen', 'tu', '🔒 Lo que dije yo'], ['origen', 'agente', '🤖 Lo que supuso el agente'],
     ['estado', 'alerta', '⚠ Con alerta'], ['estado', 'ref', '🔎 Referencia N3/N4'], ['estado', 'n5', '⛔ Sin precio N5']];
-  var NIVEL = { N1: 'N1 · Proveedor', N2: 'N2 · Web MX', N3: 'N3 · Lista de referencia de otro país', N4: 'N4 · Paramétrico', N5: 'N5 · Pendiente: sin precio' };
+  var NIVEL = { N0: 'N0 · Lo dio la persona', N1: 'N1 · Proveedor', N2: 'N2 · Web MX', N3: 'N3 · Lista de referencia de otro país', N4: 'N4 · Paramétrico', N5: 'N5 · Pendiente: sin precio' };
   var CHEV = '<svg class="vz-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
 
   var S = { abierto: false, o: null, M: null, abiertos: {}, f: { origen: {}, estado: {} }, el: null, hist: false, token: '', hora: '', leyendo: false,
     v: 'fts', aviso: 0, ok2: false,
-    preg: null, okInt: false };   // V1.58 (`menu_vista_v158`) · la pregunta antes de lo interno (vista o Excel) y si ya se dijo que sí   // V1.57b · versión FTS o cliente, y el paso de la doble confirmación
+    preg: null, okInt: false,
+    n0: null, n0msg: {} };   // V1.62a (`n0_v162`) · el renglón cuyo precio se está corrigiendo y lo que contestó el servidor   // V1.58 (`menu_vista_v158`) · la pregunta antes de lo interno (vista o Excel) y si ya se dijo que sí   // V1.57b · versión FTS o cliente, y el paso de la doble confirmación
 
   /* ═══ V1.57b (fts-conceptualizador#12 punto 14, `vista_cliente`) · versión cliente y Excel ═══
    * Prototipo aprobado: prototipos/v157/vista-ejecutiva.html. La versión cliente es lo que el cliente puede ver: secciones,
@@ -245,7 +246,39 @@
         (prendido('ligas_v158') && G.CzLigas && G.CzLigas.piezas ? G.CzLigas.piezas(r, { sinLiga: true }) : '') + '</dd>' +
       '<dt>Fórmula</dt><dd><code>' + form + '</code></dd>' +
       '<dt>Quién</dt><dd>' + quien + '</dd>' +
-      (conAlerta(r) ? '<dt>Alerta</dt><dd class="al">⚠ ' + esc(r.alerta) + '</dd>' : '') + '</dl>';
+      (conAlerta(r) ? '<dt>Alerta</dt><dd class="al">⚠ ' + esc(r.alerta) + '</dd>' : '') + '</dl>' + editorN0(f);
+  }
+  /* ═══ V1.62a (fts-conceptualizador#12 resultado 7, `n0_v162`) · N0 = el precio que dio la persona, corregido sobre el renglón ═══
+   * Prototipo aprobado: prototipos/v162/menos-clics.html (escena n0). Solo en la vista INTERNA, solo renglones de material, servicio
+   * o viaje (la mano de obra va en horas y tarifa), y solo si la pantalla pasó `al.n0`. Manda el evento `correccion` con
+   * `datos.n0` = {seccion, partida, descripcion, pu, antes}; el motor, sin modelo, deja el decreto de la persona, el renglón N0 sin
+   * folio ni liga y «Actualizar el machote» con la spec nueva. */
+  function puedeN0(f) {
+    var r = f.r; return S.v !== 'cliente' && prendido('n0_v162') && S.o && S.o.al && typeof S.o.al.n0 === 'function' &&
+      r.tipo !== 'Mano de obra' && r.p !== null && r.p !== undefined && /^r:[0-9]+:/.test(f.k);
+  }
+  function editorN0(f) {
+    if (!puedeN0(f)) return '';
+    var r = f.r, m = S.n0msg[f.k];
+    if (m) return '<div class="vz-n0 ' + (m.ok ? 'ok' : 'mal') + '" role="status">' + esc(m.texto) + '</div>';
+    if (S.n0 !== f.k) return '<div class="vz-n0"><button type="button" class="vz-bt" data-vz-n0="' + esc(f.k) + '">Corregir precio (N0)</button>' +
+      '<small>Para un precio que tú das (presupuesto, lo que te dijo el proveedor por teléfono). Queda como tu decreto, sin folio ni liga.</small></div>';
+    var v = r.pu === null || r.pu === undefined ? '' : String(r.pu);
+    return '<div class="vz-n0 edit"><label>Precio unitario (' + esc(r.moneda || '') + ')<input type="text" inputmode="decimal" id="vzN0v" value="' + esc(v) + '" autocomplete="off"></label>' +
+      '<button type="button" class="vz-bt si" data-vz-n0g="' + esc(f.k) + '">Guardar como N0</button><button type="button" class="vz-bt" data-vz-n0x="1">Cancelar</button>' +
+      '<small>Al guardar: el agente pone el renglón en N0 con tu decreto y te deja «Actualizar el machote». Queda en el hilo: quién, cuándo y antes → ahora.</small></div>';
+  }
+  function guardarN0(k) {
+    var f = (modelo(S.M || {}).todas || []).filter(function (x) { return x.k === k; })[0]; if (!f) return;
+    var inp = S.el && S.el.querySelector('#vzN0v'), pu = Number(String(inp ? inp.value : '').replace(/[$,\s]/g, ''));
+    if (!(pu > 0)) { S.n0msg[k] = { ok: false, texto: 'Escribe un precio mayor que cero.' }; pintar(); setTimeout(function () { delete S.n0msg[k]; pintar(); }, 2500); return; }
+    var sec = Number(k.split(':')[1]), r = f.r;
+    S.n0 = null; S.n0msg[k] = { ok: true, texto: 'Mandando…' }; pintar();
+    Promise.resolve(S.o.al.n0({ seccion: sec, partida: r.p, descripcion: r.d, pu: pu, antes: r.pu === undefined ? null : r.pu })).then(function (x) {
+      S.n0msg[k] = x && x.ok ? { ok: true, texto: 'Listo: va como N0 (' + dinero(cent(pu)) + '). El agente actualiza el machote y te deja el botón en el chat.' }
+        : { ok: false, texto: 'No se guardó: ' + ((x && (x.mensaje || x.error)) || 'sin respuesta') + '.' };
+      pintar();
+    }, function () { S.n0msg[k] = { ok: false, texto: 'No se guardó: sin señal.' }; pintar(); });
   }
   function abiertoK(k) { if (S.abiertos[k] !== undefined) return S.abiertos[k]; return hayFiltro() && k.charAt(0) === 's'; }
   function hhmm(iso) {
@@ -380,6 +413,9 @@
       Object.keys(S.abiertos).forEach(function (x) { if (x.charAt(0) === 's') delete S.abiertos[x]; });   // se abre el camino a lo que pasa
       pintar(); return;
     }
+    if (b.hasAttribute('data-vz-n0')) { S.n0 = b.getAttribute('data-vz-n0'); pintar(); var i0 = S.el.querySelector('#vzN0v'); if (i0) i0.focus(); return; }
+    if (b.hasAttribute('data-vz-n0g')) { guardarN0(b.getAttribute('data-vz-n0g')); return; }
+    if (b.hasAttribute('data-vz-n0x')) { S.n0 = null; pintar(); return; }
     if (a === 'cerrar') cerrar();
     else if (a === 'expandir') todo(true);
     else if (a === 'colapsar') todo(false);
@@ -540,6 +576,13 @@
     '#cz-vista .vz-det{padding:4px 12px 12px 54px;border-top:1px dashed var(--vz-linea);background:var(--vz-sup2)}',
     '#cz-vista .vz-det dl{display:grid;grid-template-columns:130px minmax(0,1fr);gap:4px 12px;font-size:13px}',
     '#cz-vista .vz-det dt{color:var(--vz-sec)}',
+    '#cz-vista .vz-n0{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px}',
+    '#cz-vista .vz-n0 small{flex-basis:100%;color:var(--vz-sec)}',
+    '#cz-vista .vz-n0 label{display:flex;flex-direction:column;gap:4px;flex:1 1 160px;min-width:0;color:var(--vz-sec)}',
+    '#cz-vista .vz-n0 input{font:inherit;padding:8px 10px;border:1px solid var(--vz-linea);border-radius:8px;background:var(--vz-fondo,#fff);color:inherit;min-width:0}',
+    '#cz-vista .vz-n0.ok{color:#166534}#cz-vista .vz-n0.mal{color:#b42318}',
+    '#cz-vista .vz-n0 .vz-bt{border:1px solid var(--vz-linea);border-radius:18px;padding:7px 14px;background:transparent;color:inherit;font:inherit;cursor:pointer}',
+    '#cz-vista .vz-n0 .vz-bt.si{background:#00a884;border-color:#00a884;color:#fff}',
     '#cz-vista .vz-det dd{min-width:0;overflow-wrap:anywhere}',
     '#cz-vista .vz-det .al{color:var(--vz-rojo-t)}',
     '#cz-vista .vz-det code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;white-space:normal;overflow-wrap:anywhere}',

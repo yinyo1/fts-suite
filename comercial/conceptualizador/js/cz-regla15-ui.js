@@ -20,7 +20,8 @@
     var L = c.regla15 && Array.isArray(c.regla15.hallazgos) ? c.regla15.hallazgos : G.CzRegla15.revisarCotizacion(c, []).hallazgos;
     return L.filter(function (h) { return h && h.id; });
   }
-  function decision(a, h) { if (h.liberada) return { uso: 'liberada', razon: 'liberada antes', antes: true }; return (D[a.id] || {})[h.id] || null; }
+  // V1.62a (`ruido_v162`) · lo que el autor pidió tal cual llega liberado con su razón («lo pidió Esteban (msg 1018)»).
+  function decision(a, h) { if (h.liberada) return { uso: 'liberada', razon: h.razon || 'liberada antes', antes: true }; return (D[a.id] || {})[h.id] || null; }
   function faltan(a) { return hallazgos(a).filter(function (h) { return !decision(a, h); }).length; }
   function listo(a) { return !on() || faltan(a) === 0; }
   var DONDE = function (d) { return String(d || '').replace(/^bloques?/, 'partida').replace(/^nota_orden/, 'nota de la orden').replace(/^x_fts/, 'PDF').replace(/_/g, ' '); };
@@ -29,6 +30,10 @@
     if (!on() || !a || a.tipo !== 'crear_borrador' || a.estado !== 'propuesta') return '';
     var L = hallazgos(a); if (!L.length) return '';
     var n = faltan(a);
+    // V1.62a (`ruido_v162`) · si todo lo que marcó la regla lo pidió el autor tal cual, no es una alarma: una línea que dice que va
+    // como lo pidió y quién (sin el recuadro rojo ni «Liberar…»).
+    if (!n && typeof G.CzInterruptor === 'function' && G.CzInterruptor('ruido_v162') === true && L.every(function (h) { return h.liberada && /^lo pidió /.test(h.razon || ''); }))
+      return '<div class="r15 r15-autor" data-r15="' + a.id + '" style="background:#e7f6ec;border-color:#b7e0c3"><p class="nota" style="color:#14532d">✓ Va tal cual lo que pediste: ' + L.map(function (h) { return '«' + esc(String(h.original).slice(0, 90)) + '» (' + esc(h.razon) + ')'; }).join('; ') + '.</p></div>';
     return '<div class="r15" data-r15="' + a.id + '"><b>🟥 El cliente vería cálculos internos (' + L.length + ')</b>' +
       '<p class="nota">Regla 15: en lo que ve el cliente no van horas × días, tarifas, «al costo», márgenes ni niveles de precio. Elige el texto limpio o libéralo con su razón.</p>' +
       L.map(function (h) {

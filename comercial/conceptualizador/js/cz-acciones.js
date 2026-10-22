@@ -251,10 +251,15 @@
     if (prendido('vendedor_v159') && !caso.oportunidad_id && !ctx.oportunidadLista && !(prev && prev.oportunidad && prev.oportunidad.id)) {
       var op = await oportunidadDelMachote(caso.machote_id);
       if (!op.ok) return { ok: false, error: op.error || 'SIN_OPORTUNIDAD', mensaje: op.mensaje };
-      if (!op.lead_id) {
+      // V1.62a (`oportunidad_v162`, #12 resultado 3) · la elección ya guardada en el caso se reusa (no se vuelve a preguntar); una nueva
+      // se guarda en el caso AL ELEGIRLA, antes de mandar la orden: si la orden falla por otra razón, la elección no se pierde.
+      var el0 = prendido('oportunidad_v162') ? eleccionGuardada(H) : null;
+      if (!op.lead_id && el0) eleccion = el0;
+      else if (!op.lead_id) {
         var el = await elegirOportunidad(caso, ctx);
         if (!el.ok) return { ok: false, error: el.error || 'SIN_OPORTUNIDAD', mensaje: el.mensaje || 'Sin oportunidad no se crea el borrador: liga una del cliente o crea una.' };
         eleccion = el.oportunidad;
+        if (prendido('oportunidad_v162')) await guardarEleccion(caso, eleccion);
       }
     }
     var cuerpo = { modo: modo, machote_id: caso.machote_id, version_leida: (cm.resultado || {}).version || 1,
@@ -272,7 +277,11 @@
       var mm = r.moneda_machote || (cot && cot.moneda) || '¿?', mc = r.moneda_caso || monedaCaso(caso) || '¿?';
       return { ok: false, error: r.error, mensaje: 'El machote está en ' + mm + ' y el caso en ' + mc + ': actualiza el machote antes de crear la cotización.' };
     }
-    if (!r.ok || !r.odoo_so_id) return { ok: false, error: r.error || 'SIN_ORDEN', mensaje: r.mensaje || ('No se creó el borrador: ' + (r.error || 'sin orden')) };   // V1.58 · el código va a la tarjeta de estado
+    // V1.62a (`oportunidad_v162`) · la orden no salió pero la oportunidad que pidió crear sí: su id queda en el caso.
+    if (!r.ok && prendido('oportunidad_v162') && r.oportunidad_creada && r.oportunidad_creada.id)
+      await guardarEleccion(caso, { modo: 'ligar', id: r.oportunidad_creada.id, nombre: r.oportunidad_creada.nombre, creada: true });
+    if (!r.ok || !r.odoo_so_id) return { ok: false, error: r.error || 'SIN_ORDEN', mensaje: r.mensaje || ('No se creó el borrador: ' + (r.error || 'sin orden')),   // V1.58 · el código va a la tarjeta de estado
+      oportunidad_creada: r.oportunidad_creada || undefined };
     var o = releido(r);
     o.texto = textoOrden(o, modo === 'crear' ? 'Borrador' : 'Actualizado');
     // V1.61 (`barra_v161`, #12 punto 9, D96) · la línea fija del redondeo la arma orden-odoo con el subtotal RELEÍDO de Odoo.
@@ -294,6 +303,19 @@
         : ' Cotizada con referencias: ' + R.pct + ' % del costo' + (R.n3 ? ', ' + R.n3 + ' alerta' + (R.n3 === 1 ? '' : 's') + ' N3' : '') + ' (aceptado).';
     }
     return { ok: true, resultado: o };
+  }
+
+  // ── V1.62a · la elección de la oportunidad queda en el caso (`oportunidad_v162`) ──
+  /** La elección guardada en el caso (hilo.oportunidad_elegida), lista para orden-odoo: {modo:'crear', nombre} o {modo:'ligar', id}. */
+  function eleccionGuardada(H) {
+    var e = H && H.oportunidad_elegida; if (!e || !e.modo) return null;
+    if (e.modo === 'ligar' && Number(e.id) > 0) return { modo: 'ligar', id: Number(e.id) };
+    if (e.modo === 'crear' && String(e.nombre || '').length >= 3) return { modo: 'crear', nombre: String(e.nombre) };
+    return null;
+  }
+  /** Guarda la elección en el caso (evento sin trabajo). Si no se pudo, no frena la orden: se intenta como en la V1.59. */
+  async function guardarEleccion(caso, el) {
+    try { await C.evento({ caso_id: caso.id, tipo: 'oportunidad_elegida', datos: { modo: el.modo, id: el.id || null, nombre: el.nombre || null, creada: el.creada === true } }); } catch (e) { /* sigue */ }
   }
 
   // ── V1.59 · la oportunidad de la orden ─────────────────────────────────

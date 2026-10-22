@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.61';
+  var VERSION = 'V1.62a';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -865,6 +865,11 @@
     ['seleccion_v160', 'Seleccionar parte del texto', 'Con el mouse se arrastra y el chat ya no se repinta mientras hay selección; en el teléfono, mantener presionado sobre el texto da las manijas del sistema.'],
     // V1.61 (#12) · estado visible. Migración 0031: cuántos van antes, la hora de cada paso, orden cancelada = Perdida y la huella de precios.
     ['barra_v161', 'Barra de estado', 'Arriba solo los datos del caso y «escribiendo…» cuando de verdad escribe alguien; abajo UNA barra con segundero: esperando turno, paso N de M (con Detener), listo en m:ss, lo que pasa en Odoo y el error con qué hacer. orden-odoo compara precios y no el número de versión; una orden del caso cancelada cierra como Perdida.'],
+    ['cuadre_v162', 'Todo cuadra', 'El borrador se arma del machote GUARDADO (si no cuadra, primero «Actualizar el machote»); la nota de pago y la tabla «Hitos de pago» salen de los mismos hitos (también 50/30/20); orden-odoo dice en palabras qué no cuadra y el botón lo arregla.'],
+    ['tarjetas_v162', 'Tarjetas viejas', 'Un cálculo nuevo descarta las tarjetas de machote y de orden con otro total; una tarjeta reemplazada no se aplica; la que lleva 24 h (panel) sin aplicarse avisa una vez al dueño.'],
+    ['oportunidad_v162', 'La oportunidad no se pierde', 'La oportunidad elegida se guarda en el caso al elegirla y se crea aunque la orden falle por otra razón.'],
+    ['n0_v162', 'N0 · precio de la persona', 'En la vista ejecutiva interna se corrige el precio de un renglón: queda N0 con el decreto de la persona, sin folio ni liga, y el agente deja «Actualizar el machote».'],
+    ['ruido_v162', 'Sin ruido', 'No se publica «Sin cambios pendientes» cuando no hay nada que decir, y la regla 15 no marca lo que el autor pidió tal cual (se anota que lo pidió él).'],
   ];
   /** Los interruptores que conoce el servidor (valores `interruptor:*` y `interruptores`), en el orden de arriba; uno nuevo
    * que la pantalla todavía no describe sale al final con su nombre, para que se pueda prender igual. */
@@ -1303,7 +1308,7 @@
       var CL = abierta && !(ST.sel || {}).menu && G.CzAvance.clics ? G.CzAvance.clics(H) : [], yoDueno = mia(c), adm = ST.admin === true || ST.panelAdmin === true;
       CL = CL.filter(function (x) { return x.acc === 'ver_cot' ? (yoDueno || adm) : yoDueno; });
       // V1.60 (`chat_limpio_v160`) · solo lo posible en el estado real del caso, y la salida del error vigente PRIMERO.
-      var FVr = on('chat_limpio_v160') && G.CzLimpio ? G.CzLimpio.fallaVigente(H) : null, AXr = FVr ? G.CzLimpio.accion(FVr.codigo, H) : null;
+      var FVr = on('chat_limpio_v160') && G.CzLimpio ? G.CzLimpio.fallaVigente(H) : null, AXr = FVr ? G.CzLimpio.accion(FVr.codigo, H, FVr) : null;
       if (on('chat_limpio_v160') && G.CzLimpio) CL = G.CzLimpio.reglaClics(CL, H);
       if (AXr && AXr.boton && AXr.hacer && yoDueno) sug.push({ texto: '⚠ ' + AXr.boton, fuerte: true, attrs: { 'data-sug': 'falla', 'data-sug-id': FVr.id }, hacer: function (bt) { salidaFalla(FVr, c, bt); } });
       var cubierto = !!sgF && ((sgF.acc === 'machote' && CL.some(function (x) { return x.acc === 'machote'; })) || (sgF.acc === 'ir' && sgF.a === 'accion') ||
@@ -1926,7 +1931,7 @@
     var FV = on('chat_limpio_v160') && G.CzLimpio ? G.CzLimpio.fallaVigente(H) : null;
     if (FV) {
       M.estados.falla = (M.estados.falla || 0) + 1;
-      var AX = G.CzLimpio.accion(FV.codigo, H), puede = mia(c) || ST.admin === true || ST.panelAdmin === true;
+      var AX = G.CzLimpio.accion(FV.codigo, H, FV), puede = mia(c) || ST.admin === true || ST.panelAdmin === true;
       return { tipo: 'falla', clave: 'f' + FV.id, titulo: tituloFalla(FV, H), detalle: AX.texto + (AX.quien ? ' Lo hace: ' + AX.quien + '.' : ''),
         acciones: AX.boton && AX.hacer && puede ? [{ txt: AX.boton, si: true, fn: function (b) { salidaFalla(FV, c, b); } }] : [] };
     }
@@ -2739,7 +2744,10 @@
         cotizacion: VC ? ((brUlt() || {}).datos || {}).cotizacion || null : undefined,
         regla15: VC ? ((((brUlt() || {}).resultado || {}).regla15 || {}).decisiones || null) : undefined };
     };
-    G.CzVista.abrir(Object.assign(datos(), { inicio: inicio || null, al: { actualizar: async function () { await cargarHilo(); return datos(); } } }));
+    G.CzVista.abrir(Object.assign(datos(), { inicio: inicio || null, al: { actualizar: async function () { await cargarHilo(); return datos(); },
+      // V1.62a (`n0_v162`, #12 resultado 7) · el precio que da la persona sobre el renglón: evento `correccion` con `datos.n0`.
+      n0: on('n0_v162') ? async function (d) { var r = await C.evento({ caso_id: ST.hilo.caso.id, tipo: 'correccion', concepto: 'precio_n0', razon: '', datos: { n0: d } });
+        if (r && r.ok) { ST.irAbajo = true; cargarHilo(); } return r; } : null } }));
     void U;
   }
   function releidoOdoo(r) {
@@ -2773,7 +2781,7 @@
     return f.que === 'enviada' ? 'No se marcó como enviada en Odoo' : so ? 'No se actualizó ' + so + ' en Odoo' : 'No se creó la cotización en Odoo';
   }
   function fallaHtml(f, H) {
-    var AX = G.CzLimpio.accion(f.codigo, H), puede = mia(H.caso) || ST.admin === true || ST.panelAdmin === true;
+    var AX = G.CzLimpio.accion(f.codigo, H, f), puede = mia(H.caso) || ST.admin === true || ST.panelAdmin === true;
     return '<div class="fila el"><div class="carta falla-odoo" data-falla="' + esc(f.id) + '"><h4>✕ ' + esc(tituloFalla(f, H)) + '</h4><p>' + esc(AX.texto) + '</p>' +
       (AX.boton && AX.hacer && puede ? '<div class="acc"><button type="button" class="si" data-falla-hacer="' + esc(f.id) + '">' + esc(AX.boton) + '</button></div>' : '') +
       (AX.quien ? '<p class="nota">Lo hace: ' + esc(AX.quien) + '.</p>' : '') +
@@ -2781,7 +2789,7 @@
   }
   /** La salida del error: el MISMO efecto desde la tarjeta y desde el rayito. */
   function salidaFalla(f, c, b) {
-    var AX = G.CzLimpio.accion(f.codigo, ST.hilo), x = AX.hacer || {}, bt = b || document.createElement('button');
+    var AX = G.CzLimpio.accion(f.codigo, ST.hilo, f), x = AX.hacer || {}, bt = b || document.createElement('button');
     var prop = function (tipo) { return ((ST.hilo && ST.hilo.acciones) || []).filter(function (a) { return a.tipo === tipo && a.estado === 'propuesta'; }).pop(); };
     if (x.acc === 'mandar') return lanzarSiguiente({ txt: AX.boton, acc: 'mandar', texto: x.texto }, c, bt);
     if (x.acc === 'ir') return lanzarSiguiente({ txt: AX.boton, acc: 'ir', a: x.a }, c, bt);
@@ -3246,6 +3254,14 @@
     // V1.57b · regla 15: sin decidir cada frase no se manda (el servidor también lo frena).
     if (a.tipo === 'crear_borrador' && G.CzR15 && !G.CzR15.listo(a)) { toast('Primero decide las frases de la regla 15: texto limpio o liberar con su razón.'); return; }
     b.disabled = true;
+    // V1.62a (`tarjetas_v162`, #12 resultado 2) · una tarjeta de machote o de orden se aplica solo si sigue vigente EN LA BASE: si el
+    // agente ya recalculó, se dice y no se toca nada (Nalco: la tarjeta de las 11:19 se aplicó a las 11:47 con los números de antes).
+    if (on('tarjetas_v162') && (a.tipo === 'crear_machote' || a.tipo === 'crear_borrador')) {
+      try { await cargarHilo(); } catch (e) { /* sin señal: lo revisa la base al registrar */ }
+      var a2 = ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return String(x.id) === String(id); })[0];
+      if (!a2 || a2.estado !== 'propuesta') { b.disabled = false; toast('Esa tarjeta ya se reemplazó con un cálculo más nuevo: usa la tarjeta más reciente del chat.'); pintarChat(); return; }
+      a = a2;
+    }
     // V1.57b (`tarjeta_v157`) · el giro va en el MISMO botón mientras trabaja; si falla, vuelve su texto.
     var txt0 = b.innerHTML; if (on('tarjeta_v157')) b.innerHTML = GIRO + ' ' + ({ crear_borrador: 'Escribiendo en Odoo…', crear_machote: 'Guardando el machote…', enviada: 'Marcando en Odoo…', alta_contacto: 'Dando de alta…', actualizar_cliente: 'Actualizando la ficha…' }[a.tipo] || 'Trabajando…');
     var vuelve = function () { b.disabled = false; if (on('tarjeta_v157')) b.innerHTML = txt0; };
@@ -3265,7 +3281,7 @@
       var so = ((ST.hilo && ST.hilo.caso) || {}).orden_nombre;
       // V1.60 (`chat_limpio_v160`) · el error dice QUÉ HACER con el nombre del botón, y ese botón hace lo mismo que en el rayito.
       if (on('chat_limpio_v160') && G.CzLimpio) {
-        var AX = G.CzLimpio.accion((r && r.error) || 'NO_SE_ESCRIBIO', ST.hilo), f0 = { codigo: (r && r.error) || 'NO_SE_ESCRIBIO', que: a.tipo, accion_id: a.id };
+        var AX = G.CzLimpio.accion((r && r.error) || 'NO_SE_ESCRIBIO', ST.hilo, r), f0 = { codigo: (r && r.error) || 'NO_SE_ESCRIBIO', que: a.tipo, accion_id: a.id, mensaje: (r && r.mensaje) || null };
         est.error({ titulo: so ? 'No se actualizó ' + so + ' en Odoo' : 'No se creó la cotización en Odoo', motivo: AX.texto, codigo: (r && r.error) || 'NO_SE_ESCRIBIO',
           nota: (AX.quien ? 'Lo hace: ' + AX.quien + '. ' : '') + (so ? 'La orden no cambió.' : 'No se escribió nada en Odoo.'),
           acciones: AX.boton && AX.hacer ? [{ txt: AX.boton, si: true, fn: function (bt) { if (AX.hacer.acc === 'reintentar') return reintenta(); salidaFalla(f0, ST.hilo.caso, bt); } }] : [] });

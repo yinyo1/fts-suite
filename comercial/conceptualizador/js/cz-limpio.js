@@ -21,6 +21,7 @@
 (function (G) {
   'use strict';
   function on() { try { return typeof G.CzInterruptor === 'function' && G.CzInterruptor('chat_limpio_v160') === true; } catch (e) { return false; } }
+  function prendido(n) { try { return typeof G.CzInterruptor === 'function' && G.CzInterruptor(n) === true; } catch (e) { return false; } }
 
   /* ── paja ── */
   // Los acuses de recibo del motor que no traen dato (el catálogo medido en los 19 casos: 156 de 159 ya contestados).
@@ -55,7 +56,7 @@
     'PENDIENTES_PROVEEDOR', 'MARGEN_BAJO_PISO', 'SIN_EMPRESA', 'MONEDA_INVALIDA', 'MONEDA_DISTINTA_AL_CASO', 'MACHOTE_SIN_TOTAL', 'LINEA_SIN_PRECIO', 'SIN_LINEAS_CON_PRECIO'];
   var REARMAR = 'Vuelve a armar la cotización para Odoo con la versión vigente del machote y propón el borrador otra vez.';
   /** El catálogo. `c` es el caso (para el cliente y la orden). Cada entrada: texto para la persona, nombre del botón y su efecto. */
-  function accion(codigo, H) {
+  function accion(codigo, H, f) {
     var c = (H && H.caso) || {}, cli = c.cliente || 'el cliente del caso', so = c.orden_nombre || 'la orden';
     var rearmar = { texto: 'Toca «Volver a armar la cotización»: la armo con la versión vigente del machote y te dejo el botón de Odoo otra vez.', boton: 'Volver a armar la cotización', hacer: { acc: 'mandar', texto: REARMAR } };
     var reintentar = { texto: 'Toca «Reintentar». Si vuelve a fallar, avísale a Esteban con el código.', boton: 'Reintentar', hacer: { acc: 'reintentar' } };
@@ -103,6 +104,15 @@
     X.LINEA_SIN_PRECIO = X.SIN_LINEAS_CON_PRECIO = X.PENDIENTES_PROVEEDOR;
     X.MONEDA_INVALIDA = X.SIN_EMPRESA = X.MACHOTE_SIN_TOTAL = rearmar;
     X.SIN_MACHOTE = X.MACHOTE_NO_ENCONTRADO; X.IMPUESTO_NO_EXISTE = X.SIN_IMPUESTO; X.MODO_INVALIDO = X.FALLO_VERIFICAR = X.SECRETO_NO_CONFIGURADO;
+    // V1.62a (`cuadre_v162`, #12 resultado 1) · el candado de cuadre dice en palabras qué no cuadra (el texto lo arma orden-odoo con el
+    // folio, la versión y los dos totales, o los porcentajes de la nota y de la tabla) y su botón lo arregla.
+    if (prendido('cuadre_v162')) {
+      var dijo = f && f.mensaje ? String(f.mensaje) : '';
+      X.NO_CUADRA = { texto: (dijo || 'El machote guardado y la cotización no dicen lo mismo.') + ' Toca «Actualizar el machote»: guardo el cálculo vigente y después te dejo la cotización.',
+        boton: 'Actualizar el machote', hacer: { acc: 'mandar', texto: 'Arma el machote' } };
+      X.PAGO_NO_CUADRA = { texto: (dijo ? dijo.replace(/ Las dos salen de los mismos hitos:.*$/, '') : 'La nota y la tabla «Hitos de pago» no dicen lo mismo.') + ' Toca «Rehacer las condiciones de pago»: las dos salen de los mismos hitos.',
+        boton: 'Rehacer las condiciones de pago', hacer: { acc: 'mandar', texto: 'Rehaz las condiciones de pago con los hitos vigentes (la nota y la tabla del PDF de la misma lista) y vuelve a armar la cotización para Odoo.' } };
+    }
     var r = X[codigo] || reintentar;
     return { texto: r.texto, boton: r.boton || null, hacer: r.hacer || null, quien: r.quien || null, codigo: codigo };
   }

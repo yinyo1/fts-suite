@@ -16,6 +16,8 @@
 (function (G) {
   'use strict';
   var NIVELES = {
+    // V1.62a (`n0_v162`) · el precio que dio la persona: su fuente es su decreto, no se busca más.
+    N0: ['Lo dio la persona', 'Precio que dio quien cotiza (o Esteban): en el chat o corregido en la vista ejecutiva. Su fuente es su decreto; no pide folio ni liga y el agente no lo vuelve a buscar.'],
     N1: ['Proveedor', 'Precio de un proveedor real: su folio o cotización, o lo que FTS ya pagó por el mismo material en Odoo. Es el más confiable.'],
     N2: ['Web MX', 'Precio publicado por un distribuidor en México, con liga al producto exacto. Confiable; puede cambiar la existencia.'],
     N3: ['Lista extranjera', 'Lista de precios de otro país convertida a pesos (USD × FIX × 1.10 de internación). Es referencia: el precio real en México, la entrega o la garantía pueden cambiar.'],
@@ -33,7 +35,7 @@
 
   var CSS = '.czn-niv{display:inline-flex;align-items:center;gap:4px;border-radius:10px;padding:0 8px;font-size:12px;font-weight:600;line-height:20px;cursor:pointer;border:1px solid transparent;white-space:nowrap;vertical-align:1px;user-select:none;-webkit-user-select:none}' +
     '.czn-niv:focus-visible{outline:2px solid #00a884;outline-offset:1px}.czn-niv[aria-expanded="true"]{border-color:currentColor}' +
-    '.czn-n1{background:#e7f6ec;color:#166534}.czn-n2{background:#e6f4f1;color:#0f766e}.czn-n3{background:#fff4e5;color:#8a4b00}.czn-n4{background:#e8efff;color:#1d4ed8}.czn-n5{background:#fdecea;color:#b42318}' +
+    '.czn-n0{background:#eef2ff;color:#3730a3}.czn-n1{background:#e7f6ec;color:#166534}.czn-n2{background:#e6f4f1;color:#0f766e}.czn-n3{background:#fff4e5;color:#8a4b00}.czn-n4{background:#e8efff;color:#1d4ed8}.czn-n5{background:#fdecea;color:#b42318}' +
     '.czn-niv i{font-style:normal;font-weight:700}' +
     '.czn-nota{display:block;flex-basis:100%;margin:6px 0 4px;background:#111b21;color:#fff;border-radius:8px;padding:8px 10px;font-size:13px;font-weight:400;line-height:1.4;max-width:420px;white-space:normal;text-align:left;overflow-wrap:anywhere}' +
     '.czn-nota b{color:#fff}' +
