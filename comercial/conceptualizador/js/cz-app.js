@@ -354,9 +354,9 @@
   function listaConEtapa() { return on('lista_v160') && ST.casos.length > 0 && ST.casos.every(function (c) { return typeof c.grupo === 'string'; }); }
   function grupoDe(c) { return c.estado === 'local' ? 'cotizar' : c.grupo; }
   function etapaDe(c) { return c.estado === 'local' ? 'platicando' : c.etapa; }
-  function din160(n) { return Number(n).toLocaleString('es-MX', { maximumFractionDigits: 0 }); }   // (no se llama din160(): ya existe, la usa el BOM)
+  function din160(n) { return Number(n).toLocaleString('es-MX', { maximumFractionDigits: 0 }); }   // (no se llama dinero(): ya existe, la usa el BOM)
   function sumasMoneda(L) { var o = {}; L.forEach(function (c) { var m = c.monto; if (m && m.total != null) o[m.moneda || 'MXN'] = (o[m.moneda || 'MXN'] || 0) + Number(m.total); }); return o; }
-  function montoTxt(o) { return Object.keys(o).sort().map(function (k) { return k + ' ' + din160(o[k]); }).join(' + '); }
+  function montoTxt(o) { return Object.keys(o).sort().map(function (k) { return k + '\u00a0' + din160(o[k]); }).join(' + '); }   // la moneda no se separa de su número al partir la línea
   function filtro160() {
     if (!ST.f160) { var v = null; try { v = localStorage.getItem('cz_f160_' + (yo() || 'anon')); } catch (e) {} ST.f160 = v || 'mios'; }
     return ST.f160;
