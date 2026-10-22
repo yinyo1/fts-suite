@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.59';
+  var VERSION = 'V1.60';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -307,7 +307,143 @@
     if (sinAcento(t).indexOf(sinAcento(cc)) === 0) t = t.slice(cc.length).replace(/^[\s·:,\-]+/, '');
     return t ? cc + ' · ' + t : cc;
   }
+  /** Una fila de la lista (la misma en la lista de siempre y en la V1.60). `x` = { monto, due } solo con `lista_v160`. */
+  function filaSes(c, x) {
+    var sel = ST.sel || {};
+    var u = c.ultimo, on = (c.id && sel.id === c.id) || (c.local && sel.local === c.local);
+    // V1.52.1 · el «revisa» sin aviso no es una vista previa (la base 0015 ya lo salta; esto cubre un servidor sin ella).
+    if (u && u.rol === 'motor' && String(u.texto || '').trim() === SIN_AVISO) u = null;
+    var prev = c.estado === 'local' ? 'Se da de alta al volver la señal' : !u ? 'Sin mensajes' :
+      (sinMarca(u.texto) ? sinMarca(u.texto) : (u.adjuntos ? u.adjuntos + ' adjunto' + (u.adjuntos > 1 ? 's' : '') : ''));
+    var pre = !u ? '' : (u.rol === 'usuario' ? '<span class="tk" title="En el servidor">' + palomita(false) + '</span>' : '') +
+      (u.adjuntos && !u.texto ? ico('clip', 'xs') : '');
+    var nAcc = Number(c.acciones) || 0;
+    // V1.51 · H · en la fila, como WhatsApp: «🤖 escribiendo…» / «Richard está escribiendo…» en vez de la vista previa.
+    var esF = Object.prototype.hasOwnProperty.call(c, 'agente') && G.ChatWA ? estadoDelServidor(c.agente, c.escriben) : null;
+    // V1.52.1 · con estados_reales, la fila solo dice «escribiendo…» (robot, agente o persona); lo demás, la vista previa.
+    if (esF && ST.int && ST.int.estados_reales === true && esF.k === 'cola' && ST.int.acuse_v157 !== true) esF = null;
+    var ef = esF ? G.ChatWA.escrituraFilaHtml(esF) : '';
+    return '<div class="ses' + (on ? ' on' : '') + '" data-id="' + esc(c.id || '') + '" data-local="' + esc(c.local || '') + '" role="button" tabindex="0">' +
+      '<div class="av" style="background:' + color(c.titulo) + '">' + esc(iniciales(c.cliente || c.titulo)) +
+        // V1.60 (`lista_v160`) · el dueño va como inicial sobre el avatar (el chip con su nombre se comía la vista previa a 380 px).
+        (x && x.due && c.autor ? '<span class="due" title="' + esc(nombreCorto(c.autor, c.autor_nombre)) + '" style="background:' + color(c.autor) + '">' + esc(nombreCorto(c.autor, c.autor_nombre).charAt(0)) + '</span>' : '') + '</div>' +
+      '<div class="tx"><div class="t"><span class="n">' + esc(nombreChat(c)) + '</span><span class="h' + (nAcc ? ' nuevo' : '') + '">' + esc(corto((u && u.created_at) || c.ultima_actividad_at)) + '</span></div>' +
+      '<div class="u">' + (ef ? '<span class="p">' + ef + '</span>' : pre + '<span class="p">' + (u && u.rol === 'sistema' ? '⚙ ' : '') + esc(prev) + '</span>') + '<span class="meta">' +
+      (c.estado === 'enviada' ? '<span class="est enviada">enviada</span>' : c.estado === 'cerrado' ? '<span class="est cerrada">cerrada</span>' :
+       c.estado === 'local' ? '<span class="est local">sin enviar</span>' : '') +
+      (c.demo ? '<span class="chip-prueba">PRUEBA</span>' : '') +
+      (!x && ST.usuario === 'todos' && c.autor ? '<span class="quien-ses">' + esc(nombreCorto(c.autor, c.autor_nombre)) + '</span>' : '') +
+      (c.fijado ? '<span title="Fijada arriba (solo en tu lista)" aria-label="Fijada">' + ico('fijar', 'xs') + '</span>' : '') +
+      (x && x.monto ? '<span class="m">' + esc(x.monto) + '</span>' : x && x.sinMonto ? '<span class="m sin">sin monto</span>' : '') +
+      // V1.51 · A · globitos: verde = mensajes del agente sin leer; ámbar con ⏳ = decisiones que te tocan (tus casos).
+      (G.ChatWA ? G.ChatWA.globitos({ sinLeer: Number(c.sin_leer) || 0, teToca: c.puede_editar === false ? 0 : nAcc,
+        explicacion: { sinLeer: function (n) { return n + ' mensaje' + (n === 1 ? '' : 's') + ' del agente que no has abierto'; },
+          teToca: function (n) { return n + ' decisi' + (n === 1 ? 'ón' : 'ones') + ' esperando tu clic (conjeturas, conceptos o botones)'; } } })
+        : (nAcc ? '<span class="badge" title="Botones esperando tu decisión">' + nAcc + '</span>' : '')) + '</span></div></div>' +
+      '<button class="mas" data-mas="1" aria-label="Opciones de la sesión">' + ico('mas', 's') + '</button></div>';
+  }
+  /* ── V1.60 (`lista_v160`, #12) · UN filtro desplegable y los casos agrupados por etapa, con conteo y monto ──────────
+   * Prototipo aprobado: fts-conceptualizador, rama prototipos-esteban-v160-v161 (191427e), prototipos/v160/lista-chat-v2.html
+   * ?e=lista, con los ajustes de #12 6331933927: dos grupos visibles («Por cotizar» y «Enviado»), las subetapas siempre
+   * abiertas con un separador ligero, sin «Me toca», y «Cerradas» con Ganada / Perdida / Cerrada sin resultado.
+   * La etapa, la subetapa y el monto los decide el SERVIDOR (0030, conceptualizador.etapa_de / monto_de); aquí solo se agrupa.
+   * Sin esos campos (servidor sin la 0030) se pinta la lista de siempre. */
+  var GRUPOS160 = [['cotizar', 'Por cotizar', '#f59e0b', [['platicando', 'Platicando'], ['preguntas', 'Preguntas y BOM'], ['machote', 'Machote'], ['odoo', 'Borrador en Odoo']]],
+    ['enviado', 'Enviado', '#16a34a', [['esperando', 'Esperando al cliente'], ['enfriada', 'Enfriada']]],
+    ['cerradas', 'Cerradas', '#64748b', [['ganada', 'Ganada'], ['perdida', 'Perdida'], ['sinres', 'Cerrada sin resultado']]]];
+  function listaConEtapa() { return on('lista_v160') && ST.casos.length > 0 && ST.casos.every(function (c) { return typeof c.grupo === 'string'; }); }
+  function grupoDe(c) { return c.estado === 'local' ? 'cotizar' : c.grupo; }
+  function etapaDe(c) { return c.estado === 'local' ? 'platicando' : c.etapa; }
+  function din160(n) { return Number(n).toLocaleString('es-MX', { maximumFractionDigits: 0 }); }   // (no se llama din160(): ya existe, la usa el BOM)
+  function sumasMoneda(L) { var o = {}; L.forEach(function (c) { var m = c.monto; if (m && m.total != null) o[m.moneda || 'MXN'] = (o[m.moneda || 'MXN'] || 0) + Number(m.total); }); return o; }
+  function montoTxt(o) { return Object.keys(o).sort().map(function (k) { return k + ' ' + din160(o[k]); }).join(' + '); }
+  function filtro160() {
+    if (!ST.f160) { var v = null; try { v = localStorage.getItem('cz_f160_' + (yo() || 'anon')); } catch (e) {} ST.f160 = v || 'mios'; }
+    return ST.f160;
+  }
+  function pasa160(c, f) {
+    var g = grupoDe(c);
+    if (archivada(c) || g === 'archivada') return false;
+    if (f === 'cerradas') return g === 'cerradas';
+    if (g === 'cerradas') return false;
+    if (f === 'mios') return esMio(c);
+    if (f.indexOf('p:') === 0) return c.autor === f.slice(2);
+    return true;
+  }
+  function pintarLista160() {
+    // La pestaña «Me toca» de la barra de abajo era otro filtro de la lista: con un solo filtro, se esconde (y se apaga).
+    document.body.classList.add('l16-on'); ST.meToca = false;
+    var f = filtro160(), b = ST.busca ? sinAcento(ST.busca) : '', todas = todasLasSesiones();
+    var buscar = function (c) { return !b || sinAcento((c.titulo || '') + ' ' + (c.cliente || '')).indexOf(b) >= 0; };
+    var L = todas.filter(function (c) { return pasa160(c, f) && buscar(c); });
+    var cuenta = function (k) { return todas.filter(function (c) { return pasa160(c, k); }).length; };
+    var nArch = todas.filter(function (c) { return archivada(c); }).length, dias = ST.diasEnfriada || 30;
+    var nombreF = f === 'mios' ? 'Mis proyectos' : f === 'todos' ? 'Todos' : f === 'cerradas' ? 'Cerradas' : 'De ' + nombreCorto(f.slice(2));
+    var foco = document.activeElement && document.activeElement.id === 'bBusca' ? document.activeElement.selectionStart : null;
+    var h = '<div class="cab">';
+    if (ST.busca !== null) h += '<button class="btn-ic" id="bSalBusca" aria-label="Cerrar la búsqueda">' + ico('atras') + '</button><div class="tit"><input id="bBusca" placeholder="Buscar por nombre o cliente" value="' + esc(ST.busca) + '" aria-label="Buscar"></div>' +
+      '<button class="btn-ic" id="bLimpia" aria-label="Borrar">' + ico('cerrar', 's') + '</button>';
+    else h += '<button class="btn-ic" id="bSuite" aria-label="Volver a la suite">' + ico('atras') + '</button><div class="tit"><b>Conceptualizador</b><span class="ver" title="Build del módulo">' + VERSION + '</span></div>' +
+      '<button class="btn-ic" id="bBuscar" aria-label="Buscar">' + ico('buscar') + '</button><button class="btn-ic" id="bMasLista" aria-label="Opciones">' + ico('mas') + '</button>';
+    h += '</div>';
+    var vivos = L.filter(function (c) { return grupoDe(c) !== 'cerradas'; });
+    h += '<div class="l16-barra"><button type="button" class="l16-filtro" id="bF160" aria-haspopup="menu" aria-expanded="' + !!ST.f160Abierto + '">' + esc(nombreF) + ' <b>' + L.length + '</b><span class="l16-ch" aria-hidden="true">▾</span></button>' +
+      (f !== 'cerradas' && montoTxt(sumasMoneda(vivos)) ? '<span class="l16-total">' + esc(montoTxt(sumasMoneda(vivos))) + ' en curso</span>' : '') +
+      '<div class="l16-menu' + (ST.f160Abierto ? ' vis' : '') + '" role="menu">' +
+      [['mios', 'Mis proyectos'], ['todos', 'Todos']].map(function (x) { return '<button type="button" role="menuitemradio" data-f160="' + x[0] + '" class="' + (f === x[0] ? 'on' : '') + '">' + x[1] + '<span class="n">' + cuenta(x[0]) + '</span></button>'; }).join('') +
+      '<div class="l16-rot">Por persona</div>' + personas().map(function (p) { var k = 'p:' + p.actor; return '<button type="button" role="menuitemradio" data-f160="' + esc(k) + '" class="' + (f === k ? 'on' : '') + '"><span class="ini" style="background:' + color(p.actor) + '">' + esc(p.n.charAt(0)) + '</span>' + esc(p.n) + '<span class="n">' + cuenta(k) + '</span></button>'; }).join('') +
+      '<hr><button type="button" role="menuitemradio" data-f160="cerradas" class="' + (f === 'cerradas' ? 'on' : '') + '">Cerradas<span class="n">' + cuenta('cerradas') + '</span></button>' +
+      '<button type="button" role="menuitem" data-f160="archivadas">Archivadas<span class="n">' + nArch + '</span></button></div></div>';
+    h += '<div class="scroll">';
+    if (!L.length) h += '<p class="vacio">' + (ST.busca ? 'Nada con «' + esc(ST.busca) + '».' : f === 'mios' ? 'No hay cotizaciones tuyas en curso. Abre una con «+» y platícale el trabajo.' : 'Nada aquí con este filtro.') + '</p>';
+    var cerr = ST.g160 || (ST.g160 = {}), due = f !== 'mios' && f.indexOf('p:') !== 0;
+    GRUPOS160.forEach(function (g) {
+      var GM = L.filter(function (c) { return grupoDe(c) === g[0]; }); if (!GM.length) return;
+      var sm = montoTxt(sumasMoneda(GM)), ce = !!cerr[g[0]];
+      h += '<div class="l16-grupo' + (ce ? ' cerrado' : '') + '" data-grupo="' + g[0] + '"><button type="button" class="l16-gcab" data-g160="' + g[0] + '" aria-expanded="' + !ce + '"><span class="fl" aria-hidden="true">▾</span><span class="punto" style="background:' + g[2] + '"></span>' +
+        '<span class="et">' + g[1] + '</span><span class="cnt">' + GM.length + '</span><span class="mon">' + esc(sm) + '</span></button><div class="l16-filas">';
+      g[3].forEach(function (se) {
+        var S = GM.filter(function (c) { return etapaDe(c) === se[0]; }); if (!S.length) return;
+        var ss = montoTxt(sumasMoneda(S)), sin = S.filter(function (c) { return !(c.monto && c.monto.total != null); }).length;
+        h += '<div class="l16-sub" data-etapa="' + se[0] + '"><span>' + esc(se[0] === 'enfriada' ? se[1] + ' · ' + dias + '+ días' : se[1]) + ' <span class="sn">· ' + S.length + '</span></span>' +
+          '<span class="sm">' + esc(ss || (se[0] === 'platicando' || se[0] === 'preguntas' ? 'sin machote' : '')) + (ss && sin ? ' · ' + sin + ' sin monto' : '') + '</span></div>';
+        S.forEach(function (c) {
+          var m = c.monto && c.monto.total != null ? (c.monto.moneda || 'MXN') + ' ' + din160(c.monto.total) : null;
+          h += filaSes(c, { due: due, monto: m, sinMonto: !m && ['machote', 'odoo', 'esperando', 'enfriada', 'ganada', 'perdida'].indexOf(se[0]) >= 0 });
+        });
+      });
+      h += '</div></div>';
+    });
+    h += '<p class="pie">Una sesión por cotización · <a href="#" id="bAprendio">Lo que aprendió</a> · ' + VERSION + '</p></div>';
+    h += G.CzInterruptor('pantalla_v153') ? '<button class="fab nueva chn-mas" id="bNueva" aria-label="Nueva cotización" title="Nueva cotización">' + ico('nuevo') + '</button>'
+      : '<button class="fab nueva" id="bNueva">' + ico('nuevo') + 'Nueva cotización</button>';
+    $('#lista').innerHTML = h;
+    var en = function (id, fn) { var e = $('#' + id); if (e) e.onclick = fn; };
+    en('bNueva', nuevaCotizacion);
+    en('bAprendio', function (e) { e.preventDefault(); verAprendio(); });
+    en('bSuite', function () { location.href = '../index.html'; });
+    en('bBuscar', function () { ST.busca = ''; pintarLista(); $('#bBusca').focus(); });
+    en('bSalBusca', function () { ST.busca = null; pintarLista(); });
+    en('bLimpia', function () { ST.busca = ''; pintarLista(); $('#bBusca').focus(); });
+    en('bMasLista', function (e) { menuLista(e.currentTarget); });
+    en('bF160', function () { ST.f160Abierto = !ST.f160Abierto; pintarLista(); });
+    var bi = $('#bBusca');
+    if (bi) {
+      bi.oninput = function () { ST.busca = bi.value; var p = bi.selectionStart; pintarLista(); var n = $('#bBusca'); n.focus(); n.setSelectionRange(p, p); };
+      if (foco !== null) { bi.focus(); bi.setSelectionRange(foco, foco); }
+    }
+    $$('#lista [data-f160]').forEach(function (x) { x.onclick = function () {
+      ST.f160Abierto = false;
+      if (x.dataset.f160 === 'archivadas') { ST.archivadas = true; return pintarLista(); }
+      ST.f160 = x.dataset.f160; try { localStorage.setItem('cz_f160_' + (yo() || 'anon'), ST.f160); } catch (e) {}
+      pintarLista(); }; });
+    $$('#lista [data-g160]').forEach(function (x) { x.onclick = function () { cerr[x.dataset.g160] = !cerr[x.dataset.g160]; pintarLista(); }; });
+    $$('#lista .ses').forEach(enlazarTarjeta);
+  }
   function pintarLista() {
+    // V1.60 (`lista_v160`) · las archivadas siguen en su vista de siempre; todo lo demás, la lista nueva.
+    if (!ST.archivadas && listaConEtapa()) return pintarLista160();
+    document.body.classList.remove('l16-on');
     var L = sesionesVisibles(), sel = ST.sel || {}, todas = todasLasSesiones();
     var MP = mis(), enMis = function (c) { return !MP || MP.modo() !== 'mios' || esMio(c); };
     var nArch = todas.filter(function (c) { return archivada(c) && deSesion(c) && enMis(c); }).length;
@@ -339,36 +475,7 @@
     if (!L.length) h += '<p class="vacio">' + (ST.archivadas ? 'No hay sesiones archivadas' + (gu ? ' de ' + esc(gu.n) : '') + '.' :
       ST.busca ? 'Nada con «' + esc(ST.busca) + '».' :
       ST.filtro === 'vivas' && !gu ? 'No hay cotizaciones en curso. Abre una con «Nueva cotización» y platícale el trabajo.' : 'Nada aquí con estos filtros.') + '</p>';
-    L.forEach(function (c) {
-      var u = c.ultimo, on = (c.id && sel.id === c.id) || (c.local && sel.local === c.local);
-      // V1.52.1 · el «revisa» sin aviso no es una vista previa (la base 0015 ya lo salta; esto cubre un servidor sin ella).
-      if (u && u.rol === 'motor' && String(u.texto || '').trim() === SIN_AVISO) u = null;
-      var prev = c.estado === 'local' ? 'Se da de alta al volver la señal' : !u ? 'Sin mensajes' :
-        (sinMarca(u.texto) ? sinMarca(u.texto) : (u.adjuntos ? u.adjuntos + ' adjunto' + (u.adjuntos > 1 ? 's' : '') : ''));
-      var pre = !u ? '' : (u.rol === 'usuario' ? '<span class="tk" title="En el servidor">' + palomita(false) + '</span>' : '') +
-        (u.adjuntos && !u.texto ? ico('clip', 'xs') : '');
-      var nAcc = Number(c.acciones) || 0;
-      // V1.51 · H · en la fila, como WhatsApp: «🤖 escribiendo…» / «Richard está escribiendo…» en vez de la vista previa.
-      var esF = Object.prototype.hasOwnProperty.call(c, 'agente') && G.ChatWA ? estadoDelServidor(c.agente, c.escriben) : null;
-      // V1.52.1 · con estados_reales, la fila solo dice «escribiendo…» (robot, agente o persona); lo demás, la vista previa.
-      if (esF && ST.int && ST.int.estados_reales === true && esF.k === 'cola' && ST.int.acuse_v157 !== true) esF = null;
-      var ef = esF ? G.ChatWA.escrituraFilaHtml(esF) : '';
-      h += '<div class="ses' + (on ? ' on' : '') + '" data-id="' + esc(c.id || '') + '" data-local="' + esc(c.local || '') + '" role="button" tabindex="0">' +
-        '<div class="av" style="background:' + color(c.titulo) + '">' + esc(iniciales(c.cliente || c.titulo)) + '</div>' +
-        '<div class="tx"><div class="t"><span class="n">' + esc(nombreChat(c)) + '</span><span class="h' + (nAcc ? ' nuevo' : '') + '">' + esc(corto((u && u.created_at) || c.ultima_actividad_at)) + '</span></div>' +
-        '<div class="u">' + (ef ? '<span class="p">' + ef + '</span>' : pre + '<span class="p">' + (u && u.rol === 'sistema' ? '⚙ ' : '') + esc(prev) + '</span>') + '<span class="meta">' +
-        (c.estado === 'enviada' ? '<span class="est enviada">enviada</span>' : c.estado === 'cerrado' ? '<span class="est cerrada">cerrada</span>' :
-         c.estado === 'local' ? '<span class="est local">sin enviar</span>' : '') +
-        (c.demo ? '<span class="chip-prueba">PRUEBA</span>' : '') +
-        (ST.usuario === 'todos' && c.autor ? '<span class="quien-ses">' + esc(nombreCorto(c.autor, c.autor_nombre)) + '</span>' : '') +
-        (c.fijado ? '<span title="Fijada arriba (solo en tu lista)" aria-label="Fijada">' + ico('fijar', 'xs') + '</span>' : '') +
-        // V1.51 · A · globitos: verde = mensajes del agente sin leer; ámbar con ⏳ = decisiones que te tocan (tus casos).
-        (G.ChatWA ? G.ChatWA.globitos({ sinLeer: Number(c.sin_leer) || 0, teToca: c.puede_editar === false ? 0 : nAcc,
-          explicacion: { sinLeer: function (n) { return n + ' mensaje' + (n === 1 ? '' : 's') + ' del agente que no has abierto'; },
-            teToca: function (n) { return n + ' decisi' + (n === 1 ? 'ón' : 'ones') + ' esperando tu clic (conjeturas, conceptos o botones)'; } } })
-          : (nAcc ? '<span class="badge" title="Botones esperando tu decisión">' + nAcc + '</span>' : '')) + '</span></div></div>' +
-        '<button class="mas" data-mas="1" aria-label="Opciones de la sesión">' + ico('mas', 's') + '</button></div>';
-    });
+    L.forEach(function (c) { h += filaSes(c); });
     h += '<p class="pie">Una sesión por cotización · <a href="#" id="bAprendio">Lo que aprendió</a> · ' + VERSION + '</p></div>';
     // V1.53b (`pantalla_v153`) · la bolita «+» redonda del núcleo; «Nueva cotización» queda como nombre y aviso al pasar el mouse.
     if (!ST.archivadas) h += G.CzInterruptor('pantalla_v153') ? '<button class="fab nueva chn-mas" id="bNueva" aria-label="Nueva cotización" title="Nueva cotización">' + ico('nuevo') + '</button>'
@@ -751,6 +858,9 @@
     ['vendedor_v159', 'Vendedor y oportunidad', 'La orden sale con el vendedor del autor del caso, su oportunidad y «Le atiende» del autor; sin oportunidad, la tarjeta ofrece ligar o crear una.'],
     ['bom_observado_v159', 'BOM observado aparte', 'Un BOM que no pasa la revisión va a bom-observado.md y se ve con sus 🔴; bom.md se queda con el último que sí pasó.'],
     ['tarjetas_v159', 'Tarjetas resueltas', 'El botón dice «Actualizar SO… en Odoo» si la orden existe; una tarjeta hecha queda resuelta en su lugar y el clic no genera un mensaje doble.'],
+    ['lista_v160', 'Lista por etapa', 'Un solo filtro (Mis proyectos · Todos · Por persona · Cerradas · Archivadas) y los casos en «Por cotizar» y «Enviado» con sus subetapas, conteo y monto. La etapa la decide el servidor (0030).'],
+    ['chat_limpio_v160', 'Chat limpio', 'No pinta acuses ya contestados, estados superados, tarjetas reemplazadas ni «Cotizar con referencias» repetido («N ocultos · mostrar todo»). Todo error de Odoo dice qué hacer con el nombre del botón y se guarda; el rayito solo ofrece lo posible.'],
+    ['seleccion_v160', 'Seleccionar parte del texto', 'Con el mouse se arrastra y el chat ya no se repinta mientras hay selección; en el teléfono, mantener presionado sobre el texto da las manijas del sistema.'],
   ];
   /** Los interruptores que conoce el servidor (valores `interruptor:*` y `interruptores`), en el orden de arriba; uno nuevo
    * que la pantalla todavía no describe sale al final con su nombre, para que se pueda prender igual. */
@@ -771,6 +881,7 @@
     ['Experimento de contexto', [['contexto_modo', 'Modo de contexto', 's'], ['experimento_pct', 'Trabajos con sombra (%)', 'n'], ['experimento_techo_semana', 'Techo semanal de la sombra (ponderados)', 'n']]],
     ['Aviso de motor caído', [['motor_caido_aviso_min', 'Avisar tras (min sin procesar)', 'n'], ['motor_caido_desde', 'Ventana desde', 'h'], ['motor_caido_hasta', 'Ventana hasta', 'h']]],
     // V1.59 (#12) · los dos mapas por persona de la 0029. `todos`: aquí también sale la clave del administrador del panel.
+    ['Lista', [['dias_enfriada', 'Días sin actividad para «Enfriada»', 'n']]],
     ['Delegación y vendedor', [['puede_mover:*', 'Mueve machotes y órdenes de (* = todos; usuarios con coma)', 't', 'todos'], ['vendedor_odoo:*', 'Vendedor en Odoo (id de usuario) para los casos de', 'n', 'todos']], 'persona']
   ];
   async function dlgPanel(msg) {
@@ -802,6 +913,9 @@
       '<div>Semana: <b>' + millones(Gs.semana) + '</b> de ' + millones(V.consumo_tope_semana) + ' ponderados</div>' + medidor(Number(Gs.semana) || 0, Number(V.consumo_tope_semana) || 0) +
       '<div class="czc-k">Experimento (sombra), aparte: ' + millones(Gs.experimento_semana) + ' de ' + millones(V.experimento_techo_semana) + ' esta semana.</div>' +
       (Gs.por_persona_hoy && Object.keys(Gs.por_persona_hoy).length ? '<div class="czc-k">Mensajes hoy: ' + Object.keys(Gs.por_persona_hoy).map(function (a) { return esc(nombreCorto(a)) + ' ' + Number(Gs.por_persona_hoy[a]); }).join(' · ') + '</div>' : '') + '</div>';
+    // V1.60 · medición: los errores de Odoo de las últimas 24 h, por código (falla_odoo, 0030).
+    if (r.fallas_odoo_24h && Object.keys(r.fallas_odoo_24h).length) h += '<h3>Errores de Odoo · 24 h</h3><div class="czc-tarj">' +
+      Object.keys(r.fallas_odoo_24h).sort(function (a, b) { return r.fallas_odoo_24h[b] - r.fallas_odoo_24h[a]; }).map(function (k) { return '<div>' + esc(k) + ' · <b>' + Number(r.fallas_odoo_24h[k]) + '</b></div>'; }).join('') + '</div>';
     var INTS = listaInterruptores(r), nOn = INTS.filter(function (x) { return String(V['interruptor:' + x[0]]) === '1'; }).length;
     h += '<h3>Interruptores · ' + nOn + ' de ' + INTS.length + ' prendidos</h3><p class="czc-k">Todo entró apagado: apagado hace lo de V1.51. Prende uno a la vez, con su razón; queda en la bitácora.</p><div class="czc-ints">' +
       INTS.map(function (x) { return campo('interruptor:' + x[0], [x[1], x[2]], 'sw'); }).join('') + '</div>';
@@ -1160,6 +1274,8 @@
     if (sg && sg.cierre && on('estados_reales') && agenteTrabajando()) sg = null;
     // V1.53b · el cierre solo se sugiere cuando de verdad se puede (sin proceso corriendo ni clic pendiente).
     if (sg && sg.cierre && on('bolita_acciones') && G.CzAvance.cierrePosible && !G.CzAvance.cierrePosible(H)) sg = null;
+    // V1.60 (`chat_limpio_v160`) · «Ya la mandé al cliente» solo con orden en Odoo que todavía no esté enviada.
+    if (sg && on('chat_limpio_v160') && G.CzLimpio && /^Ya la mandé/.test(sg.txt || '') && !G.CzLimpio.reglaClics([{ txt: sg.txt }], H).length) sg = null;
     /* V1.53b (`bolita_acciones`) · lo que se puede hacer va en la bolita ⚡ arriba del micrófono, como sugerencia: ya no es un botón
      * ancho a un toque accidental. Abajo solo queda la pastilla de espera (es estado, no acción). */
     if (on('bolita_acciones') && BOL) {
@@ -1172,6 +1288,10 @@
        * solo para el dueño del caso; «Ver cotización» también para Esteban. Y «Dame los generales» siempre. */
       var CL = abierta && !(ST.sel || {}).menu && G.CzAvance.clics ? G.CzAvance.clics(H) : [], yoDueno = mia(c), adm = ST.admin === true || ST.panelAdmin === true;
       CL = CL.filter(function (x) { return x.acc === 'ver_cot' ? (yoDueno || adm) : yoDueno; });
+      // V1.60 (`chat_limpio_v160`) · solo lo posible en el estado real del caso, y la salida del error vigente PRIMERO.
+      var FVr = on('chat_limpio_v160') && G.CzLimpio ? G.CzLimpio.fallaVigente(H) : null, AXr = FVr ? G.CzLimpio.accion(FVr.codigo, H) : null;
+      if (on('chat_limpio_v160') && G.CzLimpio) CL = G.CzLimpio.reglaClics(CL, H);
+      if (AXr && AXr.boton && AXr.hacer && yoDueno) sug.push({ texto: '⚠ ' + AXr.boton, fuerte: true, attrs: { 'data-sug': 'falla', 'data-sug-id': FVr.id }, hacer: function (bt) { salidaFalla(FVr, c, bt); } });
       var cubierto = !!sgF && ((sgF.acc === 'machote' && CL.some(function (x) { return x.acc === 'machote'; })) || (sgF.acc === 'ir' && sgF.a === 'accion') ||
         (sgF.acc === 'cotiza' && CL.some(function (x) { return x.acc === 'hacer' || x.acc === 'refok'; })));
       if (sgF && !sgF.espera && !cubierto) sug.push({ texto: sgF.txt, fuerte: true, attrs: { 'data-sug': sgF.acc }, hacer: function (bt) { lanzarSiguiente(sgF, c, bt); } });
@@ -1297,7 +1417,7 @@
     var AN = analisis();
     if (AN && AN.pausa && AN.estado !== 'cerrado') cab = '<b class="avl-pausa">⏸ En pausa</b> · ' + cab;
     if (AN && AN.estado === 'cerrado') cab = '<b class="avl-cerrado">🔒 Análisis cerrado</b> · ' + cab;
-    else if (AN && AN.estado === 'listo') cab = '<b class="avl-listo">Listo para cerrar</b> · ' + cab;
+    else if (AN && AN.estado === 'listo') cab = '<b class="avl-listo">' + esc(letreroListo()) + '</b> · ' + cab;
     else if (AN && typeof pctAv() === 'number') cab = '<b class="avl-pct ' + colorAvance(AN, L.P) + '">' + pctAv() + ' % hacia el 100</b> · ' + cab;
     // V1.48 · UN indicador con color que significa algo: rojo = todavía no se puede cotizar (un N5), ámbar = en camino, verde = 100 %.
     if (AN) cab = anillo(AN, L.P) + cab;
@@ -1310,7 +1430,7 @@
       (L.P ? ' · <b>' + esc(L.rubrosTxt) + ' cerrados</b>' : L.pct !== null ? ' · <b>Llevas ' + L.pct + ' %</b>' : '') + (R && !L.P ? ' · ' + R.lista.length + ' rubros' : '') + '</div>';
     if (L.P) h += preciosFranja(L.P, L.sig);
     if (AN) h += '<div class="avl-analisis">' + (AN.estado === 'cerrado' ? '<b>🔒 Análisis cerrado' + (AN.cerrado && AN.cerrado.folio ? ' · ' + esc(AN.cerrado.folio) + (AN.cerrado.version ? ' v' + esc(AN.cerrado.version) : '') : '') + '.</b> El agente ya no mueve nada; si pides algo nuevo, se reabre.' :
-      '<b>' + (AN.estado === 'listo' ? 'Listo para cerrar' : pctAv() + ' % hacia el 100') + '</b>' + (AN.falta && AN.falta.length ? ' · Falta: ' + esc(AN.falta.join('; ')) : '') +
+      '<b>' + (AN.estado === 'listo' ? esc(letreroListo()) : pctAv() + ' % hacia el 100') + '</b>' + (AN.falta && AN.falta.length ? ' · Falta: ' + esc(AN.falta.join('; ')) : '') +
       // V1.52.1 · el atajo de cierre, solo sin proceso vivo ni clic pendiente (Va, Guardar en el machote, Cotizar con referencias, Actualizar SO, Ya la mandé).
       (mia(c) && (!on('estados_reales') || (G.CzAvance.cierrePosible(ST.hilo) && !agenteTrabajando())) ? ' <button type="button" class="link" id="avCerrarAn">' + esc(BOTON_CIERRE) + '</button>' : '') +
       (mia(c) && !AN.pausa ? ' <button type="button" class="link" id="avPausar">Pausar al agente</button>' : '') +
@@ -1894,18 +2014,30 @@
     if (!H && !(ST.sel || {}).local) aparte('<div class="sis"><span>Cargando…</span></div>');
     if (modo) burbuja('el', 'intro', 'Conceptualizador', '<div class="txt">' + esc(MODOS[modo].intro) + '</div>');
     else if ((ST.sel || {}).local && !(H && H.mensajes && H.mensajes.length)) aparte('<div class="sis"><span>Platícale el trabajo: texto, notas de voz, fotos y PDFs. Cuando termines escribe «ya es todo».</span></div>');
-    ((H && H.mensajes) || []).forEach(function (m) {
+    /* V1.60 (`chat_limpio_v160`, #12) · lo que no aporta no se pinta (sigue en la base y en hilo.md): acuses ya contestados,
+     * el mismo texto del motor dos veces seguidas, y la respuesta con un estado superado queda en UNA línea. «N ocultos ·
+     * mostrar todo» lo devuelve. El último mensaje del motor nunca se oculta (CzLimpio). */
+    var LIM = on('chat_limpio_v160') && G.CzLimpio && !ST.verTodoChat, nOc = 0, prevMot = null; ST.ocTarj = 0;
+    var MSG = (H && H.mensajes) || [], ultMot = -1; MSG.forEach(function (x, i) { if (x.rol === 'motor' && x.autor !== 'acuse' && x.texto !== SIN_AVISO) ultMot = i; });
+    MSG.forEach(function (m, iM) {
       var t = m.escrito_at || m.created_at; dia(t);
       if (m.rol === 'sistema') return aparte('<div class="sis"><span>' + esc(m.texto) + '</span></div>');
       if (m.rol === 'motor' && m.texto === SIN_AVISO) return;          // V1.46 · el «revisa» sin aviso no se pinta
+      if (LIM && G.CzLimpio.acuseContestado(m, iM, MSG)) { nOc++; return; }
+      if (LIM && m.rol === 'motor' && m.autor !== 'acuse' && iM !== ultMot && prevMot !== null && prevMot === m.texto && !m.trabajo_id) { nOc++; return; }
+      if (m.rol === 'motor' && m.autor !== 'acuse') prevMot = m.texto;
       var mio = m.rol === 'usuario', tr = m.trabajo_id && porTrabajo[m.trabajo_id];
+      var supV = !mio && H.ultima && m.trabajo_id && ULT !== Number(m.trabajo_id) && /\bLlevas \d{1,3} %|\bRubros \d+\/\d+/.test(String(m.texto || ''));
+      var pleg = LIM && supV && !(ST.verPleg || {})[m.id];
+      if (pleg) { nOc++; aparte('<div class="plegado"><button type="button" data-pleg="' + esc(m.id) + '">📋 <b>Estado de las ' + esc(hora(t)) + '</b> · ' +
+        esc((String(sinMarca(m.texto) || '').match(/Llevas \d{1,3} %|Rubros \d+\/\d+/) || [''])[0]) + ' · reemplazado · ver</button></div>'); }
       // V1.48 · el mensaje del agente que trae la tabla del machote se queda corto (4 líneas) con «Ver todo»: la tabla es el resumen.
       var corto = !on('leer_mas') && !mio && U && U.machote && U.machote.tabla && Number(U.trabajo_id) === Number(m.trabajo_id) && String(sinMarca(m.texto) || '').length > 280 && !(ST.verTodo || {})[m.id];
       // V1.53b · con `leer_mas`, todo mensaje del agente se corta a 5 renglones con «… Leer más» pegado al final (lo hace el núcleo).
       var leer = !mio && on('leer_mas') && LM ? ' data-leer="' + esc(m.id) + '"' : '';
       // Sin trabajo en modo «ya tengo el levantamiento»: guardado; el motor lo lee todo junto al disparar.
       var tk = mio ? (!m.trabajo_id && modo === 'levantamiento' ? '<span class="tk leido" title="Guardado; lo reviso todo junto cuando toques «Ya es todo»">' + palomita(true) + '</span>' : tick(tr)) : '';
-      burbuja(mio ? 'yo' : 'el', '', 'Conceptualizador' + (/respaldo/.test(m.autor) ? ' · respaldo' : ''),
+      if (!pleg) burbuja(mio ? 'yo' : 'el', '', 'Conceptualizador' + (/respaldo/.test(m.autor) ? ' · respaldo' : ''),
         citaDe(m.responde_a, m.texto) +
         adjuntosHtml((m.adjuntos || []).map(function (a) { return Object.assign({}, a, meta[a.id] || {}); }), false) +
         (sinMarca(m.texto) ? '<div class="txt' + (corto ? ' txt-corto' : '') + '"' + leer + '>' + (mio ? esc(sinMarca(m.texto)) : md(sinMarca(m.texto))) + '</div>' +
@@ -1915,7 +2047,7 @@
       if (mio && tr && tr.estado === 'error') aparte('<div class="sis"><span class="mal">El motor no pudo con este mensaje: ' + esc(tr.error || '') + '. Escríbelo de otra forma o vuelve a intentar.</span></div>');
       // V1.51 · B · una respuesta vieja que traía estado («Llevas N %» o «Rubros n/m») queda SUPERADA: tachada, sin botones,
       // con un toque que lleva al estado vigente. Nunca se decide sobre algo viejo.
-      if (!mio && H.ultima && m.trabajo_id && ULT !== Number(m.trabajo_id) && /\bLlevas \d{1,3} %|\bRubros \d+\/\d+/.test(String(m.texto || '')))
+      if (!pleg && !LIM && supV)
         aparte('<div class="fila el"><div class="carta superada" aria-disabled="true"><s>Estado de la cotización · ' + esc(hora(t)) + '</s>' +
           // V1.53b · «ver el vigente» solo si la tarjeta vigente se va a pintar; si no, el texto sin enlace.
           (on('pantalla_v153') && !RUB ? '<span class="nota">Reemplazado por el estado de las ' + esc(hora(ULT_AT)) + '</span>' :
@@ -1969,6 +2101,15 @@
         '<span class="hora">' + esc(hora(x.escrito_at)) + ' ' + est + '</span><div style="clear:both"></div>' +
         (x.estado === 'error' ? '<div class="corr"><span class="err">' + esc(x.error) + '</span><button class="boton" data-reint="' + esc(x.cliente_id) + '">Reintentar</button><button class="boton" data-desc="' + esc(x.cliente_id) + '">Descartar</button></div>' : ''));
     });
+    // V1.60 (`chat_limpio_v160`) · la falla de Odoo vigente, con su salida, y «N ocultos · mostrar todo». Las resueltas no se pintan.
+    if (on('chat_limpio_v160') && G.CzLimpio && H && H.caso) {
+      var FV = G.CzLimpio.fallaVigente(H), nRes = ((H.fallas_odoo) || []).filter(function (f) { return f !== FV; }).length;
+      if (FV) aparte(fallaHtml(FV, H));
+      if (ST.verTodoChat) ((H.fallas_odoo) || []).forEach(function (f) { if (f !== FV) aparte('<div class="fila el"><div class="carta falla-odoo resuelta"><s>✕ ' + esc(tituloFalla(f, H)) + ' · ' + esc(f.codigo) + '</s><span class="nota">✓ Resuelto · ' + esc(hora(f.at)) + '</span></div></div>'); });
+      var nO = nOc + (ST.ocTarj || 0) + nRes;
+      if (nO || ST.verTodoChat) aparte('<div class="ocultos"><button type="button" id="bOcultos">' + (ST.verTodoChat ? 'Ocultar lo que no aporta' : nO + ' oculto' + (nO === 1 ? '' : 's') + ' · mostrar todo') + '</button></div>');
+      ST.nOcultos = nO;
+    }
     var RT = ST.retoma;
     if (RT && RT.id === (ST.sel || {}).id && G.CzAvance && G.CzAvance.ultimaActividad(H) === RT.t && !salidaDelCaso().length) {
       dia(new Date().toISOString());
@@ -1994,10 +2135,24 @@
     var nMotor = ((H && H.mensajes) || []).filter(function (m) { return m.rol !== 'usuario'; }).length;
     var nuevas = ST.nMotor !== null && ST.nMotorCaso === (ST.sel || {}).id ? Math.max(0, nMotor - ST.nMotor) : 0;
     ST.nMotor = nMotor; ST.nMotorCaso = (ST.sel || {}).id;
+    /* V1.60 (`seleccion_v160`, #12) · el sondeo repintaba #msgs cada 10 s aunque nada cambiara y se llevaba la selección de texto
+     * (medido: viva ~8 s). Ahora: si el HTML es el mismo, no se toca; si cambió y hay una selección dentro del chat, se espera a
+     * que se suelte (máximo 60 s) y lo nuevo se cuenta en ⇊. ST.repintesEvitados lo mide. */
+    if (on('seleccion_v160')) {
+      var sl = G.getSelection ? G.getSelection() : null, selViva = !!(sl && !sl.isCollapsed && sl.rangeCount && M.contains(sl.anchorNode));
+      if (h === ST.htmlChat && !foco && ST.htmlNodo && ST.htmlNodo.parentNode === M) { ST.repintesEvitados = (ST.repintesEvitados || 0) + 1; actualizarAbajo(); return; }
+      if (selViva) {
+        if (!ST.selDesde) ST.selDesde = Date.now();
+        if (Date.now() - ST.selDesde < 60000) { clearTimeout(ST.selT); ST.selT = setTimeout(function () { pintarChat(); }, 1500); ST.abajoN += nuevas; actualizarAbajo(); return; }
+      }
+      ST.selDesde = 0; ST.htmlChat = h;
+    } else ST.htmlChat = null;
     M.innerHTML = h;
+    ST.htmlNodo = M.firstChild;   // V1.60 · si otro (el menú) escribe en #msgs, este nodo ya no está y se repinta
     if (on('tarjetas_colapsadas')) colapsarCartas(M);
     if (LM && on('leer_mas')) LM.aplicar();
     enlazarChat(M);
+    if (on('chat_limpio_v160')) enlazarLimpio(M);
     if (GZ) GZ.decorar();
     if (foco) { var t = $('#msgs [data-borr="' + foco.k + '"]'); if (t) { t.focus(); try { t.setSelectionRange(foco.a, foco.b); } catch (e) {} } }
     ST.scrollProg = Date.now();   // V1.40: este scroll lo hace la pantalla; no esconde la franja
@@ -2502,6 +2657,45 @@
       '<p class="nota">Al tocarlo aceptas las referencias de arriba; queda registrado en el hilo.</p>';
   }
   function botonCambiar(kk) { return '<button type="button" class="cambiar" data-cambia="' + esc(kk) + '" aria-label="Cambiar esta respuesta">↺ Cambiar</button>'; }
+  /** V1.60 (`chat_limpio_v160`) · «Listo para cerrar» solo con la orden ya enviada; antes, lo que de verdad sigue. */
+  function letreroListo() { return on('chat_limpio_v160') && G.CzLimpio ? G.CzLimpio.letrero(ST.hilo) : 'Listo para cerrar'; }
+  /* ── V1.60 (`chat_limpio_v160`) · la falla de Odoo con su salida (catálogo en cz-limpio.js) ── */
+  function tituloFalla(f, H) {
+    var so = ((H && H.caso) || {}).orden_nombre;
+    return f.que === 'enviada' ? 'No se marcó como enviada en Odoo' : so ? 'No se actualizó ' + so + ' en Odoo' : 'No se creó la cotización en Odoo';
+  }
+  function fallaHtml(f, H) {
+    var AX = G.CzLimpio.accion(f.codigo, H), puede = mia(H.caso) || ST.admin === true || ST.panelAdmin === true;
+    return '<div class="fila el"><div class="carta falla-odoo" data-falla="' + esc(f.id) + '"><h4>✕ ' + esc(tituloFalla(f, H)) + '</h4><p>' + esc(AX.texto) + '</p>' +
+      (AX.boton && AX.hacer && puede ? '<div class="acc"><button type="button" class="si" data-falla-hacer="' + esc(f.id) + '">' + esc(AX.boton) + '</button></div>' : '') +
+      (AX.quien ? '<p class="nota">Lo hace: ' + esc(AX.quien) + '.</p>' : '') +
+      '<span class="nota">' + esc(hora(f.at)) + ' · código ' + esc(f.codigo) + (f.actor ? ' · ' + esc(nombreCorto(f.actor)) : '') + '</span></div></div>';
+  }
+  /** La salida del error: el MISMO efecto desde la tarjeta y desde el rayito. */
+  function salidaFalla(f, c, b) {
+    var AX = G.CzLimpio.accion(f.codigo, ST.hilo), x = AX.hacer || {}, bt = b || document.createElement('button');
+    var prop = function (tipo) { return ((ST.hilo && ST.hilo.acciones) || []).filter(function (a) { return a.tipo === tipo && a.estado === 'propuesta'; }).pop(); };
+    if (x.acc === 'mandar') return lanzarSiguiente({ txt: AX.boton, acc: 'mandar', texto: x.texto }, c, bt);
+    if (x.acc === 'ir') return lanzarSiguiente({ txt: AX.boton, acc: 'ir', a: x.a }, c, bt);
+    var p = prop(f.que || 'crear_borrador');
+    if (x.acc === 'refok' && p) return lanzarClic({ acc: 'refok', id: p.id }, c, bt);
+    if (x.acc === 'reintentar' && p) return lanzarClic({ acc: 'hacer', id: p.id }, c, bt);
+    return lanzarSiguiente({ txt: 'Volver a armar la cotización', acc: 'mandar', texto: G.CzLimpio.REARMAR }, c, bt);
+  }
+  function enlazarLimpio(M) {
+    $$('[data-pleg]', M).forEach(function (b) { b.onclick = function () { ST.verPleg = ST.verPleg || {}; ST.verPleg[b.dataset.pleg] = true; pintarChat(); }; });
+    var o = $('#bOcultos', M); if (o) o.onclick = function () { ST.verTodoChat = !ST.verTodoChat; pintarChat(); };
+    $$('[data-falla-hacer]', M).forEach(function (b) { b.onclick = function () {
+      var f = ((ST.hilo && ST.hilo.fallas_odoo) || []).filter(function (x) { return String(x.id) === b.dataset.fallaHacer; })[0]; if (f) salidaFalla(f, ST.hilo.caso, b); }; });
+  }
+  /** Guarda el error del clic en la base (evento `falla_odoo`, sin trabajo del motor): así se ve al recargar y queda medido. */
+  function guardarFalla(a, r) {
+    if (!on('chat_limpio_v160') || !ST.hilo || !ST.hilo.caso) return;
+    var cod = String((r && r.error) || 'NO_SE_ESCRIBIO').toUpperCase().replace(/[^A-Z0-9_]/g, '_').slice(0, 60);
+    if (!/^[A-Z]/.test(cod)) cod = 'NO_SE_ESCRIBIO';
+    C.evento({ caso_id: ST.hilo.caso.id, tipo: 'falla_odoo', datos: { codigo: cod, mensaje: String((r && r.mensaje) || '').slice(0, 500), que: a.tipo, accion_id: String(a.id) } })
+      .then(function () { return cargarHilo(); }).catch(function () {});
+  }
   function tarjetaAcciones(L) {
     var conj = L.filter(function (a) { return a.tipo === 'conjetura'; }), otras = L.filter(function (a) { return a.tipo !== 'conjetura'; }), h = '';
     if (conj.length) {
@@ -2548,7 +2742,12 @@
     var idsAcc = ((ST.hilo && ST.hilo.acciones) || []).map(function (x) { return Number(x.id) || 0; }), ultAcc = idsAcc.length ? Math.max.apply(null, idsAcc) : 0;
     if (G.CzCondiciones && L.some(function (x) { return Number(x.id) === ultAcc; })) h += G.CzCondiciones.tarjeta(ST.hilo, mia(ST.hilo && ST.hilo.caso));
     var candCond = !!(G.CzCondiciones && G.CzCondiciones.cerrado(ST.hilo));
+    var limT = on('chat_limpio_v160') && G.CzLimpio && !ST.verTodoChat;
     otras.forEach(function (a) {
+      // V1.60 (`chat_limpio_v160`) · una tarjeta descartada, reemplazada o ya hecha por otra no se pinta (cuenta en «N ocultos»).
+      if (limT && (a.estado === 'descartada' || yaHecha(a))) { ST.ocTarj = (ST.ocTarj || 0) + 1; return; }
+      // y «Ya la mandé al cliente» sin orden en Odoo (o con la orden ya enviada): no es posible todavía (o ya se hizo).
+      if (limT && a.tipo === 'enviada' && a.estado === 'propuesta' && !G.CzLimpio.reglaClics([{ txt: 'Ya la mandé' }], ST.hilo).length) { ST.ocTarj = (ST.ocTarj || 0) + 1; return; }
       var d = a.datos || {}, r = a.resultado || {}, manejador = G.CzAcciones && G.CzAcciones[a.tipo];
       var espera = pendientes && (a.tipo === 'crear_machote' || a.tipo === 'crear_borrador');
       // V1.46 · un borrador propuesto ANTES de la versión del machote que falta guardar es de la versión anterior.
@@ -2570,7 +2769,7 @@
           '<ul>' + (d.pendientes || []).map(function (hh) { return (hh.items && hh.items.length ? hh.items : [hh.titulo]).map(function (it) { return '<li>' + esc(it) + '</li>'; }).join(''); }).join('') + '</ul>' +
           '<span class="nota">El machote sí se crea: esos renglones van sin precio y marcados (N5).</span></div>' : '') +
         // V1.43 · qué parte del costo es referencia (N3/N4), con las alertas N3 arriba.
-        ((a.tipo === 'crear_machote' && a.id === ultimoCm) || a.tipo === 'crear_borrador' ? referenciasHtml(d.referencias, a.tipo === 'crear_borrador' && a.estado === 'propuesta', d.sensatez) + sensatezHtml(d.sensatez) : '') +
+        ((a.tipo === 'crear_machote' && a.id === ultimoCm) || (a.tipo === 'crear_borrador' && (!limT || a.estado === 'propuesta')) ? referenciasHtml(d.referencias, a.tipo === 'crear_borrador' && a.estado === 'propuesta', d.sensatez) + sensatezHtml(d.sensatez) : '') +
         // V1.57b (`regla15_v157`) · los cálculos que vería el cliente, con «texto limpio» o «Liberar…» (cz-regla15-ui.js).
         (a.tipo === 'crear_borrador' && G.CzR15 && !espera && !viejo && !recalc ? G.CzR15.html(a) : '') +
         (a.estado === 'hecha' ? '<span class="hecho">✓ ' + (on('tarjetas_v159') && a.hecha_at ? esc(horaDe(a.hecha_at)) + ' · ' : '') + esc(r.texto || 'Hecho') + '</span>' + releidoOdoo(r) +
@@ -2953,8 +3152,18 @@
     }
     var reintenta = function () { if (acepta0) ST.refAcepta[id] = true; return hacer(id, document.createElement('button')); };
     var falla = function (r) {
+      if (a.tipo === 'crear_borrador' || a.tipo === 'enviada') guardarFalla(a, r);   // V1.60 · queda en la base (chat_limpio_v160)
       if (!est) return;
       var so = ((ST.hilo && ST.hilo.caso) || {}).orden_nombre;
+      // V1.60 (`chat_limpio_v160`) · el error dice QUÉ HACER con el nombre del botón, y ese botón hace lo mismo que en el rayito.
+      if (on('chat_limpio_v160') && G.CzLimpio) {
+        var AX = G.CzLimpio.accion((r && r.error) || 'NO_SE_ESCRIBIO', ST.hilo), f0 = { codigo: (r && r.error) || 'NO_SE_ESCRIBIO', que: a.tipo, accion_id: a.id };
+        est.error({ titulo: so ? 'No se actualizó ' + so + ' en Odoo' : 'No se creó la cotización en Odoo', motivo: AX.texto, codigo: (r && r.error) || 'NO_SE_ESCRIBIO',
+          nota: (AX.quien ? 'Lo hace: ' + AX.quien + '. ' : '') + (so ? 'La orden no cambió.' : 'No se escribió nada en Odoo.'),
+          acciones: AX.boton && AX.hacer ? [{ txt: AX.boton, si: true, fn: function (bt) { if (AX.hacer.acc === 'reintentar') return reintenta(); salidaFalla(f0, ST.hilo.caso, bt); } }] : [] });
+        ST.estErr = { h: est, caso: ((ST.hilo && ST.hilo.caso) || {}).id };
+        return;
+      }
       est.error({ titulo: so ? 'No se actualizó ' + so + ' en Odoo' : 'No se creó la cotización en Odoo', motivo: (r && r.mensaje) || 'sin respuesta', codigo: (r && r.error) || 'NO_SE_ESCRIBIO',
         nota: so ? 'La orden no cambió.' : 'No se escribió nada en Odoo.', reintentar: reintenta });
     };
@@ -3409,7 +3618,7 @@
   function guardarSel() { try { sessionStorage.setItem('cz_sel', JSON.stringify(ST.sel)); } catch (e) {} }
   async function cargarCasos() {
     var r = await C.casos();
-    if (r.ok) { ponInterruptores(r); ST.casos = r.casos || []; ST.motor = r.motor; if ('uso' in r) ST.uso = r.uso || null; if ('admin' in r) ST.admin = r.admin === true; motorV152(r);
+    if (r.ok) { ponInterruptores(r); ST.casos = r.casos || []; ST.motor = r.motor; if (r.dias_enfriada) ST.diasEnfriada = Number(r.dias_enfriada) || 30; if ('uso' in r) ST.uso = r.uso || null; if ('admin' in r) ST.admin = r.admin === true; motorV152(r);
       if (r.robot_horario) ST.robotHorario = r.robot_horario; }   // V1.52.1 (0015) · el horario del panel
     return r;
   }
@@ -3446,7 +3655,10 @@
       ST.retomaPara = s.id; var rt = G.CzAvance.retomamos(r.hilo, Date.now(), { version: tocaRetomarPorVersion(r.hilo) });
       ST.retoma = rt ? Object.assign({ id: s.id, t: G.CzAvance.ultimaActividad(r.hilo) }, rt) : null;
     }
-    ST.hilo = r.hilo; registrarPasos(r.hilo); revisarDictados(); pintarChat();
+    ST.hilo = r.hilo; registrarPasos(r.hilo); revisarDictados();
+    // V1.60 (`chat_limpio_v160`) · el error de abajo se quita solo cuando su causa se corrigió (o llegó una tarjeta más nueva).
+    if (ST.estErr && ST.estErr.caso === s.id && on('chat_limpio_v160') && G.CzLimpio && (r.hilo.fallas_odoo || []).length && !G.CzLimpio.fallaVigente(r.hilo)) { ST.estErr.h.cerrar(); ST.estErr = null; }
+    pintarChat();
     // Recién mandado: si el motor ya tiene trabajo, la siguiente consulta no espera los 20 s.
     if (enCurso() && ST.sondeoMs > 2500) sondear();
   }
@@ -3572,7 +3784,9 @@
       contenedor: $('#msgs'), cabecera: $('#ch'), antesDe: $('.compose'),
       mensaje: gestoDe, puedeReenviar: function () { return false; }, razonReenviar: RAZON_REENVIAR,
       onResponder: function () { try { $('#in').focus(); } catch (e) {} actualizarAbajo(); },
-      alCambiar: actualizarAbajo, aviso: function (t) { toast(t); }
+      alCambiar: actualizarAbajo, aviso: function (t) { toast(t); },
+      // V1.60 (`seleccion_v160`) · seleccionar parte del texto (con dedo: manijas del sistema; con mouse: arrastrar).
+      seleccionTexto: function () { return on('seleccion_v160'); }, textoSel: '.txt'
     });
     $('#fArch').onchange = function () { agregarArchivos(this.files); this.value = ''; };
     $('#fCam').onchange = function () { agregarArchivos(this.files); this.value = ''; };

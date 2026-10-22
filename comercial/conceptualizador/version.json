@@ -1,6 +1,11 @@
 {
-  "version": "V1.59",
+  "version": "V1.60",
   "historial": [
+    {
+      "version": "V1.60",
+      "fecha": "2026-10-22",
+      "nota": "fts-conceptualizador#12 (V1.60, lista y chat limpio): un solo filtro (Mis proyectos · Todos · Por persona · Cerradas · Archivadas) y los casos en «Por cotizar» y «Enviado» con subetapas, conteo y monto que decide el servidor (Enfriada a los días del panel; Cerradas en Ganada / Perdida / sin resultado); chat sin acuses ya contestados, estados superados, tarjetas reemplazadas ni «Cotizar con referencias» repetido, con «N ocultos · mostrar todo»; todo error de Odoo dice qué hacer con el nombre del botón, se guarda y se quita solo al resolverse; el rayito solo ofrece lo posible; «Listo para cerrar» solo con la orden enviada; seleccionar parte del texto en compu y teléfono. Todo detrás de interruptores apagados (lista_v160, chat_limpio_v160, seleccion_v160; migración 0030)."
+    },
     {
       "version": "V1.59",
       "fecha": "2026-10-21",

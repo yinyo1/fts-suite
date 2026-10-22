@@ -84,6 +84,46 @@
   .est.archivada,.est.local{background:var(--sup2);color:var(--sec)}.est.abierta{background:#e7f6ee;color:var(--acento-osc)}
   .ses .mas{width:32px;height:40px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:var(--ter);flex-shrink:0}
   .vacio{padding:40px 24px;text-align:center;color:var(--sec);font-size:14px}
+  /* V1.60 (lista_v160) · un filtro y grupos por etapa (prototipo aprobado prototipos/v160/lista-chat-v2.html ?e=lista) */
+  .l16-barra{display:flex;align-items:center;gap:8px;padding:8px 12px 6px;flex-shrink:0;position:relative}
+  .l16-filtro{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 10px 0 12px;border-radius:17px;border:1px solid var(--linea);background:var(--sup2);font-size:14px;font-weight:500;max-width:100%;color:#3b4a54}
+  .l16-filtro b{background:var(--acento);color:#fff;border-radius:10px;font-size:11.5px;padding:1px 7px;font-weight:700}
+  .l16-ch{color:var(--sec)}
+  .l16-total{margin-left:auto;font-size:12.5px;color:var(--sec);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .l16-menu{position:absolute;left:12px;top:44px;width:280px;max-width:calc(100% - 24px);background:#fff;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.22);z-index:20;padding:6px 0;display:none}
+  .l16-menu.vis{display:block}
+  .l16-menu button{display:flex;align-items:center;gap:10px;width:100%;padding:10px 16px;font-size:15px;text-align:left;color:var(--texto)}
+  .l16-menu button:hover{background:var(--sup2)}
+  .l16-menu button .n{margin-left:auto;color:var(--sec);font-size:13px}
+  .l16-menu button.on{font-weight:600;color:var(--acento-osc)}.l16-menu button.on::after{content:'✓';margin-left:8px}
+  .l16-menu .ini{width:22px;height:22px;border-radius:50%;color:#fff;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+  .l16-rot{font-size:12px;color:var(--sec);padding:8px 16px 2px;text-transform:uppercase;letter-spacing:.04em}
+  .l16-menu hr{border:0;border-top:1px solid var(--linea);margin:4px 0}
+  .l16-grupo{border-top:8px solid var(--sup2)}
+  .l16-gcab{display:flex;align-items:center;gap:8px;width:100%;background:#fff;padding:10px 14px 8px;text-align:left;position:sticky;top:0;z-index:2}
+  .l16-gcab .fl{color:var(--sec);transition:transform .15s;width:14px;display:inline-block}
+  .l16-grupo.cerrado .l16-gcab .fl{transform:rotate(-90deg)}
+  .l16-gcab .punto{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+  .l16-gcab .et{font-weight:600;font-size:14.5px;color:var(--texto)}
+  .l16-gcab .cnt{background:var(--sup2);border-radius:10px;font-size:12px;font-weight:700;padding:1px 8px;color:var(--sec)}
+  .l16-gcab .mon{margin-left:auto;font-size:13px;color:var(--texto);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .l16-grupo.cerrado .l16-filas{display:none}
+  .l16-sub{display:flex;align-items:center;gap:8px;padding:8px 14px 3px 16px;font-size:11.5px;color:var(--sec);letter-spacing:.02em}
+  .l16-sub::after{content:'';flex:1;border-top:1px solid var(--linea);opacity:.7;order:2}
+  .l16-sub .sn{color:var(--ter)}
+  .l16-sub .sm{margin-left:auto;order:3;color:var(--ter);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .ses .av{position:relative}
+  .ses .due{position:absolute;right:-3px;bottom:-3px;width:19px;height:19px;border-radius:50%;border:2px solid #fff;color:#fff;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .ses .u .m{font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--texto);white-space:nowrap}
+  .ses .u .m.sin{color:var(--ter)}
+  .l16-on [data-chwa-tab="toca"]{display:none}
+  /* V1.60 (chat_limpio_v160) · paja plegada, «N ocultos» y la falla de Odoo con su salida */
+  .plegado{display:flex;justify-content:flex-start;margin:4px 0}
+  .plegado button{background:#fff;border-radius:8px;padding:5px 10px;font-size:13px;color:var(--sec);box-shadow:var(--sombra);max-width:92%;text-align:left}
+  .plegado button b{color:var(--texto);font-weight:500}
+  .ocultos{text-align:center;margin:12px 0 4px}.ocultos button{background:#e8efff;color:#1d4ed8;border-radius:14px;padding:5px 12px;font-size:12.5px}
+  .carta.falla-odoo{border-left:4px solid #b42318}.carta.falla-odoo h4{color:#b42318}
+  .carta.falla-odoo.resuelta{border-left-color:#94a3b8;opacity:.8}.carta.falla-odoo.resuelta s{color:var(--sec)}
   .pie{padding:14px;text-align:center;font-size:12px;color:var(--ter)}.pie a{color:var(--acento-osc)}
   .fab{position:absolute;right:16px;bottom:calc(16px + var(--pie));height:56px;border-radius:16px;background:var(--acento);color:#fff;display:flex;align-items:center;gap:10px;padding:0 18px 0 16px;font-weight:600;font-size:15px;box-shadow:0 3px 8px rgba(0,0,0,.18);z-index:5}
 
@@ -880,11 +920,12 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <script src="js/cz-condiciones.js?v=V1.57b"></script>
 <script src="js/cz-vista.js?v=V1.58"></script>
 <script src="js/cz-camara.js?v=V1.57b"></script>
-<script src="../../shared/chat/chat-gestos.js?v=V1.57b"></script>
+<script src="../../shared/chat/chat-gestos.js?v=V1.60"></script>
 <script src="../../shared/chat/chat-nucleo-cz.js?v=V1.57b"></script>
 <script src="../../shared/chat/chat-nucleo.js?v=V1.57b"></script>
 <script src="js/cz-push.js?v=V1.57b"></script>
-<script src="js/cz-app.js?v=V1.59"></script>
+<script src="js/cz-limpio.js?v=V1.60"></script>
+<script src="js/cz-app.js?v=V1.60"></script>
 <script src="js/cz-version.js?v=V1.57b"></script>
 <script>window.CzApp.arrancar().then(function () { if (window.CzVersion) window.CzVersion.iniciar(); if (window.CzPush) window.CzPush.iniciar(); });</script>
 </body>

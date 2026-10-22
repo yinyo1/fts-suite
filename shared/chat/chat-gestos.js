@@ -20,13 +20,20 @@
  *     mensaje: function (id) → { quien, texto, voz:boolean } | null,   // para copiar y para la cita
  *     onResponder: function (id) {}, onCancelarRespuesta: function () {},
  *     puedeReenviar: function (id) → boolean, razonReenviar: 'texto', onReenviar: function (id) {},
- *     aviso: function (texto) {}  // el toast del chat
+ *     aviso: function (texto) {}, // el toast del chat
+ *     seleccionTexto: false,      // V1.60 (#12) · true o función → se puede seleccionar PARTE del texto (ver abajo)
+ *     textoSel: '.txt'            // dentro de la burbuja, dónde está el texto seleccionable
  *   });
  *   g.decorar()           después de cada repintado (pone el ⌄ y vuelve a marcar la selección)
  *   g.respondiendo()      id del mensaje que se está citando, o null
  *   g.cancelarRespuesta() / g.irA(id) / g.quitarSeleccion()
  *
  * La cita dentro de una burbuja la pinta el chat con ChatGestos.citaHtml(id, quien, resumen).
+ *
+ * V1.60 (fts-conceptualizador#12) · `seleccionTexto` (por omisión APAGADO: sin él, todo es como antes). Prendido, el texto de la
+ * burbuja (`textoSel`) se puede seleccionar por partes: en el teléfono, mantener presionado SOBRE EL TEXTO deja la selección del
+ * sistema con sus manijas (no abre la barra del mensaje); fuera del texto (hora, borde, foto) sigue seleccionando el mensaje
+ * completo. Con el mouse, arrastrar sobre el texto selecciona (no desliza). Mientras haya una selección viva no se desliza.
  *
  * ── Marcador de texto (servidor sin la columna `responde_a`) ──────────────────────────────────────────────
  * La pantalla se publica antes que la migración que guarda `responde_a`. Mientras el servidor no la tenga,
@@ -73,6 +80,8 @@
     '.chg-burb{position:relative;touch-action:pan-y;transition:transform .12s}',
     '.chg-burb.chg-arrastra{transition:none}',
     '@media (hover:none){.chg-burb{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}}',
+    // V1.60 · `seleccionTexto`: solo el texto marcado por decorar() vuelve a ser seleccionable (con manijas y callout del sistema).
+    '@media (hover:none){.chg-burb .chg-texto,.chg-burb .chg-texto *{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}}',
     '.chg-flecha{align-self:center;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;color:var(--sec,#667781);opacity:0;margin-right:-30px;flex-shrink:0;box-shadow:0 1px .5px rgba(11,20,26,.13);pointer-events:none}',
     '.chg-brilla{animation:chgBrilla 1.4s}',
     '@keyframes chgBrilla{0%,60%{box-shadow:0 0 0 3px #f5c542}100%{box-shadow:0 1px .5px rgba(11,20,26,.13)}}',
@@ -138,6 +147,9 @@
     var avisa = function (t) { if (o.aviso) o.aviso(t); };
     var puedeReen = function (id) { return !!(o.puedeReenviar && o.puedeReenviar(id)); };
     var razon = o.razonReenviar || 'Reenviar todavía no está disponible aquí.';
+    var selTexto = function () { try { return typeof o.seleccionTexto === 'function' ? !!o.seleccionTexto() : !!o.seleccionTexto; } catch (e) { return false; } };
+    var enTexto = function (t) { return selTexto() && !!(t && t.closest && t.closest('.chg-texto')); };
+    var haySel = function () { var s = G.getSelection ? G.getSelection() : null; return !!(s && !s.isCollapsed && s.rangeCount && C.contains(s.anchorNode)); };
 
     /* barra de selección (sustituye la cabecera) */
     var barra = document.createElement('div');
@@ -166,6 +178,7 @@
     function decorar() {
       Array.prototype.forEach.call(C.querySelectorAll(selector), function (b) {
         b.classList.add('chg-burb');
+        if (selTexto()) Array.prototype.forEach.call(b.querySelectorAll(o.textoSel || '.txt'), function (t) { t.classList.add('chg-texto'); });
         if (!b.querySelector(':scope > .chg-chev')) {
           var ch = document.createElement('button'); ch.type = 'button'; ch.className = 'chg-chev'; ch.setAttribute('aria-label', 'Opciones del mensaje'); ch.innerHTML = ico('chev', 'chg-s');
           b.appendChild(ch);
@@ -246,11 +259,14 @@
       var b = e.target.closest(selector); if (!b || !C.contains(b) || e.button === 2) return;
       if (e.target.closest('.chg-chev')) return;
       var interactivo = e.target.closest(NO_GESTO);
-      g = { b: b, id: idDe(b), x: e.clientX, y: e.clientY, dx: 0, sinDeslizar: !!interactivo, hecho: false,
-            largo: interactivo ? null : setTimeout(function () { if (g && Math.abs(g.dx) < 8) { g.hecho = true; seleccionar(g.id); } }, LARGO_MS) };
+      // V1.60 · sobre el texto (con `seleccionTexto`): el toque largo es del sistema (selección con manijas) y el mouse arrastra.
+      var txt = enTexto(e.target), mouse = (e.pointerType || 'mouse') === 'mouse';
+      g = { b: b, id: idDe(b), x: e.clientX, y: e.clientY, dx: 0, sinDeslizar: !!interactivo || (txt && mouse), hecho: false,
+            largo: interactivo || txt ? null : setTimeout(function () { if (g && Math.abs(g.dx) < 8) { g.hecho = true; seleccionar(g.id); } }, LARGO_MS) };
     });
     addEventListener('pointermove', function (e) {
       if (!g) return; g.dx = e.clientX - g.x; var dy = Math.abs(e.clientY - g.y);
+      if (selTexto() && haySel()) { clearTimeout(g.largo); soltar(); return; }   // V1.60 · con una selección viva no se desliza
       if (dy > 14 && g.dx < 14) { clearTimeout(g.largo); soltar(); return; }
       if (Math.abs(g.dx) > 8) clearTimeout(g.largo);
       if (g.sinDeslizar || g.dx <= 6) return;
@@ -280,6 +296,7 @@
     addEventListener('pointercancel', function () { soltar(); });
     C.addEventListener('contextmenu', function (e) {
       var b = e.target.closest(selector); if (!b || !C.contains(b)) return;
+      if ((ultimoPuntero === 'touch' || ultimoPuntero === 'pen') && enTexto(e.target)) return;   // V1.60 · el menú del sistema (Copiar)
       e.preventDefault();
       // En el teléfono el toque largo dispara también «contextmenu»: ahí ya se seleccionó, no se abre menú.
       if (ultimoPuntero === 'touch' || ultimoPuntero === 'pen') return;
