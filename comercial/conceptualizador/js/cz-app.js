@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.60';
+  var VERSION = 'V1.61';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -322,6 +322,8 @@
     var esF = Object.prototype.hasOwnProperty.call(c, 'agente') && G.ChatWA ? estadoDelServidor(c.agente, c.escriben) : null;
     // V1.52.1 · con estados_reales, la fila solo dice «escribiendo…» (robot, agente o persona); lo demás, la vista previa.
     if (esF && ST.int && ST.int.estados_reales === true && esF.k === 'cola' && ST.int.acuse_v157 !== true) esF = null;
+    // V1.61 (`barra_v161`) · la fila tampoco dice «en cola» ni «escribiendo» si nadie escribe de verdad.
+    if (esF && ST.int && ST.int.barra_v161 === true && G.CzPasos) esF = esF.k === 'persona' ? esF : esF.k === 'agente' && G.CzPasos.traducir(esF.paso).escribe ? { k: 'agente', texto: 'escribiendo…' } : null;
     var ef = esF ? G.ChatWA.escrituraFilaHtml(esF) : '';
     return '<div class="ses' + (on ? ' on' : '') + '" data-id="' + esc(c.id || '') + '" data-local="' + esc(c.local || '') + '" role="button" tabindex="0">' +
       '<div class="av" style="background:' + color(c.titulo) + '">' + esc(iniciales(c.cliente || c.titulo)) +
@@ -861,6 +863,8 @@
     ['lista_v160', 'Lista por etapa', 'Un solo filtro (Mis proyectos · Todos · Por persona · Cerradas · Archivadas) y los casos en «Por cotizar» y «Enviado» con sus subetapas, conteo y monto. La etapa la decide el servidor (0030).'],
     ['chat_limpio_v160', 'Chat limpio', 'No pinta acuses ya contestados, estados superados, tarjetas reemplazadas ni «Cotizar con referencias» repetido («N ocultos · mostrar todo»). Todo error de Odoo dice qué hacer con el nombre del botón y se guarda; el rayito solo ofrece lo posible.'],
     ['seleccion_v160', 'Seleccionar parte del texto', 'Con el mouse se arrastra y el chat ya no se repinta mientras hay selección; en el teléfono, mantener presionado sobre el texto da las manijas del sistema.'],
+    // V1.61 (#12) · estado visible. Migración 0031: cuántos van antes, la hora de cada paso, orden cancelada = Perdida y la huella de precios.
+    ['barra_v161', 'Barra de estado', 'Arriba solo los datos del caso y «escribiendo…» cuando de verdad escribe alguien; abajo UNA barra con segundero: esperando turno, paso N de M (con Detener), listo en m:ss, lo que pasa en Odoo y el error con qué hacer. orden-odoo compara precios y no el número de versión; una orden del caso cancelada cierra como Perdida.'],
   ];
   /** Los interruptores que conoce el servidor (valores `interruptor:*` y `interruptores`), en el orden de arriba; uno nuevo
    * que la pantalla todavía no describe sale al final con su nombre, para que se pueda prender igual. */
@@ -914,6 +918,14 @@
       '<div class="czc-k">Experimento (sombra), aparte: ' + millones(Gs.experimento_semana) + ' de ' + millones(V.experimento_techo_semana) + ' esta semana.</div>' +
       (Gs.por_persona_hoy && Object.keys(Gs.por_persona_hoy).length ? '<div class="czc-k">Mensajes hoy: ' + Object.keys(Gs.por_persona_hoy).map(function (a) { return esc(nombreCorto(a)) + ' ' + Number(Gs.por_persona_hoy[a]); }).join(' · ') + '</div>' : '') + '</div>';
     // V1.60 · medición: los errores de Odoo de las últimas 24 h, por código (falla_odoo, 0030).
+    // V1.61 (`barra_v161`) · espera y trabajo por motor (para comparar principal y respaldo) y los pasos publicados; un paso que el
+    // diccionario de la pantalla no conoce sale en rojo (la persona vería «Trabajando»).
+    var B6 = r.barra_v161_24h;
+    if (B6) { var pm = B6.por_motor || {}, mm6 = G.ChatWA && G.ChatWA.mmss ? G.ChatWA.mmss : String;
+      h += '<h3>Barra de estado · 24 h</h3><div class="czc-tarj">' + ['principal', 'respaldo'].map(function (k) { var x = pm[k]; return '<div>' + (k === 'principal' ? 'Principal' : 'Respaldo') + ': ' +
+        (x ? '<b>' + x.n + '</b> mensajes · espera ' + mm6(x.espera_p50_s) + ' (máx ' + mm6(x.espera_max_s) + ') · trabajo ' + mm6(x.trabajo_p50_s) + ' (máx ' + mm6(x.trabajo_max_s) + ')' : 'sin mensajes') + '</div>'; }).join('') +
+        '<div>En fila ahora: <b>' + Number(B6.en_fila_ahora || 0) + '</b></div>' +
+        '<div>Pasos: ' + Object.keys(B6.pasos || {}).map(function (k) { var ok = !G.CzPasos || G.CzPasos.traducir(k).conocido; return (ok ? '' : '<span style="color:var(--rojo);font-weight:600">') + esc(k) + ' ' + Number(B6.pasos[k]) + (ok ? '' : ' (sin traducir)</span>'); }).join(' · ') + '</div></div>'; }
     if (r.fallas_odoo_24h && Object.keys(r.fallas_odoo_24h).length) h += '<h3>Errores de Odoo · 24 h</h3><div class="czc-tarj">' +
       Object.keys(r.fallas_odoo_24h).sort(function (a, b) { return r.fallas_odoo_24h[b] - r.fallas_odoo_24h[a]; }).map(function (k) { return '<div>' + esc(k) + ' · <b>' + Number(r.fallas_odoo_24h[k]) + '</b></div>'; }).join('') + '</div>';
     var INTS = listaInterruptores(r), nOn = INTS.filter(function (x) { return String(V['interruptor:' + x[0]]) === '1'; }).length;
@@ -1270,6 +1282,8 @@
     }
     // V1.52.1 · con un proceso vivo la barra ya dice qué pasa: la pastilla de espera («Revisando si hay cambios…») no se pinta encima.
     if (sg && sg.espera && on('estados_reales') && agenteTrabajando()) sg = null;
+    // V1.61 (`barra_v161`) · la espera («Revisando si hay cambios…», «Armando el BOM…») ya no se pinta abajo: la barra dice lo real.
+    if (sg && sg.espera && on('barra_v161')) sg = null;
     // V1.52.1 · «Ya está todo ok…» no se sugiere con el robot o el motor trabajando (la base lo dice por proceso vivo).
     if (sg && sg.cierre && on('estados_reales') && agenteTrabajando()) sg = null;
     // V1.53b · el cierre solo se sugiere cuando de verdad se puede (sin proceso corriendo ni clic pendiente).
@@ -1796,9 +1810,12 @@
       // V1.52 §13 · si nadie escribe de verdad: empresa · ciudad, y nada más (sin «motor rápido», sin deducciones).
       sub = !navigator.onLine ? 'sin señal · lo que mandes se guarda en el teléfono' : emp.replace(/ · $/, '');
       ew = navigator.onLine ? escrituraChat() : null;
+      // V1.61 (`barra_v161`, #12) · arriba solo los datos del caso, y «… está escribiendo…» SOLO cuando escribe una persona o el
+      // agente está en el paso «Escribiendo la respuesta» (CzPasos). La fila, el paso y el tiempo van en la barra de abajo.
+      if (ew && on('barra_v161') && G.CzPasos) ew = ew.k === 'persona' ? ew : ew.k === 'agente' && G.CzPasos.traducir(ew.paso).escribe ? { k: 'agente', texto: 'Conceptualizador está escribiendo…' } : null;
       // V1.52 · arriba «escribiendo…» SOLO con un proceso vivo en la base (o una persona tecleando, que dice el servidor).
       if (ew && G.ChatWA && (ew.k === 'agente' || ew.k === 'persona' || (ew.k === 'cola' && on('acuse_v157')))) {
-        var ew2 = ew.k === 'agente' && ew.paso ? Object.assign({}, ew, { texto: ew.texto + ' · ' + ew.paso }) : ew;
+        var ew2 = ew.k === 'agente' && ew.paso && !on('barra_v161') ? Object.assign({}, ew, { texto: ew.texto + ' · ' + ew.paso }) : ew;
         subHtml = G.ChatWA.escrituraCabeceraHtml(ew2); vivo = true;
       }
     }
@@ -1824,6 +1841,9 @@
   function pintarEstado() {
     if (G.CzEstado) G.CzEstado.caso((ST.sel || {}).id);   // V1.58 · la tarjeta de Odoo es del caso abierto
     var box = $('#estAg'); if (!box || !G.ChatWA || !G.ChatWA.barraEstado) return;
+    // V1.61 (`barra_v161`) · UNA sola barra (ChatWA.barraTrabajo): la de V1.52 y la tarjeta de V1.58 no se pintan.
+    if (on('barra_v161') && G.ChatWA.barraTrabajo) { if (ST.barraEst) ST.barraEst.chwaPoner(null); pintarBarra(box); return; }
+    if (ST.barraT) ST.barraT.chwaPoner(null);
     if (!on('estados_reales')) { if (ST.barraEst) ST.barraEst.chwaPoner(null); return; }   // V1.51: no hay barra
     if (!ST.barraEst) {
       ST.textosBarra = {};
@@ -1844,6 +1864,94 @@
     if (pmB) ag = Object.assign({}, ag, { paso: 'Permiso hasta las ' + (pmB.hasta_local || horaDe(pmB.hasta)) + ' · ' + (ag.paso || 'Trabajando') });   // la hora primero: en teléfono el paso se corta
     ST.barraEst.chwaPoner(ag, { puedeDetener: puedeDetener() });
   }
+  /* ═══ V1.61 (#12, `barra_v161`) · la barra única con segundero ═══
+   * Un estado a la vez, en este orden: acción en Odoo de la persona (CzEstado) · el agente trabajando (paso N de M) · esperando
+   * turno (cuántos van antes, lo dice la base) · entregado («Listo en m:ss», 5 s, solo si se vio el trabajo en esta pantalla) ·
+   * la falla vigente de Odoo (CzLimpio.fallaVigente, con su acción del catálogo). Todo sale de lo que dijo el servidor en ESTA
+   * consulta; nada se deduce de una marca local. Medición: ST.barraMed (pasos sin traducir, estados vistos) para la prueba. */
+  var LISTO_MS = 5000;
+  function seg(a, b) { var x = new Date(a).getTime(), y = new Date(b).getTime(); return isFinite(x) && isFinite(y) ? Math.max(0, (y - x) / 1000) : null; }
+  function estadoBarra() {
+    var H = ST.hilo, c = (H && H.caso) || {}, sel = ST.sel || {};
+    if (!H || sel.menu || !navigator.onLine) return null;
+    var EV = G.CzEstado && G.CzEstado.vista ? G.CzEstado.vista() : null;
+    if (EV && EV.caso && String(EV.caso) !== String(c.id)) EV = null;
+    if (EV && EV.fase === 'odoo') return { tipo: 'odoo', clave: 'odoo', titulo: EV.titulo, detalle: EV.sub, desde: EV.desde, pct: 40 };
+    var ag = agenteVivo(ST.srvAgente), M = ST.barraMed = ST.barraMed || { sin_traducir: {}, estados: {} };
+    if (ag) {
+      var P = G.CzPasos.lista(ag.pasos), tr = G.CzPasos.traducir(ag.paso);
+      if (!tr.conocido && tr.crudo) M.sin_traducir[tr.crudo] = (M.sin_traducir[tr.crudo] || 0) + 1;
+      if (!P.length) P = [tr.base];
+      var i = P.indexOf(tr.base); if (i < 0) i = Math.min(Math.max(Number(ag.paso_i) || 0, 0), P.length - 1);
+      // La hora a la que entró a cada paso (marcas de la 0031): la primera de cada paso traducido.
+      var ini = {}; (Array.isArray(ag.marcas) ? ag.marcas : []).forEach(function (m) { var b = G.CzPasos.traducir(m.paso).base, k = P.indexOf(b); if (k >= 0 && ini[k] == null) ini[k] = new Date(m.at).getTime(); });
+      var desdeAhora = ini[i] != null ? ini[i] : new Date(ag.senal || ag.desde || Date.now()).getTime();
+      var pasos = P.map(function (t, k) {
+        if (k < i) { var a0 = ini[k], a1 = ini[k + 1] != null ? ini[k + 1] : (k + 1 === i ? desdeAhora : null); return { texto: t, estado: 'hecho', seg: a0 != null && a1 != null ? (a1 - a0) / 1000 : null }; }
+        return k === i ? { texto: t, estado: 'ahora', desde: desdeAhora } : { texto: t, estado: 'falta' };
+      });
+      ST.barraVio = { trabajo_id: ag.trabajo_id, caso: c.id };
+      M.estados.trabajo = (M.estados.trabajo || 0) + 1;
+      var t0 = new Date(ag.creado || ag.desde).getTime();
+      return { tipo: 'trabajo', clave: 'p' + (ag.proceso_id || ag.trabajo_id), titulo: tr.texto, detalle: 'paso ' + (i + 1) + ' de ' + P.length + (ag.desde ? ' · desde las ' + hora(ag.desde) : ''),
+        desde: isFinite(t0) ? t0 : Date.now(), pct: Math.round(((i + 0.5) / P.length) * 100), pasos: pasos,
+        puedeDetener: ag.proceso_id != null ? puedeDetener() : undefined, deteniendo: !!(ag.detener_por || ag.deteniendo === true),
+        textoSinPermiso: 'Solo el dueño del caso o Esteban pueden detenerlo.', proceso_id: ag.proceso_id };
+    }
+    var ac = ST.srvAgente && ST.srvAgente.estado === 'cola' ? ST.srvAgente : null;
+    if (ac) {
+      ST.barraVio = { trabajo_id: ac.trabajo_id, caso: c.id };
+      M.estados.espera = (M.estados.espera || 0) + 1;
+      var n = ac.antes;
+      return { tipo: 'espera', clave: 'c' + ac.trabajo_id, titulo: 'Esperando turno',
+        detalle: n == null ? 'en cuanto se libere, empieza' : n === 0 ? 'es el siguiente' : 'hay ' + n + (n === 1 ? ' trabajo' : ' trabajos') + ' antes que este',
+        desde: new Date(ac.desde || Date.now()).getTime(), pct: 6 };
+    }
+    // Entregado: el trabajo que se vio en fila o trabajando ya está listo. «Listo en» cuenta desde que se mandó.
+    var V = ST.barraVio;
+    if (V && String(V.caso) === String(c.id)) {
+      var t = ((H && H.trabajos) || []).filter(function (x) { return String(x.id) === String(V.trabajo_id); })[0];
+      if (t && t.estado === 'listo' && t.listo_at) { ST.barraListo = { caso: c.id, hasta: Date.now() + LISTO_MS, total: seg(t.created_at, t.listo_at), espera: seg(t.created_at, t.tomado_at), trabajo: seg(t.tomado_at, t.listo_at), at: t.listo_at }; setTimeout(function () { pintarEstado(); }, LISTO_MS + 50); }
+      if (!t || t.estado !== 'pendiente') ST.barraVio = null;
+    }
+    var L = ST.barraListo;
+    if (L && String(L.caso) === String(c.id) && Date.now() < L.hasta) {
+      M.estados.listo = (M.estados.listo || 0) + 1;
+      var mm = G.ChatWA.mmss;
+      return { tipo: 'listo', clave: 'l' + L.at, titulo: 'Listo en ' + mm(L.total || 0), detalle: 'entregado a las ' + hora(L.at), fijo: mm(L.total || 0),
+        meta: L.espera != null && L.trabajo != null ? 'espera ' + mm(L.espera) + ' · trabajo ' + mm(L.trabajo) : '' };
+    }
+    if (EV && EV.fase === 'listo') return { tipo: 'listo', clave: 'ol' + EV.desde, titulo: EV.titulo, detalle: EV.sub, fijo: G.ChatWA.mmss(EV.seg || 0), acciones: EV.acciones };
+    if (EV && EV.fase === 'falla') return { tipo: 'falla', clave: 'of' + EV.desde, titulo: EV.titulo, detalle: EV.sub, acciones: EV.acciones };
+    var FV = on('chat_limpio_v160') && G.CzLimpio ? G.CzLimpio.fallaVigente(H) : null;
+    if (FV) {
+      M.estados.falla = (M.estados.falla || 0) + 1;
+      var AX = G.CzLimpio.accion(FV.codigo, H), puede = mia(c) || ST.admin === true || ST.panelAdmin === true;
+      return { tipo: 'falla', clave: 'f' + FV.id, titulo: tituloFalla(FV, H), detalle: AX.texto + (AX.quien ? ' Lo hace: ' + AX.quien + '.' : ''),
+        acciones: AX.boton && AX.hacer && puede ? [{ txt: AX.boton, si: true, fn: function (b) { salidaFalla(FV, c, b); } }] : [] };
+    }
+    return null;
+  }
+  function pintarBarra(box) {
+    if (!ST.barraT) {
+      ST.barraT = G.ChatWA.barraTrabajo({ alDetener: async function (e) {
+        var cid = (ST.sel || {}).id; if (!cid || e.proceso_id == null) return { ok: false, mensaje: 'Este trabajo todavía no se puede detener desde aquí.' };
+        var r = await C.detener(cid, e.proceso_id);
+        if (!r.ok) return { ok: false, mensaje: r.mensaje || 'No se pudo detener: ' + (r.error || 'error') };
+        sondear(true); return r;
+      } });
+      if (G.CzEstado && G.CzEstado.alCambiar) G.CzEstado.alCambiar(function () { pintarEstado(); });
+    }
+    if (ST.barraT.parentNode !== box) box.appendChild(ST.barraT);
+    var e = estadoBarra();
+    // Sin datos propios del caso: la barra de la V1.52 ya no; la tarjeta de V1.58 tampoco (CzEstado no la pinta con barra_v161).
+    ST.barraT.chwaPoner(e);
+    // El rayito y ⇊ se acomodan arriba de la barra (cambia de alto al desplegarse o al cambiar de estado).
+    if (!ST.barraRO && G.ResizeObserver) { ST.barraRO = new G.ResizeObserver(function () { actualizarAbajo(); }); ST.barraRO.observe(box); }
+    actualizarAbajo();
+  }
+  G.CzBarra = { estado: estadoBarra, medicion: function () { return ST.barraMed || null; } };
+
   /* V1.52 · el estado del robot asistente en este caso (antes, el globito del agente de V1.48; ahora vive en ⋮ →
    * «Configuración del robot asistente»): en pausa · cerrado · fuera de horario o tope · modo prueba · activo.
    * Sale de la última respuesta del motor (verifica.analisis y verifica.presupuesto). */
@@ -2104,7 +2212,7 @@
     // V1.60 (`chat_limpio_v160`) · la falla de Odoo vigente, con su salida, y «N ocultos · mostrar todo». Las resueltas no se pintan.
     if (on('chat_limpio_v160') && G.CzLimpio && H && H.caso) {
       var FV = G.CzLimpio.fallaVigente(H), nRes = ((H.fallas_odoo) || []).filter(function (f) { return f !== FV; }).length;
-      if (FV) aparte(fallaHtml(FV, H));
+      if (FV && !on('barra_v161')) aparte(fallaHtml(FV, H));   // V1.61 · con la barra, el error vigente vive abajo (estado 5)
       if (ST.verTodoChat) ((H.fallas_odoo) || []).forEach(function (f) { if (f !== FV) aparte('<div class="fila el"><div class="carta falla-odoo resuelta"><s>✕ ' + esc(tituloFalla(f, H)) + ' · ' + esc(f.codigo) + '</s><span class="nota">✓ Resuelto · ' + esc(hora(f.at)) + '</span></div></div>'); });
       var nO = nOc + (ST.ocTarj || 0) + nRes;
       if (nO || ST.verTodoChat) aparte('<div class="ocultos"><button type="button" id="bOcultos">' + (ST.verTodoChat ? 'Ocultar lo que no aporta' : nO + ' oculto' + (nO === 1 ? '' : 's') + ' · mostrar todo') + '</button></div>');
@@ -3810,7 +3918,7 @@
   // V1.41 (cz-push.js) · al tocar un aviso: abrir ese caso, y «Adelante» con la confirmación de siempre (nunca dispara solo).
   abrirCaso: function (id) { return abrir({ id: id }); },
   disparo: function () { var m = modoDisparo(); if (!m) return toast('Esta sesión ya arrancó: no hay nada que confirmar.'); confirmarDisparo(m); },
-  _st: ST, nucleo: function () { return NUC; }, toast: function (t) { toast(t); },
+  _st: ST, nucleo: function () { return NUC; }, refrescar: function () { return cargarHilo(); }, toast: function (t) { toast(t); },
   // V1.58 · «Vista rápida (sin Odoo)» cuando el PDF de Odoo no sale; `solo` = ¿se puede? (sin abrir nada).
   vistaRapida: function (solo) { var p = !!(G.CzVisor && ultimoBorrador()); if (solo) return p; if (p) abrirVisor(); } };
 })(window);

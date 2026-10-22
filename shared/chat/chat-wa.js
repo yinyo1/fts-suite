@@ -20,6 +20,8 @@
  *                      ChatWA.escrituraFilaHtml(estado) · ChatWA.escrituraCabeceraHtml(estado) · ChatWA.tecleo({ enviar, cadaMs }) → { tecla(texto?) }
  *   I · estado (V1.52) ChatWA.barraEstado({ textos?, alDetener(agente) → Promise<{ok}>, textoSinPermiso?, hora?(iso) }) → elemento con
  *                      el.chwaPoner(agente, { puedeDetener }) · ChatWA.quienEstado(quien) · ChatWA.gastoTexto(ponderado)
+ *   I2 · trabajo (V1.61) ChatWA.barraTrabajo({ alDetener(estado) → Promise<{ok}>, ahora? }) → elemento con el.chwaPoner(estado|null)
+ *                      (espera · trabajo · listo · odoo · falla, con segundero) · ChatWA.mmss(segundos) → 'm:ss'
  *   J · hoja (V1.52)   ChatWA.hoja({ titulo, html, ancho?, alCerrar }) → { el, cuerpo, cerrar } · hojaAbierta() · cerrarHoja() · esPc()
  *   fila de la lista   ChatWA.fila({ id?, avatar:{ iniciales, color }, titulo, linea, hora, globitos, dueno, fijado, activa, escritura? })
  *
@@ -384,6 +386,91 @@
     el.chwaDeteniendo = function () { return st.deteniendo; };
     el.chwaAbierta = function (v) { if (v !== undefined) { st.abierta = !!v; pintar(); } return st.abierta; };
     if (o.agente !== undefined) el.chwaPoner(o.agente, { puedeDetener: o.puedeDetener });
+    return el;
+  }
+
+  /* ═══ I2 · barra de trabajo con segundero (V1.61, fts-conceptualizador#12, prototipo v161/barra-estado.html) ═══
+   * UNA sola barra abajo del chat con el estado de lo que la persona está esperando. El producto decide el estado (con lo que
+   * dijo el servidor) y lo pasa con el.chwaPoner(e); la barra solo lo pinta. Estados (e.tipo):
+   *   espera · trabajo · listo · odoo · falla
+   * e = { tipo, titulo, detalle, desde (ms: el reloj cuenta desde ahí) | fijo ('m:ss'), pct (0-100), clave (misma clave =
+   *       se queda abierta), pasos: [{ texto, estado: 'hecho'|'ahora'|'falta', seg (hechos) | desde (ms, el de ahora) }],
+   *       meta (línea chica al desplegar), puedeDetener, deteniendo, textoSinPermiso, acciones: [{ txt, si, fn(boton) }] }
+   * El segundero repinta SOLO los relojes de la barra (cada segundo): nunca el chat, así no rompe una selección de texto.
+   * Tocar la barra la despliega si trae pasos o meta. «Detener» llama a o.alDetener(e) → Promise<{ ok, mensaje }>. */
+  function mmss(seg) {
+    seg = Math.max(0, Math.floor(Number(seg) || 0));
+    var h = Math.floor(seg / 3600), m = Math.floor((seg % 3600) / 60), s = seg % 60;
+    return (h ? h + ':' + (m < 10 ? '0' : '') : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  }
+  function barraTrabajo(o) {
+    o = o || {};
+    var reloj = typeof o.ahora === 'function' ? o.ahora : function () { return Date.now(); };
+    var st = { e: null, abierta: false, error: '', det: false, fns: {} };
+    var el = D.createElement('div'); el.className = 'chwa-bt'; el.hidden = true; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite');
+    var tic = null;
+    function ponerRelojes() {
+      var ahora = reloj();
+      Array.prototype.forEach.call(el.querySelectorAll('[data-chwa-desde]'), function (x) { x.textContent = mmss((ahora - Number(x.getAttribute('data-chwa-desde'))) / 1000); });
+    }
+    function arrancar() { if (!tic) tic = G.setInterval(function () { if (el.hidden || !el.isConnected) { parar(); return; } ponerRelojes(); }, 1000); }
+    function parar() { if (tic) { G.clearInterval(tic); tic = null; } }
+    function relojHtml(e) {
+      if (e.fijo != null) return '<span class="chwa-bt-r">' + esc(e.fijo) + '</span>';
+      if (e.desde != null && isFinite(Number(e.desde))) return '<span class="chwa-bt-r" data-chwa-desde="' + Number(e.desde) + '">' + mmss((reloj() - Number(e.desde)) / 1000) + '</span>';
+      return '';
+    }
+    function pintar() {
+      var e = st.e;
+      if (!e) { el.hidden = true; el.innerHTML = ''; el.className = 'chwa-bt'; parar(); return; }
+      var P = Array.isArray(e.pasos) ? e.pasos : [], hayX = !!(P.length || e.meta || e.puedeDetener !== undefined && e.tipo === 'trabajo');
+      el.hidden = false; el.className = 'chwa-bt chwa-bt-' + e.tipo + (st.abierta && hayX ? ' chwa-abierta' : '');
+      el.setAttribute('data-estado', e.tipo);
+      var ic = e.tipo === 'listo' ? '<span class="chwa-bt-ok" aria-hidden="true">✓</span>' : e.tipo === 'falla' ? '<span class="chwa-bt-x" aria-hidden="true">✕</span>' :
+        '<span class="chwa-bt-giro" aria-hidden="true"></span>';
+      st.fns = {};
+      var acc = (e.acciones || []).map(function (a, i) { st.fns['a' + i] = a.fn; return '<button type="button" class="chwa-bt-b' + (a.si ? ' si' : '') + '" data-chwa-bt="a' + i + '">' + esc(a.txt) + '</button>'; }).join('');
+      var pasos = P.map(function (x) {
+        var tm = x.estado === 'ahora' && x.desde != null ? '<span class="chwa-bt-pt" data-chwa-desde="' + Number(x.desde) + '">' + mmss((reloj() - Number(x.desde)) / 1000) + '</span>' :
+          x.estado === 'hecho' && x.seg != null ? '<span class="chwa-bt-pt">' + mmss(x.seg) + '</span>' : '<span class="chwa-bt-pt"></span>';
+        return '<li class="chwa-bt-p ' + esc(x.estado) + '"><span class="chwa-bt-pi" aria-hidden="true">' + (x.estado === 'hecho' ? '✓' : x.estado === 'ahora' ? '●' : '○') + '</span><span class="chwa-bt-pn">' + esc(x.texto) + '</span>' + tm + '</li>';
+      }).join('');
+      var det = e.tipo === 'trabajo' && e.puedeDetener !== undefined ? (e.puedeDetener
+        ? '<div class="chwa-bt-det"><button type="button" class="chwa-bt-stop" data-chwa-bt="det"' + (st.det || e.deteniendo ? ' disabled aria-busy="true"' : '') + '><span class="chwa-est-cuad" aria-hidden="true"></span>' +
+          (st.det || e.deteniendo ? 'Deteniendo…' : 'Detener') + '</button><span>' + esc(st.error || (st.det || e.deteniendo ? 'Corta en el siguiente punto seguro.' : 'Corta en el siguiente punto seguro; lo guardado se queda.')) + '</span></div>'
+        : '<div class="chwa-bt-det"><span>' + esc(e.textoSinPermiso || 'Solo el dueño del caso o un administrador pueden detenerlo.') + '</span></div>') : '';
+      el.innerHTML = '<div class="chwa-bt-f"' + (hayX ? ' role="button" tabindex="0" data-chwa-bt="tog" aria-expanded="' + (st.abierta ? 'true' : 'false') + '"' : '') + '>' +
+        '<span class="chwa-bt-ic">' + ic + '</span><span class="chwa-bt-tx"><span class="chwa-bt-t">' + esc(e.titulo || '') + '</span>' +
+        (e.detalle ? '<span class="chwa-bt-d">' + esc(e.detalle) + '</span>' : '') + '</span>' + relojHtml(e) + '</div>' +
+        (acc ? '<div class="chwa-bt-acc">' + acc + '</div>' : '') +
+        (e.pct != null ? '<div class="chwa-bt-prog"><i style="width:' + Math.max(0, Math.min(100, Number(e.pct) || 0)) + '%"></i></div>' : '') +
+        (hayX ? '<div class="chwa-bt-x2">' + (pasos ? '<ul>' + pasos + '</ul>' : '') + (e.meta ? '<div class="chwa-bt-m">' + esc(e.meta) + '</div>' : '') + det + '</div>' : '');
+      if (el.querySelector('[data-chwa-desde]')) arrancar(); else parar();
+    }
+    el.addEventListener('click', function (ev) {
+      var b = ev.target.closest && ev.target.closest('[data-chwa-bt]'); if (!b || b.disabled) return;
+      var k = b.getAttribute('data-chwa-bt');
+      if (k === 'tog') { st.abierta = !st.abierta; pintar(); return; }
+      if (k === 'det') {
+        if (!st.e || typeof o.alDetener !== 'function') return;
+        st.det = true; st.error = ''; pintar();
+        Promise.resolve(o.alDetener(st.e)).then(function (r) { if (r && r.ok === false) { st.det = false; st.error = r.mensaje || 'No se pudo detener. Intenta otra vez.'; pintar(); } },
+          function () { st.det = false; st.error = 'No se pudo detener. Intenta otra vez.'; pintar(); });
+        return;
+      }
+      var fn = st.fns[k]; if (fn) fn(b);
+    });
+    el.addEventListener('keydown', function (ev) { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.getAttribute && ev.target.getAttribute('data-chwa-bt') === 'tog') { ev.preventDefault(); st.abierta = !st.abierta; pintar(); } });
+    /** Lo que decidió el producto en ESTA consulta (null la esconde). Misma `clave` = se queda abierta y conserva «Deteniendo…». */
+    el.chwaPoner = function (e) {
+      var antes = st.e;
+      if (!e || !e.tipo) { st.e = null; st.abierta = false; st.det = false; st.error = ''; pintar(); return el; }
+      if (!antes || antes.clave !== e.clave || antes.tipo !== e.tipo) { st.abierta = e.abierta === true; st.det = false; st.error = ''; }
+      st.e = e; pintar(); return el;
+    };
+    el.chwaEstado = function () { return st.e ? st.e.tipo : null; };
+    el.chwaAbierta = function (v) { if (v !== undefined) { st.abierta = !!v; pintar(); } return st.abierta; };
+    el.chwaTic = ponerRelojes;   // para pruebas con reloj falso
     return el;
   }
 
@@ -756,6 +843,7 @@
     estadoEscritura: estadoEscritura, escrituraFilaHtml: escrituraFilaHtml, escrituraCabeceraHtml: escrituraCabeceraHtml, tecleo: tecleo,
     hora: hora, horaHtml: horaHtml,
     barraEstado: barraEstado, quienEstado: quienEstado, gastoTexto: gastoTexto,
+    barraTrabajo: barraTrabajo, mmss: mmss,
     hoja: hoja, hojaAbierta: function () { return hojaCtl ? hojaCtl.el : null; }, cerrarHoja: function () { if (hojaCtl) hojaCtl.cerrar('codigo'); }, esPc: esPc,
     menu: menu, menuAbierto: function () { return abierto ? abierto.el : null; }, cerrarMenu: function () { if (abierto) abierto.cerrar('codigo'); },
     itemIrAlMachote: itemIrAlMachote, itemInstalar: itemInstalar, itemBarra: itemBarra,

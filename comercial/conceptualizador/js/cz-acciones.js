@@ -275,6 +275,9 @@
     if (!r.ok || !r.odoo_so_id) return { ok: false, error: r.error || 'SIN_ORDEN', mensaje: r.mensaje || ('No se creó el borrador: ' + (r.error || 'sin orden')) };   // V1.58 · el código va a la tarjeta de estado
     var o = releido(r);
     o.texto = textoOrden(o, modo === 'crear' ? 'Borrador' : 'Actualizado');
+    // V1.61 (`barra_v161`, #12 punto 9, D96) · la línea fija del redondeo la arma orden-odoo con el subtotal RELEÍDO de Odoo.
+    if (prendido('barra_v161') && r.linea_redondeo && r.linea_redondeo.texto) { o.linea_redondeo = r.linea_redondeo; o.texto += ' ' + r.linea_redondeo.texto; }
+    if (prendido('barra_v161') && r.mismos_precios && r.mismos_precios.texto) { o.mismos_precios = r.mismos_precios; o.texto += ' (' + r.mismos_precios.texto + ')'; }
     // V1.59 · lo releído de Odoo: vendedor, oportunidad y quién movió lo de quién (orden-odoo lo devuelve con los interruptores prendidos).
     if (r.vendedor) o.vendedor = r.vendedor;
     if (r.oportunidad) o.oportunidad = r.oportunidad;

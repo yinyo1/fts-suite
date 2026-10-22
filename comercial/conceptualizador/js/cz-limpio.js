@@ -51,7 +51,7 @@
   }
 
   /* ── errores ── */
-  var MACHOTE = ['CONFLICTO_DE_VERSION', 'SIN_CLIENTE', 'ODOO_SIN_CLIENTE', 'CLIENTE_NO_ENCONTRADO', 'CLIENTE_CAMBIO', 'PARTNER_SIN_RAZON_SOCIAL',
+  var MACHOTE = ['CONFLICTO_DE_VERSION', 'CONFLICTO_DE_PRECIOS', 'SIN_CLIENTE', 'ODOO_SIN_CLIENTE', 'CLIENTE_NO_ENCONTRADO', 'CLIENTE_CAMBIO', 'PARTNER_SIN_RAZON_SOCIAL',
     'PENDIENTES_PROVEEDOR', 'MARGEN_BAJO_PISO', 'SIN_EMPRESA', 'MONEDA_INVALIDA', 'MONEDA_DISTINTA_AL_CASO', 'MACHOTE_SIN_TOTAL', 'LINEA_SIN_PRECIO', 'SIN_LINEAS_CON_PRECIO'];
   var REARMAR = 'Vuelve a armar la cotización para Odoo con la versión vigente del machote y propón el borrador otra vez.';
   /** El catálogo. `c` es el caso (para el cliente y la orden). Cada entrada: texto para la persona, nombre del botón y su efecto. */
@@ -60,6 +60,8 @@
     var rearmar = { texto: 'Toca «Volver a armar la cotización»: la armo con la versión vigente del machote y te dejo el botón de Odoo otra vez.', boton: 'Volver a armar la cotización', hacer: { acc: 'mandar', texto: REARMAR } };
     var reintentar = { texto: 'Toca «Reintentar». Si vuelve a fallar, avísale a Esteban con el código.', boton: 'Reintentar', hacer: { acc: 'reintentar' } };
     var X = {
+      // V1.61 (#12 B.7) · los precios del machote cambiaron desde que se armó la cotización (orden-odoo dice cuáles).
+      CONFLICTO_DE_PRECIOS: { texto: 'Los precios del machote cambiaron desde que se armó la cotización. Toca «Volver a armar la cotización»: la armo con los precios vigentes y te dejo el botón de Odoo otra vez.', boton: 'Volver a armar la cotización', hacer: { acc: 'mandar', texto: REARMAR } },
       CONFLICTO_DE_VERSION: rearmar, CLIENTE_CAMBIO: rearmar, SUMA_DISCREPA: rearmar, NO_CUADRA: rearmar, SIN_COTIZACION: rearmar, SIN_HITOS: rearmar,
       HITOS_NO_SUMAN: rearmar, ANTICIPO_FALTA: rearmar, ANTICIPO_NO_CUBRE: rearmar, ANTICIPO_SIN_NOTA: rearmar, TERMINOS_INCOMPLETOS: rearmar,
       BLOQUE_SIN_TEXTO: rearmar, PRECIO_CON_CENTAVOS: rearmar, PRECIO_A_LA_BAJA: rearmar, NO_ES_POR_LOTE: rearmar, OPCIONAL_INVALIDO: rearmar,

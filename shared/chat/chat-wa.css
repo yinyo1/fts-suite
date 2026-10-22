@@ -170,6 +170,47 @@ button.chwa-reemp:focus-visible{outline:2px solid var(--chwa-marca);outline-offs
 .chwa-est-det[disabled]{opacity:.65;cursor:default}
 .chwa-est-cuad{width:10px;height:10px;border-radius:2px;background:currentColor;flex-shrink:0}
 
+/* I2 · barra de trabajo con segundero (V1.61, prototipo v161/barra-estado.html): UNA sola, abajo del chat */
+[class*="chwa-bt"]{ --chwa-bt-ambar:#b45309; --chwa-bt-ambar-l:#f59e0b; --chwa-bt-listo:#f0fbf6; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) [class*="chwa-bt"]{ --chwa-bt-ambar:#fbbf24; --chwa-bt-ambar-l:#d97706; --chwa-bt-listo:#0f2a20; }}
+:root[data-theme="dark"] [class*="chwa-bt"]{ --chwa-bt-ambar:#fbbf24; --chwa-bt-ambar-l:#d97706; --chwa-bt-listo:#0f2a20; }
+.chwa-bt{margin:4px 8px 4px;background:var(--chwa-sup);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.12);overflow:hidden;color:var(--chwa-texto);flex-shrink:0;min-width:0}
+.chwa-bt[hidden]{display:none}
+.chwa-bt-f{display:flex;align-items:center;gap:10px;padding:9px 12px;min-height:44px;min-width:0}
+.chwa-bt-f[role="button"]{cursor:pointer}
+.chwa-bt-ic{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.chwa-bt-giro{width:16px;height:16px;border:2px solid var(--chwa-linea);border-top-color:var(--chwa-motor);border-radius:50%;animation:chwa-giro .9s linear infinite}
+@media (prefers-reduced-motion:reduce){ .chwa-bt-giro{animation:none} }
+.chwa-bt-ok{font-weight:700;color:var(--chwa-motor)} .chwa-bt-x{font-weight:700;color:var(--chwa-alto)}
+.chwa-bt-tx{flex:1;min-width:0;display:flex;flex-direction:column}
+.chwa-bt-t{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chwa-bt-d{font-size:12px;color:var(--chwa-sec);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chwa-bt-falla .chwa-bt-t,.chwa-bt-falla .chwa-bt-d{white-space:normal;overflow-wrap:anywhere}
+.chwa-bt-r{font-variant-numeric:tabular-nums;font-size:15px;font-weight:600;color:var(--chwa-motor);min-width:44px;text-align:right;flex-shrink:0}
+.chwa-bt-prog{height:3px;background:var(--chwa-linea)} .chwa-bt-prog i{display:block;height:100%;background:var(--chwa-motor);transition:width .4s}
+.chwa-bt-espera .chwa-bt-r{color:var(--chwa-bt-ambar)} .chwa-bt-espera .chwa-bt-prog i{background:var(--chwa-bt-ambar-l)} .chwa-bt-espera .chwa-bt-giro{border-top-color:var(--chwa-bt-ambar-l)}
+.chwa-bt-falla{border-left:3px solid var(--chwa-alto)} .chwa-bt-falla .chwa-bt-r{color:var(--chwa-alto)}
+.chwa-bt-listo{background:var(--chwa-bt-listo)}
+.chwa-bt-acc{display:flex;flex-wrap:wrap;gap:8px;padding:0 12px 10px 40px}
+.chwa-bt-b{border:1px solid var(--chwa-est-b);background:var(--chwa-sup);color:var(--chwa-texto);border-radius:18px;padding:6px 14px;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;min-height:36px}
+.chwa-bt-b.si{background:var(--chwa-marca);border-color:var(--chwa-marca);color:#fff}
+.chwa-bt-x2{display:none;border-top:1px solid var(--chwa-linea);padding:6px 12px 10px}
+.chwa-bt.chwa-abierta .chwa-bt-x2{display:block}
+.chwa-bt-x2 ul{margin:0;padding:0;list-style:none}
+/* el botón flotante del producto (rayito) cae sobre la columna de tiempos: se le deja su carril */
+@media (max-width:899px){ .chwa-bt.chwa-abierta .chwa-bt-x2{padding-right:60px} }
+.chwa-bt-p{display:flex;gap:8px;font-size:13px;padding:3px 0;color:var(--chwa-ter);min-width:0}
+.chwa-bt-pi{width:14px;flex-shrink:0;text-align:center}
+.chwa-bt-pn{flex:1;min-width:0;overflow-wrap:anywhere}
+.chwa-bt-pt{margin-left:auto;font-variant-numeric:tabular-nums;flex-shrink:0}
+.chwa-bt-p.hecho{color:var(--chwa-sec)} .chwa-bt-p.hecho .chwa-bt-pi{color:var(--chwa-motor)}
+.chwa-bt-p.ahora{color:var(--chwa-texto);font-weight:600} .chwa-bt-p.ahora .chwa-bt-pi{color:var(--chwa-motor)}
+.chwa-bt-m{font-size:12px;color:var(--chwa-sec);margin-top:6px}
+.chwa-bt-det{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:8px;font-size:12px;color:var(--chwa-sec)}
+.chwa-bt-det > span{flex:1;min-width:150px}
+.chwa-bt-stop{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;border:0;background:var(--chwa-alto-bg);color:var(--chwa-alto);border-radius:14px;padding:6px 12px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;min-height:34px}
+.chwa-bt-stop[disabled]{opacity:.65;cursor:default}
+
 /* J · hoja desde abajo (V1.52): máximo 70 % de alto, barra para arrastrar y X; en PC, tarjeta arriba a la derecha */
 .chwa-hoja-velo{position:fixed;inset:0;background:var(--chwa-velo);z-index:160;opacity:0;transition:opacity .18s}
 .chwa-hoja-velo.chwa-vis{opacity:1}

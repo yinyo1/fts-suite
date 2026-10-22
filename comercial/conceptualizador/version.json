@@ -1,6 +1,11 @@
 {
-  "version": "V1.60",
+  "version": "V1.61",
   "historial": [
+    {
+      "version": "V1.61",
+      "fecha": "2026-10-22",
+      "nota": "fts-conceptualizador#12 (V1.61, estado visible), todo detrás de barra_v161 (apagado): arriba solo los datos del caso y «… está escribiendo…» cuando de verdad escribe una persona o el agente redacta; abajo UNA barra con segundero (esperando turno con cuántos van antes, paso N de M con el tiempo de cada paso y Detener, «Listo en m:ss» con espera y trabajo, la acción en Odoo de la persona y el error con qué hacer); un solo diccionario de pasos (cz-pasos.js); la línea «Odoo $X = machote $Y + $Z de redondeo» en el resultado de Odoo; CONFLICTO_DE_PRECIOS en el catálogo de errores."
+    },
     {
       "version": "V1.60",
       "fecha": "2026-10-22",

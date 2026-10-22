@@ -22,6 +22,11 @@
   var S = { el: null, h: null, reloj: null, caso: null, n: 0, pdfjs: null };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   function on() { try { return typeof G.CzInterruptor === 'function' && G.CzInterruptor('estado_odoo_v158') === true; } catch (e) { return false; } }
+  /* V1.61 (#12, `barra_v161`) · con la barra única, esta tarjeta NO se pinta: su estado (Odoo trabajando, listo o falla) pasa a la
+   * barra de abajo (estados 4 y 5) por vista() y alCambiar(fn). Lo demás (giro en el botón, visor del PDF) sigue igual. */
+  function barra() { try { return typeof G.CzInterruptor === 'function' && G.CzInterruptor('barra_v161') === true; } catch (e) { return false; } }
+  var OY = [];
+  function avisar() { OY.forEach(function (f) { try { f(S.vista); } catch (e) {} }); }
   var dos = function (n) { return (n < 10 ? '0' : '') + n; };
   var hms = function (d) { return dos(d.getHours()) + ':' + dos(d.getMinutes()) + ':' + dos(d.getSeconds()); };
 
@@ -66,7 +71,7 @@
     return S.el;
   }
   function parar() { if (S.reloj) { clearInterval(S.reloj); S.reloj = null; } }
-  function cerrar() { parar(); S.h = null; if (S.el) { S.el.hidden = true; S.el.innerHTML = ''; S.el.className = 'cze-est'; } }
+  function cerrar() { parar(); S.h = null; if (S.el) { S.el.hidden = true; S.el.innerHTML = ''; S.el.className = 'cze-est'; } if (S.vista) { S.vista = null; avisar(); } }
   function pintar(icono, titulo, sub, acciones, err) {
     var el = caja(), fns = {};
     var acc = (acciones || []).map(function (a, i) { fns['a' + i] = a.fn; return '<button type="button" class="cze-bt' + (a.si ? ' si' : '') + '" data-cze="a' + i + '">' + esc(a.txt) + '</button>'; }).join('');
@@ -81,6 +86,20 @@
     var id = ++S.n, t0 = Date.now(), d0 = new Date(t0);
     var h = { id: id, t0: t0, caso: o.caso || S.caso || null, fns: {} };
     S.h = h; S.caso = h.caso;
+    if (barra()) {   // V1.61 · a la barra: el segundero lo lleva ella
+      var V = function (fase, x) { S.vista = Object.assign({ fase: fase, desde: t0, caso: h.caso, acciones: [] }, x); avisar(); };
+      V('odoo', { titulo: String(o.titulo || 'Trabajando en Odoo').replace(/…$/, ''), sub: [o.detalle, o.tipico].filter(Boolean).join(' · ') });
+      var vivoB = function () { return S.h === h; }, segB = function () { return (Date.now() - t0) / 1000; };
+      return {
+        vivo: vivoB, segundos: function () { return segB().toFixed(1).replace(/\.0$/, '') + ' s'; },
+        listo: function (x) { if (!vivoB()) return; x = x || {}; V('listo', { titulo: x.titulo || 'Listo', sub: x.sub || '', seg: segB(), acciones: x.acciones || [] }); },
+        error: function (x) { if (!vivoB()) return; x = x || {};
+          var mot = String(x.motivo || 'sin respuesta').replace(/\s*Se reintenta solo\.?\s*$/, '').replace(/[.\s]+$/, '');
+          V('falla', { titulo: x.titulo || 'No se pudo', sub: mot + '. ' + (x.nota || 'La orden no cambió.'), codigo: x.codigo || null, seg: segB(),
+            acciones: (x.reintentar ? [{ txt: 'Reintentar', si: true, fn: x.reintentar }] : []).concat(x.acciones || []) }); },
+        cerrar: function () { if (vivoB()) cerrar(); }
+      };
+    }
     var sub = function () { var s = Math.floor((Date.now() - t0) / 1000); return 'Desde las ' + hms(d0) + ' · ' + s + ' s' + (o.detalle ? ' · ' + o.detalle : '') + (o.tipico ? ' · ' + o.tipico : ''); };
     h.fns = pintar('<div class="cze-giro" aria-hidden="true"></div>', o.titulo || 'Trabajando en Odoo…', sub(), null);
     S.reloj = setInterval(function () { if (S.h !== h) return; var s = S.el && S.el.querySelector('.cze-s'); if (s) s.textContent = sub(); }, 1000);
@@ -184,5 +203,6 @@
     return { el: m.el, cerrar: m.cerrar, url: url, descargar: function () { descargar(url, nombre); } };
   }
 
-  G.CzEstado = { on: on, inicio: inicio, caso: caso, cerrar: cerrar, visorPdf: visorPdf, hojas: hojas, descargar: descargar, _estado: S, PDFJS: PDFJS, WORKER: WORKER };
+  G.CzEstado = { on: on, inicio: inicio, caso: caso, cerrar: cerrar, barra: barra,
+    vista: function () { return S.vista || null; }, alCambiar: function (f) { if (typeof f === 'function' && OY.indexOf(f) < 0) OY.push(f); }, visorPdf: visorPdf, hojas: hojas, descargar: descargar, _estado: S, PDFJS: PDFJS, WORKER: WORKER };
 })(window);
