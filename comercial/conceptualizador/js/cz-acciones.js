@@ -333,16 +333,20 @@
     var esNombre = function (x) { return !!x && /\s/.test(String(x).trim()) && !/^[a-z0-9._-]+$/.test(String(x).trim()); };
     var S1 = G.SuiteAuth.getSession() || {}, dueno = (esNombre(caso.autor_nombre) && caso.autor_nombre) || (caso.autor && caso.autor === S1.actor && esNombre(S1.nombre) && S1.nombre) ||
       String(caso.autor || 'el dueño del caso').split('.')[0].replace(/^./, function (c) { return c.toUpperCase(); });
+    // V1.62a (#12 6353778672, `oportunidad_v162`) · el nombre sugerido ya escrito: el título del caso (el agente lo pone en cuanto hay
+    // machote, «Cliente · alcance · ciudad»), nunca «Cotización nueva»; sin título con sentido, el cliente y el folio.
+    var tit = String(caso.titulo || '').trim(), deOrigen = /^(cotizaci[oó]n nueva|new quote)?$/i.test(tit);
+    var sugerido = prendido('oportunidad_v162') && deOrigen ? [caso.cliente, caso.machote_folio].filter(Boolean).join(' · ') : tit;
     return new Promise(async function (listo) {
       ctx.modal('<h3>¿De qué oportunidad es esta cotización?</h3><p class="sub">La orden en Odoo va ligada a su oportunidad. Elige una del cliente o crea una a nombre de ' + esc(dueno) + '.</p><div id="opLista"><p class="sub">Buscando las del cliente…</p></div>');
-      var c = caso.cliente_odoo_id ? await C.suite('/webhook/comercial/oportunidades', { modo: 'candidatas', cliente_id: Number(caso.cliente_odoo_id), q: caso.titulo || '', limite: 8 }) : { ok: true, candidatas: [] };
+      var c = caso.cliente_odoo_id ? await C.suite('/webhook/comercial/oportunidades', { modo: 'candidatas', cliente_id: Number(caso.cliente_odoo_id), q: sugerido || '', limite: 8 }) : { ok: true, candidatas: [] };
       var L = (c.ok && Array.isArray(c.candidatas)) ? c.candidatas : [];
       var caja = document.getElementById('opLista'); if (!caja) return listo({ ok: false, error: 'SIN_OPORTUNIDAD' });
       var fila = 'display:flex;gap:8px;align-items:flex-start;margin:6px 0;cursor:pointer', rad = 'flex:0 0 auto;margin-top:3px';
       caja.innerHTML = (L.length ? '<div class="op-lista" role="radiogroup">' + L.map(function (o, i) { return '<label style="' + fila + '"><input style="' + rad + '" type="radio" name="opSel" value="' + Number(o.id) + '"' + (i === 0 ? ' checked' : '') + '><span><b>' + esc(o.nombre) + '</b> <small>' + esc([o.etapa, o.por_que].filter(Boolean).join(' · ')) + '</small></span></label>'; }).join('') + '</div>' :
           '<p class="sub">' + esc(c.ok ? 'Este cliente no tiene oportunidades abiertas.' : (c.mensaje || 'No se pudieron leer las del cliente.')) + '</p>') +
         '<label style="' + fila + '"><input style="' + rad + '" type="radio" name="opSel" value="nueva"' + (L.length ? '' : ' checked') + '><span><b>Crear una nueva</b> <small>a nombre de ' + esc(dueno) + '</small></span></label>' +
-        '<label class="lb">Nombre de la oportunidad nueva<input id="opNom" maxlength="240" value="' + esc(caso.titulo || '') + '"></label>' +
+        '<label class="lb">Nombre de la oportunidad nueva<input id="opNom" maxlength="240" value="' + esc(sugerido || '') + '"></label>' +
         '<p class="err-bt" id="opErr" hidden></p><div class="acc der"><button class="boton" id="opNo">Cancelar</button><button class="boton si" id="opOk">Seguir</button></div>';
       var err = function (t) { var e = document.getElementById('opErr'); e.textContent = t; e.hidden = !t; };
       document.getElementById('opNo').onclick = function () { ctx.cerrarModal(); listo({ ok: false, error: 'SIN_OPORTUNIDAD', mensaje: 'No se creó el borrador: falta elegir la oportunidad.' }); };

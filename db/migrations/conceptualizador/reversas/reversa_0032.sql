@@ -1,7 +1,8 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 -- reversa de la conceptualizador_0032 (V1.62a, #12): la lista de interruptores vuelve a la de la 0031; api_motor, api_suite,
--- alarmas_motor y config_valida a las de antes; se van orden_v162() y tarjetas_viejas_avisar(). Las columnas
--- caso.oportunidad_elegida y accion.aviso_viejo_at, la clave tarjeta_sin_aplicar_horas y los renglones de los cinco
+-- alarmas_motor y config_valida a las de antes; se van orden_v162(), tarjetas_viejas_avisar(), vigente_de(), ciclo_de() y
+-- titulo_de_origen(). Las columnas
+-- caso.oportunidad_elegida, caso.titulo_auto y accion.aviso_viejo_at, la clave tarjeta_sin_aplicar_horas y los renglones de los cinco
 -- interruptores se quedan, sin uso (quitarlos borraría lo que ya eligió la gente).
 -- Antes de aplicarla, orden-odoo tiene que volver a su versión anterior (su consulta llama orden_v162()).
 -- Solo si Esteban lo pide; se aplica con el runner de reversas.
@@ -64,4 +65,7 @@ BEGIN
 END
 $revv32$;
 DROP FUNCTION IF EXISTS conceptualizador.tarjetas_viejas_avisar(timestamptz);
+DROP FUNCTION IF EXISTS conceptualizador.vigente_de(uuid);
+DROP FUNCTION IF EXISTS conceptualizador.ciclo_de(uuid);
+DROP FUNCTION IF EXISTS conceptualizador.titulo_de_origen(uuid);
 DROP FUNCTION IF EXISTS conceptualizador.orden_v162();

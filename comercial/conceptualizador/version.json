@@ -4,7 +4,7 @@
     {
       "version": "V1.62a",
       "fecha": "2026-10-22",
-      "nota": "fts-conceptualizador#12 (V1.62a, todo cuadra), todo detrás de cinco interruptores apagados: el candado de cuadre en palabras con su botón (cuadre_v162), las tarjetas de machote u orden reemplazadas ya no se aplican y la vieja avisa (tarjetas_v162), la oportunidad elegida se guarda en el caso al elegirla (oportunidad_v162), corregir el precio de un renglón a N0 en la vista ejecutiva interna (n0_v162) y la regla 15 respeta lo que el autor pidió tal cual (ruido_v162)."
+      "nota": "fts-conceptualizador#12 (V1.62a, todo cuadra), todo detrás de cinco interruptores apagados: el candado de cuadre en palabras con su botón (cuadre_v162), las tarjetas de machote u orden reemplazadas ya no se aplican y la vieja avisa (tarjetas_v162), la oportunidad elegida se guarda en el caso al elegirla (oportunidad_v162), corregir el precio de un renglón a N0 en la vista ejecutiva interna (n0_v162) y la regla 15 respeta lo que el autor pidió tal cual (ruido_v162). La ventana de oportunidad trae el nombre sugerido del caso, nunca «Cotización nueva»."
     },
     {
       "version": "V1.61",

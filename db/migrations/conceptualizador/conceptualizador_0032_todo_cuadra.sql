@@ -4,9 +4,12 @@
 -- Cinco interruptores nuevos, todos en '0'. Apagados, `tomar`, `entregar`, `accion`, `evento`, `hilo`, `config` y las alarmas
 -- salen IGUAL que con la 0031 (pruebas/sql-0032.sh lo compara).
 --
---   cuadre_v162       · `tomar` trae `hilo.caso.machote_vigente` (versión, total y moneda del machote GUARDADO, monto_de de la 0030):
---                       el motor no propone un borrador que no cuadre con lo guardado (Nalco COT-0053). orden_v162() le dice a
---                       orden-odoo que diga el NO_CUADRA en palabras y que revise nota = hitos (PAGO_NO_CUADRA, Qualtia SO11928).
+--   cuadre_v162       · `tomar` trae `hilo.caso.machote_vigente` (versión, total, moneda, autor, fecha y DOCUMENTO del machote
+--                       GUARDADO, vigente_de): la versión vigente es la de la base, no la copia del motor. Si la editó una persona,
+--                       el motor la ADOPTA (no la pisa). Y `hilo.caso.ciclo`: el mismo error de Odoo dos veces sobre la misma
+--                       cotización (ciclo_de), para que el motor deje de proponer el mismo botón (Nalco COT-0053, 22-oct).
+--                       orden_v162() le dice a orden-odoo que diga el NO_CUADRA en palabras y que revise nota = hitos
+--                       (PAGO_NO_CUADRA, Qualtia SO11928).
 --   tarjetas_v162     · `entregar` con `respuesta.recalculo.precio` descarta las tarjetas `crear_machote` y `crear_borrador`
 --                       propuestas con OTRO total (también cuando la respuesta salió con observaciones y sin botón: la 0023 solo
 --                       lo hacía con `machote.precio`, que esa respuesta no trae). `accion` hecha sobre una tarjeta descartada
@@ -15,15 +18,19 @@
 --   oportunidad_v162  · evento `oportunidad_elegida`: la elección de la ventana «¿De qué oportunidad es?» queda en
 --                       `caso.oportunidad_elegida` al elegirla (sin trabajo, sin tope); si trae `creada` con su id (la creó
 --                       orden-odoo aunque la orden fallara), queda también en `caso.oportunidad_id`. `hilo` la trae.
+--                       Nombres con sentido (6353778672): `entregar` solo cambia el título del caso si sigue en el de origen
+--                       («Cotización nueva» o el inicio del primer mensaje) o en el que propuso el agente (`caso.titulo_auto`):
+--                       el nombre que puso la persona manda.
 --   n0_v162           · el evento `correccion` con `datos.n0` (precio corregido en la vista ejecutiva interna) solo entra con el
 --                       interruptor prendido: apagado lo rechaza (si no, le llegaría al modelo como una corrección suelta).
 --   ruido_v162        · `entregar` con `respuesta.silencio` y el texto exacto «Sin cambios pendientes en este caso.» y sin
 --                       acciones: el trabajo queda listo SIN mensaje y sin mover la actividad del caso (146 de 588 respuestas).
 --
 -- Medición: el panel (`config`) trae `v162_24h` (silencios, tarjetas descartadas, viejas vivas y avisadas, elecciones sin
--- oportunidad, correcciones N0 y las fallas de cuadre). Alarmas (viajan como las demás): `tarjeta_vieja` (una tarjeta de cotizar
--- lleva X + 24 h sin aplicarse), `oportunidad_perdida` (una elección «crear» sin oportunidad por más de 1 h), `no_cuadra`
--- (NO_CUADRA o PAGO_NO_CUADRA en 24 h), `ruido` (un «Sin cambios pendientes» publicado en 24 h con el interruptor prendido).
+-- oportunidad, correcciones N0, las fallas de cuadre, los casos en ciclo y los que siguen sin nombre). Alarmas (viajan como las
+-- demás): `tarjeta_vieja` (una tarjeta de cotizar lleva X + 24 h sin aplicarse), `oportunidad_perdida` (una elección «crear» sin
+-- oportunidad por más de 1 h), `no_cuadra` (NO_CUADRA o PAGO_NO_CUADRA en 24 h), `ciclo` (un caso cayó dos veces en el mismo
+-- error sobre la misma cotización en 24 h), `ruido` (un «Sin cambios pendientes» publicado en 24 h con el interruptor prendido).
 --
 -- Lo que NO cambia: `siguiente`, ningún interruptor existente, ningún modo nuevo de api_suite ni de api_motor (el evento entra
 -- por `evento`). Reversa: reversas/032_reversa.sql. Reglas del runner: sin llaves dobles, sin dos dólares juntos, sin dólar antes
@@ -79,6 +86,54 @@ $cv32$;
 -- ── columnas nuevas ────────────────────────────────────────────────────────────────────────
 ALTER TABLE conceptualizador.caso   ADD COLUMN IF NOT EXISTS oportunidad_elegida jsonb;
 ALTER TABLE conceptualizador.accion ADD COLUMN IF NOT EXISTS aviso_viejo_at timestamptz;
+ALTER TABLE conceptualizador.caso   ADD COLUMN IF NOT EXISTS titulo_auto text;
+
+-- ── la versión vigente del machote: la de la BASE (resultado 0 de 6353195755) ───────────────────
+-- Versión, total, moneda, quién la guardó, cuándo y su documento. Sin esquema comercial (bases de prueba): null.
+CREATE OR REPLACE FUNCTION conceptualizador.vigente_de(p_machote uuid) RETURNS jsonb
+LANGUAGE plpgsql STABLE AS $vg32$
+DECLARE v jsonb;
+BEGIN
+  IF p_machote IS NULL OR to_regclass('comercial.machote_version') IS NULL THEN RETURN NULL; END IF;
+  BEGIN
+    SELECT jsonb_build_object('version', mv.version, 'total', mv.total, 'moneda', mv.moneda, 'autor', mv.autor,
+                              'creada_at', mv.creada_at, 'documento', mv.documento) INTO v
+      FROM comercial.machote_version mv WHERE mv.machote_id = p_machote ORDER BY mv.version DESC LIMIT 1;
+  EXCEPTION WHEN OTHERS THEN v := NULL;
+  END;
+  RETURN v;
+END
+$vg32$;
+REVOKE ALL ON FUNCTION conceptualizador.vigente_de(uuid) FROM PUBLIC;
+
+-- ── el ciclo: el mismo error de Odoo dos veces sobre la MISMA cotización en 24 h ───────────────
+-- «La misma cotización» = la misma huella de precios (o el mismo total, si la tarjeta no trae huella). El motor lo recibe en
+-- `tomar` y deja de proponer el botón que ya falló así; la alarma `ciclo` lo dice en el correo.
+CREATE OR REPLACE FUNCTION conceptualizador.ciclo_de(p_caso uuid) RETURNS jsonb
+LANGUAGE sql STABLE AS $cy32$
+  SELECT jsonb_build_object('codigo', x.codigo, 'veces', x.n, 'huella', x.h, 'desde', x.desde, 'hasta', x.hasta, 'mensaje', x.msg)
+    FROM (SELECT f.codigo, count(*) AS n,
+                 coalesce(a.datos->'cotizacion'->'huella_precios'->>'total', a.datos->'resumen'->>'total', '') AS h,
+                 min(f.at) AS desde, max(f.at) AS hasta, (array_agg(f.mensaje ORDER BY f.id DESC))[1] AS msg
+            FROM conceptualizador.falla_odoo f LEFT JOIN conceptualizador.accion a ON a.id = f.accion_id
+           WHERE f.caso_id = p_caso AND f.at > now() - interval '24 hours'
+             AND f.codigo IN ('NO_CUADRA','PAGO_NO_CUADRA','CONFLICTO_DE_PRECIOS','CONFLICTO_DE_VERSION')
+           GROUP BY 1, 3 HAVING count(*) >= 2 ORDER BY max(f.at) DESC LIMIT 1) x
+$cy32$;
+REVOKE ALL ON FUNCTION conceptualizador.ciclo_de(uuid) FROM PUBLIC;
+
+-- ── el título de origen: «Cotización nueva» o el inicio del primer mensaje (nadie lo escogió) ───
+CREATE OR REPLACE FUNCTION conceptualizador.titulo_de_origen(p_caso uuid) RETURNS boolean
+LANGUAGE sql STABLE AS $to32$
+  -- Un caso que alguien renombró a mano (renombrado_at, 0005) ya no es de origen: su nombre manda.
+  SELECT k.renombrado_at IS NULL AND (
+           btrim(coalesce(k.titulo, '')) IN ('', 'Cotización nueva', 'Cotizacion nueva', 'New quote')
+           OR (k.titulo_auto IS NOT NULL AND k.titulo = k.titulo_auto)
+           OR k.titulo = left(btrim(coalesce((SELECT m.texto FROM conceptualizador.mensaje m WHERE m.caso_id = k.id AND m.rol = 'usuario'
+                                               ORDER BY m.id LIMIT 1), '')), 60))
+    FROM conceptualizador.caso k WHERE k.id = p_caso
+$to32$;
+REVOKE ALL ON FUNCTION conceptualizador.titulo_de_origen(uuid) FROM PUBLIC;
 
 -- ── lo que orden-odoo necesita saber (credencial comercial_app), sin abrirle la tabla config ──
 CREATE OR REPLACE FUNCTION conceptualizador.orden_v162() RETURNS jsonb
@@ -145,6 +200,7 @@ DECLARE
   v_n    int;
   v_pre  numeric;
   v_sil  boolean := false;
+  v_tit  text;
 BEGIN
   -- Antes de entregar: el caso y su última actividad (un silencio no la mueve).
   IF v_modo = 'entregar' AND v_id IS NOT NULL THEN
@@ -153,6 +209,16 @@ BEGIN
     v_sil := conceptualizador.prendido('ruido_v162') AND coalesce(v_resp->>'silencio', '') = 'true'
              AND btrim(coalesce(v_resp->>'texto', '')) = 'Sin cambios pendientes en este caso.'
              AND (jsonb_typeof(v_resp->'acciones') IS DISTINCT FROM 'array' OR jsonb_array_length(v_resp->'acciones') = 0);
+    -- oportunidad_v162 · el nombre que puso la persona manda: el agente solo nombra un caso que sigue con su título de origen.
+    v_tit := nullif(left(btrim(coalesce(v_resp->'caso'->>'titulo', '')), 120), '');
+    IF conceptualizador.prendido('oportunidad_v162') AND v_tit IS NOT NULL AND v_caso IS NOT NULL THEN
+      IF coalesce(conceptualizador.titulo_de_origen(v_caso), false) THEN
+        UPDATE conceptualizador.caso SET titulo_auto = v_tit WHERE id = v_caso;
+      ELSE
+        p := jsonb_set(p, ARRAY['respuesta','caso'], (p->'respuesta'->'caso') - 'titulo');
+        v_tit := NULL;
+      END IF;
+    END IF;
   END IF;
 
   v_r := conceptualizador.api_motor_0032prev(p);
@@ -160,8 +226,10 @@ BEGIN
 
   IF v_modo = 'tomar' AND conceptualizador.prendido('cuadre_v162') AND jsonb_typeof(v_r->'hilo'->'caso') = 'object'
      AND coalesce(v_r->'hilo'->'caso'->>'machote_id', '') <> '' THEN
-    v_m := conceptualizador.monto_de(conceptualizador.a_uuid(v_r->'hilo'->'caso'->>'machote_id'));
+    v_m := conceptualizador.vigente_de(conceptualizador.a_uuid(v_r->'hilo'->'caso'->>'machote_id'));
     IF v_m IS NOT NULL THEN v_r := jsonb_set(v_r, ARRAY['hilo','caso','machote_vigente'], v_m); END IF;
+    v_m := conceptualizador.ciclo_de(conceptualizador.a_uuid(v_r->'hilo'->'caso'->>'id'));
+    IF v_m IS NOT NULL THEN v_r := jsonb_set(v_r, ARRAY['hilo','caso','ciclo'], v_m); END IF;
     RETURN v_r;
   END IF;
 
@@ -298,6 +366,10 @@ BEGIN
                              AND e.tipo = 'correccion' AND e.datos ? 'n0'),
       'fallas_cuadre', (SELECT count(*) FROM conceptualizador.falla_odoo f WHERE f.at > now() - interval '24 hours'
                            AND f.codigo IN ('NO_CUADRA','PAGO_NO_CUADRA')),
+      'casos_en_ciclo', (SELECT count(*) FROM conceptualizador.caso k WHERE NOT k.demo AND k.estado IN ('abierto','enviada')
+                            AND conceptualizador.ciclo_de(k.id) IS NOT NULL),
+      'casos_sin_nombre', (SELECT count(*) FROM conceptualizador.caso k WHERE NOT k.demo AND k.estado = 'abierto' AND k.disparado_at IS NOT NULL
+                              AND btrim(coalesce(k.titulo, '')) IN ('', 'Cotización nueva', 'Cotizacion nueva', 'New quote')),
       'tarjeta_sin_aplicar_horas', coalesce(conceptualizador.cfg('tarjeta_sin_aplicar_horas'), 24)));
   END IF;
   RETURN v_r;
@@ -357,6 +429,18 @@ BEGIN
         'La persona tiene el botón que lo arregla en su chat. Si se repite en el mismo caso, revisa por qué el motor propone algo que no cuadra.', 'no-cuadra',
         jsonb_build_object('falla_id', x.id, 'codigo', x.codigo, 'caso', x.carpeta));
     END IF;
+  END IF;
+  IF conceptualizador.prendido('cuadre_v162') THEN
+    FOR x IN SELECT k.id, k.carpeta, conceptualizador.ciclo_de(k.id) AS c FROM conceptualizador.caso k
+              WHERE NOT k.demo AND k.estado IN ('abierto','enviada')
+                AND EXISTS (SELECT 1 FROM conceptualizador.falla_odoo f WHERE f.caso_id = k.id AND f.at > now() - interval '24 hours') LOOP
+      CONTINUE WHEN x.c IS NULL;
+      v_r := v_r || conceptualizador.alarma('ciclo', x.id::text, (x.c->>'hasta')::timestamptz,
+        'El caso ' || coalesce(x.carpeta, x.id::text) || ' cayó ' || (x.c->>'veces') || ' veces en ' || (x.c->>'codigo') || ' sobre la misma cotización en 24 h.',
+        'El motor ya no propone ese botón y dice la causa con las dos cifras. Si sigue, revisa la versión vigente del machote contra la cotización.', 'ciclo',
+        jsonb_build_object('caso', x.carpeta, 'codigo', x.c->>'codigo', 'veces', (x.c->>'veces')::int));
+      EXIT;
+    END LOOP;
   END IF;
   IF conceptualizador.prendido('ruido_v162') THEN
     SELECT m.id, m.created_at, k.carpeta INTO x FROM conceptualizador.mensaje m JOIN conceptualizador.caso k ON k.id = m.caso_id
