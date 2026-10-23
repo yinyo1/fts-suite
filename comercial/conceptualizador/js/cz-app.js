@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.62b';
+  var VERSION = 'V1.63a';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -870,6 +870,8 @@
     ['oportunidad_v162', 'La oportunidad no se pierde', 'La oportunidad elegida se guarda en el caso al elegirla y se crea aunque la orden falle por otra razón.'],
     ['n0_v162', 'N0 · precio de la persona', 'En la vista ejecutiva interna se corrige el precio de un renglón: queda N0 con el decreto de la persona, sin folio ni liga, y el agente deja «Actualizar el machote».'],
     ['ruido_v162', 'Sin ruido', 'No se publica «Sin cambios pendientes» cuando no hay nada que decir, y la regla 15 no marca lo que el autor pidió tal cual (se anota que lo pidió él).'],
+    // V1.63a (#12) · todo entra apagado (migración 0036); orden de prendido en el plan de despliegue del #12.
+    ['pdf_menu_v163', 'PDF en ⋮', '«Ver cotización» y «Descargar PDF» en el menú del chat siempre que el caso tenga orden en Odoo, sin depender de la tarjeta del borrador.'],
   ];
   /** Los interruptores que conoce el servidor (valores `interruptor:*` y `interruptores`), en el orden de arriba; uno nuevo
    * que la pantalla todavía no describe sale al final con su nombre, para que se pueda prender igual. */
@@ -2004,6 +2006,12 @@
     var cx = ciudadDe(cs.id ? cs : c);
     var V = (md === 'acompanamiento' ? '<button data-a="disparo" class="destaca">' + ico('disparo', 's') + '<span>' + esc(MODOS[md].boton) + '<small>Te pido confirmación antes de mandarlo</small></span></button>' +
       (c.id ? '<button data-a="falta">' + ico('falta', 's') + '<span>¿Qué me falta?<small>Lo que no puede faltar para cotizar este trabajo</small></span></button>' : '') + '<hr>' : '') + (c.id && !(ST.sel || {}).menu ? (
+      // V1.63a (`pdf_menu_v163`, #12, falla de Esteban del 23-oct 14:46 CST) · «Ver cotización» y «⬇ Descargar PDF» aquí, siempre que el
+      // caso tenga orden en Odoo, para el dueño y para Esteban, SIN depender de la tarjeta del borrador (Mattel se dio de alta por script
+      // y no tenía ninguna). La base vuelve a decidir quién puede (cotizacion-cliente · ver, db/022). Van ARRIBA: a 380 px se ven sin bajar.
+      (on('pdf_menu_v163') && G.CzEnviar && (cs.orden_id || c.orden_id) && (mia || ST.admin === true || ST.panelAdmin === true) ?
+        '<button data-a="pdf_ver">' + ico('pagina', 's') + '<span>Ver cotización ' + esc(cs.orden_nombre || c.orden_nombre || '') + '<small>El PDF oficial de Odoo, tal como lo recibe el cliente</small></span></button>' +
+        '<button data-a="pdf_bajar">' + ico('bajar', 's') + '<span>⬇ Descargar PDF<small>El mismo PDF, como archivo</small></span></button>' : '') +
       // V1.34 (D89) · la ciudad del proyecto se cambia aquí (solo quien la abrió o Esteban; la base vuelve a decidir).
       '<button data-a="ciudad"' + (mia ? '' : ' disabled') + '>' + ico('mapa', 's') + '<span>Ciudad del proyecto' + (cx ? ': ' + esc(CI.nombre(cx)) : '') +
         '<small>' + (!mia ? 'Solo quien la abrió o Esteban' : cx ? (cx.confirmada ? 'Cambiarla: tiendas, flete y viáticos se recalculan' : 'Prellenada, sin confirmar · cambiar o confirmar') : 'Por confirmar · elegirla') + '</small></span></button>' +
@@ -2076,6 +2084,7 @@
       if (a === 'vista_interna') return preguntarInterna();
       if (a === 'ayuda_niveles') return G.CzNiveles.ayuda();
       if (a === 'visor') return abrirVisor();
+      if (a === 'pdf_ver' || a === 'pdf_bajar') { var cv = (ST.hilo && ST.hilo.caso && ST.hilo.caso.id) ? ST.hilo.caso : c; return G.CzEnviar.ver(Object.assign({}, cv, { orden_nombre: cv.orden_nombre || c.orden_nombre }), a === 'pdf_bajar'); }
       if (a === 'ultimo_pdf') return G.CzEnviar.ver(Object.assign({}, (ST.hilo && ST.hilo.caso) || {}, { orden_nombre: ((ST.hilo && ST.hilo.ultimo_pdf) || {}).orden_nombre }), false);
       if (a === 'ir_machote') { var hm = ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'hecha'; }).pop(); return abrirEditor(hm || null); }
       if (a === 'archivos') return abrirArchivos();

@@ -1,6 +1,11 @@
 {
-  "version": "V1.62b",
+  "version": "V1.63a",
   "historial": [
+    {
+      "version": "V1.63a",
+      "fecha": "2026-10-23",
+      "nota": "fts-conceptualizador#12 (V1.63a, flujo, ruido, PDF y vendedor), detrás de interruptores apagados (migración 0036): «Ver cotización» y «⬇ Descargar PDF» en el ⋮ de todo caso con orden en Odoo, para el dueño y para Esteban, sin depender de la tarjeta del borrador (pdf_menu_v163, falla de Mattel del 23-oct 14:46 CST)."
+    },
     {
       "version": "V1.62b",
       "fecha": "2026-10-23",

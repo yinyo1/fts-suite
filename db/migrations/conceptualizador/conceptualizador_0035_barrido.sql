@@ -60,9 +60,11 @@ CREATE TABLE IF NOT EXISTS conceptualizador.decreto_servidor (
   at       timestamptz NOT NULL DEFAULT now()
 );
 INSERT INTO conceptualizador.decreto_servidor (persona, origen, texto, alcance, dicho_at, hasta)
-VALUES ('esteban.delacruz', '#12 6355360152',
-        'Que estas mejoras se hagan retroactivas a los proyectos que ya están creados, sin necesidad de que yo haga nada: a las de Montalvo, a las de Richard; que no dependa de que alguien le dé un clic.',
-        'barrido', '2026-10-23 01:42:00+00', now() + interval '7 days')
+-- V1.63 (#12, decisión 7 de Esteban del 23-oct) · el decreto del barrido es el del 23-oct (6368082500): lo enviado no se toca ni en la
+-- forma. El del 22-oct (6355360152) ya no se siembra: su punto 3 (corregir la forma de lo enviado) quedó reemplazado.
+VALUES ('esteban.delacruz', '#12 6368082500',
+        'Lo que ya parece enviado ya no lo edite nada, ya no le haga nada a la gente. Que retroactivamente analice todo y dé avance a todas las cotizaciones: en un día prácticamente todas hechas en Odoo, con el PDF listo en la sesión y en los tres puntitos, ya con todo lo aprendido.',
+        'barrido', '2026-10-23 15:09:00+00', now() + interval '7 days')
 ON CONFLICT (origen) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS conceptualizador.barrido_caso (
@@ -156,7 +158,7 @@ BEGIN
   END IF;
   RETURN jsonb_build_object('ok', true, 'modo', 'decreto', 'persona', v_d.persona, 'dueno', v_due, 'mensaje_id', v_d.origen,
     'caso_id', t.caso_id, 'msg_at', v_d.dicho_at, 'hora', to_char(v_d.dicho_at AT TIME ZONE 'America/Monterrey', 'HH24:MI "del" DD-MM'),
-    'motivo', 'lo guardó el agente por decreto de Esteban del 22-oct (' || v_d.origen || ')');
+    'motivo', 'lo guardó el agente por decreto de Esteban del 23-oct (' || v_d.origen || ')');
 END
 $ag35$;
 ALTER FUNCTION conceptualizador.agente_gate(bigint, uuid, text) SECURITY DEFINER SET search_path = conceptualizador, public;
