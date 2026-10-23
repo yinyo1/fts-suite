@@ -2298,6 +2298,7 @@
     $$('.carta', M).forEach(function (k) {
       if (k.classList.contains('superada') || k.classList.contains('vigente') || (k.parentElement && k.parentElement.closest('.carta'))) return;   // las de adentro van con su tarjeta
       var h = k.querySelector(':scope > h4'); if (!h) return;
+      if (k.classList.contains('pdf-listo')) return;          // V1.63a (`una_orden_v163`) · el PDF que pidió la persona es la entrega: abierto
       if (k.querySelector(PIDE_CLIC)) return;                 // pide un clic: abierta
       var t = h.textContent.replace(/\s+/g, ' ').trim(), n = (vistos[t] = (vistos[t] || 0) + 1);
       var clave = t + '#' + n;
@@ -2654,6 +2655,8 @@
     var d = a.datos || {}, so = ((ST.hilo && ST.hilo.caso) || {}).orden_nombre || (ultimoBorrador() && ((ST.hilo.acciones || []).filter(function (x) { return x.id === ultimoBorrador(); })[0] || {}).resultado || {}).orden_nombre;
     // V1.62b (`todo_hecho_v162b`) · el botón único (orden ya enviada) dice que hace las tres cosas y por cuánto.
     if (on('todo_hecho_v162b') && a.tipo === 'crear_borrador' && d.combinado && a.titulo) return a.titulo;
+    // V1.63a (`una_orden_v163`) · el botón de «↺ Deshacer» dice Deshacer, no «Actualizar SO… en Odoo» (aunque por dentro actualice).
+    if (on('una_orden_v163') && d.deshacer === true && d.boton) return d.boton;
     if (on('tarjetas_v159') && a.tipo === 'crear_borrador' && so) return 'Actualizar ' + so + ' en Odoo';
     return d.boton || ETIQ[a.tipo] || 'Hacer';
   }
