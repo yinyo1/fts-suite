@@ -256,7 +256,11 @@
     // se pregunta: ligar una del cliente o crear una a nombre del autor del caso. Nunca se adivina, y si la persona cierra la
     // ventana no se escribe nada. La elección la crea o la liga orden-odoo del lado del servidor (opción b de Esteban, #12): con la
     // misma regla de quién mueve qué y sin pedir comercial:write. Aquí solo se leen las candidatas.
-    var prev = ordenDe(H), modo = prev ? 'actualizar' : 'crear', eleccion = null;
+    // V1.63a P7 (#12, Esteban 23-oct 15:27 CST, `flujo_v163`) · crear o actualizar lo decide la verdad del SERVIDOR, no si hay una
+    // tarjeta «crear borrador» hecha: un caso dado de alta por script (Mattel SO11919) ya trae `orden_id` del machote sin esa tarjeta,
+    // y mandar «crear» daba YA_TIENE_ORDEN y un «Volver a armar» que volvía al mismo error.
+    var prev = ordenDe(H) || (prendido('flujo_v163') && caso.orden_id ? { orden_id: caso.orden_id, orden_nombre: caso.orden_nombre || null } : null);
+    var modo = prev ? 'actualizar' : 'crear', eleccion = null;
     if (prendido('vendedor_v159') && !caso.oportunidad_id && !ctx.oportunidadLista && !(prev && prev.oportunidad && prev.oportunidad.id)) {
       var op = await oportunidadDelMachote(caso.machote_id);
       if (!op.ok) return { ok: false, error: op.error || 'SIN_OPORTUNIDAD', mensaje: op.mensaje };

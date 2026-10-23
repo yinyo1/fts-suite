@@ -48,7 +48,9 @@ ON CONFLICT (clave) DO NOTHING;
 CREATE OR REPLACE FUNCTION conceptualizador.orden_v163() RETURNS jsonb
 LANGUAGE sql STABLE AS $ov36$
   SELECT jsonb_build_object('vendedor', conceptualizador.prendido('vendedor_v163'), 'rechazos', conceptualizador.prendido('rechazos_v163'),
-                            'una_orden', conceptualizador.prendido('una_orden_v163'))
+                            'una_orden', conceptualizador.prendido('una_orden_v163'),
+                            -- P7 (#12, 23-oct 15:27 CST): «crear» sobre una orden que ya existe en borrador o enviada se trata como «actualizar».
+                            'flujo', conceptualizador.prendido('flujo_v163'))
 $ov36$;
 ALTER FUNCTION conceptualizador.orden_v163() SECURITY DEFINER SET search_path = conceptualizador, public;
 REVOKE ALL ON FUNCTION conceptualizador.orden_v163() FROM PUBLIC;

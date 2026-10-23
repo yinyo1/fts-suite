@@ -78,7 +78,10 @@
       MARGEN_BAJO_PISO: { texto: 'El margen va abajo del piso de 8 %. Solo Esteban lo autoriza, escribiéndolo en este chat; o sube el margen en el machote.', boton: null, hacer: null, quien: 'Esteban, en este chat' },
       MONEDA_DISTINTA_AL_CASO: { texto: 'El machote está en otra moneda que el caso. Toca «Actualizar el machote» para pasarlo a la moneda del caso.', boton: 'Actualizar el machote', hacer: { acc: 'mandar', texto: 'Actualiza el machote a la moneda del caso y propón guardarlo.' } },
       MONEDA_INVALIDA: null, SIN_EMPRESA: null, MACHOTE_SIN_TOTAL: null,
-      YA_TIENE_ORDEN: { texto: 'Ya existe ' + so + ' para este machote. Toca «Volver a armar la cotización» y te dejo «Actualizar ' + so + ' en Odoo».', boton: 'Volver a armar la cotización', hacer: { acc: 'mandar', texto: REARMAR } },
+      // V1.63a P7 (`flujo_v163`) · con el interruptor el servidor ya convierte «crear» en «actualizar» cuando la orden está en borrador o
+      // enviada; si aun así llega YA_TIENE_ORDEN, rearmar daría el mismo error: se dice qué hacer, sin botón que regrese al mismo lugar.
+      YA_TIENE_ORDEN: prendido('flujo_v163') ? { texto: 'Ya existe ' + so + ' para este machote y no está en borrador ni enviada: se cambia desde Odoo (Ventas → ' + so + '), no desde aquí.', boton: null, hacer: null, quien: 'Quien cotiza, en Odoo (Ventas)' } :
+        { texto: 'Ya existe ' + so + ' para este machote. Toca «Volver a armar la cotización» y te dejo «Actualizar ' + so + ' en Odoo».', boton: 'Volver a armar la cotización', hacer: { acc: 'mandar', texto: REARMAR } },
       ORDEN_EN_CURSO: { texto: 'Alguien está creando esta cotización en este momento. Espera un minuto y toca «Reintentar».', boton: 'Reintentar', hacer: { acc: 'reintentar' } },
       ESTADO_NO_EDITABLE: { texto: so + ' ya está confirmada en Odoo: se cambia desde Odoo (Ventas → ' + so + '), no desde aquí.', boton: null, hacer: null, quien: 'Quien cotiza, en Odoo (Ventas)' },
       ORDEN_NO_ENCONTRADA: { texto: so + ' ya no está en Odoo (la borraron o la cancelaron). Toca «Volver a armar la cotización» para crear otra.', boton: 'Volver a armar la cotización', hacer: { acc: 'mandar', texto: REARMAR } },
