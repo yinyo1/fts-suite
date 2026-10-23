@@ -195,11 +195,21 @@
           "hora_propuesta_cst": null,
           "comentario": "Aprobado por lider.",
           "accion": "aprobado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 63,
+          "usuario": "Magaly Estefanía Pérez García",
+          "timestamp": "2026-10-23T16:54:06.946Z",
+          "hora_propuesta_cst": "09:30",
+          "comentario": "LLEGO TARDE POR LA LLUVIA Y VIALIDADES CERRADAS",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_rh",
-      "hora_final_aplicada_utc": null,
-      "aplicado_en_odoo": false,
+      "status": "aprobada_con_ajuste",
+      "hora_final_aplicada_utc": "2026-10-16 15:30:00",
+      "aplicado_en_odoo": true,
       "department_id": 6,
       "department_name": "Comercial",
       "sin_departamento": false,
@@ -212,7 +222,7 @@
       "rh_directo_ceo": false,
       "directo_ceo": false,
       "sin_supervisor": false,
-      "tag_disputa_activo": true
+      "tag_disputa_activo": false
     },
     {
       "id_interno": "INC-OLV-98-2026-10-15T19-43-13-601Z",
