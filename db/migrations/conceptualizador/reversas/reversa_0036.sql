@@ -46,4 +46,4 @@ $revmot36$;
 DROP FUNCTION IF EXISTS conceptualizador.orden_v163();
 DROP FUNCTION IF EXISTS conceptualizador.orden_rechazo_registrar(jsonb);
 DROP FUNCTION IF EXISTS conceptualizador.metrica_v163(timestamptz);
-DELETE FROM conceptualizador.config WHERE clave IN ('interruptor:pdf_menu_v163','interruptor:flujo_v163','interruptor:pdf_v163','interruptor:vendedor_v163','interruptor:rechazos_v163');
+DELETE FROM conceptualizador.config WHERE clave IN ('interruptor:pdf_menu_v163','interruptor:flujo_v163','interruptor:pdf_v163','interruptor:vendedor_v163','interruptor:rechazos_v163','interruptor:una_orden_v163');

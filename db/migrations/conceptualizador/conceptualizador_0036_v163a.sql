@@ -9,6 +9,8 @@
 --                    de borrador propuestas con OTRA huella de precios aunque el total sea igual (Nalco 2e5783, el traslado).
 --   pdf_v163       · el motor revisa el documento v10 antes de entregar (bloques, texto de relleno, hitos = nota = «Pagos»).
 --   vendedor_v163  · orden-odoo no reescribe user_id en una orden que ya existe (R6): `orden_v163()` se lo dice.
+--   una_orden_v163 · «una orden = se ejecuta completa y regresa el PDF» (Esteban, 23-oct 15:21 CST): la instrucción de una persona
+--                    (agente_gate) también actualiza una orden ENVIADA (sigue «enviada»; nunca se confirma) y el PDF va en la respuesta.
 --   rechazos_v163  · orden-odoo guarda cada rechazo (orden_rechazo) y la alarma `orden_rechazo_repetido` sale con el mismo código
 --                    dos veces en 24 h en el mismo caso.
 -- Y la alarma `decreto_sin_odoo`: una tarjeta de borrador propuesta lleva más de 2 h sin llegar a Odoo (flujo_v163 prendido).
@@ -34,7 +36,7 @@ LANGUAGE sql IMMUTABLE AS $in36$
                'cuadre_v162','tarjetas_v162','oportunidad_v162','n0_v162','ruido_v162',
                'guardar_agente_v162b','todo_hecho_v162b','pdf_v162b','revision_v162b',
                'barrido_v162',
-               'pdf_menu_v163','flujo_v163','pdf_v163','vendedor_v163','rechazos_v163']
+               'pdf_menu_v163','flujo_v163','pdf_v163','vendedor_v163','rechazos_v163','una_orden_v163']
 $in36$;
 
 
@@ -45,7 +47,8 @@ ON CONFLICT (clave) DO NOTHING;
 -- ── lo que orden-odoo necesita saber (credencial comercial_app), sin abrirle la tabla config ──
 CREATE OR REPLACE FUNCTION conceptualizador.orden_v163() RETURNS jsonb
 LANGUAGE sql STABLE AS $ov36$
-  SELECT jsonb_build_object('vendedor', conceptualizador.prendido('vendedor_v163'), 'rechazos', conceptualizador.prendido('rechazos_v163'))
+  SELECT jsonb_build_object('vendedor', conceptualizador.prendido('vendedor_v163'), 'rechazos', conceptualizador.prendido('rechazos_v163'),
+                            'una_orden', conceptualizador.prendido('una_orden_v163'))
 $ov36$;
 ALTER FUNCTION conceptualizador.orden_v163() SECURITY DEFINER SET search_path = conceptualizador, public;
 REVOKE ALL ON FUNCTION conceptualizador.orden_v163() FROM PUBLIC;

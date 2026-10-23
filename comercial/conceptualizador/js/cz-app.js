@@ -871,6 +871,7 @@
     ['n0_v162', 'N0 · precio de la persona', 'En la vista ejecutiva interna se corrige el precio de un renglón: queda N0 con el decreto de la persona, sin folio ni liga, y el agente deja «Actualizar el machote».'],
     ['ruido_v162', 'Sin ruido', 'No se publica «Sin cambios pendientes» cuando no hay nada que decir, y la regla 15 no marca lo que el autor pidió tal cual (se anota que lo pidió él).'],
     // V1.63a (#12) · todo entra apagado (migración 0036); orden de prendido en el plan de despliegue del #12.
+    ['una_orden_v163', 'Una orden = todo hecho', 'La instrucción clara del dueño o de Esteban se ejecuta completa en la misma vuelta: machote, Odoo (también enviada, avisando) y el PDF en el mismo mensaje, con «↺ Deshacer».'],
     ['pdf_menu_v163', 'PDF en ⋮', '«Ver cotización» y «Descargar PDF» en el menú del chat siempre que el caso tenga orden en Odoo, sin depender de la tarjeta del borrador.'],
   ];
   /** Los interruptores que conoce el servidor (valores `interruptor:*` y `interruptores`), en el orden de arriba; uno nuevo
@@ -2546,6 +2547,11 @@
     // NO es el vigente: bom.md se quedó con el último que sí pasó, y es el que vale para cotizar.
     // `propuesta` (la que trae el BOM) no trae `verifica`: es el de `ultima` cuando las dos son la misma respuesta.
     var VU = U.verifica || (ST.hilo && ST.hilo.ultima && Number(ST.hilo.ultima.trabajo_id) === Number(U.trabajo_id) ? ST.hilo.ultima.verifica : null);
+    // V1.63a (`una_orden_v163`, #12, regla «una orden = se ejecuta completa y regresa el PDF») · la respuesta que actualizó Odoo por la
+    // orden de una persona trae el PDF ahí mismo: «Ver cotización» y «⬇ Descargar PDF» del PDF oficial (cotizacion-cliente · ver).
+    if (on('una_orden_v163') && VU && VU.pdf_listo && G.CzEnviar && H.caso && H.caso.orden_id)
+      h += '<div class="carta pdf-listo" data-pdf-listo="' + esc(String(VU.pdf_listo.orden_nombre || '')) + '"><h4>📄 ' + esc(VU.pdf_listo.orden_nombre || (H.caso.orden_nombre || 'Cotización')) +
+        ' · PDF de Odoo, ya con este cambio</h4>' + G.CzEnviar.botones(H, mia(H.caso) || ST.admin === true || ST.panelAdmin === true) + '</div>';
     var BO = on('bom_observado_v159') && VU && VU.bom_observado;
     if (BO) h += '<div class="carta bom-obs" data-bom-obs="' + Number(BO.errores || 0) + '"><h4>🔴 BOM observado · ' + Number(BO.errores || 0) + ' por corregir</h4><p class="nota">Este BOM no pasó mi revisión: lo que falta está en rojo en mi mensaje. ' +
       (BO.bom_vigente ? 'Para cotizar sigue valiendo el BOM anterior, el último que sí pasó.' : 'Todavía no hay un BOM que haya pasado: no se cotiza hasta corregirlo.') + ' Cuando lo corrija, este reemplaza al vigente.</p></div>';
