@@ -724,6 +724,7 @@
       if (V && Gs) {
         var tope = Number(V.consumo_tope_semana) || 0, sem = Number(Gs.semana) || 0;
         h += '<div class="czc-tarj"><div><b>Freno semanal</b> · ' + millones(sem) + ' de ' + millones(tope) + ' ponderados (' + (tope ? Math.round(100 * sem / tope) : 0) + ' %)</div>' + medidor(sem, tope) +
+          (on('freno_robot_v163') && Gs.semana_persona != null ? '<div class="czc-k">Personas ' + millones(Gs.semana_persona) + ' · robot ' + millones(Gs.semana_robot) + '.</div>' : '') +
           '<div class="czc-k">Hoy: ' + esc(gastoTxt(Gs.hoy)) + '. Se reinicia el lunes 00:00.</div></div>';
       }
       // V1.52.1 (#5) · permiso del robot por caso: solo panel_admin (lo valida el servidor), con razón y bitácora.
@@ -872,6 +873,9 @@
     ['ruido_v162', 'Sin ruido', 'No se publica «Sin cambios pendientes» cuando no hay nada que decir, y la regla 15 no marca lo que el autor pidió tal cual (se anota que lo pidió él).'],
     // V1.63a (#12) · todo entra apagado (migración 0036); orden de prendido en el plan de despliegue del #12.
     ['una_orden_v163', 'Una orden = todo hecho', 'La instrucción clara del dueño o de Esteban se ejecuta completa en la misma vuelta: machote, Odoo (también enviada, avisando) y el PDF en el mismo mensaje, con «↺ Deshacer».'],
+    ['freno_robot_v163', 'El freno solo es para el robot', 'Con el freno semanal rebasado, lo que pide una persona de lunes a viernes en horario hábil se atiende completo, búsquedas incluidas; el freno solo apaga lo proactivo. El gasto se ve separado: personas y robot.'],
+    ['oportunidad_v163', 'Oportunidad desde que nace el caso', 'En cuanto se sabe el cliente, el agente propone la oportunidad con nombre tentativo (o ligar una parecida del cliente) y el caso toma ese nombre.'],
+    ['machote_n5_v163', 'Machote aunque todo esté en N5', 'El machote se crea con sus renglones sin precio (PENDIENTE PROVEEDOR) aunque ninguno tenga importe todavía; la cotización sigue esperando los precios.'],
     ['pdf_menu_v163', 'PDF en ⋮', '«Ver cotización» y «Descargar PDF» en el menú del chat siempre que el caso tenga orden en Odoo, sin depender de la tarjeta del borrador.'],
   ];
   /** Los interruptores que conoce el servidor (valores `interruptor:*` y `interruptores`), en el orden de arriba; uno nuevo
@@ -923,6 +927,7 @@
     var h = (msg ? '<p class="czc-ok" role="status">' + esc(msg) + '</p>' : '') +
       '<h3>Gasto</h3><div class="czc-tarj"><div>Hoy: <b>' + esc(gastoTxt(Gs.hoy)) + '</b></div>' +
       '<div>Semana: <b>' + millones(Gs.semana) + '</b> de ' + millones(V.consumo_tope_semana) + ' ponderados</div>' + medidor(Number(Gs.semana) || 0, Number(V.consumo_tope_semana) || 0) +
+      (on('freno_robot_v163') && Gs.semana_persona != null ? '<div class="czc-k">De eso, personas: <b>' + millones(Gs.semana_persona) + '</b> · robot: <b>' + millones(Gs.semana_robot) + '</b>. El freno solo detiene al robot; a las personas, solo fuera de horario hábil.</div>' : '') +
       '<div class="czc-k">Experimento (sombra), aparte: ' + millones(Gs.experimento_semana) + ' de ' + millones(V.experimento_techo_semana) + ' esta semana.</div>' +
       (Gs.por_persona_hoy && Object.keys(Gs.por_persona_hoy).length ? '<div class="czc-k">Mensajes hoy: ' + Object.keys(Gs.por_persona_hoy).map(function (a) { return esc(nombreCorto(a)) + ' ' + Number(Gs.por_persona_hoy[a]); }).join(' · ') + '</div>' : '') + '</div>';
     // V1.60 · medición: los errores de Odoo de las últimas 24 h, por código (falla_odoo, 0030).

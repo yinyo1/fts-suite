@@ -13,6 +13,11 @@
 --                    (agente_gate) también actualiza una orden ENVIADA (sigue «enviada»; nunca se confirma) y el PDF va en la respuesta.
 --   rechazos_v163  · orden-odoo guarda cada rechazo (orden_rechazo) y la alarma `orden_rechazo_repetido` sale con el mismo código
 --                    dos veces en 24 h en el mismo caso.
+--   freno_robot_v163 · P8 (decreto de Esteban del 23-oct 16:36 CST, «el freno solo es para el robot»): con el freno rebasado, lo que
+--                    pide una persona L–V en horario hábil se atiende completo (procesa.js ya no pone `ahorro`); el freno solo apaga
+--                    lo proactivo. Aquí: el panel (api_suite modo config) trae el consumo de la semana separado, persona y robot.
+--   oportunidad_v163 · P9: la oportunidad nace con el caso en cuanto se sabe el cliente (lo arma el motor; la base no cambia).
+--   machote_n5_v163  · P10: el machote se crea aunque TODOS los renglones estén en N5 (D9, V1.36); lo decide el motor (enriquecer.js).
 -- Y la alarma `decreto_sin_odoo`: una tarjeta de borrador propuesta lleva más de 2 h sin llegar a Odoo (flujo_v163 prendido).
 -- Apagado, todo sale igual que con la 0035. Reversa: reversas/036_reversa.sql.
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -36,7 +41,8 @@ LANGUAGE sql IMMUTABLE AS $in36$
                'cuadre_v162','tarjetas_v162','oportunidad_v162','n0_v162','ruido_v162',
                'guardar_agente_v162b','todo_hecho_v162b','pdf_v162b','revision_v162b',
                'barrido_v162',
-               'pdf_menu_v163','flujo_v163','pdf_v163','vendedor_v163','rechazos_v163','una_orden_v163']
+               'pdf_menu_v163','flujo_v163','pdf_v163','vendedor_v163','rechazos_v163','una_orden_v163',
+               'freno_robot_v163','oportunidad_v163','machote_n5_v163']
 $in36$;
 
 
@@ -209,3 +215,37 @@ END
 $am36$;
 REVOKE ALL ON FUNCTION conceptualizador.alarmas_motor(text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION conceptualizador.alarmas_motor_0036prev(text) FROM PUBLIC;
+
+-- ── P8 (`freno_robot_v163`) · el panel ve el consumo de la semana por separado: persona (mensajes, clics y sus continuaciones) y
+--    robot (lo proactivo). Mismo origen que el freno (consumo_registro), así la suma es la misma que la del medidor de siempre. ──
+DO $ren36s$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+                  WHERE n.nspname = 'conceptualizador' AND p.proname = 'api_suite_0036prev') THEN
+    ALTER FUNCTION conceptualizador.api_suite(jsonb) RENAME TO api_suite_0036prev;
+  END IF;
+END
+$ren36s$;
+
+CREATE OR REPLACE FUNCTION conceptualizador.api_suite(p jsonb) RETURNS jsonb
+LANGUAGE plpgsql AS $sui36$
+DECLARE
+  v_r     jsonb := conceptualizador.api_suite_0036prev(p);
+  v_lunes date;
+BEGIN
+  IF p->>'modo' = 'config' AND coalesce((v_r->>'ok')::boolean, false) AND v_r ? 'gasto' AND conceptualizador.prendido('freno_robot_v163') THEN
+    v_lunes := nullif(v_r->'gasto'->>'semana_desde', '')::date;
+    IF v_lunes IS NOT NULL THEN
+      v_r := jsonb_set(v_r, ARRAY['gasto'], (v_r->'gasto') || jsonb_build_object(
+        'semana_persona', (SELECT coalesce(sum(ponderado), 0) FROM conceptualizador.consumo_registro WHERE dia >= v_lunes AND NOT proactivo),
+        'semana_robot',   (SELECT coalesce(sum(ponderado), 0) FROM conceptualizador.consumo_registro WHERE dia >= v_lunes AND proactivo)));
+    END IF;
+  END IF;
+  RETURN v_r;
+END
+$sui36$;
+ALTER FUNCTION conceptualizador.api_suite(jsonb) SECURITY DEFINER SET search_path = conceptualizador, public;
+ALTER FUNCTION conceptualizador.api_suite_0036prev(jsonb) SECURITY DEFINER SET search_path = conceptualizador, public;
+REVOKE ALL ON FUNCTION conceptualizador.api_suite_0036prev(jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION conceptualizador.api_suite_0036prev(jsonb) FROM conceptualizador_app;
+GRANT EXECUTE ON FUNCTION conceptualizador.api_suite(jsonb) TO conceptualizador_app;

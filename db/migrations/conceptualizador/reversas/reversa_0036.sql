@@ -46,4 +46,15 @@ $revmot36$;
 DROP FUNCTION IF EXISTS conceptualizador.orden_v163();
 DROP FUNCTION IF EXISTS conceptualizador.orden_rechazo_registrar(jsonb);
 DROP FUNCTION IF EXISTS conceptualizador.metrica_v163(timestamptz);
-DELETE FROM conceptualizador.config WHERE clave IN ('interruptor:pdf_menu_v163','interruptor:flujo_v163','interruptor:pdf_v163','interruptor:vendedor_v163','interruptor:rechazos_v163','interruptor:una_orden_v163');
+DO $revsui36$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+              WHERE n.nspname = 'conceptualizador' AND p.proname = 'api_suite_0036prev') THEN
+    DROP FUNCTION conceptualizador.api_suite(jsonb);
+    ALTER FUNCTION conceptualizador.api_suite_0036prev(jsonb) RENAME TO api_suite;
+    GRANT EXECUTE ON FUNCTION conceptualizador.api_suite(jsonb) TO conceptualizador_app;
+  END IF;
+END
+$revsui36$;
+DELETE FROM conceptualizador.config WHERE clave IN ('interruptor:pdf_menu_v163','interruptor:flujo_v163','interruptor:pdf_v163','interruptor:vendedor_v163','interruptor:rechazos_v163','interruptor:una_orden_v163',
+  'interruptor:freno_robot_v163','interruptor:oportunidad_v163','interruptor:machote_n5_v163');
