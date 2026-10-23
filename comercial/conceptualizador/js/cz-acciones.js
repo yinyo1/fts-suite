@@ -225,6 +225,14 @@
     var caso = ctx.caso, H = ctx.hilo;
     var cm = (H.acciones || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'hecha'; }).pop();
     if (!caso.machote_id || !cm) return { ok: false, mensaje: 'Primero crea el machote: el borrador sale de él.' };
+    // V1.62b (`todo_hecho_v162b`, #12 resultado 4) · la orden ya se envió: UN botón hace las tres cosas con tu clic. Primero el machote
+    // (la misma actualización de siempre, mismo folio), luego la orden con la versión que quedó, y el PDF nuevo queda abajo.
+    var comb = prendido('todo_hecho_v162b') && (a.datos || {}).combinado, vComb = null, txtComb = '';
+    if (comb && comb.machote && comb.documento) {
+      var rm = await actualizarMachote({ tipo: 'crear_machote', datos: { actualiza: comb.machote, documento: comb.documento, resumen: comb.resumen || null } }, ctx);
+      if (!rm.ok) return rm;
+      vComb = Number((rm.resultado || {}).version) || null; txtComb = (rm.resultado || {}).texto || '';
+    }
     // V1.36 · la cotización en Odoo espera a que no quede ninguna regla dura (precio, diagnóstico, tarifa).
     var pend = pendientes(H);
     if (pend.n) return { ok: false, mensaje: textoPendientes(pend) + ' Nunca se estima un precio: cuando lleguen, se actualiza el machote y aquí se enciende.' };
@@ -237,7 +245,8 @@
     // V1.43 · precios de referencia (N3/N4): cuentan como precio, pero los acepta quien cotiza con «Cotizar con referencias».
     var R = (a.datos || {}).referencias, conRef = !!(R && R.n);
     if (conRef && !p.referencias) return { ok: false, mensaje: 'El servidor de Odoo todavía no acepta cotizar con referencias (falta publicar el workflow). El machote sí está al día.' };
-    if (conRef && !ctx.aceptaReferencias) return { ok: false, mensaje: 'Revisa las referencias y toca «Cotizar con referencias».' };
+    // V1.62b (`revision_v162b`, 6342660185) · las referencias ya no frenan el borrador: se aceptan en la revisión final antes de enviar.
+    if (conRef && !ctx.aceptaReferencias && !prendido('revision_v162b')) return { ok: false, mensaje: 'Revisa las referencias y toca «Cotizar con referencias».' };
     // V1.57b (`regla15_v157`) · los textos limpios elegidos se aplican aquí con CzRegla15 (el mismo código que el motor y el
     // servidor) y las frases liberadas viajan con su razón; el servidor vuelve a revisar y no escribe si falta una.
     var R15 = ctx.r15 || null;
@@ -262,8 +271,8 @@
         if (prendido('oportunidad_v162')) await guardarEleccion(caso, eleccion);
       }
     }
-    var cuerpo = { modo: modo, machote_id: caso.machote_id, version_leida: (cm.resultado || {}).version || 1,
-      caso_id: caso.id, cotizacion: cot, acepta_referencias: conRef },
+    var cuerpo = { modo: modo, machote_id: caso.machote_id, version_leida: vComb || (cm.resultado || {}).version || 1,
+      caso_id: caso.id, cotizacion: cot, acepta_referencias: conRef && (!!ctx.aceptaReferencias || !prendido('revision_v162b')) },
       // V1.52 §12 · la moneda del caso (la decide el servidor, p. ej. por decreto): orden-odoo la compara con la del machote.
       // Solo con el interruptor `moneda_decreto` prendido; apagado, el cuerpo es el de V1.51.
       md = prendido('moneda_decreto');
@@ -284,6 +293,7 @@
       oportunidad_creada: r.oportunidad_creada || undefined };
     var o = releido(r);
     o.texto = textoOrden(o, modo === 'crear' ? 'Borrador' : 'Actualizado');
+    if (comb && vComb) { o.texto = txtComb + ' ' + o.texto + ' El PDF nuevo está abajo.'; o.combinado = { machote_version: vComb }; }
     // V1.61 (`barra_v161`, #12 punto 9, D96) · la línea fija del redondeo la arma orden-odoo con el subtotal RELEÍDO de Odoo.
     if (prendido('barra_v161') && r.linea_redondeo && r.linea_redondeo.texto) { o.linea_redondeo = r.linea_redondeo; o.texto += ' ' + r.linea_redondeo.texto; }
     if (prendido('barra_v161') && r.mismos_precios && r.mismos_precios.texto) { o.mismos_precios = r.mismos_precios; o.texto += ' (' + r.mismos_precios.texto + ')'; }
@@ -294,7 +304,7 @@
     if (r.vendedor && r.vendedor.nombre) o.texto += ' Vendedor: ' + r.vendedor.nombre + (r.oportunidad && r.oportunidad.id ? ' · oportunidad ' + (r.oportunidad.nombre || r.oportunidad.id) : ' · sin oportunidad') + '.';
     // Queda en la acción (y por ella en hilo.md): qué frase, qué se hizo, quién y por qué. El motor lo lee en la vuelta siguiente.
     if (R15 && R15.registro.hallazgos) { o.regla15 = R15.registro; o.texto += ' Regla 15: ' + R15.registro.limpios + ' texto' + (R15.registro.limpios === 1 ? '' : 's') + ' limpio' + (R15.registro.limpios === 1 ? '' : 's') + (R15.registro.liberadas ? ', ' + R15.registro.liberadas + ' liberada' + (R15.registro.liberadas === 1 ? '' : 's') : '') + '.'; }
-    if (conRef) {   // queda en la acción y por ella en hilo.md: quién aceptó qué y cuándo
+    if (conRef && (ctx.aceptaReferencias || !prendido('revision_v162b'))) {   // queda en la acción y por ella en hilo.md: quién aceptó qué y cuándo
       var S = G.SuiteAuth.getSession() || {};
       o.referencias_aceptadas = { pct: R.pct, n3: R.n3, n4: R.n4, importe: R.importe, por: S.actor || null, at: new Date().toISOString() };
       // V1.52 · un solo dato (CzIndicadores): el mismo % y las mismas alertas que el mensaje, la tarjeta y la franja.
@@ -370,12 +380,43 @@
     if (!o) return { ok: true, resultado: { texto: 'Marcada como enviada al cliente (no hay cotización en Odoo de este caso).' } };
     var p = await permiso();
     if (!p.habilitado) return { ok: true, resultado: { texto: 'Marcada como enviada aquí. En Odoo la marca quien tiene la emisión habilitada: ' + (o.orden_nombre || o.orden_id) + '.' } };
-    var r = await C.suite(RUTA_ORDEN, { modo: 'enviada', machote_id: ctx.caso.machote_id, caso_id: ctx.caso.id }, 60000);
+    // V1.62b (`revision_v162b`, #12 resultado 8) · la revisión final, una sola vez: cuadre, hitos, PDF vigente y, si hay, las referencias.
+    var rv = prendido('revision_v162b') ? await revisionFinal(ctx, o) : null;
+    if (rv && !rv.ok) return rv;
+    var r = await C.suite(RUTA_ORDEN, { modo: 'enviada', machote_id: ctx.caso.machote_id, caso_id: ctx.caso.id, acepta_referencias: !!(rv && rv.acepta) }, 60000);
     if (!r.ok) return { ok: false, mensaje: r.mensaje || ('No se marcó como enviada en Odoo: ' + (r.error || 'error')) };
     if (r.estado !== 'sent') return { ok: false, mensaje: 'Odoo dice que ' + (r.odoo_so_name || '') + ' quedó en «' + r.estado + '», no en «Cotización enviada». No se marcó.' };
     var x = releido(r);
     x.texto = (r.odoo_so_name || '') + ' quedó como «Cotización enviada» en Odoo, sin mandar correo desde Odoo. El correo lo mandas tú.';
+    if (rv && rv.registro) { x.revision_final = rv.registro; if (rv.registro.referencias) x.texto += ' Se envió con ' + rv.registro.referencias.pct + ' % del costo en precios de referencia (aceptado en la revisión final).'; }
     return { ok: true, resultado: x };
+  }
+  /** V1.62b · la revisión final antes de «Ya la mandé»: lo que ya cuadra (machote = Odoo, nota = hitos, el PDF vigente) y, si hay
+   *  precios de referencia, su % y sus renglones con un solo «Acepto». Queda en el hilo (quién, cuándo, qué %). */
+  function revisionFinal(ctx, o) {
+    var H = ctx.hilo || {}, acc = H.acciones || [];
+    var b = acc.filter(function (x) { return x.tipo === 'crear_borrador' && x.estado === 'hecha'; }).pop() || {};
+    var cm = acc.filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'hecha'; }).pop() || {};
+    var R = (b.datos || {}).referencias || (cm.datos || {}).referencias || null, conRef = !!(R && R.n);
+    var din = function (n) { return n == null || n === '' ? '¿?' : '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+    var tM = Number((cm.resultado || {}).total || ((cm.datos || {}).resumen || {}).total), tO = Number(o.subtotal);
+    var cuadra = isFinite(tM) && isFinite(tO) && Math.abs(Math.ceil(tM - 0.005) - tO) <= ((o.renglones || []).length || 1);
+    var P = H.ultimo_pdf || null, S = G.SuiteAuth.getSession() || {};
+    var lin = function (okk, t, sub) { return '<li class="' + (okk ? 'rf-si' : 'rf-no') + '">' + (okk ? '✓ ' : '⚠ ') + esc(t) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</li>'; };
+    return new Promise(function (listo) {
+      ctx.modal('<h3>Revisión final antes de enviar ' + esc(o.orden_nombre || '') + '</h3>' +
+        '<p class="sub">' + din(o.subtotal) + ' más IVA · queda en el hilo con tu nombre y la hora.</p><ul class="rf-lista">' +
+        lin(cuadra, 'Machote y Odoo cuadran', din(tM) + ' en el machote · ' + din(tO) + ' en Odoo (al peso, renglón por renglón)') +
+        lin(true, 'Nota y tabla de hitos dicen lo mismo', 'el servidor no escribe la orden si no') +
+        lin(true, P ? 'El PDF es la versión vigente' : 'El PDF se genera al descargarlo', P ? (P.orden_nombre || '') + ' v' + P.version + ' · ' + new Date(P.at).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '') + '</ul>' +
+        (conRef ? '<div class="rf-ref"><b>Se envía con ' + esc(R.pct) + ' % del costo en precios de referencia</b> (N3 ' + esc(R.n3 || 0) + ' · N4 ' + esc(R.n4 || 0) + ', ' + din(R.importe) + '). ' +
+          'El agente sigue buscando precio de proveedor; si lo encuentra, te avisa.</div>' : '') +
+        '<div class="acc der"><button class="boton" id="rfNo">Todavía no</button><button class="boton si" id="rfSi">' + (conRef ? 'Acepto las referencias · Ya la mandé' : 'Ya la mandé al cliente') + '</button></div>');
+      document.getElementById('rfNo').onclick = function () { ctx.cerrarModal(); listo({ ok: false, mensaje: 'No se marcó como enviada.' }); };
+      document.getElementById('rfSi').onclick = function () { ctx.cerrarModal();
+        listo({ ok: true, acepta: conRef, registro: { por: S.actor || null, at: new Date().toISOString(), cuadra: cuadra, pdf: P ? { orden: P.orden_nombre, version: P.version } : null,
+          referencias: conRef ? { pct: R.pct, n3: R.n3 || 0, n4: R.n4 || 0, importe: R.importe } : null } }); };
+    });
   }
 
   // ── alta de contacto o empresa ──────────────────────────────────────────

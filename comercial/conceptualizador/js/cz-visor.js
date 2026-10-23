@@ -286,7 +286,11 @@
     D.body.appendChild(el);
     var q = function (s) { return el.querySelector(s); };
     q('#vcoCerrar').onclick = cerrar;
-    q('#vcoPdf').onclick = function () { G.print(); };
+    // V1.62b (`pdf_v162b`, #12 resultado 6) · con un PDF guardado de la orden, «Descargar PDF» baja ESE (el de Odoo, sin regenerarlo
+    // si la orden no cambió); sin él, la hoja imprimible de siempre.
+    q('#vcoPdf').onclick = function () { var H = S.hilo || {};
+      if (G.CzInterruptor && G.CzInterruptor('pdf_v162b') && H.ultimo_pdf && H.caso && G.CzEnviar && G.CzEnviar.ver) return G.CzEnviar.ver(Object.assign({}, H.caso, { orden_nombre: H.ultimo_pdf.orden_nombre }), true);
+      G.print(); };
     q('#vcoAnt').onclick = function () { if (S.idx > 0) { S.idx--; pintar(); } };
     q('#vcoSig').onclick = function () { if (S.idx < S.V.length - 1) { S.idx++; pintar(); } };
     Array.prototype.forEach.call(el.querySelectorAll('[data-vco-corr]'), function (b) {

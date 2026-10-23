@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.62a';
+  var VERSION = 'V1.62b';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -2019,6 +2019,9 @@
       G.CzVista ? '<button data-a="vista">' + ico('pagina', 's') + '<span>Vista ejecutiva del proyecto<small>Costo, precio y margen por nivel, en vivo</small></span></button>' : '') +
       (hayM ? '<button data-a="ir_machote">' + ico('docs', 's') + '<span>Ir al machote<small>' + esc((cs.machote_folio || 'Machote') + (verMachote() ? ' · versión ' + verMachote() : '')) + '</small></span></button>'
         : '<button data-a="ir_machote" disabled aria-disabled="true">' + ico('docs', 's') + '<span>Ir al machote<small>Aún no hay machote</small></span></button>') +
+      // V1.62b (`pdf_v162b`, #12 resultado 6) · el último PDF guardado: no se vuelve a pedir a Odoo si la orden no cambió.
+      (on('pdf_v162b') && H && H.ultimo_pdf && G.CzEnviar ? '<button data-a="ultimo_pdf">' + ico('pagina', 's') + '<span>Último PDF ' + esc((H.ultimo_pdf.orden_nombre || '') + ' v' + H.ultimo_pdf.version) +
+        '<small>' + esc(horaDe(H.ultimo_pdf.at)) + (H.ultimo_pdf.total != null ? ' · $' + Number(H.ultimo_pdf.total).toLocaleString('es-MX') + ' más IVA' : '') + ' · guardado, no se vuelve a pedir a Odoo</small></span></button>' : '') +
       (G.CzVisor && ultimoBorrador() ? '<button data-a="visor">' + ico('pagina', 's') + '<span>Vista rápida de la cotización<small>Lo que hay en Odoo y qué cambió; el PDF oficial está en «Ver cotización»</small></span></button>' : '') +
       '<button data-a="pagina">' + ico('pagina', 's') + '<span>Lo considerado, con versiones<small>La vista en página de antes</small></span></button>' +
       // V1.58 (`niveles_v158`) · qué quiere decir cada nivel de precio.
@@ -2073,6 +2076,7 @@
       if (a === 'vista_interna') return preguntarInterna();
       if (a === 'ayuda_niveles') return G.CzNiveles.ayuda();
       if (a === 'visor') return abrirVisor();
+      if (a === 'ultimo_pdf') return G.CzEnviar.ver(Object.assign({}, (ST.hilo && ST.hilo.caso) || {}, { orden_nombre: ((ST.hilo && ST.hilo.ultimo_pdf) || {}).orden_nombre }), false);
       if (a === 'ir_machote') { var hm = ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'hecha'; }).pop(); return abrirEditor(hm || null); }
       if (a === 'archivos') return abrirArchivos();
       if (a === 'multimedia') return bajarMultimedia();
@@ -2633,6 +2637,8 @@
   /** V1.59 (`tarjetas_v159`) · el botón dice lo que hace: con la orden ya en Odoo, «Actualizar SO… en Odoo», no «Crear borrador». */
   function etiqueta(a) {
     var d = a.datos || {}, so = ((ST.hilo && ST.hilo.caso) || {}).orden_nombre || (ultimoBorrador() && ((ST.hilo.acciones || []).filter(function (x) { return x.id === ultimoBorrador(); })[0] || {}).resultado || {}).orden_nombre;
+    // V1.62b (`todo_hecho_v162b`) · el botón único (orden ya enviada) dice que hace las tres cosas y por cuánto.
+    if (on('todo_hecho_v162b') && a.tipo === 'crear_borrador' && d.combinado && a.titulo) return a.titulo;
     if (on('tarjetas_v159') && a.tipo === 'crear_borrador' && so) return 'Actualizar ' + so + ' en Odoo';
     return d.boton || ETIQ[a.tipo] || 'Hacer';
   }
@@ -2889,6 +2895,9 @@
         // V1.57b (`regla15_v157`) · los cálculos que vería el cliente, con «texto limpio» o «Liberar…» (cz-regla15-ui.js).
         (a.tipo === 'crear_borrador' && G.CzR15 && !espera && !viejo && !recalc ? G.CzR15.html(a) : '') +
         (a.estado === 'hecha' ? '<span class="hecho">✓ ' + (on('tarjetas_v159') && a.hecha_at ? esc(horaDe(a.hecha_at)) + ' · ' : '') + esc(r.texto || 'Hecho') + '</span>' + releidoOdoo(r) +
+          // V1.62b (`todo_hecho_v162b`) · lo hizo el agente, por la instrucción de una persona (la base revisó que sí la hubo).
+          (on('todo_hecho_v162b') && a.hecha_por === 'agente' ? '<p class="ag-hecho" data-ag-hecho="' + a.id + '">Lo hizo el agente por instrucción de ' + esc(nombrePersona((d.por_instruccion || {}).persona) || 'la persona') +
+            ((d.por_instruccion || {}).mensaje_id ? ' (msg ' + esc(d.por_instruccion.mensaje_id) + ')' : '') + (a.hecha_at ? ' a las ' + esc(horaDe(a.hecha_at)) : '') + '.</p>' : '') +
           // V1.51 · Frente 3: «Ver cotización» bajo el último borrador (cz-visor.js, prototipo aprobado), con lo que cambió.
           (a.tipo === 'crear_borrador' && G.CzVisor && r.orden_id && a.id === ultimoBorrador() ? G.CzVisor.boton(ST.hilo) : '') +
           // V1.54 E3 (`enviar_cliente`) · PDF de Odoo, descargar y enviar al cliente (cz-enviar.js). Apagado: nada.
@@ -2904,7 +2913,8 @@
          // V1.59 (`delegacion_v159`) · el botón no se ofrece a quien el servidor va a rechazar (y si lo llaman directo, lo rechaza igual).
          noMueve(a) ? '<p class="nota" data-no-mueve="' + a.id + '">🔒 El machote es de ' + esc(nombreCorto(ST.hilo.machote_mueve.dueno)) + ': tu usuario no lo puede mover. Esteban lo configura en el panel (Delegación y vendedor).</p>' :
          (a.tipo === 'enviada' || a.tipo === 'cerrar' || manejador) ?
-           (a.tipo === 'crear_borrador' && d.referencias && d.referencias.n ? botonReferencias(a) :
+           // V1.62b (`revision_v162b`) · las referencias se aceptan en la revisión final, antes de «Ya la mandé»: aquí ya no frenan.
+           (a.tipo === 'crear_borrador' && d.referencias && d.referencias.n && !on('revision_v162b') ? botonReferencias(a) :
            '<div class="acc"><button class="si" data-hacer="' + a.id + '">' + esc(nueva ? 'Guardar en el machote' : etiqueta(a)) + '</button><button data-descartar="' + a.id + '">' + (a.tipo === 'cerrar' ? 'Todavía no' : 'No') + '</button></div>') +
            (a.tipo === 'crear_borrador' || a.tipo === 'enviada' ? leyendaOdoo(a.tipo) : '') :
            '<p class="nota">Este botón se enciende cuando se active la escritura a Odoo correspondiente.</p>') + '</div>';

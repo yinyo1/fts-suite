@@ -1,6 +1,11 @@
 {
-  "version": "V1.62a",
+  "version": "V1.62b",
   "historial": [
+    {
+      "version": "V1.62b",
+      "fecha": "2026-10-23",
+      "nota": "fts-conceptualizador#12 (V1.62b, menos clics y PDF guardado), todo detrás de cuatro interruptores apagados: lo que hizo el agente por instrucción de una persona dice quién y qué mensaje, y el botón único «Actualizar machote, Odoo y PDF» cuando la orden ya se envió (todo_hecho_v162b); «Último PDF» en el ⋮ y «Descargar PDF» de la vista rápida bajan el PDF guardado sin pedirlo otra vez a Odoo (pdf_v162b); «Cotizar con referencias» pasa a la revisión final antes de «Ya la mandé» (revision_v162b)."
+    },
     {
       "version": "V1.62a",
       "fecha": "2026-10-22",
