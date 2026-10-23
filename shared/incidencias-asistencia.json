@@ -583,9 +583,19 @@
           "hora_propuesta_cst": "2026-10-02 07:15:00",
           "comentario": "Llegué tarde por el tema de la lluvia",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 97,
+          "usuario": "Rissia Xavier de Araujo",
+          "timestamp": "2026-10-23T16:51:53.439Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobado por lider.",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 6,
