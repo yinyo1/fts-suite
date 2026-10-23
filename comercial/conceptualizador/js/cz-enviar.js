@@ -106,7 +106,9 @@
     var nombre = r.pdf.nombre || 'cotizacion.pdf', n = E.hojas(u8);
     var abrir = function () { return E.visorPdf({ u8: u8, nombre: nombre, titulo: so + ' · PDF de Odoo' }); };
     var baja = function () { var url = URL.createObjectURL(new Blob([u8], { type: 'application/pdf' })); E.descargar(url, nombre); setTimeout(function () { URL.revokeObjectURL(url); }, 4000); };
-    est.listo({ titulo: 'Listo · PDF de ' + so, sub: n ? n + (n === 1 ? ' hoja' : ' hojas') : '', acciones: [{ txt: 'Abrir', si: true, fn: abrir }, { txt: '⬇ Descargar', fn: baja }] });
+    // V1.62b (`pdf_v162b`) · el mismo PDF guardado, sin pedirlo a Odoo: la orden no cambió desde que se bajó.
+    var gu = r.pdf.guardado ? ' · guardado, no se volvió a pedir a Odoo (la orden no cambió)' : '';
+    est.listo({ titulo: 'Listo · PDF de ' + so, sub: (n ? n + (n === 1 ? ' hoja' : ' hojas') : '') + gu, acciones: [{ txt: 'Abrir', si: true, fn: abrir }, { txt: '⬇ Descargar', fn: baja }] });
     if (bajar) baja(); else abrir();
   }
 

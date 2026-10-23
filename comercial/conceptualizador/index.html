@@ -312,6 +312,11 @@
   .carta.resalta,.resalta{box-shadow:0 0 0 3px #e0a800;transition:box-shadow .3s}
   /* V1.36 · lo que falta para cotizar en Odoo */
   #fijo .fijo-falta{height:40px;border-radius:20px;padding:0 14px;display:flex;align-items:center;background:var(--aviso);color:#6b4e00;font-weight:600;font-size:13.5px;border:1px solid #f0dc8c}
+  /* V1.62b (#12) · lo que hizo el agente por instrucción y la revisión final antes de enviar */
+  .ag-hecho{font-size:12px;color:var(--sec,#667781);margin:2px 0 0}
+  .rf-lista{list-style:none;padding:0;margin:8px 0;display:flex;flex-direction:column;gap:6px;font-size:14px}
+  .rf-lista li small{display:block;color:var(--sec,#667781);font-size:12px;margin-left:18px}.rf-lista .rf-no{color:#8a5a00}
+  .rf-ref{border:1px solid #f0dc8c;background:var(--aviso);border-radius:8px;padding:8px 10px;margin:6px 0;font-size:13px;color:#5c4400}
   .pend-cot{border:1px solid #f0dc8c;background:var(--aviso);border-radius:8px;padding:8px 10px;margin:6px 0;font-size:13px;color:#5c4400}
   .pend-cot ul{margin:4px 0 4px 18px;padding:0}.pend-cot li{margin:1px 0;overflow-wrap:anywhere}.pend-cot .nota{display:block;color:#7a6420;font-size:12px}
   /* V1.55 (#12 Mejora 5) · la ficha del cliente: lo que va a quedar en Odoo */
@@ -905,7 +910,7 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <script src="js/cz-archivos.js?v=V1.57b"></script>
 <script src="js/cz-ciudad.js?v=V1.57b"></script>
 <script src="js/cz-cola.js?v=V1.57b"></script>
-<script src="js/cz-acciones.js?v=V1.62a"></script>
+<script src="js/cz-acciones.js?v=V1.62b"></script>
 <script src="js/cz-regla15.js?v=V1.57b"></script>
 <script src="js/cz-regla15-ui.js?v=V1.62a"></script>
 <script src="js/cz-indicadores.js?v=V1.57b"></script>
@@ -914,9 +919,9 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <script src="js/cz-avance.js?v=V1.57b"></script>
 <script src="js/cz-ligas.js?v=V1.57b"></script>
 <script src="js/cz-tabla.js?v=V1.58"></script>
-<script src="js/cz-visor.js?v=V1.57b"></script>
+<script src="js/cz-visor.js?v=V1.62b"></script>
 <script src="js/cz-correo.js?v=V1.57b"></script>
-<script src="js/cz-enviar.js?v=V1.58"></script>
+<script src="js/cz-enviar.js?v=V1.62b"></script>
 <script src="js/cz-condiciones.js?v=V1.57b"></script>
 <script src="js/cz-vista.js?v=V1.62a"></script>
 <script src="js/cz-camara.js?v=V1.57b"></script>
@@ -926,7 +931,7 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <script src="js/cz-push.js?v=V1.57b"></script>
 <script src="js/cz-limpio.js?v=V1.62a"></script>
 <script src="js/cz-pasos.js?v=V1.61"></script>
-<script src="js/cz-app.js?v=V1.62a"></script>
+<script src="js/cz-app.js?v=V1.62b"></script>
 <script src="js/cz-version.js?v=V1.57b"></script>
 <script>window.CzApp.arrancar().then(function () { if (window.CzVersion) window.CzVersion.iniciar(); if (window.CzPush) window.CzPush.iniciar(); });</script>
 </body>
