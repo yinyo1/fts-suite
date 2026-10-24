@@ -34,7 +34,8 @@
   var S = { abierto: false, o: null, M: null, abiertos: {}, f: { origen: {}, estado: {} }, el: null, hist: false, token: '', hora: '', leyendo: false,
     v: 'fts', aviso: 0, ok2: false,
     preg: null, okInt: false,
-    n0: null, n0msg: {} };   // V1.62a (`n0_v162`) · el renglón cuyo precio se está corrigiendo y lo que contestó el servidor   // V1.58 (`menu_vista_v158`) · la pregunta antes de lo interno (vista o Excel) y si ya se dijo que sí   // V1.57b · versión FTS o cliente, y el paso de la doble confirmación
+    n0: null, n0msg: {},
+    rt: {}, revMsg: {} };   // V1.63b (`secciones_v163`) · la pestaña abierta de cada sección y lo que contestó el servidor al marcarla   // V1.62a (`n0_v162`) · el renglón cuyo precio se está corrigiendo y lo que contestó el servidor   // V1.58 (`menu_vista_v158`) · la pregunta antes de lo interno (vista o Excel) y si ya se dijo que sí   // V1.57b · versión FTS o cliente, y el paso de la doble confirmación
 
   /* ═══ V1.57b (fts-conceptualizador#12 punto 14, `vista_cliente`) · versión cliente y Excel ═══
    * Prototipo aprobado: prototipos/v157/vista-ejecutiva.html. La versión cliente es lo que el cliente puede ver: secciones,
@@ -288,6 +289,45 @@
   function lista(L) { L = arr(L).filter(function (x) { return String(x || '').trim(); }); return L.length ? '<ul>' + L.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '—'; }
   function texto(x) { return x == null || String(x).trim() === '' ? '—' : esc(Array.isArray(x) ? x.join(' · ') : x); }
 
+  /* ═══ V1.63b C (`secciones_v163`, #12) · revisión por secciones ═══
+   * Cada sección del machote trae dos pestañas: «Definición de conceptos» (sus renglones, con su nivel) y «Cosas por definir»
+   * (los N5 sin precio, las referencias N3/N4 y lo pendiente que la nombra). Un contador «definidos X de Y» y un toque para darla
+   * por revisada, que se guarda en la base (evento `seccion_revisada`, quién y en qué versión). «Ya la mandé» se habilita solo con
+   * todas las secciones revisadas (cz-acciones.js). Apagado: la vista de siempre. */
+  var secOn = function () { return prendido('secciones_v163'); };
+  function revisadas() { var o = S.o || {}, H = o.hilo || {}; return arr(H.secciones_revisadas); }
+  function revisadaDe(nombre) { return revisadas().filter(function (x) { return x && x.seccion === nombre; })[0] || null; }
+  function bloqueRevision(s, L) {
+    var k = s.k, tab = S.rt[k] || 'def', rv = revisadaDe(s.nombre), msg = S.revMsg[k];
+    var def = L.filter(function (f) { return !esN5(f.r); }).length;
+    var pend = arr((S.o || {}).decisionesPendientes).map(function (p) { return typeof p === 'string' ? p : (p.titulo || p.texto || ''); })
+      .filter(function (t) { return t && s.nombre && t.toLowerCase().indexOf(String(s.nombre).toLowerCase()) >= 0; });
+    var porDef = L.filter(function (f) { return esN5(f.r); }).map(function (f) { return '⛔ Sin precio (N5): ' + f.r.d; })
+      .concat(L.filter(function (f) { return esRef(f.r); }).map(function (f) { return '🔎 Precio de referencia (' + f.r.nivel + '): ' + f.r.d; }))
+      .concat(pend.map(function (t) { return '❓ ' + t; }));
+    var h = '<div class="vz-rsec" data-sec="' + esc(s.nombre) + '"><div class="vz-rsec-cab"><span class="vz-rsec-cnt">Definidos <b>' + def + ' de ' + L.length + '</b></span>' +
+      (rv ? '<span class="vz-rsec-ok">✓ Revisada por ' + esc(persona(rv.por || '')) + (rv.version ? ' · v' + esc(rv.version) : '') + '</span>' +
+        '<button type="button" class="vz-bt" data-vz-rev="' + esc(k) + ':0">Deshacer</button>'
+        : '<button type="button" class="vz-bt lleno" data-vz-rev="' + esc(k) + ':1">Marcar sección revisada</button>') + '</div>' +
+      (msg ? '<p class="vz-rsec-msg ' + (msg.ok ? 'ok' : 'mal') + '">' + esc(msg.texto) + '</p>' : '') +
+      '<div class="vz-seg" role="tablist" aria-label="Revisión de ' + esc(s.nombre) + '">' +
+      '<button type="button" role="tab" data-vz-rt="' + esc(k) + ':def" aria-selected="' + (tab === 'def') + '">Definición de conceptos</button>' +
+      '<button type="button" role="tab" data-vz-rt="' + esc(k) + ':pen" aria-selected="' + (tab === 'pen') + '">Cosas por definir (' + porDef.length + ')</button></div>';
+    if (tab === 'def') h += L.length ? '<ul class="vz-rsec-l">' + L.map(function (f) { return '<li>' + (f.r.nivel ? '<span class="vz-badge ' + esc(f.r.nivel) + '">' + esc(f.r.nivel) + '</span> ' : '') +
+        esc(f.r.d) + (f.r.qty != null ? ' <small>' + esc(Number(f.r.qty).toLocaleString('es-MX')) + ' ' + esc(f.r.unidad || '') + '</small>' : '') + '</li>'; }).join('') + '</ul>' : '<p class="vz-nada">Sin renglones.</p>';
+    else h += porDef.length ? '<ul class="vz-rsec-l">' + porDef.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' : '<p class="vz-nada">Nada por definir en esta sección.</p>';
+    return h + '</div>';
+  }
+  function marcar(k, valor) {
+    var D = modelo(S.M || {}), s = D.secs.filter(function (x) { return x.k === k; })[0]; if (!s || !S.o.al || typeof S.o.al.seccion !== 'function') return;
+    S.revMsg[k] = { ok: true, texto: 'Guardando…' }; pintar();
+    Promise.resolve(S.o.al.seccion({ seccion: s.nombre, version: S.o.version || null, revisada: !!valor })).then(function (r) {
+      if (r && r.ok) { if (S.o.hilo) S.o.hilo.secciones_revisadas = r.secciones_revisadas || []; delete S.revMsg[k]; }
+      else S.revMsg[k] = { ok: false, texto: 'No se guardó: ' + ((r && (r.mensaje || r.error)) || 'sin respuesta') + '.' };
+      pintar();
+    }, function () { S.revMsg[k] = { ok: false, texto: 'No se guardó: sin señal.' }; pintar(); });
+  }
+
   function pintar() {
     var o = S.o || {}, M = S.M || {}, caso = o.caso || {}, H = o.hilo || {}, U = H.ultima || {}, T = o.terminos || {}, an = o.analisis || null;
     var D = modelo(M), REF = M.decretos_ref || {}, todas = D.todas;
@@ -329,6 +369,7 @@
       (o.indicadores && G.CzIndicadores ? '<div class="vz-tile" data-vz-ind="ref"><small>Costo en referencia N3/N4</small><b>' + esc((o.indicadores.referencia_pct || 0) + ' %') + '</b></div>' +
         '<div class="vz-tile" data-vz-ind="alertas" title="' + esc(G.CzIndicadores.textoAlertas(o.indicadores) || 'Sin alertas') + '"><small>Alertas</small><b>' + esc(o.indicadores.alertas.total) + '</b>' +
         (o.indicadores.alertas.total ? '<small>' + esc(G.CzIndicadores.textoAlertas(o.indicadores).replace(/^\d+ alertas? /, '')) + '</small>' : '') + '</div>' : '') +
+      (secOn() && D.secs.length ? '<div class="vz-tile" data-vz-ind="secciones"><small>Secciones revisadas</small><b>' + D.secs.filter(function (s) { return revisadaDe(s.nombre); }).length + ' de ' + D.secs.length + '</b></div>' : '') +
       (pct !== null ? '<div class="vz-tile"><small>Hacia el 100</small><b>' + esc(pct) + ' %</b><div class="vz-barra-av"><i style="width:' + Math.max(0, Math.min(100, Number(pct) || 0)) + '%"></i></div></div>' : '') + '</section>';
     var pend = arr(o.decisionesPendientes).map(function (p) { return typeof p === 'string' ? { t: p } : { t: p.titulo || p.texto || p.q || '', por: p.por || p.id || '' }; }).filter(function (p) { return p.t; });
     var falta = arr(M.pendientes).map(function (p) { return { t: (p.titulo || '') + (arr(p.items).length ? ': ' + arr(p.items).join(' · ') : ''), por: 'para cotizar' }; }).filter(function (p) { return p.t; });
@@ -361,8 +402,8 @@
       var L = []; s.grupos.forEach(function (g) { L = L.concat(g.filas); });
       var vis = L.filter(function (f) { return cumple(f.r, S.f); }).length, a1 = abiertoK(s.k), sinS = L.filter(function (f) { return f.sin; }).length;
       return '<section class="vz-niv vz-n1' + (vis ? '' : ' vz-oculto') + '" data-k="' + s.k + '" data-nivel="seccion"><button type="button" class="vz-fila" aria-expanded="' + a1 + '" data-k="' + s.k + '">' + CHEV +
-        '<span class="vz-nom"><b>' + esc(s.nombre) + '</b><small>' + ren(L.length) + (sinS ? ' · <span class="mal">' + sinS + ' sin precio</span>' : '') + (hayFiltro() ? ' · ' + vis + ' con el filtro' : '') + '</small></span>' +
-        nums(s.c, s.p, s.com) + '</button><div class="vz-cuerpo"' + (a1 ? '' : ' hidden') + '>' + s.grupos.map(function (g) {
+        '<span class="vz-nom"><b>' + esc(s.nombre) + (secOn() && revisadaDe(s.nombre) ? ' <span class="vz-rsec-ok">✓</span>' : '') + '</b><small>' + ren(L.length) + (sinS ? ' · <span class="mal">' + sinS + ' sin precio</span>' : '') + (hayFiltro() ? ' · ' + vis + ' con el filtro' : '') + '</small></span>' +
+        nums(s.c, s.p, s.com) + '</button><div class="vz-cuerpo"' + (a1 ? '' : ' hidden') + '>' + (secOn() ? bloqueRevision(s, L) : '') + s.grupos.map(function (g) {
           var a2 = abiertoK(g.k), vg = g.filas.filter(function (f) { return cumple(f.r, S.f); }).length;
           return '<div class="vz-niv vz-n2' + (vg ? '' : ' vz-oculto') + '" data-k="' + g.k + '" data-nivel="grupo"><button type="button" class="vz-fila" aria-expanded="' + a2 + '" data-k="' + g.k + '">' + CHEV +
             '<span class="vz-nom"><b>' + esc(g.nombre) + '</b><small>' + ren(g.filas.length) + '</small></span>' + nums(g.c, g.p, g.com) + '</button>' +
@@ -416,6 +457,8 @@
     if (b.hasAttribute('data-vz-n0')) { S.n0 = b.getAttribute('data-vz-n0'); pintar(); var i0 = S.el.querySelector('#vzN0v'); if (i0) i0.focus(); return; }
     if (b.hasAttribute('data-vz-n0g')) { guardarN0(b.getAttribute('data-vz-n0g')); return; }
     if (b.hasAttribute('data-vz-n0x')) { S.n0 = null; pintar(); return; }
+    if (b.hasAttribute('data-vz-rt')) { var t = b.getAttribute('data-vz-rt').split(':'); S.rt[t[0]] = t[1]; pintar(); return; }
+    if (b.hasAttribute('data-vz-rev')) { var t2 = b.getAttribute('data-vz-rev').split(':'); marcar(t2[0], t2[1] === '1'); return; }
     if (a === 'cerrar') cerrar();
     else if (a === 'expandir') todo(true);
     else if (a === 'colapsar') todo(false);
@@ -524,6 +567,12 @@
     '#cz-vista .vz-caja h2{font-size:14px;font-weight:700;padding:10px 12px 0}',
     '#cz-vista .vz-nada{padding:4px 12px 10px;color:var(--vz-sec);font-size:13.5px}',
     '#cz-vista .vz-pend{list-style:none;padding:6px 12px 10px}',
+    '#cz-vista .vz-rsec{border:1px solid #d1d7db;border-radius:10px;padding:10px 12px;margin:8px 0 10px;background:#fbfcfc}',
+    '#cz-vista .vz-rsec-cab{display:flex;flex-wrap:wrap;align-items:center;gap:8px;justify-content:space-between;margin-bottom:8px}',
+    '#cz-vista .vz-rsec-cnt{font-size:13px;color:#54656f}', '#cz-vista .vz-rsec-ok{color:#1f7a4d;font-weight:600;font-size:13px}',
+    '#cz-vista .vz-rsec-msg{font-size:12.5px;margin:0 0 6px}', '#cz-vista .vz-rsec-msg.mal{color:#b3261e}',
+    '#cz-vista .vz-rsec-l{list-style:none;padding:6px 2px 0;margin:0;display:flex;flex-direction:column;gap:5px;font-size:13.5px;overflow-wrap:anywhere}',
+    '#cz-vista .vz-rsec-l small{color:#667781}',
     '#cz-vista .vz-pend li{padding:6px 0 6px 22px;position:relative;border-bottom:1px solid var(--vz-linea);font-size:13.5px;overflow-wrap:anywhere}',
     '#cz-vista .vz-pend li:last-child{border-bottom:0}',
     '#cz-vista .vz-pend li::before{content:"!";position:absolute;left:0;top:7px;width:16px;height:16px;border-radius:50%;background:var(--vz-ambar);color:var(--vz-ambar-t);font-size:11px;font-weight:700;text-align:center;line-height:16px}',

@@ -384,6 +384,13 @@
     if (!o) return { ok: true, resultado: { texto: 'Marcada como enviada al cliente (no hay cotización en Odoo de este caso).' } };
     var p = await permiso();
     if (!p.habilitado) return { ok: true, resultado: { texto: 'Marcada como enviada aquí. En Odoo la marca quien tiene la emisión habilitada: ' + (o.orden_nombre || o.orden_id) + '.' } };
+    // V1.63b C (`secciones_v163`) · «Ya la mandé» solo con todas las secciones del machote revisadas en la vista ejecutiva.
+    if (prendido('secciones_v163')) {
+      var Hs = ctx.hilo || {}, Ms = ((Hs.propuesta || Hs.ultima || {}).machote) || {}, rev = (Hs.secciones_revisadas || []).map(function (x) { return x && x.seccion; });
+      var faltan = (Ms.secciones || []).map(function (x, i) { return x.nombre || 'Sección ' + (i + 1); }).filter(function (n) { return rev.indexOf(n) < 0; });
+      if (faltan.length) return { ok: false, mensaje: 'Antes de «Ya la mandé» revisa ' + (faltan.length === 1 ? 'la sección ' : 'las secciones ') + faltan.map(function (n) { return '«' + n + '»'; }).join(', ') +
+        ' en la vista ejecutiva (⋮ → Vista ejecutiva) y márcalas revisadas.' };
+    }
     // V1.62b (`revision_v162b`, #12 resultado 8) · la revisión final, una sola vez: cuadre, hitos, PDF vigente y, si hay, las referencias.
     var rv = prendido('revision_v162b') ? await revisionFinal(ctx, o) : null;
     if (rv && !rv.ok) return rv;

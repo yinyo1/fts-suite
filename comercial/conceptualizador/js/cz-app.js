@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.63a';
+  var VERSION = 'V1.63b';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -877,6 +877,12 @@
     ['oportunidad_v163', 'Oportunidad desde que nace el caso', 'En cuanto se sabe el cliente, el agente propone la oportunidad con nombre tentativo (o ligar una parecida del cliente) y el caso toma ese nombre.'],
     ['machote_n5_v163', 'Machote aunque todo esté en N5', 'El machote se crea con sus renglones sin precio (PENDIENTE PROVEEDOR) aunque ninguno tenga importe todavía; la cotización sigue esperando los precios.'],
     ['pdf_menu_v163', 'PDF en ⋮', '«Ver cotización» y «Descargar PDF» en el menú del chat siempre que el caso tenga orden en Odoo, sin depender de la tarjeta del borrador.'],
+    // V1.63b (#12) · todo entra apagado (migración 0037).
+    ['aviso_personas_v163', 'Aviso de consumo de personas', 'Correo a Esteban cuando el consumo de personas de la semana pasa el umbral (aviso_personas_semana, 90 M), con el desglose por persona y por caso. Es aviso, no freno.'],
+    ['libro_v163', 'Libro de reglas único', 'El agente carga los decretos de Esteban junto con las reglas, y antes de entregar revisa el caso contra el libro: lo que aplica y no se cumple sale como aviso y queda medido en el caso.'],
+    ['procura_v163', 'Procura N1 (3 meses)', 'N1 es una compra en Odoo de 3 meses o menos; lo pagado antes va como N2 con su folio. La solicitud a proveedores sale agrupada por proveedor (rfq.md) para que la mande Compras.'],
+    ['secciones_v163', 'Revisión por secciones', 'En la vista ejecutiva, cada sección trae «Definición de conceptos», «Cosas por definir» y su contador, y se marca revisada con un toque. «Ya la mandé» solo con todas revisadas.'],
+    ['oportunidad_nace_v163', 'Oportunidad en Odoo al nacer el caso', 'Crea o liga la oportunidad del cliente en Odoo en cuanto se sabe el cliente, sin avisos de Odoo.'],
   ];
   /** Los interruptores que conoce el servidor (valores `interruptor:*` y `interruptores`), en el orden de arriba; uno nuevo
    * que la pantalla todavía no describe sale al final con su nombre, para que se pueda prender igual. */
@@ -928,6 +934,9 @@
       '<h3>Gasto</h3><div class="czc-tarj"><div>Hoy: <b>' + esc(gastoTxt(Gs.hoy)) + '</b></div>' +
       '<div>Semana: <b>' + millones(Gs.semana) + '</b> de ' + millones(V.consumo_tope_semana) + ' ponderados</div>' + medidor(Number(Gs.semana) || 0, Number(V.consumo_tope_semana) || 0) +
       (on('freno_robot_v163') && Gs.semana_persona != null ? '<div class="czc-k">De eso, personas: <b>' + millones(Gs.semana_persona) + '</b> · robot: <b>' + millones(Gs.semana_robot) + '</b>. El freno solo detiene al robot; a las personas, solo fuera de horario hábil.</div>' : '') +
+      // V1.63b (`aviso_personas_v163`) · el aviso de personas y su desglose (no frena).
+      (on('aviso_personas_v163') && Gs.personas_semana ? '<div class="czc-k">Aviso de personas a los <b>' + millones(Gs.personas_semana.umbral) + '</b>: van <b>' + millones(Gs.personas_semana.total) + '</b>' +
+        ((Gs.personas_semana.por_persona || []).length ? ' (' + Gs.personas_semana.por_persona.map(function (x) { return esc(x.persona) + ' ' + millones(x.ponderado); }).join(' · ') + ')' : '') + '.</div>' : '') +
       '<div class="czc-k">Experimento (sombra), aparte: ' + millones(Gs.experimento_semana) + ' de ' + millones(V.experimento_techo_semana) + ' esta semana.</div>' +
       (Gs.por_persona_hoy && Object.keys(Gs.por_persona_hoy).length ? '<div class="czc-k">Mensajes hoy: ' + Object.keys(Gs.por_persona_hoy).map(function (a) { return esc(nombreCorto(a)) + ' ' + Number(Gs.por_persona_hoy[a]); }).join(' · ') + '</div>' : '') + '</div>';
     // V1.60 · medición: los errores de Odoo de las últimas 24 h, por código (falla_odoo, 0030).
@@ -2776,7 +2785,9 @@
     G.CzVista.abrir(Object.assign(datos(), { inicio: inicio || null, al: { actualizar: async function () { await cargarHilo(); return datos(); },
       // V1.62a (`n0_v162`, #12 resultado 7) · el precio que da la persona sobre el renglón: evento `correccion` con `datos.n0`.
       n0: on('n0_v162') ? async function (d) { var r = await C.evento({ caso_id: ST.hilo.caso.id, tipo: 'correccion', concepto: 'precio_n0', razon: '', datos: { n0: d } });
-        if (r && r.ok) { ST.irAbajo = true; cargarHilo(); } return r; } : null } }));
+        if (r && r.ok) { ST.irAbajo = true; cargarHilo(); } return r; } : null,
+      // V1.63b C (`secciones_v163`) · marcar o desmarcar una sección revisada: evento directo a la base, sin trabajo del motor.
+      seccion: on('secciones_v163') ? async function (d) { return C.evento({ caso_id: ST.hilo.caso.id, tipo: 'seccion_revisada', concepto: '', razon: '', datos: d }); } : null } }));
     void U;
   }
   function releidoOdoo(r) {

@@ -1,6 +1,11 @@
 {
-  "version": "V1.63a",
+  "version": "V1.63b",
   "historial": [
+    {
+      "version": "V1.63b",
+      "fecha": "2026-10-23",
+      "nota": "fts-conceptualizador#12 (V1.63b), detrás de interruptores apagados (migración 0037): revisión por secciones en la vista ejecutiva («Definición de conceptos», «Cosas por definir», contador y «Marcar sección revisada»; «Ya la mandé» solo con todas revisadas, secciones_v163); aviso de consumo de personas en el panel (aviso_personas_v163); interruptores libro_v163, procura_v163 y oportunidad_nace_v163 en el panel."
+    },
     {
       "version": "V1.63a",
       "fecha": "2026-10-23",
