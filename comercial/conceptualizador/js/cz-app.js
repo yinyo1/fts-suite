@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.63d';
+  var VERSION = 'V1.63e';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -652,10 +652,12 @@
   function hhmm(t) { var m = /^(\d{1,2}):(\d{2})$/.exec(String(t || '')); return m ? Number(m[1]) + ':' + m[2] : String(t || ''); }
   function horarioRobot() {
     var h = ST.robotHorario;
-    if (!h || h.de_panel !== true) return 'L–V de 7:00 a 21:00 de quien cotiza';
+    // V1.63e (`fin_semana_v163e`, #12, decreto del 25-oct 10:12 CST) · el robot trabaja los 7 días, misma ventana.
+    var todos = on('fin_semana_v163e');
+    if (!h || h.de_panel !== true) return (todos ? 'Todos los días' : 'L–V') + ' de 7:00 a 21:00 de quien cotiza';
     var d = String(h.dias || '').split(',').map(Number).filter(function (x) { return x >= 1 && x <= 7; }).sort(), dias;
     var seguidos = d.length > 1 && d.every(function (x, i) { return i === 0 || x === d[i - 1] + 1; });
-    dias = d.join(',') === '1,2,3,4,5' ? 'L–V' : seguidos ? DIAS_ISO[d[0]] + ' a ' + DIAS_ISO[d[d.length - 1]] : d.map(function (x) { return DIAS_ISO[x]; }).join(', ');
+    dias = todos ? 'Todos los días' : d.join(',') === '1,2,3,4,5' ? 'L–V' : seguidos ? DIAS_ISO[d[0]] + ' a ' + DIAS_ISO[d[d.length - 1]] : d.map(function (x) { return DIAS_ISO[x]; }).join(', ');
     return dias + ' de ' + hhmm(h.desde) + ' a ' + hhmm(h.hasta) + ' (' + (h.zona === 'America/Mexico_City' || !h.zona ? 'hora del centro de México' : h.zona) + ')';
   }
   function horarioRobotLinea() { return 'Trabaja por su cuenta ' + horarioRobot() + '. Tus mensajes se contestan a cualquier hora.'; }
@@ -884,6 +886,8 @@
     ['secciones_v163', 'Revisión por secciones', 'En la vista ejecutiva, cada sección trae «Definición de conceptos», «Cosas por definir» y su contador, y se marca revisada con un toque. «Ya la mandé» solo con todas revisadas.'],
     ['oportunidad_nace_v163', 'Oportunidad en Odoo al nacer el caso', 'Crea o liga la oportunidad del cliente en Odoo en cuanto se sabe el cliente, sin avisos de Odoo.'],
     // V1.63c (#12, Esteban 24-oct 19:56 CST) · migración 0038.
+    // V1.63e (#12, decreto de Esteban del 25-oct 10:12 CST) · migración 0039.
+    ['fin_semana_v163e', 'El agente trabaja sábado y domingo', 'El robot corre los 7 días con la misma ventana (7 a 21 h) y los mismos topes (3 M al día, 15 M de lo proactivo a la semana, freno total). Con el freno rebasado, lo que pide una persona en sábado o domingo se atiende completo, como entre semana. Alarma fin_semana_sin_robot si un fin de semana no corrió.'],
     ['pdf_unico_v163', 'PDF en un solo lugar', 'La respuesta que cambia la cotización trae el PDF nuevo como archivo, con «↺ Deshacer»; los borradores anteriores y «Ya la mandé» quedan plegados sin botones de PDF; «Correo para envío» y «Ya la mandé» una sola vez, al final; en ⋮ una sola entrada, «PDF de la cotización (última versión)».'],
   ];
   /** Los interruptores que conoce el servidor (valores `interruptor:*` y `interruptores`), en el orden de arriba; uno nuevo
