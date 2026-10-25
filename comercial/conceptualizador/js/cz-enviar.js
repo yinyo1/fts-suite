@@ -49,7 +49,9 @@
 
   function hora(iso) { try { return new Date(iso).toLocaleString('es-MX', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
   /** Los botones bajo el último borrador hecho, y la línea de cada envío. Vacío con el interruptor apagado. */
-  function botones(H, puede) {
+  function botones(H, puede, opc) {
+    // V1.63c (`pdf_unico_v163`) · `opc.sinPdf`: el estado vigente del final, sin «Descargar PDF» (el PDF vive en la respuesta y en ⋮).
+    var sinPdf = !!(opc && opc.sinPdf);
     var c = (H && H.caso) || {};
     if (!c.orden_id || puede === false) return '';
     css();
@@ -59,10 +61,10 @@
     var din = function (n, m) { return n == null ? '' : '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + (m && m !== 'MXN' ? ' ' + m : ''); };
     var hOd = od ? '<div class="ce-env ce-mal" data-ce-viejo="1">⚠ Versión en Odoo: ' + esc(din(od.monto, od.moneda) || od.orden) + ' · desactualizada, falta Actualizar' + (od.propuesto ? ' (toca «Actualizar ' + esc(od.orden) + ' en Odoo» arriba)' : '') + '</div>' : '';
     var t157 = pr('tarjeta_v157'), nc = nuevoCorreo();
-    var h = hOd + '<div class="ce-bts">' + (t157 ? '' : '<button type="button" class="ce-bt' + (on() ? '' : ' si') + '" data-ce="ver">📄 Ver cotización</button>') +
-      '<button type="button" class="ce-bt" data-ce="bajar" data-espera="Trayendo el PDF de Odoo…">⬇ Descargar PDF</button>' +
+    var h = hOd + '<div class="ce-bts">' + (t157 || sinPdf ? '' : '<button type="button" class="ce-bt' + (on() ? '' : ' si') + '" data-ce="ver">📄 Ver cotización</button>') +
+      (sinPdf ? '' : '<button type="button" class="ce-bt" data-ce="bajar" data-espera="Trayendo el PDF de Odoo…">⬇ Descargar PDF</button>') +
       (on() ? '<button type="button" class="ce-bt' + (enviada ? '' : ' si') + '" data-ce="enviar" data-espera="Armando el correo…">✉ ' + (enviada ? 'Enviar otra vez' : nc ? 'Correo para envío' : 'Enviar al cliente') + '</button>' : '') + '</div>';
-    if (!on()) return h + '<div class="ce-nota">' + (t157 ? 'Descargar PDF baja el formato final de Odoo.' : 'El PDF es el de Odoo: se abre aquí mismo y se cierra con ✕.') + '</div>';
+    if (!on()) return sinPdf ? h.replace('<div class="ce-bts"></div>', '') : h + '<div class="ce-nota">' + (t157 ? 'Descargar PDF baja el formato final de Odoo.' : 'El PDF es el de Odoo: se abre aquí mismo y se cierra con ✕.') + '</div>';
     if (nc) return h + G.CzCorreo.html(H, puede === true && G.CzApp && G.CzApp._st && (G.CzApp._st.admin === true || G.CzApp._st.panelAdmin === true)) + G.CzCorreo.lineas(H);
     if (S.caja) h += '<div class="ce-caja"><label for="ceTx">Mensaje para el cliente (lo puedes cambiar)</label><textarea id="ceTx">' + esc(S.caja.cuerpo) + '</textarea>' +
       '<div class="ce-bts"><button type="button" class="ce-bt si" data-ce="previa">Enviar…</button><button type="button" class="ce-bt" data-ce="cancelar">Cancelar</button></div>' +
@@ -75,24 +77,24 @@
     return h;
   }
 
-  async function pdf(c, bajar) {
+  async function pdf(c, bajar, opc) {
     // V1.58 (`estado_odoo_v158`, #12 punto e) · el estado sale en el MISMO instante del clic y el PDF se ve en el visor propio.
-    if (G.CzEstado && G.CzEstado.on()) return pdf158(c, bajar);
+    if (G.CzEstado && G.CzEstado.on()) return pdf158(c, bajar, opc);
     if (S.ocupado) return; S.ocupado = true;
     var r = await G.CzCliente.cotizacion('ver', { caso_id: c.id }); S.ocupado = false;
     if (!r.ok || !r.pdf) return aviso(r.mensaje || 'No pude traer el PDF de Odoo (' + (r.error || 'sin respuesta') + ').');
     var bin = atob(r.pdf.b64), u8 = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
     var url = URL.createObjectURL(new Blob([u8], { type: 'application/pdf' }));
     if (bajar) { var a = document.createElement('a'); a.href = url; a.download = r.pdf.nombre || 'cotizacion.pdf'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000); return; }
-    var m = modal({ titulo: (r.pdf.nombre || 'Cotización') + ' · cotización de Odoo', marca: 'ce-modal-pdf',
-      cabecera: '<a class="ce-bt" style="min-height:32px;padding:4px 12px" href="' + url + '" download="' + esc(r.pdf.nombre || 'cotizacion.pdf') + '">⬇</a>',
+    var m = modal({ titulo: (opc && opc.titulo) || (r.pdf.nombre || 'Cotización') + ' · cotización de Odoo', marca: 'ce-modal-pdf',
+      cabecera: '<a class="ce-bt" style="min-height:32px;padding:4px 12px" href="' + url + '" download="' + esc(r.pdf.nombre || 'cotizacion.pdf') + '">' + esc((opc && opc.descargarTxt) || '⬇') + '</a>',
       html: '<iframe class="ce-pdf" title="PDF de la cotización" src="' + url + '"></iframe>', alCerrar: function () { URL.revokeObjectURL(url); } });
     if (!m) G.open(url, '_blank');
   }
 
   /** V1.58 · «Generando el PDF de SO#### en Odoo…» con su hora y segundos, y «✓ Listo» (Abrir · ⬇ Descargar) o «✕ No se generó…»
    *  con Reintentar. «Ver cotización» abre el visor propio (pdf.js); «Descargar PDF» baja el archivo. */
-  async function pdf158(c, bajar) {
+  async function pdf158(c, bajar, opc) {
     var E = G.CzEstado, so = c.orden_nombre || 'la cotización';
     if (S.ocupado) return; S.ocupado = true;
     var est = E.inicio({ titulo: 'Generando el PDF de ' + so + ' en Odoo…', tipico: 'suele tardar de 4 a 8 s', caso: c.id });
@@ -100,11 +102,11 @@
     if (!r.ok || !r.pdf) {
       var rapida = G.CzApp && G.CzApp.vistaRapida && G.CzApp.vistaRapida(true) ? [{ txt: 'Vista rápida (sin Odoo)', fn: function () { G.CzApp.vistaRapida(); } }] : [];
       return est.error({ titulo: 'No se generó el PDF de ' + so, motivo: r.mensaje || 'Odoo no mandó el PDF', codigo: r.error || 'SIN_PDF',
-        reintentar: function () { return pdf158(c, bajar); }, acciones: rapida });
+        reintentar: function () { return pdf158(c, bajar, opc); }, acciones: rapida });
     }
     var bin = atob(r.pdf.b64), u8 = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
     var nombre = r.pdf.nombre || 'cotizacion.pdf', n = E.hojas(u8);
-    var abrir = function () { return E.visorPdf({ u8: u8, nombre: nombre, titulo: so + ' · PDF de Odoo' }); };
+    var abrir = function () { return E.visorPdf({ u8: u8, nombre: nombre, titulo: (opc && opc.titulo) || so + ' · PDF de Odoo', descargarTxt: opc && opc.descargarTxt }); };
     var baja = function () { var url = URL.createObjectURL(new Blob([u8], { type: 'application/pdf' })); E.descargar(url, nombre); setTimeout(function () { URL.revokeObjectURL(url); }, 4000); };
     // V1.62b (`pdf_v162b`) · el mismo PDF guardado, sin pedirlo a Odoo: la orden no cambió desde que se bajó.
     var gu = r.pdf.guardado ? ' · guardado, no se volvió a pedir a Odoo (la orden no cambió)' : '';
@@ -170,6 +172,6 @@
   }
 
   /* V1.56 · el rayito («Ver cotización») abre el mismo PDF; `bajar` lo descarga. */
-  function ver(c, bajar) { return c ? pdf(c, !!bajar) : null; }
+  function ver(c, bajar, opc) { return c ? pdf(c, !!bajar, opc) : null; }
   G.CzEnviar = { botones: botones, enlazar: enlazar, ver: ver, _estado: S };
 })(window);

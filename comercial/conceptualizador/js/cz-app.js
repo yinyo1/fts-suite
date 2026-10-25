@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.63b';
+  var VERSION = 'V1.63c';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -883,6 +883,8 @@
     ['procura_v163', 'Procura N1 (3 meses)', 'N1 es una compra en Odoo de 3 meses o menos; lo pagado antes va como N2 con su folio. La solicitud a proveedores sale agrupada por proveedor (rfq.md) para que la mande Compras.'],
     ['secciones_v163', 'Revisión por secciones', 'En la vista ejecutiva, cada sección trae «Definición de conceptos», «Cosas por definir» y su contador, y se marca revisada con un toque. «Ya la mandé» solo con todas revisadas.'],
     ['oportunidad_nace_v163', 'Oportunidad en Odoo al nacer el caso', 'Crea o liga la oportunidad del cliente en Odoo en cuanto se sabe el cliente, sin avisos de Odoo.'],
+    // V1.63c (#12, Esteban 24-oct 19:56 CST) · migración 0038.
+    ['pdf_unico_v163', 'PDF en un solo lugar', 'La respuesta que cambia la cotización trae el PDF nuevo como archivo, con «↺ Deshacer»; los borradores anteriores y «Ya la mandé» quedan plegados sin botones de PDF; «Correo para envío» y «Ya la mandé» una sola vez, al final; en ⋮ una sola entrada, «PDF de la cotización (última versión)».'],
   ];
   /** Los interruptores que conoce el servidor (valores `interruptor:*` y `interruptores`), en el orden de arriba; uno nuevo
    * que la pantalla todavía no describe sale al final con su nombre, para que se pueda prender igual. */
@@ -2024,7 +2026,10 @@
       // V1.63a (`pdf_menu_v163`, #12, falla de Esteban del 23-oct 14:46 CST) · «Ver cotización» y «⬇ Descargar PDF» aquí, siempre que el
       // caso tenga orden en Odoo, para el dueño y para Esteban, SIN depender de la tarjeta del borrador (Mattel se dio de alta por script
       // y no tenía ninguna). La base vuelve a decidir quién puede (cotizacion-cliente · ver, db/022). Van ARRIBA: a 380 px se ven sin bajar.
-      (on('pdf_menu_v163') && G.CzEnviar && (cs.orden_id || c.orden_id) && (mia || ST.admin === true || ST.panelAdmin === true) ?
+      // V1.63c (`pdf_unico_v163`, #12) · UNA sola entrada: abre el visor con «⬇ Descargar» adentro, siempre el último PDF de Odoo.
+      (pdfUnico() && G.CzEnviar && (cs.orden_id || c.orden_id) && (mia || ST.admin === true || ST.panelAdmin === true) ?
+        '<button data-a="pdf_ultimo">' + ico('pagina', 's') + '<span>PDF de la cotización (última versión)<small>' + esc((cs.orden_nombre || c.orden_nombre || '') + ' · ') + 'el de Odoo, tal como lo recibe el cliente; adentro, «⬇ Descargar»</small></span></button>' :
+      on('pdf_menu_v163') && G.CzEnviar && (cs.orden_id || c.orden_id) && (mia || ST.admin === true || ST.panelAdmin === true) ?
         '<button data-a="pdf_ver">' + ico('pagina', 's') + '<span>Ver cotización ' + esc(cs.orden_nombre || c.orden_nombre || '') + '<small>El PDF oficial de Odoo, tal como lo recibe el cliente</small></span></button>' +
         '<button data-a="pdf_bajar">' + ico('bajar', 's') + '<span>⬇ Descargar PDF<small>El mismo PDF, como archivo</small></span></button>' : '') +
       // V1.34 (D89) · la ciudad del proyecto se cambia aquí (solo quien la abrió o Esteban; la base vuelve a decidir).
@@ -2043,9 +2048,9 @@
       (hayM ? '<button data-a="ir_machote">' + ico('docs', 's') + '<span>Ir al machote<small>' + esc((cs.machote_folio || 'Machote') + (verMachote() ? ' · versión ' + verMachote() : '')) + '</small></span></button>'
         : '<button data-a="ir_machote" disabled aria-disabled="true">' + ico('docs', 's') + '<span>Ir al machote<small>Aún no hay machote</small></span></button>') +
       // V1.62b (`pdf_v162b`, #12 resultado 6) · el último PDF guardado: no se vuelve a pedir a Odoo si la orden no cambió.
-      (on('pdf_v162b') && H && H.ultimo_pdf && G.CzEnviar ? '<button data-a="ultimo_pdf">' + ico('pagina', 's') + '<span>Último PDF ' + esc((H.ultimo_pdf.orden_nombre || '') + ' v' + H.ultimo_pdf.version) +
+      (on('pdf_v162b') && !pdfUnico() && H && H.ultimo_pdf && G.CzEnviar ? '<button data-a="ultimo_pdf">' + ico('pagina', 's') + '<span>Último PDF ' + esc((H.ultimo_pdf.orden_nombre || '') + ' v' + H.ultimo_pdf.version) +
         '<small>' + esc(horaDe(H.ultimo_pdf.at)) + (H.ultimo_pdf.total != null ? ' · $' + Number(H.ultimo_pdf.total).toLocaleString('es-MX') + ' más IVA' : '') + ' · guardado, no se vuelve a pedir a Odoo</small></span></button>' : '') +
-      (G.CzVisor && ultimoBorrador() ? '<button data-a="visor">' + ico('pagina', 's') + '<span>Vista rápida de la cotización<small>Lo que hay en Odoo y qué cambió; el PDF oficial está en «Ver cotización»</small></span></button>' : '') +
+      (G.CzVisor && ultimoBorrador() ? '<button data-a="visor">' + ico('pagina', 's') + '<span>Vista rápida de la cotización<small>Lo que hay en Odoo y qué cambió; el PDF oficial está en «' + (pdfUnico() ? 'PDF de la cotización' : 'Ver cotización') + '»</small></span></button>' : '') +
       '<button data-a="pagina">' + ico('pagina', 's') + '<span>Lo considerado, con versiones<small>La vista en página de antes</small></span></button>' +
       // V1.58 (`niveles_v158`) · qué quiere decir cada nivel de precio.
       (on('niveles_v158') && G.CzNiveles ? '<button data-a="ayuda_niveles">' + ico('info', 's') + '<span>Ayuda · niveles de precio<small>N1 Proveedor · N2 Web MX · N3 Lista extranjera · N4 Estimado · N5 Falta precio</small></span></button>' : '') + '<hr>' +
@@ -2100,6 +2105,7 @@
       if (a === 'ayuda_niveles') return G.CzNiveles.ayuda();
       if (a === 'visor') return abrirVisor();
       if (a === 'pdf_ver' || a === 'pdf_bajar') { var cv = (ST.hilo && ST.hilo.caso && ST.hilo.caso.id) ? ST.hilo.caso : c; return G.CzEnviar.ver(Object.assign({}, cv, { orden_nombre: cv.orden_nombre || c.orden_nombre }), a === 'pdf_bajar'); }
+      if (a === 'pdf_ultimo') { var cu = (ST.hilo && ST.hilo.caso && ST.hilo.caso.id) ? ST.hilo.caso : c; return G.CzEnviar.ver(Object.assign({}, cu, { orden_nombre: cu.orden_nombre || c.orden_nombre }), false, opcPdfUltimo()); }
       if (a === 'ultimo_pdf') return G.CzEnviar.ver(Object.assign({}, (ST.hilo && ST.hilo.caso) || {}, { orden_nombre: ((ST.hilo && ST.hilo.ultimo_pdf) || {}).orden_nombre }), false);
       if (a === 'ir_machote') { var hm = ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'hecha'; }).pop(); return abrirEditor(hm || null); }
       if (a === 'archivos') return abrirArchivos();
@@ -2145,6 +2151,11 @@
     };
     var meta = adjuntosPorId();
     var acc = accionesPorTrabajo(), pintadas = {};
+    // V1.63c (`pdf_unico_v163`) · el historial que no cuelga de un mensaje (alta por script, «Ya la mandé» del panel) va en su
+    // lugar por hora, plegado; si no, caería debajo de la respuesta más nueva.
+    var ORF = !pdfUnico() ? [] : Object.keys(acc).filter(function (k) { return /^sin-/.test(k); }).map(function (k) { return acc[k][0]; })
+      .filter(function (a) { return (a.tipo === 'crear_borrador' || a.tipo === 'enviada') && a.estado === 'hecha' && Date.parse(a.hecha_at || ''); })
+      .sort(function (a, b) { return Date.parse(a.hecha_at) - Date.parse(b.hecha_at); });
     var U = H && (H.propuesta || H.ultima), porTrabajo = {}; ((H && H.trabajos) || []).forEach(function (t) { porTrabajo[t.id] = t; });
     var OFR = ofertaDe(H), RUB = H && G.CzAvance ? G.CzAvance.rubros(H) : null;
     /* V1.53b (`pantalla_v153`, #5 19:36) · la respuesta «vigente» es la última del motor que SE PINTA: un «revisa» que terminó en
@@ -2158,10 +2169,12 @@
     /* V1.60 (`chat_limpio_v160`, #12) · lo que no aporta no se pinta (sigue en la base y en hilo.md): acuses ya contestados,
      * el mismo texto del motor dos veces seguidas, y la respuesta con un estado superado queda en UNA línea. «N ocultos ·
      * mostrar todo» lo devuelve. El último mensaje del motor nunca se oculta (CzLimpio). */
-    var LIM = on('chat_limpio_v160') && G.CzLimpio && !ST.verTodoChat, nOc = 0, prevMot = null; ST.ocTarj = 0;
+    var LIM = on('chat_limpio_v160') && G.CzLimpio && !ST.verTodoChat, nOc = 0, prevMot = null; ST.ocTarj = 0; ST.pdfuDesh = null; ST.pdfuArch = false;
     var MSG = (H && H.mensajes) || [], ultMot = -1; MSG.forEach(function (x, i) { if (x.rol === 'motor' && x.autor !== 'acuse' && x.texto !== SIN_AVISO) ultMot = i; });
     MSG.forEach(function (m, iM) {
-      var t = m.escrito_at || m.created_at; dia(t);
+      var t = m.escrito_at || m.created_at;
+      while (ORF.length && Date.parse(ORF[0].hecha_at) <= Date.parse(t)) { var a0 = ORF.shift(); dia(a0.hecha_at); aparte(historialPlegado(a0)); pintadas['sin-' + a0.id] = 1; }
+      dia(t);
       if (m.rol === 'sistema') return aparte('<div class="sis"><span>' + esc(m.texto) + '</span></div>');
       if (m.rol === 'motor' && m.texto === SIN_AVISO) return;          // V1.46 · el «revisa» sin aviso no se pinta
       if (LIM && G.CzLimpio.acuseContestado(m, iM, MSG)) { nOc++; return; }
@@ -2226,6 +2239,8 @@
     });
     // Acciones que no cuelgan de un mensaje del motor (p. ej. «¿la cierro?» de los cierres automáticos).
     Object.keys(acc).forEach(function (k) { if (!pintadas[k]) aparte(tarjetaAcciones(acc[k])); });
+    // V1.63c (`pdf_unico_v163`) · «Correo para envío» y «Ya la mandé» una sola vez, al final, en el estado vigente.
+    if (pdfUnico() && H && H.caso && H.caso.orden_id) aparte(estadoVigente(H));
     salidaDelCaso().sort(function (a, b) { return a.escrito_at - b.escrito_at; }).forEach(function (x) {
       dia(x.escrito_at);
       var subidos = x.archivos.filter(function (a) { return a.adjunto_id; }).length, total = x.archivos.length;
@@ -2564,7 +2579,8 @@
     var VU = U.verifica || (ST.hilo && ST.hilo.ultima && Number(ST.hilo.ultima.trabajo_id) === Number(U.trabajo_id) ? ST.hilo.ultima.verifica : null);
     // V1.63a (`una_orden_v163`, #12, regla «una orden = se ejecuta completa y regresa el PDF») · la respuesta que actualizó Odoo por la
     // orden de una persona trae el PDF ahí mismo: «Ver cotización» y «⬇ Descargar PDF» del PDF oficial (cotizacion-cliente · ver).
-    if (on('una_orden_v163') && VU && VU.pdf_listo && G.CzEnviar && H.caso && H.caso.orden_id)
+    if (pdfUnico() && on('una_orden_v163') && VU && VU.pdf_listo && G.CzEnviar && H.caso && H.caso.orden_id) h += pdfArchivo(H, U, VU.pdf_listo);
+    else if (on('una_orden_v163') && VU && VU.pdf_listo && G.CzEnviar && H.caso && H.caso.orden_id)
       h += '<div class="carta pdf-listo" data-pdf-listo="' + esc(String(VU.pdf_listo.orden_nombre || '')) + '"><h4>📄 ' + esc(VU.pdf_listo.orden_nombre || (H.caso.orden_nombre || 'Cotización')) +
         ' · PDF de Odoo, ya con este cambio</h4>' + G.CzEnviar.botones(H, mia(H.caso) || ST.admin === true || ST.panelAdmin === true) + '</div>';
     var BO = on('bom_observado_v159') && VU && VU.bom_observado;
@@ -2662,6 +2678,62 @@
         (b.abierto ? cajaRazon(kk, '¿Qué es lo correcto?', 'Cambiar', false) : (puede && !e && !vz ? '<div class="decide"><button type="button" class="cambiar" data-supc="' + esc(x.id) + '">↺ Cambiar</button></div>' : '')) +
         (ST.errBt[kk] && !b.abierto ? '<span class="err-bt">' + esc(ST.errBt[kk]) + '</span>' : '') + '</div>';
     }).join(''), activo) + '</div>';
+  }
+
+  /* ── V1.63c (`pdf_unico_v163`, #12, Esteban 24-oct 19:56 CST) · el PDF de la cotización en un solo lugar ─────────────
+   * Prototipo aprobado: claude.ai/artifact/K2vmvzbyatLbxHXtDFWw57. La respuesta que cambia la cotización trae el PDF como
+   * archivo (con «↺ Deshacer»); lo anterior se pliega como historial, sin botones de PDF; «Correo para envío» y «Ya la mandé»
+   * salen una vez, al final, en el estado vigente; y en ⋮ una sola entrada. El PDF siempre se pide a Odoo (cotizacion-cliente · ver). */
+  function pdfUnico() { return on('pdf_unico_v163'); }
+  /** Los borradores hechos de la orden del caso, en orden: la versión N es la N-ésima escritura en Odoo. */
+  function borradoresHechos() {
+    var oid = Number(((ST.hilo && ST.hilo.caso) || {}).orden_id) || 0;
+    return ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return x.tipo === 'crear_borrador' && x.estado === 'hecha' && x.resultado && x.resultado.orden_id && (!oid || Number(x.resultado.orden_id) === oid); })
+      .sort(function (a, b) { return (Date.parse(a.hecha_at || '') || 0) - (Date.parse(b.hecha_at || '') || 0) || Number(a.id) - Number(b.id); });
+  }
+  function versionPdf() { return borradoresHechos().length; }
+  function opcPdfUltimo() { var so = ((ST.hilo && ST.hilo.caso) || {}).orden_nombre || 'Cotización', v = versionPdf(); return { titulo: so + (v ? ' · versión ' + v : '') + ' (la última)', descargarTxt: '⬇ Descargar' }; }
+  function fechaCorta(iso) { var t = new Date(iso || ''); if (!isFinite(t.getTime())) return ''; var M = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    return t.getDate() + '-' + M[t.getMonth()] + ' ' + ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2); }
+  /** El PDF de la respuesta, como archivo. Abre el último PDF de Odoo (que ya trae este cambio) y abajo «↺ Deshacer». */
+  function pdfArchivo(H, U, pl) {
+    var so = pl.orden_nombre || (H.caso && H.caso.orden_nombre) || 'Cotización', v = versionPdf(), puede = mia(H.caso) || ST.admin === true || ST.panelAdmin === true;
+    var A = (H.acciones || []), des = A.filter(function (x) { return x.tipo === 'crear_borrador' && x.estado === 'propuesta' && (x.datos || {}).deshacer === true && Number(x.trabajo_id) === Number(U.trabajo_id); }).pop();
+    if (des) ST.pdfuDesh = des.id;
+    ST.pdfuArch = true;
+    var tot = pl.subtotal != null ? ' · $' + Number(pl.subtotal).toLocaleString('es-MX', { maximumFractionDigits: 2 }) + (pl.moneda && pl.moneda !== 'MXN' ? ' ' + pl.moneda : '') + ' más IVA' : '';
+    return '<div class="carta pdf-listo czp-resp" data-pdf-listo="' + esc(String(so)) + '">' +
+      '<button type="button" class="czp-archivo" data-czp-pdf="1"' + (puede ? '' : ' disabled') + ' aria-label="Abrir el PDF de ' + esc(so) + (v ? ' versión ' + v : '') + '">' +
+        '<span class="czp-ic" aria-hidden="true">PDF</span><span class="czp-tx"><b>' + esc(so) + (v ? ' · versión ' + v : '') + '</b>' +
+        '<small>' + esc(fechaCorta(U.created_at || (H.ultima || {}).created_at)) + ' · de Odoo, ya con este cambio' + esc(tot) + '</small></span></button>' +
+      (des ? '<div class="acc czp-acc">' + (des.estado === 'propuesta' && puede ? '<button data-hacer="' + des.id + '">' + esc(etiqueta(des)) + '</button>' : '') + '</div>' : '') + '</div>';
+  }
+  /** Un borrador hecho o un «Ya la mandé» hecho: una línea gris que se abre para leer. Ningún botón de PDF. */
+  function historialPlegado(a) {
+    var r = a.resultado || {}, d = a.datos || {}, so = r.orden_nombre || ((ST.hilo && ST.hilo.caso) || {}).orden_nombre || '';
+    var L = borradoresHechos(), i = L.map(function (x) { return x.id; }).indexOf(a.id), ult = i >= 0 && i === L.length - 1;
+    var tit = a.tipo === 'enviada' ? 'Ya la mandé al cliente' : 'Borrador ' + so + (i >= 0 ? ' · versión ' + (i + 1) : '');
+    return '<details class="czp-pleg" data-czp-pleg="' + esc(a.id) + '"><summary>' + esc(tit + (a.hecha_at ? ' · ' + fechaCorta(a.hecha_at) : '') + ' · historial') + '</summary>' +
+      '<div class="czp-cuerpo"><span class="hecho">✓ ' + esc(r.texto || 'Hecho') + '</span>' + releidoOdoo(r) +
+      (on('todo_hecho_v162b') && a.hecha_por === 'agente' ? '<p class="ag-hecho">Lo hizo el agente por instrucción de ' + esc(nombrePersona((d.por_instruccion || {}).persona) || 'la persona') + '.</p>' : '') +
+      (a.tipo === 'crear_borrador' ? '<span class="czp-etq">' + (ult ? 'Es la versión vigente: su PDF está en la respuesta y en ⋮' : 'Ya no es la vigente') + '</span>' : '') + '</div></details>';
+  }
+  /** Al final del chat: la versión vigente, su estado con el cliente, y «Correo para envío» y «Ya la mandé» una sola vez. */
+  function estadoVigente(H) {
+    var c = H.caso || {}, so = c.orden_nombre || 'la cotización', v = versionPdf(), A = H.acciones || [];
+    var env = A.filter(function (x) { return x.tipo === 'enviada' && x.estado === 'hecha'; }).pop(), bh = borradoresHechos(), ub = bh[bh.length - 1];
+    var enviada = c.estado === 'enviada' || !!env;
+    var tEnv = env && env.hecha_at ? Date.parse(env.hecha_at) : 0, tUb = ub && ub.hecha_at ? Date.parse(ub.hecha_at) : 0;
+    var txt = enviada ? 'Enviada al cliente' + (env && env.hecha_at ? ' el ' + fechaCorta(env.hecha_at).split(' ')[0] : '') + '. ' + (tUb > tEnv && tEnv ? 'Esta versión todavía no se reenvía.' : 'Es la versión que tiene el cliente.')
+      : 'Borrador en Odoo. Todavía no se manda al cliente.';
+    var puede = mia(c) || ST.admin === true || ST.panelAdmin === true;
+    var lm = A.filter(function (x) { return x.tipo === 'enviada' && x.estado === 'propuesta'; }).pop();
+    if (lm && on('chat_limpio_v160') && G.CzLimpio && !G.CzLimpio.reglaClics([{ txt: 'Ya la mandé' }], H).length) lm = null;
+    var bLm = lm && puede && !noMueve(lm) ? '<button type="button" class="ce-bt si" data-hacer="' + lm.id + '">' + esc(etiqueta(lm)) + '</button>' : '';
+    var bts = G.CzEnviar ? G.CzEnviar.botones(H, puede, { sinPdf: true }) : '';
+    if (bLm) bts = /<div class="ce-bts">/.test(bts) ? bts.replace('<div class="ce-bts">', '<div class="ce-bts">' + bLm) : bts + '<div class="ce-bts">' + bLm + '</div>';
+    return '<div class="fila el"><div class="czp-vig" data-czp-vigente="' + esc(String(v)) + '" aria-label="Estado vigente"><span class="czp-etq">Estado vigente · ' + esc(so) + (v ? ' versión ' + v : '') + '</span>' +
+      '<p>' + esc(txt) + '</p>' + bts + (bLm ? leyendaOdoo('enviada') : '') + '</div></div>';
   }
 
   /** V1.59 (`tarjetas_v159`) · el botón dice lo que hace: con la orden ya en Odoo, «Actualizar SO… en Odoo», no «Crear borrador». */
@@ -2904,6 +2976,15 @@
       if (limT && (a.estado === 'descartada' || yaHecha(a))) { ST.ocTarj = (ST.ocTarj || 0) + 1; return; }
       // y «Ya la mandé al cliente» sin orden en Odoo (o con la orden ya enviada): no es posible todavía (o ya se hizo).
       if (limT && a.tipo === 'enviada' && a.estado === 'propuesta' && !G.CzLimpio.reglaClics([{ txt: 'Ya la mandé' }], ST.hilo).length) { ST.ocTarj = (ST.ocTarj || 0) + 1; return; }
+      // V1.63c (`pdf_unico_v163`) · lo hecho del borrador y «Ya la mandé» es historial plegado, sin botones de PDF; «Ya la mandé»
+      // propuesta sale en el estado vigente (al final) y el «↺ Deshacer» va junto al PDF de la respuesta.
+      if (pdfUnico() && (a.tipo === 'crear_borrador' || a.tipo === 'enviada') && a.estado === 'hecha') {
+        var bhU = borradoresHechos();   // la versión vigente ya está arriba como archivo: no se repite como historial
+        if (!(ST.pdfuArch && a.tipo === 'crear_borrador' && bhU.length && bhU[bhU.length - 1].id === a.id)) h += historialPlegado(a);
+        return;
+      }
+      if (pdfUnico() && a.tipo === 'enviada' && a.estado === 'propuesta' && ST.hilo && ST.hilo.caso && ST.hilo.caso.orden_id) return;
+      if (pdfUnico() && ST.pdfuDesh && Number(ST.pdfuDesh) === Number(a.id)) return;
       var d = a.datos || {}, r = a.resultado || {}, manejador = G.CzAcciones && G.CzAcciones[a.tipo];
       var espera = pendientes && (a.tipo === 'crear_machote' || a.tipo === 'crear_borrador');
       // V1.46 · un borrador propuesto ANTES de la versión del machote que falta guardar es de la versión anterior.
@@ -3094,6 +3175,8 @@
     var bl = $('#bListo', M); if (bl) bl.onclick = listoSigue;
     var be = $('#bEscribe', M); if (be) be.onclick = function () { var tq = trabajoQueContesta(); ST.abiertoReg = ST.abiertoReg === (tq && tq.id) ? null : (tq && tq.id); pintarChat(); };
     $$('[data-hacer]', M).forEach(function (b) { b.onclick = function () { hacer(b.dataset.hacer, b); }; });
+    // V1.63c (`pdf_unico_v163`) · el archivo de la respuesta abre el último PDF de Odoo en el visor (con «⬇ Descargar» adentro).
+    $$('[data-czp-pdf]', M).forEach(function (b) { b.onclick = function () { var c = ST.hilo && ST.hilo.caso; if (c && G.CzEnviar) G.CzEnviar.ver(c, false, opcPdfUltimo()); }; });
     $$('[data-pdf]', M).forEach(function (b) { b.onclick = verPdf; });
     $$('[data-copia]', M).forEach(function (b) { b.onclick = function () { copiar(b.closest('.carta').querySelector('textarea.copia').value, b); }; });
     $$('[data-descartar]', M).forEach(function (b) { b.onclick = function () { resolver(b.dataset.descartar, 'descartada', {}, b); }; });
