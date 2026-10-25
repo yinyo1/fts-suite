@@ -235,6 +235,10 @@
     }
     // V1.36 · la cotización en Odoo espera a que no quede ninguna regla dura (precio, diagnóstico, tarifa).
     var pend = pendientes(H);
+    // V1.63e bloque 2b (#12, `borrador_n5_v163e`) · los renglones sin precio (N5) ya no frenan el BORRADOR: van «precio por confirmar».
+    // Lo demás que falta sí frena, y «Ya la mandé» espera a cero N5 en el servidor.
+    if (prendido('borrador_n5_v163e')) { var L5 = pend.lista.filter(function (h) { return h.id !== 'partida-sin-precio' && h.id !== 'sin-secciones'; });
+      pend = { n: L5.reduce(function (n, h) { return n + Math.max(1, (h.items || []).length); }, 0), lista: L5, hay_machote: pend.hay_machote }; }
     if (pend.n) return { ok: false, mensaje: textoPendientes(pend) + ' Nunca se estima un precio: cuando lleguen, se actualiza el machote y aquí se enciende.' };
     var cot = (a.datos || {}).cotizacion;
     if (!cot || !(cot.bloques || []).length) return { ok: false, mensaje: 'El motor no mandó la cotización armada (renglones, suma y anticipo). Pídele el botón otra vez.' };
