@@ -1,6 +1,11 @@
 {
-  "version": "V1.63e.1",
+  "version": "V1.63e.2",
   "historial": [
+    {
+      "version": "V1.63e.2",
+      "fecha": "2026-10-25",
+      "nota": "fts-conceptualizador#12 (V1.63e bloque 2b): con analisis_v163e el saludo del acompañamiento ya no dice «No propongo conceptos hasta que toques…» y la ciudad del proyecto es un supuesto («Con ella busco tiendas, fletes y viáticos; corrígela si no es»); el panel describe los interruptores de la V1.63e, con borrador_n5_v163e y borrador_robot_v163e (migración 0041, nacen apagados)."
+    },
     {
       "version": "V1.63e.1",
       "fecha": "2026-10-25",

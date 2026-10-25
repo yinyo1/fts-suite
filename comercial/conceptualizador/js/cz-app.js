@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.63e.1';
+  var VERSION = 'V1.63e.2';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -71,6 +71,10 @@
     levantamiento: { titulo: 'Cotización nueva', boton: 'Ya es todo',
       intro: 'Mándame todo (fotos, audios, PDFs, notas) y cuando acabes toca «Ya es todo».' }
   };
+  /* V1.63e bloque 2b (#12, Esteban 25-oct 11:40 CST) · con `analisis_v163e` el agente ya no espera al botón: arma conceptos, supuestos y
+   * precios en cuanto dejas de mandar. El saludo viejo («No propongo conceptos hasta que toques…») decía lo contrario. Apagado, el de antes. */
+  var INTRO_ANALISIS = { acompanamiento: 'Modo acompañamiento. Mándame lo que vayas viendo: fotos, notas de voz, medidas, la ruta. En cuanto dejas de mandar unos minutos armo conceptos, supuestos y precios, y tú corriges lo que no cuadre. El botón «Ya terminé, cotiza» sigue para cuando quieras cerrar.' };
+  function introDe(m) { return on('analisis_v163e') && INTRO_ANALISIS[m] ? INTRO_ANALISIS[m] : MODOS[m].intro; }
   // Igual que es_disparador() de la base: «cotiza» sí, «cotización…» no.
   var DISPARO = /^\s*(ya\s+es\s+todo|es\s+todo|ya\s+termin|cotiza(?![a-záéíóúñ]))/i;
   var C = G.CzCliente, Q = G.CzCola, Me = G.CzMedios, GR = G.CzGrabadora, AR = G.CzArchivos, CI = G.CzCiudad;
@@ -888,6 +892,13 @@
     // V1.63c (#12, Esteban 24-oct 19:56 CST) · migración 0038.
     // V1.63e (#12, decreto de Esteban del 25-oct 10:12 CST) · migración 0039.
     ['fin_semana_v163e', 'El agente trabaja sábado y domingo', 'El robot corre los 7 días con la misma ventana (7 a 21 h) y los mismos topes (3 M al día, 15 M de lo proactivo a la semana, freno total). Con el freno rebasado, lo que pide una persona en sábado o domingo se atiende completo, como entre semana. Alarma fin_semana_sin_robot si un fin de semana no corrió.'],
+    // V1.63e bloques 2 y 4 (#12, va de Esteban del 25-oct 11:05 CST) · migración 0040.
+    ['analisis_v163e', 'Modo análisis: supone y arma todo', 'El agente supone lo que se puede suponer y arma conceptos, BOM, machote y PDF borrador; una sola pregunta, solo si no hay supuesto posible y mueve más de 20 % del total. El robot no salta un caso al que le falta algo que resuelve solo. Alarmas caso_sin_avance_48h, dia_sin_avances y caso_preguntas.'],
+    ['tarifas_usa_v163e', 'Tarifas fijas FTS USA', 'MO de FTS USA con la tabla fija (Ayudante 20 · Técnico junior 30 · Técnico 35 · Supervisor 40 · Soldador 50 USD/h), L–V en días de 8 h, nota fija de fin de semana y holiday, comida USD 50 por día y persona, sin gasolina.'],
+    ['deshacer_v163e', '«↺ Deshacer» sin volver a liberar', 'Deshacer regresa el texto de antes sin volver a pedir la liberación de la regla 15 que ya se dio; lo no liberado se marca como siempre.'],
+    // V1.63e bloque 2b (#12, Esteban 25-oct 11:40 CST) · migración 0041.
+    ['borrador_n5_v163e', 'Borrador en Odoo con precios por confirmar', 'El borrador sale aunque haya renglones N5: van marcados «precio por confirmar» (USA «price TBC»). «Ya la mandé» sigue frenado hasta cero N5 y cero renglones por confirmar en la orden.'],
+    ['borrador_robot_v163e', 'El robot crea y actualiza el borrador', 'Al final de cada avance el robot crea o actualiza el borrador de Odoo del caso, a nombre del autor: una sola orden por caso, nunca la marca enviada, nunca la confirma, nunca manda correo. El PDF borrador queda en el caso. Alarma borrador_robot_frenado si el mismo caso junta 3 rechazos en 24 h.'],
     ['pdf_unico_v163', 'PDF en un solo lugar', 'La respuesta que cambia la cotización trae el PDF nuevo como archivo, con «↺ Deshacer»; los borradores anteriores y «Ya la mandé» quedan plegados sin botones de PDF; «Correo para envío» y «Ya la mandé» una sola vez, al final; en ⋮ una sola entrada, «PDF de la cotización (última versión)».'],
   ];
   /** Los interruptores que conoce el servidor (valores `interruptor:*` y `interruptores`), en el orden de arriba; uno nuevo
@@ -1484,7 +1495,10 @@
         '<span class="avl-razon-bt"><button type="button" class="bt" id="avRazonOk">' + (ST.razonAg === 'reabre' ? 'Reabrir' : 'Pausar') + '</button><button type="button" class="link" id="avRazonNo">Cancelar</button></span></div>' : '') + '</div>';
     var PR = presupuesto();
     if (PR && yo() === 'esteban.delacruz') h += '<div class="avl-pres">' + esc(PR.linea) + ' <button type="button" class="link" id="avAvance">' + (PR.apagado ? 'Prender el avance' : 'Apagar el avance') + '</button></div>';
-    if (!av.ciudad) h += '<div class="avl-ciu"><b>Ciudad del proyecto' + (x ? ': ' + esc(CI.nombre(x)) + ' (sin confirmar)' : '') + '</b> Sin ella no se buscan precios: tiendas, fletes y viáticos se miden contra ella.' +
+    // V1.63e 2b · con el modo análisis la ciudad es un supuesto más: los precios se buscan con la supuesta y la persona la corrige.
+    if (!av.ciudad) h += '<div class="avl-ciu' + (on('analisis_v163e') ? ' sup' : '') + '"><b>Ciudad del proyecto' + (x ? ': ' + esc(CI.nombre(x)) + (on('analisis_v163e') ? ' (supuesta)' : ' (sin confirmar)') : '') + '</b> ' +
+      (on('analisis_v163e') ? (x ? 'Con ella busco tiendas, fletes y viáticos; corrígela si no es.' : 'Todavía no la sé: la supongo de la plática o del cliente y sigo. Elígela si ya la sabes.')
+        : 'Sin ella no se buscan precios: tiendas, fletes y viáticos se miden contra ella.') +
       (mia(c) ? ' <button type="button" class="link" id="avCiudad">' + (x ? 'Cambiar' : 'Elegir') + '</button>' : '') + '</div>';
     h += '<ol class="avl-pasos">' + P.map(function (p, i) { var e = av.e[i]; return '<li class="' + e + '" title="' + esc(av.det[i]) + '">' + (e === 'hecho' ? '✓ ' : '') + (i + 1) + ' ' + esc(p) + '</li>'; }).join('') + '</ol>';
     if (av.machote) h += '<div class="avl-maq">Machote ' + esc(folio || '') + ' · <button type="button" class="link" id="avAbrir">Abrir ' + esc(folio || 'machote') + '</button></div>';
@@ -2170,7 +2184,7 @@
     if (H && on('pantalla_v153')) { var MS = (H.mensajes || []).filter(function (x) { return x.rol === 'motor' && x.trabajo_id && x.texto !== SIN_AVISO; }); if (MS.length) { ULT = Number(MS[MS.length - 1].trabajo_id); ULT_AT = MS[MS.length - 1].created_at; } }
     ST.ultVis = ULT_AT;
     if (!H && !(ST.sel || {}).local) aparte('<div class="sis"><span>Cargando…</span></div>');
-    if (modo) burbuja('el', 'intro', 'Conceptualizador', '<div class="txt">' + esc(MODOS[modo].intro) + '</div>');
+    if (modo) burbuja('el', 'intro', 'Conceptualizador', '<div class="txt">' + esc(introDe(modo)) + '</div>');
     else if ((ST.sel || {}).local && !(H && H.mensajes && H.mensajes.length)) aparte('<div class="sis"><span>Platícale el trabajo: texto, notas de voz, fotos y PDFs. Cuando termines escribe «ya es todo».</span></div>');
     /* V1.60 (`chat_limpio_v160`, #12) · lo que no aporta no se pinta (sigue en la base y en hilo.md): acuses ya contestados,
      * el mismo texto del motor dos veces seguidas, y la respuesta con un estado superado queda en UNA línea. «N ocultos ·

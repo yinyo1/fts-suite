@@ -247,6 +247,9 @@
   #avance .avl-tit{font-size:12.5px;color:var(--sec);margin:4px 0 6px}#avance .avl-tit b{color:#8a6400;font-weight:600;white-space:nowrap}
   #avance .avl-ciu{font-size:12.5px;color:var(--sec);background:#fff1f1;border:1px solid #f3c9c9;border-radius:8px;padding:6px 8px;margin:0 0 8px}
   #avance .avl-ciu b{display:block;color:var(--rojo);font-weight:600}
+  /* V1.63e 2b · con el modo análisis la ciudad es un supuesto, no una alarma */
+  #avance .avl-ciu.sup{background:var(--sup2);border-color:var(--linea)}
+  #avance .avl-ciu.sup b{color:var(--texto)}
   #avance .avl-pasos{list-style:none;display:flex;flex-wrap:wrap;gap:4px 6px;margin:0 0 8px}
   #avance .avl-pasos li{font-size:12px;border-radius:10px;padding:1px 8px;background:var(--sup2);border:1px solid var(--linea);color:var(--ter);white-space:nowrap}
   #avance .avl-pasos li.hecho{background:#e7f6ee;border-color:#b8e3cb;color:#0b6b45}
@@ -934,7 +937,7 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <script src="js/cz-indicadores.js?v=V1.57b"></script>
 <script src="js/cz-niveles.js?v=V1.62a"></script>
 <script src="js/cz-estado.js?v=V1.63c"></script>
-<script src="js/cz-avance.js?v=V1.63e.1"></script>
+<script src="js/cz-avance.js?v=V1.63e.2"></script>
 <script src="js/cz-ligas.js?v=V1.57b"></script>
 <script src="js/cz-tabla.js?v=V1.58"></script>
 <script src="js/cz-visor.js?v=V1.62b"></script>
@@ -949,7 +952,7 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <script src="js/cz-push.js?v=V1.57b"></script>
 <script src="js/cz-limpio.js?v=V1.62a"></script>
 <script src="js/cz-pasos.js?v=V1.61"></script>
-<script src="js/cz-app.js?v=V1.63e.1"></script>
+<script src="js/cz-app.js?v=V1.63e.2"></script>
 <script src="js/cz-version.js?v=V1.57b"></script>
 <script>window.CzApp.arrancar().then(function () { if (window.CzVersion) window.CzVersion.iniciar(); if (window.CzPush) window.CzPush.iniciar(); });</script>
 </body>
