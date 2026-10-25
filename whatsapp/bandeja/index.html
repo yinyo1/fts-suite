@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memoria · Bandeja de grupos</title>
+<script src="../../shared/auth-jwt.js"></script>
+<script>if (!window.SuiteAuth.requerir('memoria:admin', '../../shared/login.html')) { throw new Error('sin sesion'); }</script>
+<style>
+  :root { --fondo:#f6f7f9; --tarjeta:#fff; --texto:#1b1f24; --tenue:#5b6470; --borde:#dde1e6; --acento:#0b6bcb; --ok:#1a7f37; --aviso:#9a6700; --alerta:#b42318; }
+  @media (prefers-color-scheme: dark) { :root { --fondo:#0f1216; --tarjeta:#171b21; --texto:#e7eaee; --tenue:#9aa4b0; --borde:#2a313a; --acento:#4c9cf0; --ok:#3fb950; --aviso:#d29922; --alerta:#f85149; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background:var(--fondo); color:var(--texto); }
+  header { padding:16px; border-bottom:1px solid var(--borde); background:var(--tarjeta); }
+  h1 { font-size:18px; margin:0 0 4px; }
+  .sub { color:var(--tenue); font-size:13px; }
+  main { padding:16px; max-width:1100px; margin:0 auto; }
+  .aviso { padding:12px; border:1px solid var(--borde); border-left:4px solid var(--aviso); background:var(--tarjeta); border-radius:6px; margin-bottom:12px; }
+  .grupo { background:var(--tarjeta); border:1px solid var(--borde); border-radius:8px; padding:12px; margin-bottom:10px; }
+  .fila { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; }
+  .nombre { font-weight:600; }
+  .chip { font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid var(--borde); color:var(--tenue); }
+  .chip.por_aprobar { color:var(--aviso); border-color:var(--aviso); }
+  .chip.ok { color:var(--ok); border-color:var(--ok); }
+  .chip.sin_so_ni_lead, .chip.tipo_sin_confirmar { color:var(--acento); border-color:var(--acento); }
+  select, button { font:inherit; padding:6px 10px; border-radius:6px; border:1px solid var(--borde); background:var(--tarjeta); color:var(--texto); }
+  button.primario { background:var(--acento); color:#fff; border-color:var(--acento); }
+  .acciones { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .meta { color:var(--tenue); font-size:13px; margin-top:6px; word-break:break-word; }
+  .error { color:var(--alerta); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Memoria · Bandeja de grupos</h1>
+  <div class="sub">Grupos de WhatsApp que ve el número de captura. Ninguno se captura hasta que lo apruebes aquí.</div>
+</header>
+<main>
+  <div id="estado" class="aviso">Cargando…</div>
+  <div id="lista"></div>
+</main>
+<script>
+(function () {
+  var URL = (localStorage.getItem('ops_n8n_url') || 'https://primary-production-5c3c.up.railway.app').replace(/\/+$/, '') + '/webhook/memoria-canales';
+  var TIPOS = ['proyecto', 'levantamiento', 'compras', 'materiales', 'general', 'excluido'];
+  var ESTADOS = ['capturando', 'pausado', 'excluido', 'pendiente'];
+  var $estado = document.getElementById('estado'), $lista = document.getElementById('lista');
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function fecha(s) { return s ? new Date(s).toLocaleString('es-MX', { timeZone: 'America/Monterrey', dateStyle: 'short', timeStyle: 'short' }) : '—'; }
+
+  function llamar(cuerpo) {
+    cuerpo.token = window.SuiteAuth.getToken();
+    return fetch(URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) })
+      .then(function (r) { return r.json().then(function (j) { return { status: r.status, j: j }; }, function () { return { status: r.status, j: null }; }); });
+  }
+
+  function pintar(grupos) {
+    if (!grupos.length) { $estado.textContent = 'No hay grupos todavía. Aparecen aquí en cuanto alguien agrega el número de captura a un grupo.'; $lista.innerHTML = ''; return; }
+    $estado.textContent = grupos.length + ' grupos. Los marcados «por aprobar» no se están capturando.';
+    $lista.innerHTML = grupos.map(function (g) {
+      var tipoActual = g.tipo_confirmado || g.tipo_detectado;
+      return '<div class="grupo" data-id="' + esc(g.id) + '">' +
+        '<div class="fila"><span class="nombre">' + esc(g.nombre_actual) + '</span><span class="chip ' + esc(g.pendiente) + '">' + esc(g.pendiente.replace(/_/g, ' ')) + '</span></div>' +
+        '<div class="meta">Detectado: ' + esc(g.tipo_detectado) + (g.regla_deteccion ? ' (' + esc(g.regla_deteccion) + ')' : '') +
+          ' · Estado: ' + esc(g.estado_captura) + ' · Último evento: ' + fecha(g.ultimo_evento) +
+          (g.vinculos ? ' · Ligado a: ' + esc(g.vinculos) : (g.so_en_nombre ? ' · SO en el nombre: ' + esc(g.so_en_nombre) : '')) + '</div>' +
+        '<div class="acciones">' +
+          '<select class="tipo">' + TIPOS.map(function (t) { return '<option' + (t === tipoActual ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select>' +
+          '<select class="estado">' + ESTADOS.map(function (e) { return '<option' + (e === (g.estado_captura === 'pendiente' ? 'capturando' : g.estado_captura) ? ' selected' : '') + '>' + e + '</option>'; }).join('') + '</select>' +
+          '<button class="primario guardar">Guardar</button></div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function cargar() {
+    llamar({ accion: 'listar' }).then(function (r) {
+      if (r.status === 404) { $estado.innerHTML = 'El servicio <b>memoria/canales</b> aún no está publicado en n8n (nace inactivo). Mientras tanto usa el workflow <b>memoria/canales-manual</b> desde el editor de n8n.'; return; }
+      if (!r.j || !r.j.ok) { $estado.innerHTML = '<span class="error">No se pudo leer la bandeja: ' + esc(r.j && (r.j.mensaje || r.j.error) || ('HTTP ' + r.status)) + '</span>'; return; }
+      pintar(r.j.datos || []);
+    }, function () { $estado.innerHTML = '<span class="error">Sin conexión con el servidor.</span>'; });
+  }
+
+  $lista.addEventListener('click', function (ev) {
+    if (!ev.target.classList.contains('guardar')) return;
+    var caja = ev.target.closest('.grupo');
+    ev.target.disabled = true;
+    llamar({ accion: 'decidir', canal_id: caja.getAttribute('data-id'), tipo: caja.querySelector('.tipo').value, estado: caja.querySelector('.estado').value })
+      .then(function (r) {
+        // La UI no es fuente de verdad (CLAUDE.md §8): tras escribir, se relee del servidor.
+        if (!r.j || !r.j.ok) { alert('No se guardó: ' + (r.j && (r.j.mensaje || r.j.error) || ('HTTP ' + r.status))); }
+        cargar();
+      });
+  });
+
+  cargar();
+})();
+</script>
+</body>
+</html>
