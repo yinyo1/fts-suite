@@ -1,0 +1,26 @@
+# Kiosko de asistencias · Reglas que el sistema nunca debe romper
+
+Cada invariante tiene un verificador en `tests/kiosko-blindaje/invariantes.js` que corre después de cada paso del simulador. La columna "Capa" dice dónde se hace cumplir; la regla de oro es **no depender de una sola capa**: el frontend puede fallar o ser viejo en caché, n8n puede tronar y Odoo SaaS no admite módulos custom.
+
+Restricción de plataforma que condiciona todo: Odoo 19 SaaS, sin SSH, sin módulos custom. La validación nativa (`_check_validity`) no mira hacia adelante en registros abiertos (ver `modelo.md` §1). La única forma de un candado duro en Odoo sería una Automation Rule con Python, que cuenta como código custom en SaaS (CLAUDE.md §17, decisión A3). Por eso I1 se hace cumplir en n8n, con un solo punto de paso para toda escritura de fechas.
+
+| # | Invariante | Capa | Cómo se hace cumplir | Bloque | Hoy |
+|---|---|---|---|---|---|
+| I1 | Máximo un registro abierto por empleado, y ningún par de registros traslapado | n8n (y Odoo como red parcial) | Un subworkflow único `asistencias/guardar-intervalo` por el que pasa TODA escritura de `check_in` o `check_out` (kiosko, olvidos, resolver, editor). Lee todos los registros del empleado sin ventana, rechaza si el intervalo nuevo cruza a otro (con el abierto contando hasta "ahora") y devuelve el id del registro con el que choca. Odoo cubre las ramas B y C; el subworkflow cubre lo que Odoo no ve | B3 (resolver), B8 (editor), B6 (búsqueda sin ventana) | Rota: 15589 envolvió a 15588 (resolver 104773) |
+| I2 | La pantalla dice lo mismo que Odoo: éxito solo con escritura confirmada; error solo si no hubo escritura | Frontend + n8n | El kiosko ya no pinta la confirmación antes del POST. Éxito solo con `success === true` y `attendance_id`. Cada intento lleva un `intento_id`; n8n es idempotente por ese id; tras un timeout el kiosko CONSULTA el intento antes de decidir | B1 | Rota: 17 intentos fallidos de 124 vistos como éxito |
+| I3 | Toda falla es visible para el empleado, queda en bitácora y alerta al supervisor | n8n + frontend | Todo nodo Odoo con salida de error hacia "Respuesta Error". Tabla `kiosk_intentos` (data table de n8n) con cada intento fallido. Alerta al supervisor con límite de una por empleado por hora. Si la red no llega, el kiosko guarda el intento y lo reenvía | B1 | Rota: ningún nodo de escritura en `a7mEjjdwIzzvomXs` tiene salida de error |
+| I4 | Todo bloqueo tiene una salida para el empleado y otra para supervisor o RH, sin entrar al backend de Odoo | Frontend + n8n + panel RH | Empleado: en error crítico, "Declarar mi hora de salida" sin el límite de 12 h y "No puedo checar: avisar a RH". RH: "Reparar registro" con candado de traslape | B7, B8 | Rota: D1 y D2 (`modelo.md` §3) |
+| I5 | Si Odoo no responde, el sistema no asume nada: reintenta y, si sigue fallando, lo dice | n8n | "Buscar pendientes" (y toda lectura que decide una escritura) con reintentos cortos y, al agotarse, "Respuesta Error" `ODOO_NO_RESPONDE`. Nunca `continueRegularOutput` en una lectura que decide una escritura | B2 | Rota: exec 104284 |
+| I6 | Un ajuste de RH queda aplicado en Odoo, o la pantalla dice claramente que no se aplicó | n8n + panel RH | `resolver` escribe la hora en los tres tipos (incluido `auto_cierre_pendiente`) y "aprobar tal cual" aplica la hora declarada. La respuesta trae `odoo_aplicado` y el panel lo muestra. El panel relee Odoo, no solo el JSON | B4 | Rota: 58 de 59 ajustes de auto-cierre (resolver 104680, 102993) |
+| I7 | Lo que la pantalla ofrece, el servidor lo acepta por regla | Config compartida + n8n | Un solo juego de umbrales en un lugar (p. ej. `shared/public-config.json` o una data table) leído por `estado-empleado` y `kiosk/checkin`. Búsqueda de abiertos por `check_out = False`, sin ventana de fechas | B6 | Rota: 14/24 h contra 6/16 h; ventana de 15 días en los dos |
+| I8 | Ningún registro de más de 16 h sin TAG de disputa | n8n + frontend | Salida con 16 h o más: el servidor la rechaza y pide declarar la hora. "Olvidé salida": guarda AM/PM cuando el turno daría más de 16 h. Cualquier cierre de más de 16 h lleva TAG | B6, B9 | Rota: 25 registros de 20 h o más desde el 1-jun |
+| I9 | El watchdog distingue bloqueados de ausentes | n8n | `sin-checkin` lee `kiosk_intentos`: quien intentó y falló sale como "bloqueado", no como "ausente"; un watchdog nuevo marca ≥ 2 fallas en 24 h | B10 (requiere B1) | Rota: 124 habría salido "ausente" el vie 25 |
+
+## Detalles de diseño que el simulador obligó a agregar
+
+La primera versión del diseño nuevo no pasaba la prueba aleatoria. Dos huecos, los dos en I2, los dos de reintentos:
+
+1. **Idempotencia por intento.** Si el servidor tarda más de 10 s, el cliente aborta y reintenta (`odoo.js:17` y `:24`); la primera ejecución sí escribió y el reintento recibe "ya tienes entrada" (en producción: exec 102523 y 102525). Con `intento_id` el reintento devuelve la respuesta original.
+2. **Reconciliación tras timeout.** Si ningún intento recibió respuesta pero el servidor sí procesó, la pantalla diría error con la entrada hecha. El kiosko, antes de decir "no se guardó", consulta `kiosk/intento?id=…`.
+
+Con esos dos agregados a B1, 300 semanas aleatorias quedan en cero violaciones (`node tests/kiosko-blindaje/aleatorio.test.js --diseno=nuevo --semillas=300`).
