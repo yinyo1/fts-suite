@@ -33,7 +33,7 @@ var CzRegla15 = (function () {
     { id: 'efectivas', nombre: 'horas efectivas', re: new RegExp('(?<![' + L + '])efectiv[oa]s(?![' + L + '])', 'i') },
     { id: 'al_costo', nombre: '«al costo»', re: new RegExp('al costo|(?<![' + L + '])at cost(?![' + L + '])', 'i') },
     { id: 'sin_utilidad', nombre: '«sin utilidad»', re: /sin utilidad|sin rentabilidad|no markup|without markup|no profit/i },
-    { id: 'comision', nombre: 'comisión', re: /comisi[oó]n|commission/i },
+    { id: 'comision', nombre: 'comisión', re: /comisi[oó]n|commission(?!ing)/i },
     { id: 'margen', nombre: 'margen', re: new RegExp('(?<![' + L + '])(margen|margin)', 'i') },
     { id: 'tarifa', nombre: 'tarifa', re: /tarifa|hourly rate|rate per hour/i },
     { id: 'precio_hora', nombre: 'precio por hora', re: /[$] ?[0-9][0-9,.]* ?(MXN |USD )?[/] ?h/i },

@@ -1,6 +1,11 @@
 {
-  "version": "V1.63e.2",
+  "version": "V1.63e.3",
   "historial": [
+    {
+      "version": "V1.63e.3",
+      "fecha": "2026-10-25",
+      "nota": "fts-conceptualizador#12 (decisión de Esteban del 25-oct 16:46 CST): la regla 15 ya no confunde «commissioning» (puesta en marcha) con una comisión. Copia idéntica de herramientas/motor/regla15.js; orden-odoo publicado con el mismo cambio."
+    },
     {
       "version": "V1.63e.2",
       "fecha": "2026-10-25",
