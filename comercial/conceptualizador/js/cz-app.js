@@ -2700,7 +2700,10 @@
     var cs = (ST.hilo && ST.hilo.caso) || casoActual() || {}, v = versionPdf();
     var cli = String(cs.cliente || '').replace(/\b(S\.? ?A\.?|S\.? ?de ?R\.? ?L\.?|de C\.? ?V\.?|Inc\.?|LLC)\b/gi, '').replace(/[\\/:*?"<>|,.]+/g, ' ').trim().split(/\s+/)[0] || '';
     if (cli && cli === cli.toUpperCase()) cli = cli.charAt(0) + cli.slice(1).toLowerCase();   // «ARMATEC» → «Armatec»
-    return [cs.orden_nombre || 'Cotizacion', cli, v ? 'v' + v : ''].filter(Boolean).join(' · ') + '.pdf';
+    // Chrome (también el del teléfono) descarga como «download» si el nombre trae «·» o cualquier carácter que no sea ASCII (medido en
+    // Chromium, 24-oct): por eso « - » y sin acentos, nunca «cotizacion.pdf».
+    var n = [cs.orden_nombre || 'Cotizacion', cli, v ? 'v' + v : ''].filter(Boolean).join(' - ');
+    return n.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').replace(/\s+/g, ' ').trim() + '.pdf';
   }
   /** El renglón del ⋮: «Generando…» mientras Odoo lo arma (o sale el guardado al instante si la orden no cambió), y el error ahí mismo con «Reintentar». */
   function pdfDelMenu(b, c0) {
