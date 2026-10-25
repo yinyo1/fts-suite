@@ -1,0 +1,278 @@
+{
+ "medido_utc": "2026-10-15T06:21:00.671Z",
+ "commit": "76621fed79f87c5915c1dc563353d672d1762a84",
+ "grilla": {
+  "celdas": 480,
+  "coinciden": 478,
+  "rotas": [
+   {
+    "obj": "rh/nomina-incidencias",
+    "quien": "Ana",
+    "modelo": "abre",
+    "dom": "niega",
+    "ok": false
+   },
+   {
+    "obj": "rh/nomina-incidencias",
+    "quien": "Magaly",
+    "modelo": "abre",
+    "dom": "niega",
+    "ok": false
+   }
+  ]
+ },
+ "pruebas": {
+  "P-01": {
+   "ok": true,
+   "detalles": [
+    "✓ Esteban: entra y tarjetas = matriz",
+    "✓ Esteban: token de GitHub restaurado (blob de prueba) — se espera restaurado",
+    "✓ Felipe: entra y tarjetas = matriz",
+    "✓ Felipe: token de GitHub no restaurado — se espera ausente",
+    "✓ Ana: entra y tarjetas = matriz",
+    "✓ Ana: token de GitHub no restaurado — se espera ausente",
+    "✓ Montalvo: entra y tarjetas = matriz",
+    "✓ Montalvo: token de GitHub no restaurado — se espera ausente",
+    "✓ Tere: entra y tarjetas = matriz",
+    "✓ Tere: token de GitHub no restaurado — se espera ausente",
+    "✓ Carolina: entra y tarjetas = matriz",
+    "✓ Carolina: token de GitHub no restaurado — se espera ausente"
+   ]
+  },
+  "P-02": {
+   "ok": true,
+   "detalles": [
+    "✓ contraseña mala: rechaza con «Usuario o contraseña incorrectos»",
+    "✓ usuario inexistente: rechaza con «Usuario o contraseña incorrectos»"
+   ]
+  },
+  "P-03": {
+   "ok": true,
+   "detalles": [
+    "✓ ana.acevedo: entra y guarda sus 4 scopes",
+    "✓ magaly.perez: entra y guarda sus 4 scopes",
+    "✓ aldo.mendez (inactivo): rechazado con «Usuario o contraseña incorrectos.»",
+    "✓ francisco.montalvo: entra y guarda sus 2 scopes",
+    "✓ pablo.bayly: entra y guarda sus 4 scopes",
+    "✓ ricardo.hernandez: entra y guarda sus 2 scopes",
+    "✓ rissia.araujo: entra y guarda sus 3 scopes",
+    "✓ esteban.delacruz: entra y guarda sus 9 scopes",
+    "✓ erick.belmont: entra y guarda sus 1 scopes",
+    "✓ felipe.perez: entra y guarda sus 1 scopes",
+    "✓ ?falta= con sesión explica el scope: «Entraste como erick.belmont, pero esa cuenta no tiene el permiso «comercial:read», que es …»",
+    "✓ NOTA: el plan dice «las 11 cuentas activas»; el snapshot tiene 10 cuentas, 9 activas. Se probaron todas las del snapshot."
+   ]
+  },
+  "P-04": {
+   "ok": true,
+   "detalles": [
+    "✓ sesión Suite sin suite:clasico: muestra el login clásico (overlay flex)"
+   ]
+  },
+  "P-05": {
+   "ok": true,
+   "detalles": [
+    "✓ sesión Suite CON suite:clasico (interruptor aún no existe = apagado): muestra el login clásico (overlay flex)"
+   ]
+  },
+  "P-07": {
+   "ok": true,
+   "detalles": [
+    "✓ Nómina · ana.acevedo · sesión de shared/login.html (exp): pide login",
+    "✓ Nómina · ana.acevedo · sesión de su propio login (expires_at): abre",
+    "✓ Nómina · magaly.perez · sesión de shared/login.html (exp): pide login",
+    "✓ Nómina · magaly.perez · sesión de su propio login (expires_at): abre",
+    "✓ Nómina · esteban.delacruz · sesión de shared/login.html (exp): pide login (sin nomina:write)",
+    "✓ Nómina · esteban.delacruz · sesión de su propio login (expires_at): pide login (sin nomina:write)",
+    "✓ Comercial con la sesión que deja el login de Nómina: niega (se espera niega: SuiteAuth exige exp)"
+   ]
+  },
+  "P-08": {
+   "ok": true,
+   "detalles": [
+    "✓ Finanzas con token Finanzas: abre",
+    "✓ Finanzas sólo clásico+Suite master: pide su login",
+    "✓ Carga MO con token Finanzas: abre",
+    "✓ Carga MO sólo clásico+Suite master: pide su login",
+    "✓ Leads con token Finanzas: abre",
+    "✓ Leads sólo clásico+Suite master: pide su login"
+   ]
+  },
+  "P-09": {
+   "ok": true,
+   "detalles": [
+    "✓ logout clásico: fts_session=false fts_suite_session=true fts_fin_session=true",
+    "✓ logout Suite: fts_session=true fts_suite_session=false fts_fin_session=true",
+    "✓ logout Finanzas: fts_session=true fts_suite_session=true fts_fin_session=false"
+   ]
+  },
+  "P-10": {
+   "ok": true,
+   "detalles": [
+    "✓ 31 min sin actividad: sesión cerrada (página /index.html)",
+    "✓ 29 min sin actividad: sigue dentro (página /seguridad/index.html)"
+   ]
+  },
+  "P-11": {
+   "ok": true,
+   "detalles": [
+    "✓ hoy ninguna página pide un endpoint de interruptores (0 peticiones): el interruptor nace en A3",
+    "✓ n8n caído: el lanzador clásico de Felipe se pinta igual (idéntico)"
+   ]
+  },
+  "P-15": {
+   "ok": true,
+   "detalles": [
+    "✓ users-suite.json caído + contraseña inventada para ftsmaster: OFRECE ACTIVAR LA CUENTA MASTER («Confirma tu contraseña para activar tu cuenta»): puerta abierta, se cierra en C2"
+   ]
+  },
+  "P-13": {
+   "ok": true,
+   "detalles": [
+    "✓ 16 capturas de línea base (no hay pantalla nueva en A1). Desborde horizontal: ninguno"
+   ]
+  },
+  "P-12": {
+   "ok": false,
+   "detalles": [
+    "✗ 55 pageerror en total (línea base de HOY, con webhooks vacíos): 7 distintos"
+   ]
+  }
+ },
+ "pageerrors": {
+  "comercial/index.html · sin sesion": 8,
+  "comercial/machote/index.html · sin sesion": 7,
+  "comercial/conceptualizador/index.html · sin sesion": 9,
+  "marketing/index.html · sin sesion": 9,
+  "finanzas/rentabilidad/index.html · Cannot read properties of undefined (reading 'resumen')": 2,
+  "finanzas/rentabilidad/index.html · sin sesion": 10,
+  "finanzas/data-bancos/index.html · sin sesion": 10
+ },
+ "red": {
+  "bloqueadas": [
+   "api.github.com/repos/yinyo1/fts-suite/contents/shared/horarios-base.json",
+   "api.github.com/repos/yinyo1/fts-suite/contents/shared/incidencias-asistencia.json",
+   "api.github.com/repos/yinyo1/fts-suite/contents/shared/incidencias.json",
+   "api.github.com/repos/yinyo1/fts-suite/contents/shared/operaciones/contpaqi_conceptos.json",
+   "api.github.com/repos/yinyo1/fts-suite/contents/shared/planeacion-config.json",
+   "api.github.com/repos/yinyo1/fts-suite/contents/shared/sitios-autorizados.json",
+   "cdn.jsdelivr.net",
+   "cdnjs.cloudflare.com",
+   "fonts.googleapis.com"
+  ],
+  "webhooks_interceptados": [
+   "/webhook/asistencias/admin/search",
+   "/webhook/auth/suite-login",
+   "/webhook/comercial/machotes-leer",
+   "/webhook/conceptualizador/suite",
+   "/webhook/fin/bancos-data",
+   "/webhook/fin/rentabilidad",
+   "/webhook/kiosk/empleados",
+   "/webhook/kiosk/sos",
+   "/webhook/nom/despacho",
+   "/webhook/nom/semanas",
+   "/webhook/planeacion/dia",
+   "/webhook/planeacion/horas-dia",
+   "/webhook/retardos/panel",
+   "/webhook/rh/empleado/lookups"
+  ]
+ },
+ "capturas": [
+  {
+   "escena": "lanzador-login",
+   "ancho_vp": 380,
+   "scrollWidth": 380,
+   "archivo": "capturas/lanzador-login-380.png"
+  },
+  {
+   "escena": "lanzador-login",
+   "ancho_vp": 760,
+   "scrollWidth": 760,
+   "archivo": "capturas/lanzador-login-760.png"
+  },
+  {
+   "escena": "lanzador-login",
+   "ancho_vp": 900,
+   "scrollWidth": 900,
+   "archivo": "capturas/lanzador-login-900.png"
+  },
+  {
+   "escena": "lanzador-login",
+   "ancho_vp": 1280,
+   "scrollWidth": 1280,
+   "archivo": "capturas/lanzador-login-1280.png"
+  },
+  {
+   "escena": "lanzador-esteban",
+   "ancho_vp": 380,
+   "scrollWidth": 380,
+   "archivo": "capturas/lanzador-esteban-380.png"
+  },
+  {
+   "escena": "lanzador-esteban",
+   "ancho_vp": 760,
+   "scrollWidth": 760,
+   "archivo": "capturas/lanzador-esteban-760.png"
+  },
+  {
+   "escena": "lanzador-esteban",
+   "ancho_vp": 900,
+   "scrollWidth": 900,
+   "archivo": "capturas/lanzador-esteban-900.png"
+  },
+  {
+   "escena": "lanzador-esteban",
+   "ancho_vp": 1280,
+   "scrollWidth": 1280,
+   "archivo": "capturas/lanzador-esteban-1280.png"
+  },
+  {
+   "escena": "lanzador-montalvo",
+   "ancho_vp": 380,
+   "scrollWidth": 380,
+   "archivo": "capturas/lanzador-montalvo-380.png"
+  },
+  {
+   "escena": "lanzador-montalvo",
+   "ancho_vp": 760,
+   "scrollWidth": 760,
+   "archivo": "capturas/lanzador-montalvo-760.png"
+  },
+  {
+   "escena": "lanzador-montalvo",
+   "ancho_vp": 900,
+   "scrollWidth": 900,
+   "archivo": "capturas/lanzador-montalvo-900.png"
+  },
+  {
+   "escena": "lanzador-montalvo",
+   "ancho_vp": 1280,
+   "scrollWidth": 1280,
+   "archivo": "capturas/lanzador-montalvo-1280.png"
+  },
+  {
+   "escena": "login-suite-falta",
+   "ancho_vp": 380,
+   "scrollWidth": 380,
+   "archivo": "capturas/login-suite-falta-380.png"
+  },
+  {
+   "escena": "login-suite-falta",
+   "ancho_vp": 760,
+   "scrollWidth": 760,
+   "archivo": "capturas/login-suite-falta-760.png"
+  },
+  {
+   "escena": "login-suite-falta",
+   "ancho_vp": 900,
+   "scrollWidth": 900,
+   "archivo": "capturas/login-suite-falta-900.png"
+  },
+  {
+   "escena": "login-suite-falta",
+   "ancho_vp": 1280,
+   "scrollWidth": 1280,
+   "archivo": "capturas/login-suite-falta-1280.png"
+  }
+ ]
+}
