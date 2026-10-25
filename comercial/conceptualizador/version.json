@@ -1,6 +1,11 @@
 {
-  "version": "V1.63d",
+  "version": "V1.63e",
   "historial": [
+    {
+      "version": "V1.63e",
+      "fecha": "2026-10-25",
+      "nota": "fts-conceptualizador#12 (V1.63e punto 1), detrás de fin_semana_v163e (migración 0039, nace apagado): el panel trae el interruptor «El agente trabaja sábado y domingo» y, prendido, la línea del robot dice «Todos los días de 7:00 a 21:00»."
+    },
     {
       "version": "V1.63d",
       "fecha": "2026-10-24",
