@@ -328,6 +328,10 @@
   .czp-etq{display:block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--ter);font-weight:500;margin-top:4px}
   .czp-vig{background:#fff;border-radius:12px;box-shadow:var(--sombra);padding:10px 12px;margin:6px 0;width:min(94%,680px);box-sizing:border-box}
   .czp-vig .czp-etq{margin:0 0 4px}.czp-vig p{margin:0;font-size:13.5px}
+  /* V1.63d (#12, 24-oct 21:18 CST) · el ⋮ descarga el PDF directo: «Generando…» y el error con «Reintentar» en el mismo renglón. */
+  button[data-a="pdf_ultimo"].pdfu-gen{opacity:.8;cursor:progress}
+  .pdfu-mal{color:var(--rojo)}
+  .pdfu-reint{display:block;margin:-2px 16px 8px 52px;border:1px solid var(--acento-osc);color:var(--acento-osc);background:#fff;border-radius:16px;padding:5px 14px;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer}
   .rf-lista{list-style:none;padding:0;margin:8px 0;display:flex;flex-direction:column;gap:6px;font-size:14px}
   .rf-lista li small{display:block;color:var(--sec,#667781);font-size:12px;margin-left:18px}.rf-lista .rf-no{color:#8a5a00}
   .rf-ref{border:1px solid #f0dc8c;background:var(--aviso);border-radius:8px;padding:8px 10px;margin:6px 0;font-size:13px;color:#5c4400}
@@ -935,7 +939,7 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <script src="js/cz-tabla.js?v=V1.58"></script>
 <script src="js/cz-visor.js?v=V1.62b"></script>
 <script src="js/cz-correo.js?v=V1.57b"></script>
-<script src="js/cz-enviar.js?v=V1.63c"></script>
+<script src="js/cz-enviar.js?v=V1.63d"></script>
 <script src="js/cz-condiciones.js?v=V1.57b"></script>
 <script src="js/cz-vista.js?v=V1.63b"></script>
 <script src="js/cz-camara.js?v=V1.57b"></script>
@@ -945,7 +949,7 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <script src="js/cz-push.js?v=V1.57b"></script>
 <script src="js/cz-limpio.js?v=V1.62a"></script>
 <script src="js/cz-pasos.js?v=V1.61"></script>
-<script src="js/cz-app.js?v=V1.63c"></script>
+<script src="js/cz-app.js?v=V1.63d"></script>
 <script src="js/cz-version.js?v=V1.57b"></script>
 <script>window.CzApp.arrancar().then(function () { if (window.CzVersion) window.CzVersion.iniciar(); if (window.CzPush) window.CzPush.iniciar(); });</script>
 </body>

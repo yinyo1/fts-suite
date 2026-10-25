@@ -105,7 +105,7 @@
         reintentar: function () { return pdf158(c, bajar, opc); }, acciones: rapida });
     }
     var bin = atob(r.pdf.b64), u8 = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-    var nombre = r.pdf.nombre || 'cotizacion.pdf', n = E.hojas(u8);
+    var nombre = (opc && opc.nombre) || r.pdf.nombre || 'cotizacion.pdf', n = E.hojas(u8);
     var abrir = function () { return E.visorPdf({ u8: u8, nombre: nombre, titulo: (opc && opc.titulo) || so + ' · PDF de Odoo', descargarTxt: opc && opc.descargarTxt }); };
     var baja = function () { var url = URL.createObjectURL(new Blob([u8], { type: 'application/pdf' })); E.descargar(url, nombre); setTimeout(function () { URL.revokeObjectURL(url); }, 4000); };
     // V1.62b (`pdf_v162b`) · el mismo PDF guardado, sin pedirlo a Odoo: la orden no cambió desde que se bajó.
@@ -171,7 +171,17 @@
     if (nuevoCorreo()) G.CzCorreo.enlazar(raiz, { caso: ctx.caso, hilo: ctx.hilo || function () { return null; }, repinta: ctx.repinta });
   }
 
+  /** V1.63c (#12, Esteban 24-oct 21:18 CST) · descarga DIRECTA, sin visor ni barra aparte: quien llama pinta el «Generando…» en su renglón.
+   *  Si la orden no cambió desde el último PDF guardado (misma orden y write_date de Odoo, `pdf_v162b`), el servidor da el guardado al instante. */
+  async function bajar(c, opc) {
+    var r = await G.CzCliente.cotizacion('ver', { caso_id: c.id });
+    if (!r.ok || !r.pdf || !r.pdf.b64) return { ok: false, error: r.error || 'SIN_PDF', mensaje: r.mensaje || 'Odoo no mandó el PDF' };
+    var bin = atob(r.pdf.b64), u8 = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    var url = URL.createObjectURL(new Blob([u8], { type: 'application/pdf' })), a = document.createElement('a');
+    a.href = url; a.download = (opc && opc.nombre) || r.pdf.nombre || 'cotizacion.pdf'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+    return { ok: true, guardado: !!r.pdf.guardado, nombre: a.download };
+  }
   /* V1.56 · el rayito («Ver cotización») abre el mismo PDF; `bajar` lo descarga. */
   function ver(c, bajar, opc) { return c ? pdf(c, !!bajar, opc) : null; }
-  G.CzEnviar = { botones: botones, enlazar: enlazar, ver: ver, _estado: S };
+  G.CzEnviar = { botones: botones, enlazar: enlazar, ver: ver, bajar: bajar, _estado: S };
 })(window);

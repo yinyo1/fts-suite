@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.63c';
+  var VERSION = 'V1.63d';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -2028,7 +2028,7 @@
       // y no tenía ninguna). La base vuelve a decidir quién puede (cotizacion-cliente · ver, db/022). Van ARRIBA: a 380 px se ven sin bajar.
       // V1.63c (`pdf_unico_v163`, #12) · UNA sola entrada: abre el visor con «⬇ Descargar» adentro, siempre el último PDF de Odoo.
       (pdfUnico() && G.CzEnviar && (cs.orden_id || c.orden_id) && (mia || ST.admin === true || ST.panelAdmin === true) ?
-        '<button data-a="pdf_ultimo">' + ico('pagina', 's') + '<span>PDF de la cotización (última versión)<small>' + esc((cs.orden_nombre || c.orden_nombre || '') + ' · ') + 'el de Odoo, tal como lo recibe el cliente; adentro, «⬇ Descargar»</small></span></button>' :
+        '<button data-a="pdf_ultimo">' + ico('pagina', 's') + '<span>PDF de la cotización (última versión)<small data-pdfu-sub>' + esc('Se descarga: ' + nombrePdf()) + '</small></span></button>' :
       on('pdf_menu_v163') && G.CzEnviar && (cs.orden_id || c.orden_id) && (mia || ST.admin === true || ST.panelAdmin === true) ?
         '<button data-a="pdf_ver">' + ico('pagina', 's') + '<span>Ver cotización ' + esc(cs.orden_nombre || c.orden_nombre || '') + '<small>El PDF oficial de Odoo, tal como lo recibe el cliente</small></span></button>' +
         '<button data-a="pdf_bajar">' + ico('bajar', 's') + '<span>⬇ Descargar PDF<small>El mismo PDF, como archivo</small></span></button>' : '') +
@@ -2079,6 +2079,8 @@
       '<button data-a="aprendio">' + ico('libro', 's') + '<span>Lo que aprendió</span></button>';
     var v = enMenu(btn, h);
     $$('[data-a]', v).forEach(function (b) { b.onclick = function () {
+      // V1.63c (#12, Esteban 24-oct 21:18 CST) · «PDF de la cotización» DESCARGA directo, sin visor: «Generando…» en el mismo renglón.
+      if (b.dataset.a === 'pdf_ultimo' && pdfUnico()) return pdfDelMenu(b, c);
       cerrarVelo(); var a = b.dataset.a;
       if (a.indexOf('push:') === 0) return G.CzPush.accion(a.slice(5));
       if (a === 'disparo') return confirmarDisparo(md);
@@ -2692,7 +2694,30 @@
       .sort(function (a, b) { return (Date.parse(a.hecha_at || '') || 0) - (Date.parse(b.hecha_at || '') || 0) || Number(a.id) - Number(b.id); });
   }
   function versionPdf() { return borradoresHechos().length; }
-  function opcPdfUltimo() { var so = ((ST.hilo && ST.hilo.caso) || {}).orden_nombre || 'Cotización', v = versionPdf(); return { titulo: so + (v ? ' · versión ' + v : '') + ' (la última)', descargarTxt: '⬇ Descargar' }; }
+  function opcPdfUltimo() { var so = ((ST.hilo && ST.hilo.caso) || {}).orden_nombre || 'Cotización', v = versionPdf(); return { titulo: so + (v ? ' · versión ' + v : '') + ' (la última)', descargarTxt: '⬇ Descargar', nombre: nombrePdf() }; }
+  /** «SO11927 · Armatec · v5.pdf»: folio, cliente y versión (Esteban 24-oct 21:18 CST); nunca «cotizacion.pdf». */
+  function nombrePdf() {
+    var cs = (ST.hilo && ST.hilo.caso) || casoActual() || {}, v = versionPdf();
+    var cli = String(cs.cliente || '').replace(/\b(S\.? ?A\.?|S\.? ?de ?R\.? ?L\.?|de C\.? ?V\.?|Inc\.?|LLC)\b/gi, '').replace(/[\\/:*?"<>|,.]+/g, ' ').trim().split(/\s+/)[0] || '';
+    if (cli && cli === cli.toUpperCase()) cli = cli.charAt(0) + cli.slice(1).toLowerCase();   // «ARMATEC» → «Armatec»
+    return [cs.orden_nombre || 'Cotizacion', cli, v ? 'v' + v : ''].filter(Boolean).join(' · ') + '.pdf';
+  }
+  /** El renglón del ⋮: «Generando…» mientras Odoo lo arma (o sale el guardado al instante si la orden no cambió), y el error ahí mismo con «Reintentar». */
+  function pdfDelMenu(b, c0) {
+    if (b.dataset.trabajando === '1' || !G.CzEnviar || !G.CzEnviar.bajar) return;
+    var cs = (ST.hilo && ST.hilo.caso && ST.hilo.caso.id) ? ST.hilo.caso : c0, sub = b.querySelector('[data-pdfu-sub]'), nombre = nombrePdf();
+    var fila = b.parentNode, re = fila && fila.querySelector('[data-pdfu-reint]'); if (re) re.remove();
+    b.dataset.trabajando = '1'; b.setAttribute('aria-busy', 'true'); b.classList.add('pdfu-gen');
+    if (sub) sub.innerHTML = GIRO + ' Generando…';
+    G.CzEnviar.bajar(Object.assign({}, cs, { orden_nombre: cs.orden_nombre || c0.orden_nombre }), { nombre: nombre }).then(function (r) {
+      b.dataset.trabajando = ''; b.removeAttribute('aria-busy'); b.classList.remove('pdfu-gen');
+      if (r && r.ok) { if (sub) sub.textContent = '✓ Descargado' + (r.guardado ? ' (el guardado: la orden no cambió)' : '') + ' · ' + nombre; setTimeout(function () { if (b.isConnected) cerrarVelo(); }, 1400); return; }
+      if (sub) sub.innerHTML = '<span class="pdfu-mal">✕ No se generó: ' + esc((r && (r.mensaje || r.error)) || 'Odoo no mandó el PDF') + '</span>';
+      var bt = document.createElement('button'); bt.type = 'button'; bt.className = 'pdfu-reint'; bt.setAttribute('data-pdfu-reint', '1'); bt.textContent = 'Reintentar';
+      bt.onclick = function (e) { e.stopPropagation(); pdfDelMenu(b, c0); };
+      b.insertAdjacentElement('afterend', bt);
+    });
+  }
   function fechaCorta(iso) { var t = new Date(iso || ''); if (!isFinite(t.getTime())) return ''; var M = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
     return t.getDate() + '-' + M[t.getMonth()] + ' ' + ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2); }
   /** El PDF de la respuesta, como archivo. Abre el último PDF de Odoo (que ya trae este cambio) y abajo «↺ Deshacer». */
@@ -3176,7 +3201,7 @@
     var be = $('#bEscribe', M); if (be) be.onclick = function () { var tq = trabajoQueContesta(); ST.abiertoReg = ST.abiertoReg === (tq && tq.id) ? null : (tq && tq.id); pintarChat(); };
     $$('[data-hacer]', M).forEach(function (b) { b.onclick = function () { hacer(b.dataset.hacer, b); }; });
     // V1.63c (`pdf_unico_v163`) · el archivo de la respuesta abre el último PDF de Odoo en el visor (con «⬇ Descargar» adentro).
-    $$('[data-czp-pdf]', M).forEach(function (b) { b.onclick = function () { var c = ST.hilo && ST.hilo.caso; if (c && G.CzEnviar) G.CzEnviar.ver(c, false, opcPdfUltimo()); }; });
+    $$('[data-czp-pdf]', M).forEach(function (b) { b.onclick = function () { var c = ST.hilo && ST.hilo.caso; if (c && G.CzEnviar) G.CzEnviar.ver(c, false, opcPdfUltimo()); }; });   // el visor: solo el PDF de la respuesta
     $$('[data-pdf]', M).forEach(function (b) { b.onclick = verPdf; });
     $$('[data-copia]', M).forEach(function (b) { b.onclick = function () { copiar(b.closest('.carta').querySelector('textarea.copia').value, b); }; });
     $$('[data-descartar]', M).forEach(function (b) { b.onclick = function () { resolver(b.dataset.descartar, 'descartada', {}, b); }; });
