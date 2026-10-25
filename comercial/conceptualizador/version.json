@@ -1,6 +1,11 @@
 {
-  "version": "V1.63e",
+  "version": "V1.63e.1",
   "historial": [
+    {
+      "version": "V1.63e.1",
+      "fecha": "2026-10-25",
+      "nota": "fts-conceptualizador#12 (V1.63e bloque 2), detrás de analisis_v163e (migración 0040, nace apagado): sin machote, el siguiente paso es «Arma todo, yo corrijo» (el agente supone y arma todo); los conceptos de la plática cuentan como aceptados y la palomeada en lote cuenta; la ciudad, las preguntas y «Ya es todo» ya no frenan el siguiente paso."
+    },
     {
       "version": "V1.63e",
       "fecha": "2026-10-25",

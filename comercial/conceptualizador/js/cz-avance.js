@@ -60,8 +60,12 @@
     var conj = A.filter(function (a) { return a.tipo === 'conjetura'; });
     var conjAb = abiertas(H).length;
     var cs = P.conceptos || [];
-    var dec = {}; ((H && H.eventos) || []).forEach(function (e) { if (e.concepto && (e.tipo === 'aceptar' || e.tipo === 'rechazar')) dec[e.concepto] = 1; });
-    var sinDec = cs.filter(function (k) { return !dec[k.id]; }).length;
+    var dec = {}; ((H && H.eventos) || []).forEach(function (e) { if (e.concepto && (e.tipo === 'aceptar' || e.tipo === 'rechazar')) dec[e.concepto] = 1;
+      // V1.63e (#12, bug de la auditoría 6400240879) · también cuentan las decisiones de una palomeada en lote, como en el motor.
+      if (e.tipo === 'palomeada' && intOn('analisis_v163e')) (((e.datos || {}).decisiones) || []).forEach(function (x) { if (x && x.concepto) dec[x.concepto] = 1; }); });
+    // V1.63e (`analisis_v163e`) · lo que salió de la plática nace aceptado: no cuenta como «sin palomear».
+    var ANA = intOn('analisis_v163e');
+    var sinDec = cs.filter(function (k) { return !dec[k.id] && !(ANA && (k.estado === 'aceptado' || /^(pl[aá]tica|levantamiento|foto|pdf|adjunto|audio|voz)/i.test(String(k.origen || '')))); }).length;
     var mat = (conRes.bom && conRes.bom.materiales) || [];
     var pendBom = mat.filter(function (m) { return !conPrecio(m.pu) && /PENDIENTE/i.test(m.fuente || ''); }).length;
     var cmP = A.filter(function (a) { return a.tipo === 'crear_machote' && a.estado === 'propuesta'; }).pop();
@@ -96,7 +100,12 @@
     var sig = null;
     // La ciudad va primero mientras no hay BOM: un caso de antes de V1.34 que ya llegó al machote no se atora aquí.
     var antesDelBom = !mat.length && !cmP && !cmH;
-    if (!ciudad && antesDelBom) sig = hayCiudad ? { txt: '¿Es en ' + c.proyecto_ciudad + '? Confirmar', acc: 'confirma_ciudad' } : { txt: 'Elegir la ciudad del proyecto', acc: 'ciudad' };
+    var trabajando = ((H && H.trabajos) || []).some(function (t) { return t.estado === 'pendiente' || t.estado === 'tomado'; });
+    // V1.63e (`analisis_v163e`, #12) · modo análisis de un jalón: la ciudad, el «Ya es todo», las preguntas y la palomeada ya no son
+    // pasos que frenen. Sin machote (o con preguntas o conceptos de antes sin contestar), el siguiente paso es UNO: «Arma todo, yo corrijo».
+    if (ANA && !trabajando && !cmH && (antesDelBom || conjAb > 1 || sinDec) && (disparo || ((H && H.mensajes) || []).length || c.modo))
+      sig = { txt: 'Arma todo, yo corrijo', acc: 'mandar', texto: 'Arma todo, yo corrijo' };
+    else if (!ciudad && antesDelBom) sig = hayCiudad ? { txt: '¿Es en ' + c.proyecto_ciudad + '? Confirmar', acc: 'confirma_ciudad' } : { txt: 'Elegir la ciudad del proyecto', acc: 'ciudad' };
     else if (!disparo && of && of.estado === 'ofrecida') sig = { txt: 'Contestar: ¿arranco con el machote?', acc: 'ir', a: 'oferta' };
     else if (!disparo && (c.modo === 'acompanamiento' || c.modo === 'levantamiento')) sig = { txt: c.modo === 'acompanamiento' ? 'Ya terminé, cotiza' : 'Ya es todo', acc: 'disparo' };
     else if (conjAb) sig = { txt: 'Contestar ' + plural(conjAb, 'pregunta', 'preguntas'), acc: 'ir', a: 'conjetura' };
