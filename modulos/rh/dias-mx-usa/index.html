@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Días México / USA · RH · FTS Suite</title>
+<link rel="stylesheet" href="css/dias.css?v=V1.00">
+</head>
+<body>
+
+<div class="rh-topbar">
+  <a href="../index.html">← Volver a RH</a>
+  <span class="t">Días México / USA</span>
+  <!-- Se bumpea JUNTO con version.json: es lo que se ve si el fetch de version.json falla. -->
+  <span class="badge" id="ver-badge">V1.00</span>
+  <span class="badge hid" id="modo">EJEMPLO</span>
+  <span class="sp"></span>
+  <span class="quien" id="quien"></span>
+  <button class="hid" id="salir">Salir</button>
+</div>
+
+<!-- Puerta: sin sesión del Suite con permiso rh:dias-mx-usa no se pinta nada. El servidor
+     vuelve a revisar el permiso en cada petición; esconder la pantalla no autoriza nada. -->
+<div id="puerta" class="login">
+  <h1>Días México / USA</h1>
+  <div class="sub">Entra con tu usuario del Suite. Necesitas el permiso <b>rh:dias-mx-usa</b>.</div>
+  <label for="u">Usuario</label>
+  <input id="u" autocomplete="username" autocapitalize="none" spellcheck="false">
+  <label for="p">Contraseña</label>
+  <input id="p" type="password" autocomplete="current-password">
+  <button class="btn pri" id="entrar">Entrar</button>
+  <div id="login-err" class="err hid"></div>
+  <button class="enlace" id="demo">Practicar con datos de ejemplo</button>
+</div>
+
+<div class="wrap hid" id="app">
+  <div class="aviso demo hid" id="aviso-demo"><div><b>Datos de ejemplo</b>Nada de lo que veas aquí viene del servidor. Los nombres son inventados.</div></div>
+  <div class="cab"><h1>Días por semana FTS</h1><span class="sub" id="rango"></span></div>
+  <div class="ctl">
+    <label for="semana" class="sub">Semana</label>
+    <select id="semana"></select>
+    <select id="filtro" aria-label="Filtrar personas">
+      <option value="todos">Todas las personas</option>
+      <option value="usa">Con días de FTS USA</option>
+      <option value="pend">Con pendientes</option>
+    </select>
+    <span class="sp"></span>
+    <span class="gen" id="gen"></span>
+    <button class="btn" id="excel" disabled>Descargar Excel</button>
+  </div>
+  <div id="cuadre"></div>
+  <div class="aviso info"><div><b>Cómo se lee</b>Sólo cuentan los días que Felipe confirmó en Confirmar Horas (aprobación y tipo de día). México y Viaje a México los paga la nómina de México; Proyecto USA y Viaje a USA, FTS USA. Un día en rojo está pendiente y no suma en ninguna columna hasta que se confirme.</div></div>
+  <div class="resumen" id="resumen"></div>
+  <div id="lista"></div>
+  <div class="pie" id="pie"></div>
+</div>
+
+<script src="../../../shared/auth-jwt.js?v=V1.00"></script>
+<script src="../../../asistencia/lib/dias-mx-usa.js?v=V1.00"></script>
+<script src="../nomina-incidencias/js/excel.js?v=V1.00"></script>
+<script src="js/app.js?v=V1.00"></script>
+<script>
+  fetch('version.json?t=' + Date.now()).then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (v) { if (v && v.version) document.getElementById('ver-badge').textContent = v.version; })
+    .catch(function () {});
+</script>
+</body>
+</html>

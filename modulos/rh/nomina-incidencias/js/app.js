@@ -506,6 +506,10 @@
       h += '</div>';
     }
 
+    // D-10 (#396): lo que el reporte Días México / USA propone. Se pinta aparte
+    // (pintarPropMxUsa) porque llega por red y no debe redibujar un formulario abierto.
+    h += '<div class="box" id="propMxUsa"></div>';
+
     var L = p.declaraciones || [];
     h += '<div class="box"><h4>Declaraciones de la semana</h4>';
     if (!L.length) h += '<div style="font-size:13px;color:var(--muted);margin-bottom:9px">Nada declarado todavía.</div>';
@@ -520,6 +524,69 @@
 
     $('dbody').innerHTML = h;
     cablearCajon();
+    pintarPropMxUsa();
+  }
+
+  // ─── Propuesta «Trabajó en USA» (#396 D-10) ───
+  // Sólo pinta dentro de #propMxUsa. Aceptar agrega una declaración normal: RH la ve
+  // en la lista de abajo, la puede editar o quitar, y se guarda con el botón de siempre.
+  function baseN8n() {
+    var u = null;
+    try { u = localStorage.getItem('ops_n8n_url') || localStorage.getItem('n8n_url'); } catch (e) {}
+    return String(u || 'https://primary-production-5c3c.up.railway.app').replace(/\/$/, '');
+  }
+  function pintarPropMxUsa() {
+    var caja = $('propMxUsa'), P = window.NomPropMxUsa;
+    if (!caja) return;
+    if (!P) { caja.className = 'hid'; return; }
+    var semId = S.semana.id, quien = ACTIVO;
+    var tit = '<h4>Propuesta del reporte Días México / USA</h4>';
+    caja.innerHTML = tit + '<div class="prop-mu-nota">Consultando el reporte…</div>';
+    P.cargar(semId, {
+      demo: window.NomClient && window.NomClient.modo() === 'demo',
+      personas: S.personas, proyectos: S.proyectos,
+      base: baseN8n(), token: window.NomAuth && window.NomAuth.getToken ? window.NomAuth.getToken() : null
+    }).then(function (r) {
+      // El cajón pudo cambiar de persona o de semana mientras llegaba la respuesta.
+      if (!S || S.semana.id !== semId || ACTIVO !== quien || !$('propMxUsa')) return;
+      var c = $('propMxUsa'), p = persona(ACTIVO);
+      if (!r.ok) {
+        c.innerHTML = tit + '<div class="prop-mu-nota">Sin propuesta: ' + esc(P.textoMotivo(r.motivo)) + '. Captura como siempre.</div>';
+        return;
+      }
+      var x = r.porEmpleado[ACTIVO];
+      var h = tit + (r.demo ? '<div class="prop-mu-nota">Ejemplo del modo práctica.</div>' : '');
+      if (!x) {
+        c.innerHTML = h + '<div class="prop-mu-nota">El reporte no tiene días de esta persona en ' + esc(semId) + '.</div>';
+        return;
+      }
+      h += '<div class="prop-mu-nota">Días confirmados por Felipe: <b>' + x.paga_mx + '</b> paga México · <b>' + x.paga_usa + '</b> paga FTS USA.</div>';
+      var L = x.propuesta_trabajo_usa || [];
+      for (var i = 0; i < L.length; i++) {
+        var e = P.estado(L[i], p.declaraciones, S.proyectos);
+        h += '<div class="item prop-mu ' + e.estado + '"><div class="cuerpo"><div class="tit">Trabajó en USA · ' + e.dias + (e.dias === 1 ? ' día' : ' días') + '</div>' +
+          '<div class="det">Proyecto: ' + esc(e.so) +
+          (e.estado === 'aceptada' ? ' · ya está en las declaraciones' : '') +
+          (e.estado === 'distinta' ? ' · declarado con ' + e.dias_declarados + ', el reporte dice ' + e.dias : '') + '</div></div>' +
+          (e.estado === 'aceptada' ? '<div class="acciones"><span class="prop-mu-ok">&#10003; aceptada</span></div>'
+            : '<div class="acciones"><button class="editar" data-prop-mu="' + i + '">' + (e.estado === 'distinta' ? 'usar ' + e.dias : 'aceptar') + '</button></div>') +
+          '</div>';
+      }
+      if (!L.length) h += '<div class="prop-mu-nota">Nada que proponer: ningún día confirmado como pagado por FTS USA.</div>';
+      if (x.pendientes) h += '<div class="aviso">' + x.pendientes + (x.pendientes === 1 ? ' día pendiente' : ' días pendientes') +
+        ' de confirmar en Confirmar Horas: no entran en la propuesta. ' + esc((x.como_salio && x.como_salio.pendiente) || '') + '</div>';
+      c.innerHTML = h;
+      var bs = c.querySelectorAll('[data-prop-mu]');
+      for (var k = 0; k < bs.length; k++) {
+        bs[k].addEventListener('click', function (ev) {
+          var prop = L[Number(ev.currentTarget.getAttribute('data-prop-mu'))], pe = persona(ACTIVO);
+          if (!prop || !pe) return;
+          pe.declaraciones = pe.declaraciones || [];
+          if (P.aceptar(prop, pe.declaraciones, S.proyectos) === 'sin_cambio') return;
+          SUCIO = true; pintarCajon(); refrescar();
+        });
+      }
+    });
   }
 
   function renglon(d, idx, esEstado) {

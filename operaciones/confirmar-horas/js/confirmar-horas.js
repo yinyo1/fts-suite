@@ -23,6 +23,42 @@
     { id: 478,  nombre: 'RH' }
   ];
 
+  // ═══ TIPO DE DÍA (#396 fase a) ═══════════════════════════════════════════
+  // Quién paga el día: México (México / Viaje a México) o FTS USA (Proyecto USA /
+  // Viaje a USA). Lo propone el sistema con la zona de la entrada y la de la salida
+  // (o, sin zona, con la empresa del proyecto) y Felipe lo confirma o lo cambia aquí.
+  // Vive en Postgres (asistencia.*), NO en Odoo: a Odoo sólo va una nota al chatter.
+  //
+  // MITAD TOLERANTE. Las columnas Zona y Tipo sólo aparecen si asistencia/eventos
+  // contesta; si no (workflow sin publicar, Postgres caído) la pantalla es la de hoy y
+  // se confirma como siempre. Y si al enviar el tipo no se puede GUARDAR por la red, la
+  // confirmación sigue: el día sale pendiente en el reporte de RH, que es donde se ve.
+  // Lo que SÍ detiene un renglón es una regla: viaje sin cargo o día que paga México
+  // cargado a una SO de FTS USA.
+  var EVENTOS_URL = '/webhook/asistencia/eventos';
+  var TIPO_URL = '/webhook/asistencia/tipo-dia';
+  var CTA_RECOBRO = { id: 3096, nombre: 'ADMIN DE OPERACIONES' };   // D-7
+  var TIPOS = [
+    { k: 'mexico',       t: 'México',         paga: 'mx'  },
+    { k: 'viaje_mexico', t: 'Viaje a México', paga: 'mx'  },
+    { k: 'proyecto_usa', t: 'Proyecto USA',   paga: 'usa' },
+    { k: 'viaje_usa',    t: 'Viaje a USA',    paga: 'usa' }
+  ];
+  function tipoTxt(k){ for(var i=0;i<TIPOS.length;i++){ if(TIPOS[i].k === k) return TIPOS[i].t; } return ''; }
+  function esViajeTipo(k){ return k === 'viaje_usa' || k === 'viaje_mexico'; }
+  function paisZona(z){ if(!z) return null; return String(z).trim().toLowerCase() === 'usa' ? 'usa' : 'mx'; }
+  function tipoDe(row){ return (row && (row._tipoSel || (row._ev && (row._ev.tipo_dia || row._ev.tipo_dia_propuesto)))) || null; }
+  function soCompania(row){
+    if(!row || !row.so_id) return null;
+    if(row._soCompany) return row._soCompany;
+    var s = (CH.sos || []).filter(function(x){ return x.id === row.so_id; })[0];
+    return s ? s.company_id : null;
+  }
+  // D-7: Viaje a México con SO de FTS USA → se carga a 3096 con recobro a USA.
+  function requiereRecobro(row){ return tipoDe(row) === 'viaje_mexico' && soCompania(row) === 6; }
+  function viajeSinCargo(row){ return esViajeTipo(tipoDe(row)) && !row.so_id && !row.cuenta_id && !precargaDe(row); }
+  function mexicoConSoUsa(row){ return tipoDe(row) === 'mexico' && soCompania(row) === 6; }
+
   // ═══ PRECARGA DE DESTINO ═══════════════════════════════════════════════
   // EL PROBLEMA. Hoy se puede confirmar un renglón SIN destino: el semáforo lo
   // cuenta como listo y su dinero no sabe a dónde ir. Pasó tres veces en septiembre
@@ -141,7 +177,8 @@
     supervisor: 'Supervisor',
     modalAttId: null,
     sortKey: null,        // PR-4: orden client-side
-    sortDir: 'asc'
+    sortDir: 'asc',
+    tipoActivo: false     // #396: hay zona y tipo de día (asistencia/eventos contestó)
   };
 
   function $(id){ return document.getElementById(id); }
@@ -200,7 +237,9 @@
           throw new Error((r && r.mensaje) || 'Respuesta inválida');
         }
         CH.rows = r.rows || [];
+        CH.tipoActivo = false;
         renderTabla();
+        cargarEventos();
         var conf = CH.rows.filter(function(x){ return x.confirmado; }).length;
         $('ch-summary').textContent = CH.rows.length + ' registro(s) · ' + conf +
           ' confirmado(s) · ' + (CH.rows.length - conf) + ' pendiente(s)';
@@ -227,6 +266,8 @@
     { key:'depto',    label:'Depto',                  sortable:true,  type:'str', get:function(r){ return r.department_name || ''; } },
     { key:'horario',  label:'Entrada → Salida (CST)', sortable:true,  type:'str', get:function(r){ return r.check_in_cst || ''; } },
     { key:'horas',    label:'Horas',                  sortable:true,  type:'num', get:function(r){ return r.worked_hours == null ? -1 : r.worked_hours; } },
+    { key:'zona',     label:'Zona',                   sortable:true,  type:'str', tipo:true, get:function(r){ return zonaTxt(r); } },
+    { key:'tipodia',  label:'Tipo de día',            sortable:true,  type:'str', tipo:true, get:function(r){ return tipoTxt(tipoDe(r)); } },
     { key:'proyecto', label:'Proyecto / Bolsa',        sortable:true,  type:'str', get:function(r){ return r.so_id ? (r.so_nombre || ('Proy ' + r.so_id)) : (r.cuenta_id ? ('🗂️ ' + (r.cuenta_nombre || ('Bolsa ' + r.cuenta_id))) : ''); } },
     { key:'estado',   label:'Estado',                 sortable:true,  type:'num', get:function(r){ return estadoRank(r); } },
     { key:'acc',      label:'Acciones',               sortable:false }
@@ -239,6 +280,8 @@
     if(row.confirmado) return 3;
     return 1; // pendiente
   }
+
+  function colsVisibles(){ return COLS.filter(function(c){ return !c.tipo || CH.tipoActivo; }); }
 
   function colByKey(key){
     for(var i=0;i<COLS.length;i++){ if(COLS[i].key === key) return COLS[i]; }
@@ -297,6 +340,7 @@
           '<td>' + depto + '</td>' +
           '<td>' + esc(horario) + '</td>' +
           '<td>' + horas + '</td>' +
+          (CH.tipoActivo ? '<td class="cell-zona">' + zonaHtml(row) + '</td><td class="cell-tipo">' + tipoHtml(row) + '</td>' : '') +
           '<td class="cell-so">' + soCell + '</td>' +
           '<td class="cell-estado">' + estadoBadge(row) + '</td>' +
           '<td><div class="ch-actions">' +
@@ -306,7 +350,7 @@
         '</tr>';
     }).join('');
 
-    var ths = COLS.map(function(c){
+    var ths = colsVisibles().map(function(c){
       if(!c.sortable) return '<th' + (c.thStyle ? ' style="' + c.thStyle + '"' : '') + '>' + c.label + '</th>';
       var active = (CH.sortKey === c.key) ? ' ch-th-active' : '';
       return '<th class="ch-sortable' + active + '"' + (c.thStyle ? ' style="' + c.thStyle + '"' : '') +
@@ -324,6 +368,9 @@
     });
     $('tabla-zone').querySelectorAll('button[data-act="editso"]').forEach(function(b){
       b.addEventListener('click', function(){ abrirModalSO(parseInt(b.dataset.att, 10)); });
+    });
+    $('tabla-zone').querySelectorAll('select.ch-tipo').forEach(function(sel){
+      sel.addEventListener('change', function(){ cambiarTipo(parseInt(sel.dataset.att, 10), sel.value); });
     });
     updateSendBtn();
     checkAutoPopup();
@@ -388,6 +435,12 @@
     if(!row || !tr) return;
     tr.querySelector('.cell-estado').innerHTML = estadoBadge(row);
     tr.querySelector('.cell-so').innerHTML = soCellHtml(row);
+    if(CH.tipoActivo && tr.querySelector('.cell-tipo')){
+      tr.querySelector('.cell-zona').innerHTML = zonaHtml(row);
+      tr.querySelector('.cell-tipo').innerHTML = tipoHtml(row);
+      var sel = tr.querySelector('select.ch-tipo');
+      if(sel) sel.addEventListener('change', function(){ cambiarTipo(attId, sel.value); });
+    }
     var cb = tr.querySelector('.ch-mark');
     if(cb){ cb.checked = !!row._marcado; cb.disabled = !marcable(row); }
     tr.classList.toggle('ch-row-mark', !!row._marcado);
@@ -395,6 +448,106 @@
     $('ch-summary').textContent = CH.rows.length + ' registro(s) · ' + conf +
       ' confirmado(s) · ' + (CH.rows.length - conf) + ' pendiente(s)';
     updateSendBtn();
+  }
+
+  // ═══ #396 · Zona y tipo de día ══════════════════════════════════════════
+  function zonaTxt(row){
+    var ev = row && row._ev; if(!ev) return '';
+    var a = paisZona(ev.zona_in), b = paisZona(ev.zona_out);
+    if(!a && !b) return '';
+    return (a || '?').toUpperCase() + (b && b !== a ? '→' + b.toUpperCase() : '');
+  }
+  function zonaHtml(row){
+    var ev = row._ev;
+    if(!ev || (!ev.zona_in && !ev.zona_out)){
+      return '<span class="ch-zona ch-zona-na" title="Sin zona: checada anterior al cambio o sin evento del kiosko. El tipo se propone por la empresa del proyecto.">—</span>';
+    }
+    var a = paisZona(ev.zona_in), b = paisZona(ev.zona_out);
+    var usa = a === 'usa' || b === 'usa';
+    var tz = [ev.tz_in, ev.tz_out].filter(Boolean).join(' → ');
+    var mot = [ev.geo_motivo_in, ev.geo_motivo_out].filter(Boolean).join(' · ');
+    var t = 'Entrada: ' + (ev.zona_in || '—') + ' · Salida: ' + (ev.zona_out || '—') + (tz ? ' · ' + tz : '') + (mot ? ' · Motivo fuera de zona: ' + mot : '');
+    var html = '<span class="ch-zona ' + (usa ? 'ch-zona-usa' : 'ch-zona-mx') + '" title="' + esc(t) + '">' + esc(zonaTxt(row)) + '</span>';
+    if(esViajeTipo(tipoDe(row))) html += ' <span class="ch-zona ch-zona-viaje">viaje</span>';
+    if(mot) html += ' <span class="ch-zona ch-zona-fuera" title="' + esc(mot) + '">fuera</span>';
+    return html;
+  }
+  function tipoHtml(row){
+    if(!row._ev) return '<span style="color:#999">—</span>';
+    var sel = tipoDe(row), prop = row._ev.tipo_dia_propuesto;
+    if(row.abierta) return '<span style="color:#999" title="Se propone al cerrar la salida">— (en curso)</span>';
+    var opts = TIPOS.map(function(t){
+      return '<option value="' + t.k + '"' + (t.k === sel ? ' selected' : '') + '>' + t.t + (t.k === prop ? ' (propuesto)' : '') + '</option>';
+    }).join('');
+    var nota = '';
+    if(row._ev.tipo_dia && row._ev.tipo_dia === sel) nota = '<div class="ch-tipo-nota ch-tipo-ok">guardado</div>';
+    else if(sel && prop && sel !== prop) nota = '<div class="ch-tipo-nota">cambiado por ti</div>';
+    else if(row._ev.origen_propuesto === 'empresa_proyecto') nota = '<div class="ch-tipo-nota" title="Sin zona del kiosko: se propuso por la empresa del proyecto">por empresa</div>';
+    var alerta = '';
+    if(viajeSinCargo(row)) alerta = '<div class="ch-tipo-nota ch-tipo-bad">⚠ viaje sin SO ni centro de costos</div>';
+    else if(mexicoConSoUsa(row)) alerta = '<div class="ch-tipo-nota ch-tipo-bad">⚠ paga México con SO de USA</div>';
+    else if(requiereRecobro(row)) alerta = '<div class="ch-tipo-nota">→ ADMIN DE OPERACIONES con recobro a USA</div>';
+    return '<select class="ch-tipo" data-att="' + row.attendance_id + '" aria-label="Tipo de día">' + opts + '</select>' + nota + alerta;
+  }
+
+  // Lee zona y tipo de las asistencias pintadas. Si falla, la pantalla queda como hoy.
+  function cargarEventos(){
+    if(!CH.rows.length) return;
+    var filas = CH.rows.map(function(r){ return { attendance_id: r.attendance_id, so_id: r.so_id || null }; });
+    cargarSOs();   // empresa de cada SO para el candado D-7 y la etiqueta MX/USA
+    n8n(EVENTOS_URL, { filas: filas }).then(function(data){
+      var r = Array.isArray(data) ? data[0] : data;
+      if(!r || r.success !== true || !Array.isArray(r.filas)) throw new Error((r && r.codigo) || 'sin datos');
+      var por = {}; r.filas.forEach(function(f){ por[f.attendance_id] = f; });
+      var emp = r.empresas || {};
+      CH.rows.forEach(function(row){
+        row._ev = por[row.attendance_id] || null;
+        if(row.so_id && emp[row.so_id]) row._soCompany = Number(emp[row.so_id]);
+        row._tipoSel = row._ev ? (row._ev.tipo_dia || row._ev.tipo_dia_propuesto || null) : null;
+      });
+      CH.tipoActivo = true;
+      document.body.classList.add('ch-con-tipo');
+      var av = $('ch-tipo-aviso'); if(av) av.style.display = 'none';
+      renderTabla();
+    }).catch(function(e){
+      CH.tipoActivo = false;
+      // 404 = el workflow todavía no está publicado: la pantalla es la de hoy, sin aviso.
+      if(/HTTP 404/.test(String(e && e.message))) return;
+      var av = $('ch-tipo-aviso');
+      if(av){ av.textContent = 'Zona y tipo de día no disponibles (' + (e.message || 'sin respuesta') + '). Puedes confirmar como siempre; el tipo quedará pendiente en el reporte de RH.'; av.style.display = 'block'; }
+    });
+  }
+
+  // Guarda el tipo de un renglón. resuelve {ok, regla, codigo, mensaje}.
+  function guardarTipo(row, extra){
+    var body = Object.assign({ attendance_id: row.attendance_id, tipo_dia: tipoDe(row),
+      supervisor_nombre: CH.supervisor, es_viaje: esViajeTipo(tipoDe(row)) }, extra || {});
+    return n8n(TIPO_URL, body).then(function(data){
+      var r = Array.isArray(data) ? data[0] : data;
+      if(r && r.success === true){
+        row._ev = row._ev || {};
+        row._ev.tipo_dia = r.tipo_dia; if(extra && extra.recobro_usa) row._ev.recobro_usa = true;
+        return { ok: true };
+      }
+      return { ok: false, regla: !!(r && r.regla), codigo: (r && r.codigo) || 'RECHAZO', mensaje: (r && r.mensaje) || 'No se guardó el tipo de día' };
+    }, function(e){ return { ok: false, regla: false, codigo: 'RED', mensaje: e.message }; });
+  }
+
+  // Cambio en el selector. Si el renglón ya está confirmado se guarda al momento
+  // (Felipe corrige un tipo ya confirmado); si no, viaja con el envío.
+  function cambiarTipo(attId, valor){
+    var row = findRow(attId); if(!row || !valor) return;
+    row._tipoSel = valor;
+    if(!row.confirmado){ actualizarFila(attId); return; }
+    if(requiereRecobro(row) || mexicoConSoUsa(row)){
+      showMsg('Este renglón ya está confirmado con una SO de FTS USA. Para que lo pague México, corrige primero su cargo (✎) y luego cambia el tipo.', 'err', true);
+      row._tipoSel = row._ev && row._ev.tipo_dia || row._ev && row._ev.tipo_dia_propuesto; actualizarFila(attId); return;
+    }
+    guardarTipo(row).then(function(res){
+      if(res.ok) showMsg('✓ Tipo de día guardado: ' + tipoTxt(valor), 'ok');
+      else { showMsg('❌ ' + res.mensaje, 'err', true); row._tipoSel = row._ev && (row._ev.tipo_dia || row._ev.tipo_dia_propuesto); }
+      actualizarFila(attId);
+    });
   }
 
   // ─── Envío: única vía de confirmación real. SIEMPRE popup-resumen con alertas visibles. ───
@@ -419,7 +572,7 @@
     return arr.map(function(r){
       var fl = flagsRow(r);
       return '<tr><td>' + (fl ? fl + ' ' : '') + esc(r.empleado_nombre||'') + '</td><td>' + esc(r.department_name||'') + '</td><td>' +
-        esc(labelDestinoAEscribir(r)) + '</td><td style="text-align:right">' + (r.worked_hours!=null? r.worked_hours.toFixed(2)+'h':'—') + '</td></tr>';
+        esc(labelDestinoAEscribir(r)) + (CH.tipoActivo && tipoDe(r) ? '<div style="font-size:11px;color:#555">' + esc(tipoTxt(tipoDe(r))) + '</div>' : '') + '</td><td style="text-align:right">' + (r.worked_hours!=null? r.worked_hours.toFixed(2)+'h':'—') + '</td></tr>';
     }).join('');
   }
   function abrirPopupEnvio(marked, sinMarcar, sinLinea, auto){
@@ -439,6 +592,16 @@
     if(cross.length) alertas.push('⚠️ <b>' + cross.length + '</b> de otro depto cargando a proyecto');
     if(warn.length)  alertas.push('🟠 <b>' + warn.length + '</b> con MO sin fondos / agotada (se registra el sobrecosto)');
     if(disp.length)  alertas.push('⚖️ <b>' + disp.length + '</b> en disputa — se confirman pero deberán resolverse antes de nómina');
+    if(CH.tipoActivo){
+      var usaR = marked.filter(function(r){ var t = tipoDe(r); return t === 'proyecto_usa' || t === 'viaje_usa'; });
+      var sinCargo = marked.filter(viajeSinCargo);
+      var recobro = marked.filter(requiereRecobro);
+      var mxUsa = marked.filter(mexicoConSoUsa);
+      if(usaR.length) alertas.push('🇺🇸 <b>' + usaR.length + '</b> día(s) que paga FTS USA');
+      if(recobro.length) alertas.push('↩ <b>' + recobro.length + '</b> Viaje a México con SO de USA: se cargan a ADMIN DE OPERACIONES (3096) con recobro a USA');
+      if(sinCargo.length) alertas.push('⛔ <b>' + sinCargo.length + '</b> día(s) de viaje SIN SO ni centro de costos — NO se confirmarán; asígnales cargo (✎)');
+      if(mxUsa.length) alertas.push('⛔ <b>' + mxUsa.length + '</b> con tipo México y SO de FTS USA — NO se confirmarán; cambia el tipo o la SO');
+    }
     if(alertas.length){
       html += '<p style="color:#8a5a12;font-size:12px;background:#fff3df;padding:8px 10px;border-radius:8px">Alertas de lo que envías: ' + alertas.join(' · ') + '</p>';
     } else {
@@ -458,6 +621,7 @@
   function enviarLote(atts){
     if(!atts || !atts.length){ showMsg('No había nada marcado para enviar.', 'err'); return; }
     var total = atts.length, ok = 0, fail = 0, blocked = 0, i = 0;
+    var motivos = [], sinTipo = [];   // #396: por qué se detuvo un renglón / tipos que no se guardaron
     showOverlay('Confirmando… 0 de ' + total);
     function next(){
       if(i >= atts.length){
@@ -467,6 +631,8 @@
         if(fail) extra.push(fail + ' con error');
         var msg = ok ? ('✓ ' + ok + ' registro(s) confirmados' + (extra.length ? (' · ' + extra.join(' · ')) : ''))
                      : ('❌ No se envió ninguno' + (extra.length ? (' — ' + extra.join(' · ')) : ''));
+        if(motivos.length) msg += ' · Detenidos: ' + motivos.join(' · ');
+        if(sinTipo.length) msg += ' · Tipo de día NO guardado (quedan pendientes en RH): ' + sinTipo.join(' · ');
         showMsg(msg, (fail || blocked || !ok) ? 'err' : 'ok', true);   // PERSISTENTE hasta refresh o cambio de rango
         CH._autoDismissed = false;   // re-arma para un siguiente marcado completo
         return;
@@ -485,9 +651,40 @@
       var payload = pre
         ? payloadCorreccion(att, row, 'bolsa', pre.id, pre.nombre)
         : Object.assign({ attendance_id: att, action: 'confirm', origen: 'envio', supervisor_nombre: CH.supervisor }, ack);
-      n8n(url, payload)
+
+      // #396: el tipo de día va ANTES de la aprobación. Una regla rota detiene el renglón;
+      // una falla de red no (se confirma como siempre y el tipo queda pendiente en RH).
+      var paso;
+      if(CH.tipoActivo && row && tipoDe(row)){
+        if(viajeSinCargo(row) || mexicoConSoUsa(row)){ blocked++; motivos.push((row.empleado_nombre || att) + ': ' + (viajeSinCargo(row) ? 'viaje sin SO ni centro de costos' : 'tipo México con SO de FTS USA')); updateOverlay('Confirmando… ' + (ok + fail + blocked) + ' de ' + total); next(); return; }
+        if(requiereRecobro(row)){
+          // D-7: primero el cargo pasa a 3096 (esa corrección ya confirma), luego el tipo con recobro.
+          var soOrig = row.so_id;
+          url = CORREGIR_URL;
+          payload = payloadCorreccion(att, row, 'bolsa', CTA_RECOBRO.id, CTA_RECOBRO.nombre);
+          paso = n8n(url, payload).then(function(data){
+            var r = Array.isArray(data) ? data[0] : data;
+            if(!r || r.success === false) throw new Error();
+            row.cuenta_id = CTA_RECOBRO.id; row.cuenta_nombre = CTA_RECOBRO.nombre; row.so_id = null; row.so_nombre = '';
+            return guardarTipo(row, { recobro_usa: true, so_original_id: soOrig }).then(function(res){
+              if(!res.ok) sinTipo.push((row.empleado_nombre || att) + ': ' + res.mensaje);
+              return { success: true };
+            });
+          });
+        } else {
+          paso = guardarTipo(row).then(function(res){
+            if(!res.ok && res.regla){ return { _regla: res.mensaje }; }
+            if(!res.ok) sinTipo.push((row.empleado_nombre || att) + ': ' + res.mensaje);
+            return n8n(url, payload);
+          });
+        }
+      } else {
+        paso = n8n(url, payload);
+      }
+      paso
         .then(function(data){
           var r = Array.isArray(data) ? data[0] : data;
+          if(r && r._regla){ blocked++; motivos.push((row.empleado_nombre || att) + ': ' + r._regla); return; }
           if(r && (r.bloqueo || r.needs_ack)){ blocked++; return; }
           if(!r || r.success === false) throw new Error();
           if(row){
@@ -523,7 +720,8 @@
     return n8n('/webhook/kiosk/sos', { company_id: COMPANY_ID }).then(function(data){
       var arr = Array.isArray(data) ? data : (data && data.sos) || [];
       CH.sos = arr.map(function(s){
-        return { id: s.id, nombre: s.nombre || s.name || ('SO ' + s.id), cliente: s.cliente || '' };
+        return { id: s.id, nombre: s.nombre || s.name || ('SO ' + s.id), cliente: s.cliente || '',
+                 company_id: (s.company_id != null && s.company_id !== false) ? Number(Array.isArray(s.company_id) ? s.company_id[0] : s.company_id) : null };
       }).filter(function(s){ return s.id != null; });
       return CH.sos;
     }).catch(function(e){
@@ -532,6 +730,12 @@
     }).finally(function(){ CH.sosCargando = false; });
   }
 
+  // #396: etiqueta de empresa por renglón. kiosk/sos ya trae company_id (1 = FTS MX, 6 = FTS USA).
+  function empresaChip(cid){
+    if(cid === 6) return '<span class="ch-emp ch-emp-usa">USA</span> ';
+    if(cid === 1) return '<span class="ch-emp ch-emp-mx">MX</span> ';
+    return '';
+  }
   // Dos grupos: 🗂️ Bolsas (fijas) + 🛠️ Proyectos (de /kiosk/sos). El buscador filtra ambos.
   function renderSOList(q){
     var nq = q ? q.toLowerCase() : '';
@@ -558,7 +762,7 @@
       if(!proys.length){ html += '<div class="ch-placeholder">Sin proyectos que coincidan</div>'; }
       else html += proys.slice(0, 40).map(function(s){
         return '<div class="ch-so-item" data-tipo="proyecto" data-id="' + s.id + '" data-nombre="' + esc(s.nombre) + '">' +
-          '<div class="n">' + esc(s.nombre) + '</div>' +
+          '<div class="n">' + empresaChip(s.company_id) + esc(s.nombre) + '</div>' +
           (s.cliente ? '<div class="c">' + esc(s.cliente) + '</div>' : '') +
         '</div>';
       }).join('');
@@ -602,7 +806,8 @@
       if(!r || r.success === false) throw new Error((r && r.mensaje) || 'Error');
       if(row){
         if(esBolsa){ row.cuenta_id = id; row.cuenta_nombre = nombre; row.so_id = null; row.so_nombre = ''; }
-        else { row.so_id = id; row.so_nombre = nombre; row.cuenta_id = null; row.cuenta_nombre = ''; }
+        else { row.so_id = id; row.so_nombre = nombre; row.cuenta_id = null; row.cuenta_nombre = '';
+               var sx = (CH.sos || []).filter(function(x){ return x.id === id; })[0]; row._soCompany = sx ? sx.company_id : null; }
         row.confirmado = true;
       }
       actualizarFila(attId);

@@ -1,0 +1,14 @@
+{
+  "version": "V1.00",
+  "fecha": "2026-10-09",
+  "modulo": "rh/dias-mx-usa",
+  "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Contador propio de este modulo.",
+  "historial": [
+    {
+      "version": "V1.00",
+      "fecha": "2026-10-09",
+      "titulo": "Reporte Dias Mexico / USA (#396 fase a)",
+      "nota": "Por persona y semana FTS (viernes a jueves), solo dias confirmados por Felipe: aprobacion en Odoo y tipo de dia en Postgres. Columnas paga Mexico (Mexico + Viaje a Mexico) y paga FTS USA (Proyecto USA + Viaje a USA). Pendientes en rojo con su motivo, cada total con su renglon Como salio, aviso del cuadre Odoo-Postgres del vigia diario, propuesta Trabajo en USA por SO que RH acepta en Nomina, y Excel con Resumen y Detalle. Acceso con SuiteAuth, permiso rh:dias-mx-usa."
+    }
+  ]
+}
