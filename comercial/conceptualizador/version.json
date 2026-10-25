@@ -1,6 +1,11 @@
 {
-  "version": "V1.63c",
+  "version": "V1.63d",
   "historial": [
+    {
+      "version": "V1.63d",
+      "fecha": "2026-10-24",
+      "nota": "fts-conceptualizador#12 (Esteban 24-oct 21:18 CST), con pdf_unico_v163: en el ⋮, «PDF de la cotización (última versión)» descarga directo el archivo, sin abrir el visor; mientras se genera, el mismo renglón dice «Generando…» y si falla lo dice ahí con «Reintentar». El visor queda solo para el PDF que viene en la respuesta del chat. Si la orden no cambió desde el último PDF guardado (misma orden y write_date de Odoo, pdf_v162b), sale el guardado al instante. El archivo se llama «SO… · Cliente · vN.pdf»."
+    },
     {
       "version": "V1.63c",
       "fecha": "2026-10-24",
