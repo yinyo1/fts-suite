@@ -314,6 +314,20 @@
   #fijo .fijo-falta{height:40px;border-radius:20px;padding:0 14px;display:flex;align-items:center;background:var(--aviso);color:#6b4e00;font-weight:600;font-size:13.5px;border:1px solid #f0dc8c}
   /* V1.62b (#12) · lo que hizo el agente por instrucción y la revisión final antes de enviar */
   .ag-hecho{font-size:12px;color:var(--sec,#667781);margin:2px 0 0}
+  /* V1.63c (`pdf_unico_v163`, #12) · el PDF en un solo lugar: archivo en la respuesta, historial plegado, estado vigente al final. */
+  .czp-archivo{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--sup2);border:0;border-radius:8px;padding:9px 10px;cursor:pointer;font:inherit;color:inherit;min-width:0}
+  .czp-archivo:hover{filter:brightness(.97)}.czp-archivo[disabled]{opacity:.5;cursor:not-allowed}
+  .czp-ic{width:36px;height:44px;border-radius:4px;background:var(--rojo);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;flex:none}
+  .czp-tx{min-width:0}.czp-tx b{display:block;font-size:14px;overflow-wrap:anywhere}.czp-tx small{display:block;color:var(--sec);font-size:12px;overflow-wrap:anywhere}
+  .czp-acc{margin-top:8px}
+  .czp-pleg{background:#fff;border-radius:10px;box-shadow:var(--sombra);opacity:.85;margin:4px 0;max-width:min(94%,680px)}
+  .czp-pleg summary{list-style:none;cursor:pointer;padding:8px 10px;display:flex;gap:8px;align-items:baseline;font-size:13.5px;color:var(--sec);overflow-wrap:anywhere}
+  .czp-pleg summary::-webkit-details-marker{display:none}
+  .czp-pleg summary::before{content:"▸";font-size:11px;flex:none}.czp-pleg[open] summary::before{content:"▾"}
+  .czp-cuerpo{padding:0 12px 10px;font-size:13.5px}
+  .czp-etq{display:block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--ter);font-weight:500;margin-top:4px}
+  .czp-vig{background:#fff;border-radius:12px;box-shadow:var(--sombra);padding:10px 12px;margin:6px 0;width:min(94%,680px);box-sizing:border-box}
+  .czp-vig .czp-etq{margin:0 0 4px}.czp-vig p{margin:0;font-size:13.5px}
   .rf-lista{list-style:none;padding:0;margin:8px 0;display:flex;flex-direction:column;gap:6px;font-size:14px}
   .rf-lista li small{display:block;color:var(--sec,#667781);font-size:12px;margin-left:18px}.rf-lista .rf-no{color:#8a5a00}
   .rf-ref{border:1px solid #f0dc8c;background:var(--aviso);border-radius:8px;padding:8px 10px;margin:6px 0;font-size:13px;color:#5c4400}
@@ -915,13 +929,13 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <script src="js/cz-regla15-ui.js?v=V1.62a"></script>
 <script src="js/cz-indicadores.js?v=V1.57b"></script>
 <script src="js/cz-niveles.js?v=V1.62a"></script>
-<script src="js/cz-estado.js?v=V1.61"></script>
+<script src="js/cz-estado.js?v=V1.63c"></script>
 <script src="js/cz-avance.js?v=V1.57b"></script>
 <script src="js/cz-ligas.js?v=V1.57b"></script>
 <script src="js/cz-tabla.js?v=V1.58"></script>
 <script src="js/cz-visor.js?v=V1.62b"></script>
 <script src="js/cz-correo.js?v=V1.57b"></script>
-<script src="js/cz-enviar.js?v=V1.62b"></script>
+<script src="js/cz-enviar.js?v=V1.63c"></script>
 <script src="js/cz-condiciones.js?v=V1.57b"></script>
 <script src="js/cz-vista.js?v=V1.63b"></script>
 <script src="js/cz-camara.js?v=V1.57b"></script>
@@ -931,7 +945,7 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <script src="js/cz-push.js?v=V1.57b"></script>
 <script src="js/cz-limpio.js?v=V1.62a"></script>
 <script src="js/cz-pasos.js?v=V1.61"></script>
-<script src="js/cz-app.js?v=V1.63b"></script>
+<script src="js/cz-app.js?v=V1.63c"></script>
 <script src="js/cz-version.js?v=V1.57b"></script>
 <script>window.CzApp.arrancar().then(function () { if (window.CzVersion) window.CzVersion.iniciar(); if (window.CzPush) window.CzPush.iniciar(); });</script>
 </body>

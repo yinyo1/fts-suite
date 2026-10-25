@@ -1,6 +1,11 @@
 {
-  "version": "V1.63b",
+  "version": "V1.63c",
   "historial": [
+    {
+      "version": "V1.63c",
+      "fecha": "2026-10-24",
+      "nota": "fts-conceptualizador#12 (V1.63c), detrás de pdf_unico_v163 (migración 0038, nace apagado): el PDF de la cotización en un solo lugar, como el prototipo aprobado por Esteban (24-oct 19:56 CST). La respuesta que cambia la cotización trae el PDF como archivo con «↺ Deshacer»; los borradores anteriores y «Ya la mandé» quedan plegados como historial sin botones de PDF; «Correo para envío» y «Ya la mandé» salen una vez, al final, en el estado vigente; en ⋮ una sola entrada «PDF de la cotización (última versión)», que abre el visor con «⬇ Descargar» adentro. Siempre el último PDF de Odoo."
+    },
     {
       "version": "V1.63b",
       "fecha": "2026-10-23",

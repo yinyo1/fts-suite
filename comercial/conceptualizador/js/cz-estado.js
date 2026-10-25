@@ -148,7 +148,7 @@
     var m = M({ titulo: o.titulo || nombre, marca: 'cze-modal-pdf', ancho: '980px',
       cabecera: '<span class="cze-pg" data-cze-pg="1"><span class="cze-pg-l">Hoja </span><span data-cze-i>1</span> de <span data-cze-n>…</span></span>' +
         '<button type="button" class="cze-tb" data-cze-z="-1" aria-label="Alejar">−</button><button type="button" class="cze-tb" data-cze-z="1" aria-label="Acercar">+</button>' +
-        '<a class="cze-tb si" href="' + url + '" download="' + esc(nombre) + '" aria-label="Descargar el PDF">⬇</a>',
+        '<a class="cze-tb si" href="' + url + '" download="' + esc(nombre) + '" aria-label="Descargar el PDF">' + esc(o.descargarTxt || '⬇') + '</a>',   // V1.63c · «⬇ Descargar» con pdf_unico_v163
       html: '<div class="cze-lienzo" data-cze-visor="cargando"><div class="cze-carga">Abriendo el PDF…</div></div>',
       alCerrar: function () { st.cerrado = true; setTimeout(function () { URL.revokeObjectURL(url); }, 4000); } });
     if (!m) return null;
