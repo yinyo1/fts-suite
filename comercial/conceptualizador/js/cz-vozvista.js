@@ -1,4 +1,4 @@
-/* ═══ Conceptualizador · Revisar la cotización por voz desde la vista ejecutiva (V1.64, `voz_visor_v164`) ═══
+/* ═══ Conceptualizador · Revisar la cotización por voz desde la vista ejecutiva (V1.63g, `voz_visor_v163g`) ═══
  *
  * Prototipo aprobado: comercial/prototipos/voz-visor/ (fts-conceptualizador#12, Esteban 25-oct 23:10 y 23:40 CST y 26-oct con
  * «🌐 General»). Aquí va con datos y envío REALES:
