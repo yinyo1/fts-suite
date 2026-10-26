@@ -12,11 +12,18 @@
  *   · lo escrito y no enviado (la caja de mensaje y las cajitas de «Corregir») se guarda en
  *     sessionStorage y se repone después de recargar.
  * La recarga lleva `?v=<versión>` para que el navegador no sirva el HTML viejo de su caché.
+ *
+ * V1.63e.4 (#12, bug del 25-oct 22:30 CST) · si después de «Actualizar» la pantalla SIGUE en la versión de antes (Pages publicó un
+ * version.json nuevo con el código viejo: la V1.63e.3 subió version.json y dejó VERSION en V1.63e.2), el botón no se vuelve a
+ * ofrecer: recargar otra vez daría lo mismo, sin fin. Queda la marca `cz_ver_incompleta` (anunciada + la de la pantalla) y la franja
+ * dice «Versión publicada incompleta», una sola vez por sesión. La marca se borra sola cuando version.json y la pantalla vuelven
+ * a coincidir o anuncian otra versión. La alarma la da el canario de las 6:50 (herramientas/canario/canario.js compara lo mismo).
  */
 (function (G) {
   'use strict';
-  var CADA_MS = 5 * 60 * 1000, LLAVE = 'cz_recarga';
-  var ultima = 0, nueva = null, el = null;
+  var CADA_MS = 5 * 60 * 1000, LLAVE = 'cz_recarga', INCOMPLETA = 'cz_ver_incompleta';
+  var ultima = 0, nueva = null, el = null, dichoIncompleta = false;
+  function marca() { try { return JSON.parse(localStorage.getItem(INCOMPLETA) || 'null'); } catch (e) { return null; } }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function actual() { return G.CzApp && G.CzApp.VERSION; }
   function toast(t) { var e = document.getElementById('toast'); if (!e) return; e.textContent = t; e.classList.add('on'); setTimeout(function () { e.classList.remove('on'); }, 3400); }
@@ -28,7 +35,11 @@
       var r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' });
       if (!r.ok) return null;
       var j = await r.json();
-      if (j && j.version && actual() && j.version !== actual()) mostrar(j.version);
+      if (j && j.version && actual()) {
+        var m = marca();
+        if (j.version === actual() || (m && (m.anunciada !== j.version || m.pantalla !== actual()))) { try { localStorage.removeItem(INCOMPLETA); } catch (e) {} m = null; }
+        if (j.version !== actual()) { if (m) incompleta(j.version); else mostrar(j.version); }
+      }
       return j && j.version;
     } catch (e) { return null; }
   }
@@ -39,9 +50,20 @@
       el = document.createElement('div'); el.id = 'nuevaVer'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite');
       document.body.appendChild(el);
     }
+    el.className = '';
     el.innerHTML = '<span>Hay versión nueva · <b>' + esc(v) + '</b></span><button type="button" id="bActualizar">Actualizar</button>';
     el.querySelector('button').onclick = actualizar;
     el.classList.add('on'); document.body.classList.add('con-version');
+  }
+
+  /** Ya se recargó y la pantalla sigue en la versión de antes: sin botón, una sola vez por sesión. */
+  function incompleta(v) {
+    if (dichoIncompleta) return; dichoIncompleta = true;
+    if (!el) { el = document.createElement('div'); el.id = 'nuevaVer'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite'); document.body.appendChild(el); }
+    el.className = 'incompleta';
+    el.innerHTML = '<span>Versión publicada incompleta: el servidor anuncia <b>' + esc(v) + '</b> y esta pantalla sigue en <b>' + esc(actual()) + '</b>. No hace falta actualizar otra vez; sigue trabajando normal.</span>';
+    el.classList.add('on'); document.body.classList.add('con-version');
+    setTimeout(function () { if (el) { el.classList.remove('on'); document.body.classList.remove('con-version'); } }, 12000);
   }
 
   /** Lo escrito y no enviado: la caja de mensaje y las cajitas abiertas de «Corregir». */
@@ -71,6 +93,9 @@
   var guardado = null;
   try { guardado = JSON.parse(sessionStorage.getItem(LLAVE) || 'null'); sessionStorage.removeItem(LLAVE); } catch (e) {}
   if (guardado && Date.now() - guardado.en > 10 * 60 * 1000) guardado = null;   // solo lo de una recarga recién hecha
+  // V1.63e.4 · vino del botón y la pantalla NO llegó a la versión anunciada: queda la marca y no se vuelve a ofrecer el botón.
+  var sinCambio = !!(guardado && guardado.a && actual() && guardado.a !== actual());
+  if (sinCambio) { try { localStorage.setItem(INCOMPLETA, JSON.stringify({ anunciada: guardado.a, pantalla: actual(), en: Date.now() })); } catch (e) {} }
   if (guardado && G.CzApp && G.CzApp._st) {
     var st = G.CzApp._st; st.borr = st.borr || {};
     Object.keys(guardado.borr || {}).forEach(function (k) { st.borr[k] = { abierto: true, texto: guardado.borr[k] }; });
@@ -102,12 +127,12 @@
         var i = document.getElementById('in');
         if (i && !i.value) { i.value = guardado.texto; i.dispatchEvent(new Event('input')); }
       }
-      if (guardado) toast('Actualizado a ' + (actual() || 'la versión nueva') + '.');
+      if (guardado && !sinCambio) toast('Actualizado a ' + (actual() || 'la versión nueva') + '.');
       revisar(true);
       setInterval(function () { if (!document.hidden) revisar(true); }, CADA_MS);
       document.addEventListener('visibilitychange', function () { if (!document.hidden) revisar(false); });
       G.addEventListener('online', function () { revisar(false); });
     },
-    revisar: revisar, _mostrar: mostrar
+    revisar: revisar, _mostrar: mostrar, _incompleta: incompleta
   };
 })(window);

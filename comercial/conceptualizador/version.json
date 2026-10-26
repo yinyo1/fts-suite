@@ -1,6 +1,11 @@
 {
-  "version": "V1.63e.3",
+  "version": "V1.63e.4",
   "historial": [
+    {
+      "version": "V1.63e.4",
+      "fecha": "2026-10-25",
+      "nota": "fts-conceptualizador#12 (bug de Esteban del 25-oct 22:30 CST): la V1.63e.3 subió version.json sin subir la VERSION de la pantalla ni los ?v=, y «Hay versión nueva · Actualizar» se ofrecía sin fin. Ahora version.json, la VERSION de cz-app.js y todos los ?v= de js/ dicen lo mismo (lo exige scripts/conceptualizador-version.js antes de cada push y en GitHub Actions); y si después de «Actualizar» la pantalla sigue en la versión de antes, ya no se repite el botón: dice «Versión publicada incompleta» una sola vez y el canario de las 6:50 lo marca como falla."
+    },
     {
       "version": "V1.63e.3",
       "fecha": "2026-10-25",

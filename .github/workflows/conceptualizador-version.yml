@@ -1,0 +1,16 @@
+# fts-conceptualizador#12 (25-oct-2026): version.json, la VERSION de cz-app.js y los ?v= del index.html deben decir lo mismo.
+name: conceptualizador · versión
+on:
+  push:
+    paths: ['comercial/conceptualizador/**', 'scripts/conceptualizador-version.js']
+  pull_request:
+    paths: ['comercial/conceptualizador/**', 'scripts/conceptualizador-version.js']
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/conceptualizador-version.js

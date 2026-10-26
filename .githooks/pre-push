@@ -1,0 +1,12 @@
+#!/bin/sh
+# fts-conceptualizador#12 · antes de subir algo que toque comercial/conceptualizador, las tres versiones deben coincidir.
+# Se activa una vez por clon: git config core.hooksPath .githooks
+z=0000000000000000000000000000000000000000
+while read lref lsha rref rsha; do
+  [ "$lsha" = "$z" ] && continue
+  if [ "$rsha" = "$z" ]; then rango="$lsha"; else rango="$rsha..$lsha"; fi
+  if git diff --name-only $rango -- comercial/conceptualizador scripts/conceptualizador-version.js 2>/dev/null | grep -q .; then
+    node scripts/conceptualizador-version.js || { echo "push detenido: corrige la versión de comercial/conceptualizador"; exit 1; }
+  fi
+done
+exit 0
