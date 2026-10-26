@@ -30,7 +30,21 @@ main{max-width:880px;margin:0 auto;padding:12px 16px calc(120px + var(--pie))}
 .ren{display:flex;gap:10px;padding:10px 16px;border-bottom:1px solid var(--linea);font-size:14px}
 .ren:last-child{border-bottom:0}.ren .d{flex:1;min-width:0}.ren .d small{display:block;color:var(--ter);font-size:12px}
 .ren .i{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--sec)}
-.viendo{outline:2px solid #ffd54f;outline-offset:-2px;background:#fffbea}
+.guia{outline:2px dashed #e0a100;outline-offset:-2px;background:#fffbea}
+.objetivo{outline:3px solid var(--acento);outline-offset:-3px;background:#e7f6ee}
+.sec>button.objetivo{background:#e7f6ee}
+/* ── línea guía fija: el renglón que se tomaría si no tocas nada ── */
+.guia-linea{position:fixed;left:0;right:0;top:45vh;height:0;border-top:2px dashed rgba(224,161,0,.55);z-index:15;pointer-events:none;opacity:.45}
+body.grabando .guia-linea{opacity:1}
+.guia-linea span{position:absolute;right:8px;top:-11px;background:#e0a100;color:#fff;font-size:11px;font-weight:600;padding:1px 7px;border-radius:9px}
+body.grabando .guia-linea{border-top-color:#e0a100}
+/* ── letrero del objetivo, junto al micrófono ── */
+.objtag{position:fixed;right:16px;bottom:calc(84px + var(--pie));z-index:31;max-width:min(78vw,520px);background:var(--texto);color:#fff;font-size:13.5px;
+  padding:7px 12px;border-radius:16px;box-shadow:0 2px 6px rgba(11,20,26,.3);line-height:1.3;max-height:3.1em;overflow:hidden;display:none}
+body.grabando .objtag{display:block}.objtag.toque{background:var(--acento-osc)}
+@media(min-width:900px){.objtag{right:calc(50% - 440px + 16px)}}
+.liga{display:inline-block;margin-top:3px;font-size:12.5px;color:var(--sec)}
+.cambio.confirmar .liga{color:var(--ambar);font-weight:600}
 /* ── barra fija: contador · micrófono · enviar ── */
 .barra{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:10px 16px calc(10px + var(--pie));display:flex;align-items:center;gap:10px;
   background:linear-gradient(to top,var(--fondo) 70%,rgba(240,242,245,0))}
@@ -107,6 +121,8 @@ body.grabando .enviar{display:none}.estado{white-space:normal;line-height:1.25;m
 </div></div>
 <div class="velo" id="velo"></div>
 <div class="hoja" id="hoja" role="dialog" aria-modal="true"></div>
+<div class="guia-linea" aria-hidden="true"><span id="guiaTxt"></span></div>
+<div class="objtag" id="objtag" aria-live="polite"></div>
 <div class="toast" id="toast"></div>
 <script>
 (function () {
@@ -116,22 +132,27 @@ body.grabando .enviar{display:none}.estado{white-space:normal;line-height:1.25;m
     en: { demo: 'PROTOTYPE · recording, list and saving are real; transcription and «What I understood» are simulated. Demo data.',
       tit: 'Executive view · COT-DEMO v3', sub: 'Air dryer replacement · San Antonio, TX · USD', precio: 'Price', costo: 'Cost', margen: 'Margin',
       notas: 'Notes', enviar: function (n) { return n ? 'Send ' + n + (n === 1 ? ' note' : ' notes') : 'Send notes'; },
-      listo: 'Hold the mic to record · slide up to lock', grabando: 'Recording', suelta: 'Release to save · ↑ lock', bloq: 'Locked · scroll and talk · tap ■ to finish',
+      listo: 'Hold to record · slide ↑ to lock', grabando: 'Recording', suelta: 'Release to save · ↑ lock', bloq: 'Locked · scroll and talk · tap ■ to finish',
       corta: 'Too short: hold the mic while you talk', guardada: function (d) { return 'Note saved (' + d + ')'; },
       cortada: function (d) { return 'The browser cut a recording: I kept what it had (' + d + ')'; },
       sinMic: 'I could not open the microphone. Allow it in the browser settings.', lista: 'Notes in this burst', vacia: 'No notes yet.',
-      oir: 'Play', parar: 'Stop', borrar: 'Delete', borrarQ: '¿Delete this note?', cerrar: 'Close', viendo: 'Viewing', cortadaTag: 'cut by the browser · kept',
+      oir: 'Play', parar: 'Stop', borrar: 'Delete', borrarQ: 'Delete this note?', cerrar: 'Close', viendo: 'Viewing', cortadaTag: 'cut by the browser · kept',
       confirmar: function (n) { return 'Send ' + n + ' notes together in one job?'; }, subiendo: function (i, n) { return 'Uploading note ' + i + ' of ' + n + '…'; },
       transcribiendo: 'Transcribing and matching each phrase to what you were viewing…',
       entendi: 'What I understood', entendiSub: function (n, m) { return 'From ' + n + ' notes, ' + m + ' changes. Nothing is applied until you approve.'; },
       dudosa: 'Unclear — not applied', dudosaP: 'I heard: ', dudosaQ: 'What did you mean?', oirOrigen: function (k, s) { return '▶ Note ' + k + ' at ' + s; },
       mueve: 'total', aprobarTodo: 'Approve all', aplicarSel: 'Apply selected', rechazar: 'Reject all',
+      guia: 'guide', tocaste: 'Target', tocaHint: 'Tap a line to target it',
+      ligaToque: '👆 Linked: you tapped it', ligaNombre: '🗣 Linked: you named it in the audio', ligaGuia: '📍 Linked: it was on the guide line',
+      confNombre: function (a, b) { return '⚠ Confirm: on screen you had «' + a + '», the audio names «' + b + '». I used what you named.'; },
+      confToque: function (a, b) { return '⚠ Confirm: you tapped «' + a + '» but the audio names «' + b + '». I used what you tapped.'; },
+      menos: function (q, u) { return 'Quantity: ' + q + ' → ' + (q - 1) + ' ' + u + ' («one less here»)'; },
       aplicado: function (n, a, b) { return '✓ Applied ' + n + ' changes in ONE new version: machote v4 and the draft order (never sent or confirmed). Total ' + a + ' → ' + b + '. Saved as your decision, with a lock 🔒.'; },
       nada: 'Nothing selected.', rechazado: 'Rejected: nothing changed.', secs: 'sections' },
     es: { demo: 'PROTOTIPO · la grabación, la lista y el guardado son reales; la transcripción y «Esto entendí» van simulados. Datos demo.',
       tit: 'Vista ejecutiva · COT-DEMO v3', sub: 'Cambio de secador de aire · San Antonio, TX · USD', precio: 'Precio', costo: 'Costo', margen: 'Margen',
       notas: 'Notas', enviar: function (n) { return n ? 'Enviar ' + n + (n === 1 ? ' nota' : ' notas') : 'Enviar notas'; },
-      listo: 'Mantén el micrófono para grabar · desliza arriba para bloquear', grabando: 'Grabando', suelta: 'Suelta para guardar · ↑ bloquear', bloq: 'Bloqueado · haz scroll y habla · toca ■ para terminar',
+      listo: 'Mantén para grabar · desliza ↑ para bloquear', grabando: 'Grabando', suelta: 'Suelta para guardar · ↑ bloquear', bloq: 'Bloqueado · haz scroll y habla · toca ■ para terminar',
       corta: 'Muy corta: mantén el micrófono mientras hablas', guardada: function (d) { return 'Nota guardada (' + d + ')'; },
       cortada: function (d) { return 'El navegador cortó una grabación: guardé lo que había (' + d + ')'; },
       sinMic: 'No pude abrir el micrófono. Permítelo en la configuración del navegador.', lista: 'Notas de esta ráfaga', vacia: 'Todavía no hay notas.',
@@ -141,6 +162,11 @@ body.grabando .enviar{display:none}.estado{white-space:normal;line-height:1.25;m
       entendi: 'Esto entendí', entendiSub: function (n, m) { return 'De ' + n + ' notas, ' + m + ' cambios. Nada se aplica hasta que lo apruebes.'; },
       dudosa: 'Dudoso — no se aplica', dudosaP: 'Oí: ', dudosaQ: '¿Qué quisiste decir?', oirOrigen: function (k, s) { return '▶ Nota ' + k + ' en ' + s; },
       mueve: 'total', aprobarTodo: 'Aprobar todo', aplicarSel: 'Aplicar lo marcado', rechazar: 'Rechazar todo',
+      guia: 'guía', tocaste: 'Objetivo', tocaHint: 'Toca un renglón para fijarlo',
+      ligaToque: '👆 Ligado: lo tocaste', ligaNombre: '🗣 Ligado: lo nombraste en el audio', ligaGuia: '📍 Ligado: estaba en la línea guía',
+      confNombre: function (a, b) { return '⚠ Confirma: en pantalla tenías «' + a + '» y el audio nombra «' + b + '». Usé lo que nombraste.'; },
+      confToque: function (a, b) { return '⚠ Confirma: tocaste «' + a + '» pero el audio nombra «' + b + '». Usé lo que tocaste.'; },
+      menos: function (q, u) { return 'Cantidad: ' + q + ' → ' + (q - 1) + ' ' + u + ' («uno menos aquí»)'; },
       aplicado: function (n, a, b) { return '✓ Apliqué ' + n + ' cambios en UNA versión nueva: machote v4 y la orden en borrador (nunca enviada ni confirmada). Total ' + a + ' → ' + b + '. Quedó como tu decisión, con candado 🔒.'; },
       nada: 'No marcaste nada.', rechazado: 'Rechazado: no cambió nada.', secs: 'secciones' }
   };
@@ -162,6 +188,9 @@ body.grabando .enviar{display:none}.estado{white-space:normal;line-height:1.25;m
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var dur = function (s) { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); };
   var hora = function (ms) { var d = new Date(ms); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); };
+  var renDe = function (rid) { var p = String(rid || '').split('-'), s = SECS.filter(function (x) { return x.id === p[0]; })[0]; return s && p.length > 1 ? s.r[Number(p[1])] : null; };
+  var nombreRen = function (rid, corto) { var r = renDe(rid); if (!r) return null; var n = corto && r[0].length > 30 ? r[0].slice(0, 29) + '…' : r[0]; return n + ' · ' + r[1] + ' ' + r[2]; };
+  var objetivoTxt = function (o) { return o ? (o.ren ? nombreRen(o.ren, true) : nombreSec(o.sec)) : '—'; };
   var nombreSec = function (id) { var s = SECS.filter(function (x) { return x.id === id; })[0]; return s ? s.n : id; };
   function toast(m) { var e = document.getElementById('toast'); e.textContent = m; e.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(function () { e.classList.remove('on'); }, 3200); }
 
@@ -181,10 +210,11 @@ body.grabando .enviar{display:none}.estado{white-space:normal;line-height:1.25;m
           return '<div class="ren" data-sec="' + s.id + '" data-ren="' + s.id + '-' + j + '"><div class="d">' + esc(r[0]) + '<small>' + r[1] + ' ' + esc(r[2]) + ' × ' + $(r[3]) + '</small></div><div class="i">' + $(r[1] * r[3]) + '</div></div>';
         }).join('') + '</div></section>';
     }).join('');
-    document.querySelectorAll('.sec>button').forEach(function (b) { b.onclick = function () { b.parentNode.classList.toggle('abierta'); }; });
+    document.querySelectorAll('.sec>button').forEach(function (b) { b.onclick = function () { b.parentNode.classList.toggle('abierta'); marcarGuia(); }; });
+    guiaAct = null; if (typeof marcarGuia === 'function' && document.getElementById('guiaTxt')) setTimeout(marcarGuia, 0);
     pintarBarra();
   }
-  document.getElementById('bIdioma').onclick = function () { L = L === 'en' ? 'es' : 'en'; try { localStorage.setItem('czp_voz_idioma', L); } catch (e) {} pintar(); if (ultimoEntendi) entendi(ultimoEntendi); };
+  document.getElementById('bIdioma').onclick = function () { L = L === 'en' ? 'es' : 'en'; try { localStorage.setItem('czp_voz_idioma', L); } catch (e) {} pintar(); if (ultimoLote) entendi(simular(ultimoLote)); };
 
   /* ═══ IndexedDB: cada nota y sus pedazos se guardan MIENTRAS se graba (cada segundo) ═══ */
   var DB = null, NOTAS = [];
@@ -215,10 +245,38 @@ body.grabando .enviar{display:none}.estado{white-space:normal;line-height:1.25;m
     var y = Math.round(innerHeight * 0.45), e = document.elementFromPoint(Math.round(innerWidth / 2), y), r = e && e.closest('[data-ren]'), s = e && e.closest('[data-sec]');
     return { sec: s ? s.dataset.sec : null, ren: r ? r.dataset.ren : null };
   }
-  function marcarViendo() {
-    document.querySelectorAll('.viendo').forEach(function (e) { e.classList.remove('viendo'); });
-    var c = centro(), el = c.ren ? document.querySelector('[data-ren="' + c.ren + '"]') : null; if (el) el.classList.add('viendo');
+  /* La línea guía (45 % del alto, la misma que usa centro()) resalta SIEMPRE el renglón que se tomaría si no tocas nada. */
+  var guiaAct = null;
+  function marcarGuia() {
+    var c = centro(), sel = c.ren ? '.ren[data-ren="' + c.ren + '"]' : c.sec ? '.sec[data-sec="' + c.sec + '"]>button' : null, el = sel && !(R && R.toque) ? document.querySelector(sel) : null;   // con un renglón tocado, la guía no resalta otro
+    if (guiaAct !== el) { if (guiaAct) guiaAct.classList.remove('guia'); if (el) el.classList.add('guia'); guiaAct = el; }
+    document.getElementById('guiaTxt').textContent = t('guia');
+    pintarObjetivo(); return c;
   }
+  var pend = false; addEventListener('scroll', function () { if (pend) return; pend = true; requestAnimationFrame(function () { pend = false; marcarGuia(); }); }, { passive: true });
+  addEventListener('resize', function () { marcarGuia(); });
+  /* El objetivo actual: lo que tocaste mientras grabas manda sobre la línea guía. */
+  function objetivo() { return R && R.toque ? R.toque : centro(); }
+  function pintarObjetivo() {
+    var e = document.getElementById('objtag'); if (!R) { e.textContent = ''; return; }
+    var o = objetivo(); e.className = 'objtag' + (R.toque ? ' toque' : '');
+    e.textContent = '🎯 ' + objetivoTxt(o) + (R.toque ? '' : ' · ' + t('guia'));
+  }
+  function registrar(fuente) {   // un renglón en la línea de tiempo cuando cambia el objetivo o su fuente
+    if (!R) return; var o = objetivo(), s = Math.round((performance.now() - R.t0) / 1000), u = R.nota.ctx[R.nota.ctx.length - 1];
+    if (!u || u.sec !== o.sec || u.ren !== o.ren || u.fuente !== fuente) R.nota.ctx.push({ t: s, sec: o.sec, ren: o.ren, fuente: fuente });
+  }
+  /* Grabando: tocar un renglón o el título de una sección lo fija como objetivo desde ese segundo. No corta la grabación ni
+   * abre o cierra nada. Tocar el mismo otra vez lo suelta (vuelve a mandar la línea guía). */
+  document.addEventListener('click', function (e) {
+    if (!R) return; var x = e.target.closest('.ren, .sec>button'); if (!x || x.closest('.barra, .hoja')) return;
+    e.preventDefault(); e.stopPropagation();
+    var o = x.classList.contains('ren') ? { sec: x.dataset.sec, ren: x.dataset.ren } : { sec: x.parentNode.dataset.sec, ren: null };
+    document.querySelectorAll('.objetivo').forEach(function (el) { el.classList.remove('objetivo'); });
+    if (R.toque && R.toque.sec === o.sec && R.toque.ren === o.ren) { R.toque = null; registrar('guia'); }
+    else { R.toque = o; x.classList.add('objetivo'); registrar('toque'); if (navigator.vibrate) navigator.vibrate(15); }
+    marcarGuia(); poner('notas', R.nota);
+  }, true);
   async function empezar(y0) {
     if (R) return;
     var stream;
@@ -234,19 +292,18 @@ body.grabando .enviar{display:none}.estado{white-space:normal;line-height:1.25;m
     rec.start(1000);
     await poner('notas', nota);
     try { if (navigator.wakeLock) R.wake = await navigator.wakeLock.request('screen'); } catch (e) {}
-    var c0 = centro(); nota.ctx.push({ t: 0, sec: c0.sec, ren: c0.ren });
+    var c0 = centro(); nota.ctx.push({ t: 0, sec: c0.sec, ren: c0.ren, fuente: 'guia' });
     R.tick = setInterval(function () {   // segundo a segundo: qué estaba viendo
-      if (!R) return; var c = centro(), s = Math.round((performance.now() - R.t0) / 1000), u = nota.ctx[nota.ctx.length - 1];
-      if (!u || u.sec !== c.sec || u.ren !== c.ren) nota.ctx.push({ t: s, sec: c.sec, ren: c.ren });
-      nota.dur = (performance.now() - R.t0) / 1000; poner('notas', nota); marcarViendo(); pintarEstado();
+      if (!R) return; marcarGuia(); registrar(R.toque ? 'toque' : 'guia');
+      nota.dur = (performance.now() - R.t0) / 1000; poner('notas', nota); pintarEstado();
     }, 1000);
-    mic.classList.add('rec'); document.body.classList.add('grabando'); pintarEstado();
+    mic.classList.add('rec'); document.body.classList.add('grabando'); pintarObjetivo(); pintarEstado();
     if (!apretado && !R.bloq) terminar('lista');   // soltó antes de que abriera el micrófono
   }
   function terminar(como) {
     if (!R) return; var r = R; R = null; clearInterval(r.tick);
     r.nota.dur = (performance.now() - r.t0) / 1000;
-    mic.classList.remove('rec', 'bloq'); document.body.classList.remove('grabando'); document.querySelectorAll('.viendo').forEach(function (e) { e.classList.remove('viendo'); });
+    mic.classList.remove('rec', 'bloq'); document.body.classList.remove('grabando'); document.querySelectorAll('.objetivo').forEach(function (e) { e.classList.remove('objetivo'); }); setTimeout(marcarGuia, 0);
     try { if (r.wake) r.wake.release(); } catch (e) {}
     var cerrar = function () {
       r.stream.getTracks().forEach(function (x) { x.stop(); });
@@ -278,7 +335,7 @@ body.grabando .enviar{display:none}.estado{white-space:normal;line-height:1.25;m
   function pintarEstado() {
     if (!R) { estado.className = 'estado'; estado.textContent = NOTAS.length ? '' : t('listo'); return; }
     estado.className = 'estado grabando';
-    estado.innerHTML = '<span class="punto"></span>' + dur((performance.now() - R.t0) / 1000) + ' · ' + esc(R.bloq ? t('bloq') : t('suelta'));
+    estado.innerHTML = '<span class="punto"></span>' + dur((performance.now() - R.t0) / 1000) + ' · ' + esc(R.bloq ? t('bloq') + ' · ' + t('tocaHint') : t('suelta'));
   }
   function pintarBarra() {
     var n = NOTAS.length, b = document.getElementById('bCuenta');
@@ -290,7 +347,7 @@ body.grabando .enviar{display:none}.estado{white-space:normal;line-height:1.25;m
 
   /* ═══ Lista de la ráfaga: duración, hora, secciones que veía; oír y borrar ═══ */
   var sonando = null;
-  function secsDe(n) { var v = []; (n.ctx || []).forEach(function (c) { if (c.sec && v.indexOf(c.sec) < 0) v.push(c.sec); }); return v.map(nombreSec); }
+  function secsDe(n) { var v = []; (n.ctx || []).forEach(function (c) { var x = c.fuente === 'toque' ? '🎯 ' + objetivoTxt(c) : c.sec ? nombreSec(c.sec) : null; if (x && v.indexOf(x) < 0) v.push(x); }); return v; }
   function abrirLista() {
     var h = document.getElementById('hoja');
     h.innerHTML = '<h3>' + esc(t('lista')) + ' <button type="button" id="bCerrarH" class="ico" aria-label="' + esc(t('cerrar')) + '">✕</button></h3>' +
@@ -316,7 +373,7 @@ body.grabando .enviar{display:none}.estado{white-space:normal;line-height:1.25;m
   }
 
   /* ═══ Enviar la ráfaga (SIMULADO: en la construcción va como UN trabajo al motor) ═══ */
-  var ENVIADAS = [], ultimoEntendi = null;
+  var ENVIADAS = [], ultimoEntendi = null, ultimoLote = null;
   document.getElementById('bEnviar').onclick = async function () {
     var n = NOTAS.length; if (!n || R) return;
     if (!confirm(t('confirmar')(n))) return;
@@ -326,7 +383,7 @@ body.grabando .enviar{display:none}.estado{white-space:normal;line-height:1.25;m
     p.textContent = t('transcribiendo'); await new Promise(function (ok) { setTimeout(ok, 1400); });
     for (var j = 0; j < lote.length; j++) { lote[j].enviada = Date.now(); await poner('notas', lote[j]); }
     ENVIADAS = ENVIADAS.concat(lote); await recargar(); p.remove();
-    entendi(simular(lote));
+    ultimoLote = lote; entendi(simular(lote));
   };
   /* Lo que en la construcción hace el motor (whisper + la línea de tiempo de cada nota). Aquí: un cambio por nota según lo
    * que más tiempo estuvo en el centro, más UNA frase dudosa que nunca se aplica (D138–D139). */
@@ -338,15 +395,25 @@ body.grabando .enviar{display:none}.estado{white-space:normal;line-height:1.25;m
     s2: { ren: 's2-2', que: { en: 'Technician labor: 30 → 24 h («removal is one day less»)', es: 'Mano de obra técnicos: 30 → 24 h («el retiro es un día menos»)' }, mueve: -383 },
     s5: { ren: 's5-2', que: { en: 'Travel days: remove («they are already in travel»)', es: 'Días de viaje: quitar («ya van en el viaje»)' }, mueve: -2190 }
   };
+  /* Ligar cada nota a un renglón con la prioridad de Esteban: lo que TOCÓ > lo que NOMBRÓ en el audio > la LÍNEA GUÍA. Si lo
+   * nombrado no coincide con lo de pantalla, gana lo nombrado (o lo tocado, si tocó) y el cambio queda marcado para confirmar.
+   * Aquí el «nombrado» es simulado: la nota 2 nombra el hotel de Crew travel, para que se vea el caso de desacuerdo. */
   function simular(lote) {
-    var c = [], vistos = {};
+    var c = [];
     lote.forEach(function (n, k) {
-      var cuenta = {}; (n.ctx || []).forEach(function (x, i) { var fin = (n.ctx[i + 1] || { t: n.dur }).t; if (x.sec) cuenta[x.sec] = (cuenta[x.sec] || 0) + Math.max(1, fin - x.t); });
-      var sec = Object.keys(cuenta).sort(function (a, b) { return cuenta[b] - cuenta[a]; })[0] || 's6';
-      if (vistos[sec]) sec = Object.keys(CAMBIOS).filter(function (s) { return !vistos[s]; })[0] || sec;
-      vistos[sec] = 1;
-      var x = CAMBIOS[sec], at = ((n.ctx || []).filter(function (y) { return y.sec === sec; })[0] || { t: 0 }).t;
-      c.push({ id: 'c' + k, nota: n.id, k: k + 1, en: at, sec: sec, que: x.que, mueve: x.mueve });
+      var ctx = n.ctx || [], toques = ctx.filter(function (x) { return x.fuente === 'toque' && (x.ren || x.sec); }), cuenta = {};
+      ctx.forEach(function (x, i) { if (x.fuente !== 'guia' || !x.ren) return; var fin = (ctx[i + 1] || { t: n.dur }).t; cuenta[x.ren] = (cuenta[x.ren] || 0) + Math.max(1, fin - x.t); });
+      var guia = Object.keys(cuenta).sort(function (a, b) { return cuenta[b] - cuenta[a]; })[0] || null;
+      var tocado = toques.length ? toques[toques.length - 1] : null, nombrado = k === 1 ? (c[0] && c[0].ren === 's6-2' ? 's1-1' : 's6-2') : null;
+      var obj, fuente, conf = null, at;
+      if (tocado) { obj = tocado; fuente = 'toque'; at = tocado.t; if (nombrado && nombrado !== tocado.ren) conf = t('confToque')(objetivoTxt(tocado), nombreRen(nombrado, true)); }
+      else if (nombrado) { obj = { sec: nombrado.split('-')[0], ren: nombrado }; fuente = 'nombre'; at = 0; if (guia !== nombrado) conf = t('confNombre')(guia ? nombreRen(guia, true) : '—', nombreRen(nombrado, true)); }
+      else { obj = guia ? { sec: guia.split('-')[0], ren: guia } : { sec: 's6', ren: null }; fuente = 'guia'; at = ((ctx.filter(function (x) { return x.ren === guia; })[0]) || { t: 0 }).t; }
+      var x = CAMBIOS[obj.sec], r = renDe(obj.ren), que, mueve;
+      if (x && x.ren === obj.ren) { que = x.que[L]; mueve = x.mueve; }
+      else if (r) { que = t('menos')(r[1], r[2]); mueve = -Math.round(r[3]); }
+      else { que = x ? x.que[L] : '—'; mueve = x ? x.mueve : 0; }
+      c.push({ id: 'c' + k, nota: n.id, k: k + 1, en: at, sec: obj.sec, ren: obj.ren, que: que, mueve: mueve, fuente: fuente, conf: conf });
     });
     var u = lote[lote.length - 1];
     return { notas: lote.length, cambios: c, dudosa: { nota: u.id, k: lote.length, en: Math.max(0, Math.floor(u.dur / 2)), frase: { en: '«…and the dryer [inaudible] the bypass…»', es: '«…y el secador [inaudible] el bypass…»' } } };
@@ -357,7 +424,9 @@ body.grabando .enviar{display:none}.estado{white-space:normal;line-height:1.25;m
     var viejo = document.getElementById('entendi'); if (viejo) viejo.remove();
     d.innerHTML = '<h2>' + esc(t('entendi')) + '</h2><p>' + esc(t('entendiSub')(E.notas, E.cambios.length)) + '</p>' +
       E.cambios.map(function (c) {
-        return '<label class="cambio"><input type="checkbox" checked data-c="' + c.id + '"><div class="d"><b>' + esc(nombreSec(c.sec)) + '</b> · ' + esc(c.que[L]) +
+        var liga = c.conf || (c.fuente === 'toque' ? t('ligaToque') : c.fuente === 'nombre' ? t('ligaNombre') : t('ligaGuia'));
+        return '<label class="cambio' + (c.conf ? ' confirmar' : '') + '"><input type="checkbox"' + (c.conf ? '' : ' checked') + ' data-c="' + c.id + '"><div class="d"><b>' + esc(nombreSec(c.sec)) + '</b> · ' + esc(c.que) +
+          '<span class="liga">' + esc(liga) + '</span>' +
           '<small><button type="button" class="oir" data-n="' + c.nota + '" data-t="' + c.en + '">' + esc(t('oirOrigen')(c.k, dur(c.en))) + '</button></small></div>' +
           '<div class="mov">' + (c.mueve > 0 ? '+' : c.mueve < 0 ? '−' : '') + $(Math.abs(c.mueve)) + '</div></label>';
       }).join('') +
@@ -379,7 +448,7 @@ body.grabando .enviar{display:none}.estado{white-space:normal;line-height:1.25;m
 
   /* ═══ Arranque: lo que quedó grabándose cuando se cerró la pestaña se recupera como «cortada» ═══ */
   (async function () {
-    pintar(); await abrirDB();
+    pintar(); marcarGuia(); await abrirDB();
     var ns = await todas(), corte = ns.filter(function (n) { return n.estado === 'grabando' && !n.enviada; });
     for (var i = 0; i < corte.length; i++) { corte[i].estado = 'cortada'; await poner('notas', corte[i]); }
     ENVIADAS = ns.filter(function (n) { return n.enviada; });
