@@ -1,6 +1,11 @@
 {
-  "version": "V1.63e.4",
+  "version": "V1.63g",
   "historial": [
+    {
+      "version": "V1.63g",
+      "fecha": "2026-10-26",
+      "nota": "fts-conceptualizador#12 (prototipo aprobado por Esteban, 26-oct 00:50 CST): revisar la cotización por voz desde la vista ejecutiva. Micrófono fijo con los gestos de WhatsApp, línea guía, tocar un renglón lo fija, «🌐 General» es toda la cotización; las notas se guardan en el teléfono mientras grabas y «Enviar N notas» las manda como un solo trabajo; el agente contesta una tarjeta «Esto entendí» que se aprueba toda o por cambio. Detrás del interruptor voz_visor_v163g."
+    },
     {
       "version": "V1.63e.4",
       "fecha": "2026-10-25",
