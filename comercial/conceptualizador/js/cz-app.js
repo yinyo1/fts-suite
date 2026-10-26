@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.63g';
+  var VERSION = 'V1.63g.1';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -2889,9 +2889,10 @@
     var VC = on('vista_cliente') || on('menu_vista_v158');
     var H = ST.hilo, U = H.propuesta || H.ultima || {}, A = H.acciones || [], cs = H.caso || {};
     var cm = A.filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'hecha'; }).pop(), br = A.filter(function (x) { return x.tipo === 'crear_borrador' && x.datos && x.datos.cotizacion; }).pop();
+    // V1.63g.1 (#12, bug de Esteban del 26-oct 08:25 CST) · el id del caso viaja a la vista: sin él, el micrófono de la voz no se montaba.
     var datos = function () {
       var H2 = ST.hilo, U2 = H2.propuesta || H2.ultima || {}, v = verUlt();
-      return { machote: U2.machote || null, caso: { titulo: cs.titulo, cliente: cs.cliente, machote_folio: (cm && cm.resultado && cm.resultado.folio) || cs.machote_folio || null, moneda: cs.moneda || (cs.pais === 'usa' ? 'USD' : 'MXN') },
+      return { machote: U2.machote || null, caso: { id: cs.id || (ST.sel && ST.sel.id) || null, pais: cs.pais || null, titulo: cs.titulo, cliente: cs.cliente, machote_folio: (cm && cm.resultado && cm.resultado.folio) || cs.machote_folio || null, moneda: cs.moneda || (cs.pais === 'usa' ? 'USD' : 'MXN') },
         hilo: H2, analisis: v.analisis || null, supuestos: v.supuestos || [], version: cm && cm.resultado && cm.resultado.version,
         // V1.52 · el % y las alertas de la vista: los MISMOS de la franja y el mensaje (CzIndicadores).
         pct: on('un_solo_dato') ? pctAv() : undefined, indicadores: indicHilo(),

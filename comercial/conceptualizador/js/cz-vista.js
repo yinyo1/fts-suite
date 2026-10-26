@@ -512,7 +512,9 @@
     pintar();
     try { el.focus({ preventScroll: true }); } catch (e) { /* sin foco no pasa nada */ }
     // V1.63g (`voz_visor_v163g`) · el micrófono de la vista: revisar la cotización por voz (cz-vozvista.js).
-    if (prendido('voz_visor_v163g') && G.CzVozVista && S.o.caso && S.o.caso.id) G.CzVozVista.montar({ el: el, caso: S.o.caso, idioma: S.o.idioma, cola: G.CzCola, resolver: S.o.al && S.o.al.resolver });
+    // V1.63g.1 · el id del caso puede venir en `caso` o solo en `hilo.caso` (el camino real del ⋮ no lo traía en `caso`).
+    var cidV = (S.o.caso && S.o.caso.id) || (S.o.hilo && S.o.hilo.caso && S.o.hilo.caso.id) || null;
+    if (prendido('voz_visor_v163g') && G.CzVozVista && cidV) G.CzVozVista.montar({ el: el, caso: Object.assign({}, S.o.caso, { id: cidV }), idioma: S.o.idioma, cola: G.CzCola, resolver: S.o.al && S.o.al.resolver });
   }
   function quitar() {
     if (!S.abierto) return;
