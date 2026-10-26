@@ -1,6 +1,11 @@
 {
-  "version": "V1.63g.1",
+  "version": "V1.63g.2",
   "historial": [
+    {
+      "version": "V1.63g.2",
+      "fecha": "2026-10-26",
+      "nota": "fts-conceptualizador#12 (Esteban, 26-oct 08:50 CST): la voz se aplica por código. En la tarjeta «Esto entendí» aparece lo aplicado directo al enviar (texto que no mueve el precio, como la vigencia) con lo que releyó Odoo y «↺ Deshacer»; al aprobar, lo determinista se aplica sin esperar al agente y la tarjeta dice qué quedó en Odoo. Detrás del interruptor voz_directo_v163g (apagado = como antes). Los estilos de la tarjeta también salen en el chat."
+    },
     {
       "version": "V1.63g.1",
       "fecha": "2026-10-26",
