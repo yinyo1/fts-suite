@@ -1,6 +1,11 @@
 {
-  "version": "V1.63g",
+  "version": "V1.63g.1",
   "historial": [
+    {
+      "version": "V1.63g.1",
+      "fecha": "2026-10-26",
+      "nota": "fts-conceptualizador#12 (bug de Esteban del 26-oct 08:25 CST): el micrófono de la vista ejecutiva no aparecía porque el menú ⋮ abría la vista sin el id del caso. Ahora el id viaja por el camino real (vista interna, del cliente y el menú de antes), y una prueba abre la vista con clics en ⋮ y falla si el micrófono no aparece."
+    },
     {
       "version": "V1.63g",
       "fecha": "2026-10-26",
