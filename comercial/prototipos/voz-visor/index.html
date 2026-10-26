@@ -41,7 +41,13 @@ body.grabando .guia-linea{border-top-color:#e0a100}
 /* ── letrero del objetivo, junto al micrófono ── */
 .objtag{position:fixed;right:16px;bottom:calc(84px + var(--pie));z-index:31;max-width:min(78vw,520px);background:var(--texto);color:#fff;font-size:13.5px;
   padding:7px 12px;border-radius:16px;box-shadow:0 2px 6px rgba(11,20,26,.3);line-height:1.3;max-height:3.1em;overflow:hidden;display:none}
-body.grabando .objtag{display:block}.objtag.toque{background:var(--acento-osc)}
+body.grabando .objtag{display:flex}.objtag.toque{background:var(--acento-osc)}.objtag.general{background:#4527a0}
+.objtag{align-items:center;gap:8px;padding:4px 4px 4px 12px;max-height:none}
+.objtag .ot{flex:1;min-width:0;line-height:1.3;max-height:2.7em;overflow:hidden}
+.objtag button{flex-shrink:0;height:32px;padding:0 10px;border-radius:16px;background:rgba(255,255,255,.18);color:#fff;font-size:13px;font-weight:600;white-space:nowrap}
+.objtag button[aria-pressed="true"]{background:#fff;color:#4527a0}
+.bloque{margin:12px 0 4px;font-size:13px;font-weight:700;color:var(--sec);text-transform:uppercase;letter-spacing:.03em;display:flex;justify-content:space-between;gap:8px}
+.bloque span{text-transform:none;letter-spacing:0;font-weight:600;color:var(--texto)}
 @media(min-width:900px){.objtag{right:calc(50% - 440px + 16px)}}
 .liga{display:inline-block;margin-top:3px;font-size:12.5px;color:var(--sec)}
 .cambio.confirmar .liga{color:var(--ambar);font-weight:600}
@@ -122,7 +128,7 @@ body.grabando .enviar{display:none}.estado{white-space:normal;line-height:1.25;m
 <div class="velo" id="velo"></div>
 <div class="hoja" id="hoja" role="dialog" aria-modal="true"></div>
 <div class="guia-linea" aria-hidden="true"><span id="guiaTxt"></span></div>
-<div class="objtag" id="objtag" aria-live="polite"></div>
+<div class="objtag" id="objtag"><span class="ot" id="objTxt" aria-live="polite"></span><button type="button" id="bGeneral" aria-pressed="false"></button></div>
 <div class="toast" id="toast"></div>
 <script>
 (function () {
@@ -142,6 +148,11 @@ body.grabando .enviar{display:none}.estado{white-space:normal;line-height:1.25;m
       entendi: 'What I understood', entendiSub: function (n, m) { return 'From ' + n + ' notes, ' + m + ' changes. Nothing is applied until you approve.'; },
       dudosa: 'Unclear — not applied', dudosaP: 'I heard: ', dudosaQ: 'What did you mean?', oirOrigen: function (k, s) { return '▶ Note ' + k + ' at ' + s; },
       mueve: 'total', aprobarTodo: 'Approve all', aplicarSel: 'Apply selected', rechazar: 'Reject all',
+      general: '🌐 General', generalLbl: 'General · the whole quote', ligaGeneral: '🌐 Linked: General (applies to the whole quote)',
+      ligaNombreGen: '🗣 Linked: you named it in the audio (you were in General)', bloqGen: 'General changes', bloqRen: 'Line changes',
+      mueveTotal: function (m) { return 'moves the total ' + m; },
+      GEN: [{ que: 'Margin: 40 % → 38 % («put the margin at thirty-eight»)', m: 'margen' }, { que: 'Payment terms: 50 % advance → 30 % advance («the advance goes to thirty percent»)', m: 0 },
+            { que: 'Exclusion added to the PDF notes: «Civil work and concrete by others»', m: 0 }],
       guia: 'guide', tocaste: 'Target', tocaHint: 'Tap a line to target it',
       ligaToque: '👆 Linked: you tapped it', ligaNombre: '🗣 Linked: you named it in the audio', ligaGuia: '📍 Linked: it was on the guide line',
       confNombre: function (a, b) { return '⚠ Confirm: on screen you had «' + a + '», the audio names «' + b + '». I used what you named.'; },
@@ -162,6 +173,11 @@ body.grabando .enviar{display:none}.estado{white-space:normal;line-height:1.25;m
       entendi: 'Esto entendí', entendiSub: function (n, m) { return 'De ' + n + ' notas, ' + m + ' cambios. Nada se aplica hasta que lo apruebes.'; },
       dudosa: 'Dudoso — no se aplica', dudosaP: 'Oí: ', dudosaQ: '¿Qué quisiste decir?', oirOrigen: function (k, s) { return '▶ Nota ' + k + ' en ' + s; },
       mueve: 'total', aprobarTodo: 'Aprobar todo', aplicarSel: 'Aplicar lo marcado', rechazar: 'Rechazar todo',
+      general: '🌐 General', generalLbl: 'General · toda la cotización', ligaGeneral: '🌐 Ligado: General (aplica a toda la cotización)',
+      ligaNombreGen: '🗣 Ligado: lo nombraste en el audio (estabas en General)', bloqGen: 'Cambios generales', bloqRen: 'Cambios por renglón',
+      mueveTotal: function (m) { return 'mueve el total ' + m; },
+      GEN: [{ que: 'Margen: 40 % → 38 % («pon el margen en treinta y ocho»)', m: 'margen' }, { que: 'Condiciones de pago: 50 % de anticipo → 30 % («el anticipo baja a treinta por ciento»)', m: 0 },
+            { que: 'Exclusión agregada a las notas del PDF: «Obra civil y concreto por terceros»', m: 0 }],
       guia: 'guía', tocaste: 'Objetivo', tocaHint: 'Toca un renglón para fijarlo',
       ligaToque: '👆 Ligado: lo tocaste', ligaNombre: '🗣 Ligado: lo nombraste en el audio', ligaGuia: '📍 Ligado: estaba en la línea guía',
       confNombre: function (a, b) { return '⚠ Confirma: en pantalla tenías «' + a + '» y el audio nombra «' + b + '». Usé lo que nombraste.'; },
@@ -190,7 +206,7 @@ body.grabando .enviar{display:none}.estado{white-space:normal;line-height:1.25;m
   var hora = function (ms) { var d = new Date(ms); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); };
   var renDe = function (rid) { var p = String(rid || '').split('-'), s = SECS.filter(function (x) { return x.id === p[0]; })[0]; return s && p.length > 1 ? s.r[Number(p[1])] : null; };
   var nombreRen = function (rid, corto) { var r = renDe(rid); if (!r) return null; var n = corto && r[0].length > 30 ? r[0].slice(0, 29) + '…' : r[0]; return n + ' · ' + r[1] + ' ' + r[2]; };
-  var objetivoTxt = function (o) { return o ? (o.ren ? nombreRen(o.ren, true) : nombreSec(o.sec)) : '—'; };
+  var objetivoTxt = function (o) { return o ? (o.general ? t('generalLbl') : o.ren ? nombreRen(o.ren, true) : o.sec ? nombreSec(o.sec) : '—') : '—'; };
   var nombreSec = function (id) { var s = SECS.filter(function (x) { return x.id === id; })[0]; return s ? s.n : id; };
   function toast(m) { var e = document.getElementById('toast'); e.textContent = m; e.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(function () { e.classList.remove('on'); }, 3200); }
 
@@ -258,13 +274,16 @@ body.grabando .enviar{display:none}.estado{white-space:normal;line-height:1.25;m
   /* El objetivo actual: lo que tocaste mientras grabas manda sobre la línea guía. */
   function objetivo() { return R && R.toque ? R.toque : centro(); }
   function pintarObjetivo() {
-    var e = document.getElementById('objtag'); if (!R) { e.textContent = ''; return; }
-    var o = objetivo(); e.className = 'objtag' + (R.toque ? ' toque' : '');
-    e.textContent = '🎯 ' + objetivoTxt(o) + (R.toque ? '' : ' · ' + t('guia'));
+    var e = document.getElementById('objtag'), b = document.getElementById('bGeneral'); b.textContent = t('general');
+    if (!R) { document.getElementById('objTxt').textContent = ''; return; }
+    var o = objetivo(), gen = !!(R.toque && R.toque.general); e.className = 'objtag' + (gen ? ' general' : R.toque ? ' toque' : '');
+    b.setAttribute('aria-pressed', gen ? 'true' : 'false');
+    document.getElementById('objTxt').textContent = (gen ? '' : '🎯 ') + objetivoTxt(o) + (R.toque ? '' : ' · ' + t('guia'));
   }
   function registrar(fuente) {   // un renglón en la línea de tiempo cuando cambia el objetivo o su fuente
     if (!R) return; var o = objetivo(), s = Math.round((performance.now() - R.t0) / 1000), u = R.nota.ctx[R.nota.ctx.length - 1];
-    if (!u || u.sec !== o.sec || u.ren !== o.ren || u.fuente !== fuente) R.nota.ctx.push({ t: s, sec: o.sec, ren: o.ren, fuente: fuente });
+    var sec = o.general ? null : o.sec || null, ren = o.general ? null : o.ren || null;
+    if (!u || u.sec !== sec || u.ren !== ren || u.fuente !== fuente) R.nota.ctx.push({ t: s, sec: sec, ren: ren, fuente: fuente });
   }
   /* Grabando: tocar un renglón o el título de una sección lo fija como objetivo desde ese segundo. No corta la grabación ni
    * abre o cierra nada. Tocar el mismo otra vez lo suelta (vuelve a mandar la línea guía). */
@@ -277,6 +296,14 @@ body.grabando .enviar{display:none}.estado{white-space:normal;line-height:1.25;m
     else { R.toque = o; x.classList.add('objetivo'); registrar('toque'); if (navigator.vibrate) navigator.vibrate(15); }
     marcarGuia(); poner('notas', R.nota);
   }, true);
+  /* «🌐 General»: desde ese segundo lo que diga aplica a toda la cotización (moneda, margen, plazos, pago, alcance, exclusiones,
+   * notas del PDF) hasta que toque un renglón. Se registra igual que un toque. Tocarlo otra vez vuelve a la línea guía. */
+  document.getElementById('bGeneral').addEventListener('click', function (e) {
+    e.preventDefault(); e.stopPropagation(); if (!R) return;
+    document.querySelectorAll('.objetivo').forEach(function (el) { el.classList.remove('objetivo'); });
+    if (R.toque && R.toque.general) { R.toque = null; registrar('guia'); } else { R.toque = { general: true }; registrar('general'); if (navigator.vibrate) navigator.vibrate(15); }
+    marcarGuia(); poner('notas', R.nota);
+  });
   async function empezar(y0) {
     if (R) return;
     var stream;
@@ -294,7 +321,7 @@ body.grabando .enviar{display:none}.estado{white-space:normal;line-height:1.25;m
     try { if (navigator.wakeLock) R.wake = await navigator.wakeLock.request('screen'); } catch (e) {}
     var c0 = centro(); nota.ctx.push({ t: 0, sec: c0.sec, ren: c0.ren, fuente: 'guia' });
     R.tick = setInterval(function () {   // segundo a segundo: qué estaba viendo
-      if (!R) return; marcarGuia(); registrar(R.toque ? 'toque' : 'guia');
+      if (!R) return; marcarGuia(); registrar(R.toque ? (R.toque.general ? 'general' : 'toque') : 'guia');
       nota.dur = (performance.now() - R.t0) / 1000; poner('notas', nota); pintarEstado();
     }, 1000);
     mic.classList.add('rec'); document.body.classList.add('grabando'); pintarObjetivo(); pintarEstado();
@@ -399,37 +426,52 @@ body.grabando .enviar{display:none}.estado{white-space:normal;line-height:1.25;m
    * nombrado no coincide con lo de pantalla, gana lo nombrado (o lo tocado, si tocó) y el cambio queda marcado para confirmar.
    * Aquí el «nombrado» es simulado: la nota 2 nombra el hotel de Crew travel, para que se vea el caso de desacuerdo. */
   function simular(lote) {
-    var c = [];
+    var c = [], g = 0, base = TOTAL - SECS[5].precio;   // el viaje va a costo: el margen no lo mueve
     lote.forEach(function (n, k) {
-      var ctx = n.ctx || [], toques = ctx.filter(function (x) { return x.fuente === 'toque' && (x.ren || x.sec); }), cuenta = {};
+      var ctx = n.ctx || [], marcas = ctx.filter(function (x) { return x.fuente === 'toque' || x.fuente === 'general'; }), cuenta = {};
       ctx.forEach(function (x, i) { if (x.fuente !== 'guia' || !x.ren) return; var fin = (ctx[i + 1] || { t: n.dur }).t; cuenta[x.ren] = (cuenta[x.ren] || 0) + Math.max(1, fin - x.t); });
       var guia = Object.keys(cuenta).sort(function (a, b) { return cuenta[b] - cuenta[a]; })[0] || null;
-      var tocado = toques.length ? toques[toques.length - 1] : null, nombrado = k === 1 ? (c[0] && c[0].ren === 's6-2' ? 's1-1' : 's6-2') : null;
+      var ult = marcas.length ? marcas[marcas.length - 1] : null, enGeneral = !!(ult && ult.fuente === 'general'), tocado = ult && !enGeneral ? ult : null;
+      // Simulado: la nota 2 nombra un renglón distinto al de la pantalla; la 4, estando en General, nombra las válvulas.
+      var nombrado = k === 1 ? (c[0] && c[0].ren === 's6-2' ? 's1-1' : 's6-2') : k === 3 ? 's3-3' : null;
       var obj, fuente, conf = null, at;
       if (tocado) { obj = tocado; fuente = 'toque'; at = tocado.t; if (nombrado && nombrado !== tocado.ren) conf = t('confToque')(objetivoTxt(tocado), nombreRen(nombrado, true)); }
-      else if (nombrado) { obj = { sec: nombrado.split('-')[0], ren: nombrado }; fuente = 'nombre'; at = 0; if (guia !== nombrado) conf = t('confNombre')(guia ? nombreRen(guia, true) : '—', nombreRen(nombrado, true)); }
+      else if (nombrado) { obj = { sec: nombrado.split('-')[0], ren: nombrado }; fuente = enGeneral ? 'nombreGen' : 'nombre'; at = enGeneral ? ult.t : 0;
+        if (!enGeneral && guia !== nombrado) conf = t('confNombre')(guia ? nombreRen(guia, true) : '—', nombreRen(nombrado, true)); }
+      else if (enGeneral) {
+        var G = t('GEN')[g % t('GEN').length]; g++;
+        var mueve = G.m === 'margen' ? Math.round(base * ((1 - 0.40 - 0.0521) / (1 - 0.38 - 0.0521) - 1)) : G.m;
+        c.push({ id: 'c' + k, nota: n.id, k: k + 1, en: ult.t, general: true, que: G.que, mueve: mueve, fuente: 'general', conf: null }); return;
+      }
       else { obj = guia ? { sec: guia.split('-')[0], ren: guia } : { sec: 's6', ren: null }; fuente = 'guia'; at = ((ctx.filter(function (x) { return x.ren === guia; })[0]) || { t: 0 }).t; }
-      var x = CAMBIOS[obj.sec], r = renDe(obj.ren), que, mueve;
-      if (x && x.ren === obj.ren) { que = x.que[L]; mueve = x.mueve; }
-      else if (r) { que = t('menos')(r[1], r[2]); mueve = -Math.round(r[3]); }
-      else { que = x ? x.que[L] : '—'; mueve = x ? x.mueve : 0; }
-      c.push({ id: 'c' + k, nota: n.id, k: k + 1, en: at, sec: obj.sec, ren: obj.ren, que: que, mueve: mueve, fuente: fuente, conf: conf });
+      var x = CAMBIOS[obj.sec], r = renDe(obj.ren), que, mueve2;
+      if (x && x.ren === obj.ren) { que = x.que[L]; mueve2 = x.mueve; }
+      else if (r) { que = t('menos')(r[1], r[2]); mueve2 = -Math.round(r[3]); }
+      else { que = x ? x.que[L] : '—'; mueve2 = x ? x.mueve : 0; }
+      c.push({ id: 'c' + k, nota: n.id, k: k + 1, en: at, sec: obj.sec, ren: obj.ren, que: que, mueve: mueve2, fuente: fuente, conf: conf });
     });
     var u = lote[lote.length - 1];
     return { notas: lote.length, cambios: c, dudosa: { nota: u.id, k: lote.length, en: Math.max(0, Math.floor(u.dur / 2)), frase: { en: '«…and the dryer [inaudible] the bypass…»', es: '«…y el secador [inaudible] el bypass…»' } } };
+  }
+  function fila(c) {
+    var liga = c.conf || (c.fuente === 'toque' ? t('ligaToque') : c.fuente === 'nombre' ? t('ligaNombre') : c.fuente === 'nombreGen' ? t('ligaNombreGen') : c.fuente === 'general' ? t('ligaGeneral') : t('ligaGuia'));
+    return '<label class="cambio' + (c.conf ? ' confirmar' : '') + '"><input type="checkbox"' + (c.conf ? '' : ' checked') + ' data-c="' + c.id + '"><div class="d"><b>' + esc(c.general ? 'General' : nombreSec(c.sec)) + '</b> · ' + esc(c.que) +
+      '<span class="liga">' + esc(liga) + '</span>' +
+      '<small><button type="button" class="oir" data-n="' + c.nota + '" data-t="' + c.en + '">' + esc(t('oirOrigen')(c.k, dur(c.en))) + '</button></small></div>' +
+      '<div class="mov">' + (c.mueve > 0 ? '+' : c.mueve < 0 ? '−' : '') + $(Math.abs(c.mueve)) + '</div></label>';
   }
   function entendi(E) {
     ultimoEntendi = E;
     var salida = document.getElementById('salida'), d = document.createElement('section'); d.className = 'entendi'; d.id = 'entendi';
     var viejo = document.getElementById('entendi'); if (viejo) viejo.remove();
     d.innerHTML = '<h2>' + esc(t('entendi')) + '</h2><p>' + esc(t('entendiSub')(E.notas, E.cambios.length)) + '</p>' +
-      E.cambios.map(function (c) {
-        var liga = c.conf || (c.fuente === 'toque' ? t('ligaToque') : c.fuente === 'nombre' ? t('ligaNombre') : t('ligaGuia'));
-        return '<label class="cambio' + (c.conf ? ' confirmar' : '') + '"><input type="checkbox"' + (c.conf ? '' : ' checked') + ' data-c="' + c.id + '"><div class="d"><b>' + esc(nombreSec(c.sec)) + '</b> · ' + esc(c.que) +
-          '<span class="liga">' + esc(liga) + '</span>' +
-          '<small><button type="button" class="oir" data-n="' + c.nota + '" data-t="' + c.en + '">' + esc(t('oirOrigen')(c.k, dur(c.en))) + '</button></small></div>' +
-          '<div class="mov">' + (c.mueve > 0 ? '+' : c.mueve < 0 ? '−' : '') + $(Math.abs(c.mueve)) + '</div></label>';
-      }).join('') +
+      (function () {   // los cambios generales van en su propio bloque, arriba, con cuánto mueven el total
+        var gen = E.cambios.filter(function (c) { return c.general; }), ren = E.cambios.filter(function (c) { return !c.general; });
+        var mg = gen.reduce(function (a, c) { return a + c.mueve; }, 0), mr = ren.reduce(function (a, c) { return a + c.mueve; }, 0);
+        var fm = function (m) { return (m > 0 ? '+' : m < 0 ? '−' : '') + $(Math.abs(m)); };
+        return (gen.length ? '<div class="bloque">' + esc(t('bloqGen')) + ' <span>' + esc(t('mueveTotal')(fm(mg))) + '</span></div>' + gen.map(fila).join('') : '') +
+          (ren.length ? '<div class="bloque">' + esc(t('bloqRen')) + ' <span>' + esc(t('mueveTotal')(fm(mr))) + '</span></div>' + ren.map(fila).join('') : '');
+      })() +
       '<div class="cambio dudoso"><div class="d"><b>' + esc(t('dudosa')) + '</b><br>' + esc(t('dudosaP')) + esc(E.dudosa.frase[L]) + '<br>' + esc(t('dudosaQ')) +
       '<small><button type="button" class="oir" data-n="' + E.dudosa.nota + '" data-t="' + E.dudosa.en + '">' + esc(t('oirOrigen')(E.dudosa.k, dur(E.dudosa.en))) + '</button></small></div></div>' +
       '<div class="acciones"><button type="button" class="fuerte" id="bTodo">' + esc(t('aprobarTodo')) + '</button><button type="button" id="bSel">' + esc(t('aplicarSel')) + '</button><button type="button" id="bNo">' + esc(t('rechazar')) + '</button></div>';
