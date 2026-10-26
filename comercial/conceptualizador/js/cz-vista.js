@@ -511,10 +511,13 @@
     try { G.history.pushState({ czVista: S.token }, ''); S.hist = true; } catch (e) { S.hist = false; }
     pintar();
     try { el.focus({ preventScroll: true }); } catch (e) { /* sin foco no pasa nada */ }
+    // V1.64 (`voz_visor_v164`) · el micrófono de la vista: revisar la cotización por voz (cz-vozvista.js).
+    if (prendido('voz_visor_v164') && G.CzVozVista && S.o.caso && S.o.caso.id) G.CzVozVista.montar({ el: el, caso: S.o.caso, idioma: S.o.idioma, cola: G.CzCola, resolver: S.o.al && S.o.al.resolver });
   }
   function quitar() {
     if (!S.abierto) return;
     S.abierto = false;
+    if (G.CzVozVista && G.CzVozVista.montado()) G.CzVozVista.desmontar();
     document.removeEventListener('keydown', tecla, true);
     G.removeEventListener('popstate', pop);
     G.removeEventListener('beforeprint', antesImp); G.removeEventListener('afterprint', despuesImp);
