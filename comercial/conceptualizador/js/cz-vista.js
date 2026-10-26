@@ -511,8 +511,8 @@
     try { G.history.pushState({ czVista: S.token }, ''); S.hist = true; } catch (e) { S.hist = false; }
     pintar();
     try { el.focus({ preventScroll: true }); } catch (e) { /* sin foco no pasa nada */ }
-    // V1.64 (`voz_visor_v164`) · el micrófono de la vista: revisar la cotización por voz (cz-vozvista.js).
-    if (prendido('voz_visor_v164') && G.CzVozVista && S.o.caso && S.o.caso.id) G.CzVozVista.montar({ el: el, caso: S.o.caso, idioma: S.o.idioma, cola: G.CzCola, resolver: S.o.al && S.o.al.resolver });
+    // V1.63g (`voz_visor_v163g`) · el micrófono de la vista: revisar la cotización por voz (cz-vozvista.js).
+    if (prendido('voz_visor_v163g') && G.CzVozVista && S.o.caso && S.o.caso.id) G.CzVozVista.montar({ el: el, caso: S.o.caso, idioma: S.o.idioma, cola: G.CzCola, resolver: S.o.al && S.o.al.resolver });
   }
   function quitar() {
     if (!S.abierto) return;
