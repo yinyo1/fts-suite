@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.63g.1';
+  var VERSION = 'V1.63g.2';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -3022,7 +3022,7 @@
     var limT = on('chat_limpio_v160') && G.CzLimpio && !ST.verTodoChat;
     otras.forEach(function (a) {
       // V1.63g (`voz_visor_v163g`) · «Esto entendí» de una ráfaga de voz: la pinta el módulo de voz (generales arriba, por renglón abajo).
-      if (a.tipo === 'voz_entendi') { if (on('voz_visor_v163g') && G.CzVozVista) h += G.CzVozVista.tarjeta(a, { idioma: idiomaElegido(), puede: mia(ST.hilo && ST.hilo.caso) }); return; }
+      if (a.tipo === 'voz_entendi') { if (on('voz_visor_v163g') && G.CzVozVista) h += G.CzVozVista.tarjeta(a, { idioma: idiomaElegido(), puede: mia(ST.hilo && ST.hilo.caso), caso_id: ST.hilo && ST.hilo.caso && ST.hilo.caso.id, acciones: (ST.hilo && ST.hilo.acciones) || [], codigo: on('voz_directo_v163g') }); return; }
       // V1.60 (`chat_limpio_v160`) · una tarjeta descartada, reemplazada o ya hecha por otra no se pinta (cuenta en «N ocultos»).
       if (limT && (a.estado === 'descartada' || yaHecha(a))) { ST.ocTarj = (ST.ocTarj || 0) + 1; return; }
       // y «Ya la mandé al cliente» sin orden en Odoo (o con la orden ya enviada): no es posible todavía (o ya se hizo).
@@ -3959,7 +3959,7 @@
     }
     ST.hilo = r.hilo; registrarPasos(r.hilo); revisarDictados();
     // V1.63g (`voz_visor_v163g`) · la tarjeta «Esto entendí» vigente y si la ráfaga de la vista sigue esperando.
-    if (on('voz_visor_v163g') && G.CzVozVista) G.CzVozVista.hilo(r.hilo, { resolver: resolver });
+    if (on('voz_visor_v163g') && G.CzVozVista) G.CzVozVista.hilo(r.hilo, { resolver: resolver, codigo: on('voz_directo_v163g') });
     // V1.60 (`chat_limpio_v160`) · el error de abajo se quita solo cuando su causa se corrigió (o llegó una tarjeta más nueva).
     if (ST.estErr && ST.estErr.caso === s.id && on('chat_limpio_v160') && G.CzLimpio && (r.hilo.fallas_odoo || []).length && !G.CzLimpio.fallaVigente(r.hilo)) { ST.estErr.h.cerrar(); ST.estErr = null; }
     pintarChat();

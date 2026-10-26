@@ -40,6 +40,11 @@
       dudosa: 'Dudoso — no se aplica', dudosaP: 'Oí: ', dudosaQ: '¿Qué quisiste decir?', oirOrigen: function (k, s) { return '▶ Nota ' + k + ' en ' + s; },
       aprobarTodo: 'Aprobar todo', aplicarSel: 'Aplicar lo marcado', rechazar: 'Rechazar todo', nada: 'No marcaste nada.',
       hecha: function (a, m) { return '✓ Aprobaste ' + a + ' de ' + m + '. El agente los aplica en UNA versión nueva del machote y la orden en borrador, como tu decisión 🔒.'; },
+      // V1.63g.2 (`voz_directo_v163g`) · lo que se aplicó directo al enviar, y lo que releyó Odoo después de aplicar.
+      directoT: 'Directo, sin tarjeta (no mueve el precio)', quedanSub: function (m) { return 'Lo directo ya quedó; ' + (m === 1 ? 'el cambio de abajo espera' : 'los ' + m + ' cambios de abajo esperan') + ' tu aprobación.'; }, deshacer: '↺ Deshacer', deshacerMsg: function (k) { return '↺ Deshacer lo aplicado de tu voz · ' + k; },
+      deshEnviado: 'Pedí deshacerlo: en unos segundos vuelve como estaba.', lectura: function (so, v) { return '✓ ' + so + ' actualizada' + (v ? ': vigencia ' + v : '') + ' (releída de Odoo)'; },
+      lecturaMal: function (so, f) { return '⚠ ' + so + ': no quedó en Odoo (' + f + ')'; },
+      hechaCodigo: function (a, m) { return '✓ Aprobaste ' + a + ' de ' + m + '. Lo determinista se aplicó por código; lo de criterio lo hace el agente.'; },
       rechazada: 'Rechazado: no cambió nada.', verTarjeta: function (m) { return '📝 Esto entendí · ' + m + (m === 1 ? ' cambio' : ' cambios'); },
       general1: 'General' },
     en: { listo: 'Hold to record · slide ↑ to lock', suelta: 'Release to save · ↑ lock', bloq: 'Locked · scroll and talk · tap ■ to finish',
@@ -58,6 +63,10 @@
       dudosa: 'Unclear — not applied', dudosaP: 'I heard: ', dudosaQ: 'What did you mean?', oirOrigen: function (k, s) { return '▶ Note ' + k + ' at ' + s; },
       aprobarTodo: 'Approve all', aplicarSel: 'Apply selected', rechazar: 'Reject all', nada: 'Nothing selected.',
       hecha: function (a, m) { return '✓ You approved ' + a + ' of ' + m + '. The agent applies them in ONE new version of the machote and the draft order, as your decision 🔒.'; },
+      directoT: 'Applied directly, no card (does not move the price)', quedanSub: function (m) { return 'The direct part is done; ' + (m === 1 ? 'the change below waits' : 'the ' + m + ' changes below wait') + ' for your approval.'; }, deshacer: '↺ Undo', deshacerMsg: function (k) { return '↺ Undo what was applied from your voice · ' + k; },
+      deshEnviado: 'Undo requested: it goes back in a few seconds.', lectura: function (so, v) { return '✓ ' + so + ' updated' + (v ? ': valid until ' + v : '') + ' (re-read from Odoo)'; },
+      lecturaMal: function (so, f) { return '⚠ ' + so + ': it did not land in Odoo (' + f + ')'; },
+      hechaCodigo: function (a, m) { return '✓ You approved ' + a + ' of ' + m + '. What is exact was applied by code; what needs judgment, the agent does.'; },
       rechazada: 'Rejected: nothing changed.', verTarjeta: function (m) { return '📝 What I understood · ' + m + (m === 1 ? ' change' : ' changes'); },
       general1: 'General' }
   };
@@ -146,6 +155,9 @@
       '.czvv-oir{color:#1b6fd8;font-size:13px;margin-top:4px;background:none;border:0;padding:0}',
       '.czvv-acc{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.czvv-acc button{height:42px;border-radius:21px;padding:0 16px;font-weight:600;border:1px solid #00a884;color:#008069;background:#fff}.czvv-acc button.fuerte{background:#00a884;color:#fff}',
       '.czvv-hecho{margin-top:10px;padding:10px 12px;border-radius:10px;background:#e7f6ee;font-size:14px}',
+      '.czvv-dir{border-top:1px solid #e3e6e8;padding:9px 0;display:flex;gap:10px;align-items:flex-start}.czvv-dir .d{flex:1;min-width:0;overflow-wrap:anywhere}.czvv-dir .ok{color:#00a884;font-weight:700}.czvv-dir .d small{display:block}',
+      '.czvv-desh{display:flex;justify-content:flex-end;margin-top:6px}.czvv-desh button{border:1px solid #c9ced2;background:#fff;border-radius:18px;padding:7px 14px;font-size:14px;min-height:36px}',
+      '.czvv-lect{margin-top:8px;font-size:13px;color:#2f6f4f;overflow-wrap:anywhere}.czvv-lect.mal{color:#b3261e}',
       '#cz-vista.czvv-con{padding-bottom:120px}'
     ].join('\n');
     document.head.appendChild(s);
@@ -311,7 +323,18 @@
   function liga(c, lang) {
     return c.confirmar ? '⚠ ' + String(c.confirmar).replace(/^⚠\s*/, '') : tl(lang, { toque: 'ligaToque', nombre: 'ligaNombre', nombreGen: 'ligaNombreGen', general: 'ligaGeneral', guia: 'ligaGuia' }[c.liga] || 'ligaGuia');
   }
+  /** Lo que releyó Odoo en el primer borrador que hizo el agente DESPUÉS de una hora dada (la ráfaga o la aprobación). */
+  function lecturaDespues(acc, desde, lang) {
+    var t0 = new Date(desde || 0).getTime() - 5000;
+    var b = (acc || []).filter(function (x) { return x && x.tipo === 'crear_borrador' && x.estado === 'hecha' && x.resultado && x.resultado.orden_nombre && new Date(x.hecha_at || x.created_at || 0).getTime() >= t0; })
+      .sort(function (x, y) { return Number(x.id) - Number(y.id); })[0];
+    if (!b) return null;
+    var r = b.resultado, mal = r.cambio_ok === false;
+    return '<div class="czvv-lect' + (mal ? ' mal' : '') + '">' + esc(mal ? tl(lang, 'lecturaMal')(r.orden_nombre, ((r.cambio && r.cambio.faltan) || []).join(', ') || '?') : tl(lang, 'lectura')(r.orden_nombre, r.vence_el || '')) + '</div>';
+  }
   function tarjeta(a, o) {
+    // V1.63g.2 · los estilos de la tarjeta también en el chat (antes solo se ponían al montar el micrófono en la vista).
+    try { css(); } catch (e) { /* sin documento: el HTML sale igual */ }
     o = o || {}; var lang = o.idioma === 'en' ? 'en' : (o.idioma || L) === 'en' ? 'en' : 'es';
     var d = a.datos || {}, cam = Array.isArray(d.cambios) ? d.cambios : [], dud = Array.isArray(d.dudosas) ? d.dudosas : [], r = a.resultado || {}, mon = d.moneda || '';
     var gen = cam.filter(function (c) { return c.general; }), ren = cam.filter(function (c) { return !c.general; });
@@ -324,7 +347,17 @@
         (c.nota ? '<small><button type="button" class="czvv-oir" data-czvv-oir="' + esc(c.nota) + ':' + (Number(c.t) || 0) + '">' + esc(tl(lang, 'oirOrigen')(c.nota, dur(c.t))) + '</button></small>' : '') + '</div>' +
         '<div class="mov">' + (Number(c.mueve) ? esc(dinero(c.mueve, '')) : '—') + '</div></label>';
     };
-    var h = '<div class="czvv-ent" data-czvv-a="' + esc(a.id) + '"><h4>📝 ' + esc(tl(lang, 'entendi')) + '</h4><p>' + esc(tl(lang, 'entendiSub')(Number(d.notas) || 1, cam.length)) + '</p>';
+    var dir = Array.isArray(d.directos) ? d.directos : [];
+    var h = '<div class="czvv-ent" data-czvv-a="' + esc(a.id) + '"' + (o.caso_id ? ' data-czvv-caso="' + esc(o.caso_id) + '"' : '') + '><h4>📝 ' + esc(tl(lang, 'entendi')) + '</h4>' +
+      (cam.length || !dir.length ? '<p>' + esc(dir.length ? tl(lang, 'quedanSub')(cam.length) : tl(lang, 'entendiSub')(Number(d.notas) || 1, cam.length)) + '</p>' : '');
+    // V1.63g.2 · lo aplicado directo al enviar (texto que no mueve el precio): sin palomita, con su «↺ Deshacer» y lo que releyó Odoo.
+    if (dir.length) {
+      h += '<div class="czvv-bloque">' + esc(tl(lang, 'directoT')) + '</div>' + dir.map(function (c) {
+        return '<div class="czvv-dir"><span class="ok">✓</span><div class="d">' + esc(c.hecho || c.que || '') + '<small class="czvv-liga">' + esc(liga(c, lang)) + '</small></div></div>'; }).join('');
+      var lec = lecturaDespues(o.acciones, a.created_at, lang);
+      if (lec) h += lec;
+      if (d.deshacer && o.puede !== false && !o.sinDeshacer) h += '<div class="czvv-desh"><button type="button" data-czvv-deshacer="' + esc(d.deshacer) + '">' + esc(tl(lang, 'deshacer')) + '</button></div>';
+    }
     if (gen.length) h += '<div class="czvv-bloque">' + esc(tl(lang, 'bloqGen')) + ' <span>' + esc(tl(lang, 'mueveTotal')(dinero(suma(gen), mon))) + '</span></div>' + gen.map(fila).join('');
     if (ren.length) h += '<div class="czvv-bloque">' + esc(tl(lang, 'bloqRen')) + ' <span>' + esc(tl(lang, 'mueveTotal')(dinero(suma(ren), mon))) + '</span></div>' + ren.map(fila).join('');
     h += dud.map(function (x) {   // D138: lo dudoso se pregunta con la frase literal y NUNCA se aplica
@@ -333,7 +366,11 @@
     }).join('');
     if (abierta && cam.length) h += '<div class="czvv-acc"><button type="button" class="fuerte" data-czvv-hacer="todo">' + esc(tl(lang, 'aprobarTodo')) + '</button><button type="button" data-czvv-hacer="sel">' + esc(tl(lang, 'aplicarSel')) +
       '</button><button type="button" data-czvv-hacer="no">' + esc(tl(lang, 'rechazar')) + '</button></div>';
-    else if (a.estado === 'hecha') h += '<div class="czvv-hecho">' + esc(tl(lang, 'hecha')((r.aprobados || []).length, cam.length)) + '</div>';
+    else if (a.estado === 'hecha') {
+      var lecA = o.codigo ? lecturaDespues(o.acciones, a.hecha_at, lang) : null;
+      h += '<div class="czvv-hecho">' + esc(tl(lang, o.codigo ? 'hechaCodigo' : 'hecha')((r.aprobados || []).length, cam.length)) + '</div>' + (lecA || '');
+      if (o.codigo && lecA && o.puede !== false) h += '<div class="czvv-desh"><button type="button" data-czvv-deshacer="V' + esc(a.id) + '">' + esc(tl(lang, 'deshacer')) + '</button></div>';
+    }
     else if (a.estado === 'descartada') h += '<div class="czvv-hecho">' + esc(tl(lang, 'rechazada')) + '</div>';
     return h + '</div>';
   }
@@ -341,9 +378,17 @@
   function enlazar(nodo, o) {
     if (!nodo || nodo._czvv) return; nodo._czvv = true;
     nodo.addEventListener('click', function (e) {
-      var b = e.target.closest ? e.target.closest('[data-czvv-hacer],[data-czvv-oir]') : null; if (!b) return;
+      var b = e.target.closest ? e.target.closest('[data-czvv-hacer],[data-czvv-oir],[data-czvv-deshacer]') : null; if (!b) return;
       var card = b.closest('[data-czvv-a]'); if (!card) return;
       e.preventDefault();
+      // V1.63g.2 · «↺ Deshacer»: un mensaje al chat del caso que el motor resuelve sin modelo (términos, spec, decretos y la orden).
+      if (b.hasAttribute('data-czvv-deshacer')) {
+        var cola = S.cola || G.CzCola, cid = card.getAttribute('data-czvv-caso') || (S.caso && S.caso.id);
+        if (!cola || !cid) return;
+        b.disabled = true;
+        Promise.resolve(cola.encolar({ caso_id: cid }, t('deshacerMsg')(b.getAttribute('data-czvv-deshacer')), [], Date.now())).then(function () { toast(t('deshEnviado')); }, function () { b.disabled = false; toast(t('noEnvio')); });
+        return;
+      }
       if (b.hasAttribute('data-czvv-oir')) { var p = b.getAttribute('data-czvv-oir').split(':'); oirOrigen(card.getAttribute('data-czvv-a'), Number(p[0]), Number(p[1])); return; }
       var todos = [].slice.call(card.querySelectorAll('[data-czvv-c]')).map(function (i) { return i.getAttribute('data-czvv-c'); });
       var que = b.getAttribute('data-czvv-hacer'), ap = que === 'todo' ? todos : que === 'sel' ? [].slice.call(card.querySelectorAll('[data-czvv-c]:checked')).map(function (i) { return i.getAttribute('data-czvv-c'); }) : [];
@@ -365,7 +410,7 @@
   }
   function verTarjeta() {
     if (!S.accion) return;
-    var h = abrirHoja('<h3>&nbsp;<button type="button" id="czvvCerrarH" class="czvv-ico" aria-label="' + esc(t('cerrar')) + '">✕</button></h3>' + tarjeta(S.accion, { idioma: L }));
+    var h = abrirHoja('<h3>&nbsp;<button type="button" id="czvvCerrarH" class="czvv-ico" aria-label="' + esc(t('cerrar')) + '">✕</button></h3>' + tarjeta(S.accion, { idioma: L, caso_id: S.caso && S.caso.id, acciones: S.acc, codigo: S.codigo }));
     enlazar(h, { resolver: S.resolver });
   }
 
@@ -440,6 +485,7 @@
   /** Con cada hilo nuevo: la tarjeta vigente de la ráfaga y si sigue esperando. */
   function hilo(H, o) {
     if (o && o.resolver) S.resolver = o.resolver;
+    S.acc = (H && H.acciones) || []; S.codigo = !!(o && o.codigo);
     var A = ((H && H.acciones) || []).filter(function (a) { return a.tipo === 'voz_entendi'; });
     var ult = A.length ? A[A.length - 1] : null;
     if (ult && S.espera && new Date(ult.created_at || ult.at || 0).getTime() >= S.espera.at - 60000) S.espera = null;
