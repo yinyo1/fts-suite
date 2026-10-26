@@ -2324,6 +2324,7 @@
       ST.selDesde = 0; ST.htmlChat = h;
     } else ST.htmlChat = null;
     M.innerHTML = h;
+    if (on('voz_visor_v164') && G.CzVozVista) G.CzVozVista.enlazar(M, { resolver: resolver });
     ST.htmlNodo = M.firstChild;   // V1.60 · si otro (el menú) escribe en #msgs, este nodo ya no está y se repinta
     if (on('tarjetas_colapsadas')) colapsarCartas(M);
     if (LM && on('leer_mas')) LM.aplicar();
@@ -2900,7 +2901,8 @@
         cotizacion: VC ? ((brUlt() || {}).datos || {}).cotizacion || null : undefined,
         regla15: VC ? ((((brUlt() || {}).resultado || {}).regla15 || {}).decisiones || null) : undefined };
     };
-    G.CzVista.abrir(Object.assign(datos(), { inicio: inicio || null, al: { actualizar: async function () { await cargarHilo(); return datos(); },
+    G.CzVista.abrir(Object.assign(datos(), { inicio: inicio || null, idioma: idiomaElegido(), al: { actualizar: async function () { await cargarHilo(); return datos(); },
+      resolver: resolver,   // V1.64 (`voz_visor_v164`) · aprobar «Esto entendí» desde la vista
       // V1.62a (`n0_v162`, #12 resultado 7) · el precio que da la persona sobre el renglón: evento `correccion` con `datos.n0`.
       n0: on('n0_v162') ? async function (d) { var r = await C.evento({ caso_id: ST.hilo.caso.id, tipo: 'correccion', concepto: 'precio_n0', razon: '', datos: { n0: d } });
         if (r && r.ok) { ST.irAbajo = true; cargarHilo(); } return r; } : null,
@@ -3018,6 +3020,8 @@
     var candCond = !!(G.CzCondiciones && G.CzCondiciones.cerrado(ST.hilo));
     var limT = on('chat_limpio_v160') && G.CzLimpio && !ST.verTodoChat;
     otras.forEach(function (a) {
+      // V1.64 (`voz_visor_v164`) · «Esto entendí» de una ráfaga de voz: la pinta el módulo de voz (generales arriba, por renglón abajo).
+      if (a.tipo === 'voz_entendi') { if (on('voz_visor_v164') && G.CzVozVista) h += G.CzVozVista.tarjeta(a, { idioma: idiomaElegido(), puede: mia(ST.hilo && ST.hilo.caso) }); return; }
       // V1.60 (`chat_limpio_v160`) · una tarjeta descartada, reemplazada o ya hecha por otra no se pinta (cuenta en «N ocultos»).
       if (limT && (a.estado === 'descartada' || yaHecha(a))) { ST.ocTarj = (ST.ocTarj || 0) + 1; return; }
       // y «Ya la mandé al cliente» sin orden en Odoo (o con la orden ya enviada): no es posible todavía (o ya se hizo).
@@ -3953,6 +3957,8 @@
       ST.retoma = rt ? Object.assign({ id: s.id, t: G.CzAvance.ultimaActividad(r.hilo) }, rt) : null;
     }
     ST.hilo = r.hilo; registrarPasos(r.hilo); revisarDictados();
+    // V1.64 (`voz_visor_v164`) · la tarjeta «Esto entendí» vigente y si la ráfaga de la vista sigue esperando.
+    if (on('voz_visor_v164') && G.CzVozVista) G.CzVozVista.hilo(r.hilo, { resolver: resolver });
     // V1.60 (`chat_limpio_v160`) · el error de abajo se quita solo cuando su causa se corrigió (o llegó una tarjeta más nueva).
     if (ST.estErr && ST.estErr.caso === s.id && on('chat_limpio_v160') && G.CzLimpio && (r.hilo.fallas_odoo || []).length && !G.CzLimpio.fallaVigente(r.hilo)) { ST.estErr.h.cerrar(); ST.estErr = null; }
     pintarChat();
