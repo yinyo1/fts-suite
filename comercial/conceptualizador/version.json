@@ -1,6 +1,11 @@
 {
-  "version": "V1.63g.4",
+  "version": "V1.63g.5",
   "historial": [
+    {
+      "version": "V1.63g.5",
+      "fecha": "2026-10-27",
+      "nota": "fts-conceptualizador#12 (Esteban, 27-oct 16:30 CST): las decisiones superadas se revisan también en la base. En pantalla, con el modo análisis, los conceptos que salieron de la plática, el levantamiento, una foto o un PDF ya salen como «✓ va» (nacen aceptados, D97): no hay que palomearlos ni esperar «Listo, sigue»; se cambian con ↺ Cambiar."
+    },
     {
       "version": "V1.63g.4",
       "fecha": "2026-10-27",
