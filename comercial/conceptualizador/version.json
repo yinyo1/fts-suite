@@ -1,6 +1,11 @@
 {
-  "version": "V1.63g.2",
+  "version": "V1.63g.4",
   "historial": [
+    {
+      "version": "V1.63g.4",
+      "fecha": "2026-10-27",
+      "nota": "fts-conceptualizador#12 (Esteban, 27-oct 15:30 CST, punto 1 URGENTE): no esperar de verdad. El saludo de acompañamiento ya no pide dejar de mandar: el agente empieza desde el primer mensaje y suma lo que llegue. En la base (migración 0051) el levantamiento también arranca con el primer mensaje y hay alarma si un mensaje pasa 5 min sin respuesta."
+    },
     {
       "version": "V1.63g.2",
       "fecha": "2026-10-26",

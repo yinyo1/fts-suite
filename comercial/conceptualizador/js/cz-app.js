@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.63g.2';
+  var VERSION = 'V1.63g.4';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -72,8 +72,8 @@
       intro: 'Mándame todo (fotos, audios, PDFs, notas) y cuando acabes toca «Ya es todo».' }
   };
   /* V1.63e bloque 2b (#12, Esteban 25-oct 11:40 CST) · con `analisis_v163e` el agente ya no espera al botón: arma conceptos, supuestos y
-   * precios en cuanto dejas de mandar. El saludo viejo («No propongo conceptos hasta que toques…») decía lo contrario. Apagado, el de antes. */
-  var INTRO_ANALISIS = { acompanamiento: 'Modo acompañamiento. Mándame lo que vayas viendo: fotos, notas de voz, medidas, la ruta. En cuanto dejas de mandar unos minutos armo conceptos, supuestos y precios, y tú corriges lo que no cuadre. El botón «Ya terminé, cotiza» sigue para cuando quieras cerrar.' };
+   * precios desde el primer mensaje (V1.63g.4: nunca se pide dejar de escribir). El saludo viejo («No propongo conceptos hasta que toques…») decía lo contrario. Apagado, el de antes. */
+  var INTRO_ANALISIS = { acompanamiento: 'Modo acompañamiento. Mándame lo que vayas viendo: fotos, notas de voz, medidas, la ruta. Empiezo a armar conceptos, supuestos y precios desde tu primer mensaje; si mandas más lo sumo, y tú corriges lo que no cuadre. El botón «Ya terminé, cotiza» sigue para cuando quieras cerrar.' };
   function introDe(m) { return on('analisis_v163e') && INTRO_ANALISIS[m] ? INTRO_ANALISIS[m] : MODOS[m].intro; }
   // Igual que es_disparador() de la base: «cotiza» sí, «cotización…» no.
   var DISPARO = /^\s*(ya\s+es\s+todo|es\s+todo|ya\s+termin|cotiza(?![a-záéíóúñ]))/i;
