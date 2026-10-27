@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.63g.2';
+  var VERSION = 'V1.63g.5';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -72,8 +72,8 @@
       intro: 'Mándame todo (fotos, audios, PDFs, notas) y cuando acabes toca «Ya es todo».' }
   };
   /* V1.63e bloque 2b (#12, Esteban 25-oct 11:40 CST) · con `analisis_v163e` el agente ya no espera al botón: arma conceptos, supuestos y
-   * precios en cuanto dejas de mandar. El saludo viejo («No propongo conceptos hasta que toques…») decía lo contrario. Apagado, el de antes. */
-  var INTRO_ANALISIS = { acompanamiento: 'Modo acompañamiento. Mándame lo que vayas viendo: fotos, notas de voz, medidas, la ruta. En cuanto dejas de mandar unos minutos armo conceptos, supuestos y precios, y tú corriges lo que no cuadre. El botón «Ya terminé, cotiza» sigue para cuando quieras cerrar.' };
+   * precios desde el primer mensaje (V1.63g.4: nunca se pide dejar de escribir). El saludo viejo («No propongo conceptos hasta que toques…») decía lo contrario. Apagado, el de antes. */
+  var INTRO_ANALISIS = { acompanamiento: 'Modo acompañamiento. Mándame lo que vayas viendo: fotos, notas de voz, medidas, la ruta. Empiezo a armar conceptos, supuestos y precios desde tu primer mensaje; si mandas más lo sumo, y tú corriges lo que no cuadre. El botón «Ya terminé, cotiza» sigue para cuando quieras cerrar.' };
   function introDe(m) { return on('analisis_v163e') && INTRO_ANALISIS[m] ? INTRO_ANALISIS[m] : MODOS[m].intro; }
   // Igual que es_disparador() de la base: «cotiza» sí, «cotización…» no.
   var DISPARO = /^\s*(ya\s+es\s+todo|es\s+todo|ya\s+termin|cotiza(?![a-záéíóúñ]))/i;
@@ -2543,11 +2543,16 @@
   function tarjetasRespuesta(U) {
     var H = ST.hilo, h = '';
     var decididos = {}; (H.eventos || []).forEach(function (e) { if (e.concepto && (e.tipo === 'aceptar' || e.tipo === 'rechazar')) decididos[e.concepto] = e; });
+    // V1.63g.5 (#12, D97 superada, Esteban 27-oct 16:30 CST) · con el modo análisis lo que salió de la plática, el levantamiento, una foto o un
+    // PDF NACE aceptado (procesa.renderConceptos): ya no se cuenta «por decidir» ni se espera «Listo, sigue». Se cambia con ↺ Cambiar.
+    var nace = on('analisis_v163e') ? function (k) { return k.estado === 'aceptado' || (!k.estado && /^(pl[aá]tica|levantamiento|foto|pdf|adjunto|audio|nota de voz|voz)\b/i.test(String(k.origen || '').trim())); } : function () { return false; };
+    (U.conceptos || []).forEach(function (k) { if (!decididos[k.id] && nace(k)) decididos[k.id] = { tipo: 'aceptar', nacio: true }; });
     if ((U.conceptos || []).length) {
       // V1.32 (3) · palomeada en lote: cada clic se guarda, y las decisiones viajan JUNTAS al motor cuando
       // se decide el último o con «Listo, sigue». (4) el botón dice «enviando…» hasta que el servidor contesta;
       // (5) el cuadro de la razón va DEBAJO del renglón, a todo lo ancho, y se puede dictar.
-      var faltan = U.conceptos.filter(function (k) { return !decididos[k.id]; }).length, dec = U.conceptos.length - faltan;
+      var nacidos = U.conceptos.filter(function (k) { return decididos[k.id] && decididos[k.id].nacio; }).length;
+      var faltan = U.conceptos.filter(function (k) { return !decididos[k.id]; }).length, dec = U.conceptos.length - faltan - nacidos;
       var lotes = (H.eventos || []).filter(function (e) { return e.tipo === 'palomeada' && e.datos && Number(e.datos.propuesta_trabajo_id) === Number(U.trabajo_id); });
       var enLote = lotes.reduce(function (n, e) { return n + ((e.datos.decisiones || []).length); }, 0);
       h += '<div class="carta conceptos"><h4>🧩 Conceptos propuestos' + (faltan ? ' · <span class="gris">' + faltan + ' por decidir</span>' : '') + '</h4>';
@@ -2568,8 +2573,9 @@
           (ST.errBt[kk] && !b.abierto ? '<span class="err-bt">' + esc(ST.errBt[kk]) + '</span>' : '') +
           (b.abierto && !d ? cajaRazon(kk, 'Escribe o dicta qué cambia. Si no va, di por qué.', 'Guardar', false) : '') + '</div>';
       });
-      if (enLote && !faltan) h += '<div class="pie-lote"><span class="txt-lote">✓ Mandé tus ' + enLote + ' decisiones juntas: armo el BOM.</span></div>';
-      else h += '<div class="pie-lote"><span class="txt-lote">' + (enLote ? '✓ Ya mandé ' + enLote + '. ' : '') + (dec ? 'Llevas ' + dec + ' de ' + U.conceptos.length + '. Se mandan juntas cuando decidas el último' : 'Palomea cada uno; las decisiones se mandan juntas al final') + '.</span>' +
+      if (!faltan && !enLote && nacidos) h += '<div class="pie-lote"><span class="txt-lote">✓ Lo que salió de la plática ya va (' + nacidos + '). Si algo no va, ábrelo con ↺ Cambiar.</span></div>';
+      else if (enLote && !faltan) h += '<div class="pie-lote"><span class="txt-lote">✓ Mandé tus ' + enLote + ' decisiones juntas: armo el BOM.</span></div>';
+      else h += '<div class="pie-lote"><span class="txt-lote">' + (nacidos ? '✓ ' + nacidos + ' ya van (salieron de la plática). ' : '') + (enLote ? '✓ Ya mandé ' + enLote + '. ' : '') + (dec ? 'Llevas ' + dec + ' de ' + (U.conceptos.length - nacidos) + '. Se mandan juntas cuando decidas el último' : nacidos ? 'Decide ' + (faltan === 1 ? 'el que falta' : 'los ' + faltan + ' que faltan') + ' y se manda' : 'Palomea cada uno; las decisiones se mandan juntas al final') + '.</span>' +
         (ST.listo ? '<button class="bt si enviando" id="bListo" disabled aria-busy="true">' + GIRO + 'Enviando…</button>' :
          '<button class="bt si" id="bListo"' + (dec > enLote && faltan ? '' : ' disabled') + '>Listo, sigue' + (faltan && dec ? ' (' + faltan + ' sin decidir)' : '') + '</button>') + '</div>';
       if (ST.errBt.listo) h += '<span class="err-bt">' + esc(ST.errBt.listo) + '</span>';
