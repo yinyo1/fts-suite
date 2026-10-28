@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.63i';
+  var VERSION = 'V1.63i.1';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -983,7 +983,7 @@
       });
       // V1.59 · una persona nueva en la delegación: su usuario y sus dos valores; sin esto, solo lo suyo (lo decide la base).
       if (g[2] === 'persona') h += '<div class="czc-nuevo"><label class="czc-campo" for="czcNuevoU"><span>Agregar persona<small>usuario de la suite</small></span><input id="czcNuevoU" maxlength="60" autocomplete="off" placeholder="nombre.apellido"></label>' +
-        '<label class="czc-campo" for="czcNuevoP"><span>Mueve lo de<small>puede_mover</small></span><input id="czcNuevoP" maxlength="200" autocomplete="off" placeholder="nombre.apellido,esteban.delacruz"></label>' +
+        '<label class="czc-campo" for="czcNuevoP"><span>Mueve lo de<small>puede_mover</small></span><input id="czcNuevoP" maxlength="200" autocomplete="off" placeholder="usuario.uno,usuario.dos"></label>' +
         '<label class="czc-campo" for="czcNuevoV"><span>Vendedor en Odoo<small>vendedor_odoo</small></span><input id="czcNuevoV" maxlength="9" inputmode="numeric" autocomplete="off" placeholder="12"></label></div>';
       h += '</div>';
     });
@@ -2928,6 +2928,9 @@
           return C.subir({ caso_id: caso, archivo: n.nombre, mime: n.mime, clase: 'audio', sha256: await Me.sha256(n.blob), duracion_s: n.duracion_s, escrito_at: String(n.escrito_at || Date.now()), b64: await Me.base64(n.blob) }); },
         transcripciones: async function () { await cargarHilo(); var m = adjuntosPorId(), o = {}; Object.keys(m).forEach(function (k) { if (m[k] && m[k].transcripcion) o[k] = m[k].transcripcion; }); return o; } } : null,
       confirmar: on('por_confirmar_v163i') ? async function (llaves) { var r = await C.evento({ caso_id: ST.hilo.caso.id, tipo: 'correccion', concepto: 'confirma', razon: '', datos: { objetivos: llaves, via: 'boton' } });
+        if (r && r.ok) { ST.irAbajo = true; cargarHilo(); } return r; } : null,
+      // V1.63i (#16, Esteban 28-oct punto 6b) · «✓ Mandar con el estimado»: su propio evento; el motor lo deja como decreto de quien lo tocó.
+      autorizarEstimado: on('por_confirmar_v163i') ? async function (llaves) { var r = await C.evento({ caso_id: ST.hilo.caso.id, tipo: 'correccion', concepto: 'autoriza_estimado', razon: '', datos: { objetivos: llaves, via: 'boton' } });
         if (r && r.ok) { ST.irAbajo = true; cargarHilo(); } return r; } : null,
       corregir: on('por_confirmar_v163i') ? async function (it, nuevo) {
         var r = /^(supuesto|conjetura):/.test(it.k) ? await C.evento({ caso_id: ST.hilo.caso.id, tipo: 'correccion', concepto: 'cambia', razon: '', datos: { objetivo: it.k, antes: it.texto, despues: nuevo, via: 'boton' } })
