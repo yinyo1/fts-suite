@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.63g.5';
+  var VERSION = 'V1.63i';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -2209,12 +2209,17 @@
       var corto = !on('leer_mas') && !mio && U && U.machote && U.machote.tabla && Number(U.trabajo_id) === Number(m.trabajo_id) && String(sinMarca(m.texto) || '').length > 280 && !(ST.verTodo || {})[m.id];
       // V1.53b · con `leer_mas`, todo mensaje del agente se corta a 5 renglones con «… Leer más» pegado al final (lo hace el núcleo).
       var leer = !mio && on('leer_mas') && LM ? ' data-leer="' + esc(m.id) + '"' : '';
+      // V1.63i A5 (fts-conceptualizador#16, `ruido_v163i`) · el agente contesta primero qué hizo y qué falta tocar en UNA línea; el detalle
+      // (lo que sigue al primer párrafo) va colapsado en «Ver detalle», sin «Leer más».
+      var det = !mio && on('ruido_v163i') ? detalleColapsado(sinMarca(m.texto)) : null;
+      if (det) leer = '';
       // Sin trabajo en modo «ya tengo el levantamiento»: guardado; el motor lo lee todo junto al disparar.
       var tk = mio ? (!m.trabajo_id && modo === 'levantamiento' ? '<span class="tk leido" title="Guardado; lo reviso todo junto cuando toques «Ya es todo»">' + palomita(true) + '</span>' : tick(tr)) : '';
       if (!pleg) burbuja(mio ? 'yo' : 'el', '', 'Conceptualizador' + (/respaldo/.test(m.autor) ? ' · respaldo' : ''),
         citaDe(m.responde_a, m.texto) +
         adjuntosHtml((m.adjuntos || []).map(function (a) { return Object.assign({}, a, meta[a.id] || {}); }), false) +
-        (sinMarca(m.texto) ? '<div class="txt' + (corto ? ' txt-corto' : '') + '"' + leer + '>' + (mio ? esc(sinMarca(m.texto)) : md(sinMarca(m.texto))) + '</div>' +
+        (sinMarca(m.texto) ? '<div class="txt' + (corto ? ' txt-corto' : '') + '"' + leer + '>' + (mio ? esc(sinMarca(m.texto)) : det ? md(det.linea) +
+          '<details class="cz-detalle"><summary style="cursor:pointer;color:var(--verde,#0a7d32);font-weight:600">Ver detalle</summary>' + md(det.resto) + '</details>' : md(sinMarca(m.texto))) + '</div>' +
           (corto ? '<button type="button" class="link ver-todo" data-vertodo="' + esc(m.id) + '">Ver todo</button>' : '') : '') +
         '<span class="hora">' + (m.escrito_at && Math.abs(new Date(m.created_at) - new Date(m.escrito_at)) > 120000 ? '<i title="Escrito sin señal; llegó ' + esc(hora(m.created_at)) + '">⟲</i> ' : '') +
         esc(hora(t)) + tk + '</span><div style="clear:both"></div>', m.id);
@@ -2914,7 +2919,20 @@
       n0: on('n0_v162') ? async function (d) { var r = await C.evento({ caso_id: ST.hilo.caso.id, tipo: 'correccion', concepto: 'precio_n0', razon: '', datos: { n0: d } });
         if (r && r.ok) { ST.irAbajo = true; cargarHilo(); } return r; } : null,
       // V1.63b C (`secciones_v163`) · marcar o desmarcar una sección revisada: evento directo a la base, sin trabajo del motor.
-      seccion: on('secciones_v163') ? async function (d) { return C.evento({ caso_id: ST.hilo.caso.id, tipo: 'seccion_revisada', concepto: '', razon: '', datos: d }); } : null } }));
+      seccion: on('secciones_v163') ? async function (d) { return C.evento({ caso_id: ST.hilo.caso.id, tipo: 'seccion_revisada', concepto: '', razon: '', datos: d }); } : null,
+      // V1.63i A2 (fts-conceptualizador#16, `por_confirmar_v163i`) · «✓ Confirmar» de uno o varios pendientes en UN evento (el motor lo cierra
+      // sin modelo como decisión humana) y «✗ No» con lo que va en su lugar: «↺ Cambiar» de un supuesto o pregunta, o un mensaje sobre el renglón.
+      // V1.63i A1 (`voz_previa_v163i`) · la previa de audios: la nota se sube suelta al soltarla (whisper la transcribe sin agente) y su
+      // transcripción se lee del hilo, como el dictado del chat.
+      previa: on('voz_previa_v163i') ? { subir: async function (n) { var caso = ST.hilo && ST.hilo.caso && ST.hilo.caso.id; if (!caso || !navigator.onLine) return { ok: false, error: 'SIN_SENAL' };
+          return C.subir({ caso_id: caso, archivo: n.nombre, mime: n.mime, clase: 'audio', sha256: await Me.sha256(n.blob), duracion_s: n.duracion_s, escrito_at: String(n.escrito_at || Date.now()), b64: await Me.base64(n.blob) }); },
+        transcripciones: async function () { await cargarHilo(); var m = adjuntosPorId(), o = {}; Object.keys(m).forEach(function (k) { if (m[k] && m[k].transcripcion) o[k] = m[k].transcripcion; }); return o; } } : null,
+      confirmar: on('por_confirmar_v163i') ? async function (llaves) { var r = await C.evento({ caso_id: ST.hilo.caso.id, tipo: 'correccion', concepto: 'confirma', razon: '', datos: { objetivos: llaves, via: 'boton' } });
+        if (r && r.ok) { ST.irAbajo = true; cargarHilo(); } return r; } : null,
+      corregir: on('por_confirmar_v163i') ? async function (it, nuevo) {
+        var r = /^(supuesto|conjetura):/.test(it.k) ? await C.evento({ caso_id: ST.hilo.caso.id, tipo: 'correccion', concepto: 'cambia', razon: '', datos: { objetivo: it.k, antes: it.texto, despues: nuevo, via: 'boton' } })
+          : await C.enviar({ caso_id: ST.hilo.caso.id, texto: '✗ «' + String(it.texto || '').slice(0, 120) + '»: ' + nuevo });
+        if (r && r.ok) { ST.irAbajo = true; cargarHilo(); } return r; } : null } }));
     void U;
   }
   function releidoOdoo(r) {
@@ -3606,6 +3624,13 @@
    * se reconstruye del marcador al principio del texto. Con ella, de la columna (y si un mensaje viejo trae
    * marcador, también se respeta). */
   function servidorConCitas() { return ((ST.hilo && ST.hilo.mensajes) || []).some(function (m) { return Object.prototype.hasOwnProperty.call(m, 'responde_a'); }); }
+  /* V1.63i A5 (`ruido_v163i`) · {linea, resto} si el texto trae una primera línea corta y detalle aparte; si no, null (se pinta como siempre). */
+  function detalleColapsado(t) {
+    var x = String(t || ''), k = x.indexOf('\n\n'); if (k < 0) return null;
+    var linea = x.slice(0, k).trim(), resto = x.slice(k + 2).trim();
+    if (!linea || !resto || linea.length > 320 || /\n/.test(linea)) return null;
+    return { linea: linea, resto: resto };
+  }
   function sinMarca(t) { return CG ? CG.marcador.quitar(t) : (t || ''); }
   function msgPorId(id) { return ((ST.hilo && ST.hilo.mensajes) || []).filter(function (m) { return String(m.id) === String(id); })[0] || null; }
   /** Lo que el componente necesita de un mensaje: quién lo dijo, su texto (o la transcripción si es nota de voz). */

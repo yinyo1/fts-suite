@@ -1,6 +1,11 @@
 {
-  "version": "V1.63g.5",
+  "version": "V1.63i",
   "historial": [
+    {
+      "version": "V1.63i",
+      "fecha": "2026-10-28",
+      "nota": "fts-conceptualizador#16 (Esteban, 27-oct): revisión más rápida, todo detrás de interruptores apagados. «Revisar (N)» junto a «Enviar N notas»: cada nota con su transcripción (whisper en segundo plano al soltar), a qué quedó ligada, y oír, editar, cambiar lo ligado y borrar; el texto editado manda sobre el audio (voz_previa_v163i). En la vista ejecutiva, el chip «Por confirmar (N)» primero, con ✓ Confirmar y ✗ No de un toque y la misma cuenta que «Hacia el 100» (por_confirmar_v163i). Las respuestas del agente: una línea y el detalle colapsado (ruido_v163i)."
+    },
     {
       "version": "V1.63g.5",
       "fecha": "2026-10-27",
