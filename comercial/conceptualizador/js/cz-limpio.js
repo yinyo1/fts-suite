@@ -117,6 +117,21 @@
         boton: 'Rehacer las condiciones de pago', hacer: { acc: 'mandar', texto: 'Rehaz las condiciones de pago con los hitos vigentes (la nota y la tabla del PDF de la misma lista) y vuelve a armar la cotización para Odoo.' } };
     }
     var r = X[codigo] || reintentar;
+    // V1.63i (#16, 70f5e9, Esteban 28-oct 07:15 MT, `fallas_odoo_v163i`) · toda falla dice la CAUSA en una línea (lo que contestó el
+    // servidor) y qué tocar. «Volver a armar» solo donde de verdad lo arregla; el mismo error dos veces ya no ofrece repetir lo mismo
+    // (la base le avisa a Esteban: alarma `falla_odoo_repetida`, db/053). Richard tocó «Volver a armar» con OPCIONAL_INVALIDO y salía igual.
+    if (prendido('fallas_odoo_v163i')) {
+      var NO_ARREGLA = { REGLA15_CALCULOS: { texto: 'Hay frases con cálculos que vería el cliente sin decidir: en la tarjeta del borrador elige «Usar el texto limpio» o «Liberar…» en cada una y vuelve a tocar el botón.', boton: null, hacer: null } };
+      if (NO_ARREGLA[codigo]) r = NO_ARREGLA[codigo];
+      var causa = String((f && f.mensaje) || '').replace(/\s+/g, ' ').trim();
+      if (causa.length > 220) causa = causa.slice(0, 217).replace(/\s+\S*$/, '') + '…';
+      var fid = f && f.id, desde = Date.now() - 24 * 3600e3;
+      var antes = ((H && H.fallas_odoo) || []).filter(function (g) { return g && g.codigo === codigo && (g.que || 'crear_borrador') === ((f && f.que) || 'crear_borrador') &&
+        String(g.id) !== String(fid) && (Date.parse(g.at || '') || 0) > desde; }).length;
+      var vez = antes + 1, repite = vez >= 2 && r.hacer && (r.hacer.acc === 'mandar' || r.hacer.acc === 'reintentar');
+      var txt = (causa ? 'Causa: ' + causa + ' ' : '') + (repite ? 'Es la ' + vez + '.ª vez con el mismo error, así que repetirlo no lo arregla: ya le avisé a Esteban.' : r.texto);
+      return { texto: txt, boton: repite ? null : (r.boton || null), hacer: repite ? null : (r.hacer || null), quien: repite ? 'Esteban' : (r.quien || null), codigo: codigo, causa: causa || null, vez: vez };
+    }
     return { texto: r.texto, boton: r.boton || null, hacer: r.hacer || null, quien: r.quien || null, codigo: codigo };
   }
   function t(x) { return Date.parse(x || '') || 0; }

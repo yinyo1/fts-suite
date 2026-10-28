@@ -2,7 +2,7 @@
 -- conceptualizador_0053 · V1.63i (fts-conceptualizador#16, Esteban 27-oct-2026): revisión rápida y reglas de campo
 --
 -- Todo nace APAGADO; apagado, cada función sale igual que con la 0052.
---   · 9 interruptores: criterio_v163i (B6–B9, solo motor), ruido_v163i (A5), voz_previa_v163i (A1), por_confirmar_v163i (A2),
+--   · 10 interruptores: criterio_v163i (B6–B9, solo motor), ruido_v163i (A5), voz_previa_v163i (A1), por_confirmar_v163i (A2),
 --     un_paso_v163i (A3, motor y suite), cambio_no_llegado_v163i (A4) y frenos_v163i (URGENTE 21fec6: la regla 6 no frena un N3 ni lo
 --     aceptado, el N3 se completa solo, el margen real en el texto y la vigencia no es «a mano»; solo motor).
 --   · A4 · tabla cambio_pedido: el motor anota el cambio que pidió una persona (api_motor `cambio_pedido`) y cuándo lo releyó
@@ -15,6 +15,7 @@
 --     la acción es de esa persona, del caso del trabajo, de menos de 2 horas, trabajo en curso, el machote del caso y puede_mover.
 --   · 2 interruptores más: regla_nueva_v163i (B: una regla nueva no frena lo ya aceptado, solo motor) y freno_arriba_v163i
 --     (C y D: el freno va arriba y nada lleva ✓ si algo quedó frenado o sin comprobar; relectura del renglón en Odoo; solo motor).
+--   · fallas_odoo_v163i (#16, 70f5e9): el mismo error de Odoo 2 veces en un caso en 24 h es alarma `falla_odoo_repetida` a Esteban.
 --   · A1 · voz_rafaga_normal conserva por nota la transcripción revisada en el teléfono (`texto`, `texto_editado`), el
 --     audio ya subido (`adjunto_id`) y el ligado que la persona eligió en la previa (`liga`).
 -- Reversa: reversas/053_reversa.sql.
@@ -56,7 +57,7 @@ LANGUAGE sql IMMUTABLE AS $in53$
                'no_esperar_v163g4',
                'superadas_v163g5',
                'criterio_v163i','ruido_v163i','voz_previa_v163i','por_confirmar_v163i','un_paso_v163i','cambio_no_llegado_v163i',
-               'frenos_v163i','regla_nueva_v163i','freno_arriba_v163i']
+               'frenos_v163i','regla_nueva_v163i','freno_arriba_v163i','fallas_odoo_v163i']
 $in53$;
 INSERT INTO conceptualizador.config (clave, valor)
 SELECT 'interruptor:' || n, '0' FROM unnest(conceptualizador.interruptores_nombres()) n
@@ -197,6 +198,22 @@ BEGIN
           coalesce(conceptualizador.hora_local(f.desde) || ' CST', '?') || '.',
         'Abre el caso: si hay una tarjeta para Odoo sin tocar, tócala o pídele al dueño que la toque; si la orden está bloqueada, el chat dice por qué.',
         'cambio-no-llegado', jsonb_build_object('caso_id', f.caso_id, 'mensaje_id', f.mensaje_id, 'autor', f.autor, 'dueno', f.dueno));
+    END LOOP;
+  END IF;
+  -- V1.63i (#16, 70f5e9, Esteban 28-oct 07:15 MT) · el mismo error de Odoo dos veces en un caso (24 h) = alarma a Esteban: «Volver a armar»
+  -- que da el mismo error no lo arregla (Richard, OPCIONAL_INVALIDO, msg 1667 y después).
+  IF conceptualizador.prendido('fallas_odoo_v163i') THEN
+    v_ahora := coalesce(nullif(current_setting('cz.ahora_prueba', true), '')::timestamptz, now());
+    FOR f IN SELECT fo.caso_id, fo.codigo, count(*) AS n, min(fo.at) AS desde, max(fo.at) AS ultima, (array_agg(fo.mensaje ORDER BY fo.id DESC))[1] AS mensaje,
+                    (array_agg(fo.actor ORDER BY fo.id DESC))[1] AS actor, k.titulo, k.autor
+               FROM conceptualizador.falla_odoo fo JOIN conceptualizador.caso k ON k.id = fo.caso_id
+              WHERE fo.at > v_ahora - interval '24 hours' AND fo.at <= v_ahora AND k.archivado_at IS NULL
+              GROUP BY fo.caso_id, fo.codigo, k.titulo, k.autor HAVING count(*) >= 2 LOOP
+      v_r := v_r || conceptualizador.alarma('falla_odoo_repetida', f.caso_id::text || ':' || f.codigo, f.desde,
+        'El mismo error de Odoo (' || f.codigo || ') ' || f.n || ' veces en el caso «' || left(f.titulo, 60) || '» (' || f.autor || '), la última a las ' ||
+          coalesce(conceptualizador.hora_local(f.ultima) || ' CST', '?') || ': ' || left(coalesce(f.mensaje, 'sin mensaje'), 200),
+        'Reintentar o volver a armar da lo mismo: hay que arreglar la causa. Abre el caso y el error dice qué la produce.',
+        'falla-odoo-repetida', jsonb_build_object('caso_id', f.caso_id, 'codigo', f.codigo, 'veces', f.n, 'actor', f.actor));
     END LOOP;
   END IF;
   RETURN v_r;
