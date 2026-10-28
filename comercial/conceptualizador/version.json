@@ -1,6 +1,11 @@
 {
-  "version": "V1.63i",
+  "version": "V1.63i.1",
   "historial": [
+    {
+      "version": "V1.63i.1",
+      "fecha": "2026-10-28",
+      "nota": "fts-conceptualizador#16 (Esteban, 28-oct 07:15 MT): la falla al crear o actualizar en Odoo dice la causa en una línea y qué tocar, y la 2.ª vez del mismo error ya no ofrece repetirlo (`fallas_odoo_v163i`); «Por confirmar» cuenta solo lo que mueve más del 1 % y el estimado se autoriza con «✓ Mandar con el estimado» (`por_confirmar_v163i`); el ejemplo de «Mueve lo de» ya no nombra a nadie."
+    },
     {
       "version": "V1.63i",
       "fecha": "2026-10-28",

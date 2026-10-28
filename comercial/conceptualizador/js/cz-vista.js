@@ -340,9 +340,13 @@
       (PC.items.length ? PC.items.map(function (x) {
         var no = S.pcNo === x.k;
         return '<div class="vz-niv vz-n3" data-nivel="pendiente" data-k="' + esc(x.k) + '"><button type="button" class="vz-fila" aria-expanded="false" data-k="' + esc(x.k) + '">' +
-          '<span class="vz-nom"><span class="d">' + esc(x.texto) + '</span><small>' + esc(TIPO_PC[x.tipo] || x.tipo) + (x.fuente ? ' · ' + esc(x.fuente) : '') + '</small></span>' +
+          '<span class="vz-nom"><span class="d">' + esc(x.texto) + '</span><small>' + esc(TIPO_PC[x.tipo] || x.tipo) + (x.fuente ? ' · ' + esc(x.fuente) : '') +
+            // V1.63i (#16, Esteban 28-oct punto 6a) · un supuesto de 1 % del total o menos se lista pero no frena el 100 %.
+            (x.no_frena ? ' · <span class="vz-pc-nofrena">no frena (mueve 1 % o menos)</span>' : '') + '</small></span>' +
           '<span class="vz-num"><b>' + esc(mv(x.mueve)) + '</b></span></button>' +
           '<div class="vz-pc-acc">' + (x.si ? '<button type="button" class="vz-bt lleno" data-vz-pcsi="' + esc(x.k) + '">✓ Confirmar</button>' : '') +
+          // V1.63i (#16, punto 6b) · el estimado se autoriza con su botón propio (decreto de quien lo toca, con fecha), no con el ✓ genérico.
+          (x.autoriza ? '<button type="button" class="vz-bt lleno" data-vz-pcae="' + esc(x.k) + '">✓ Mandar con el estimado</button>' : '') +
           (x.no ? '<button type="button" class="vz-bt" data-vz-pcno="' + esc(x.k) + '">✗ No</button>' : '') + '</div>' +
           (no ? '<div class="vz-pc-no"><input id="vzPcNo" type="text" placeholder="¿Qué va en su lugar?" aria-label="Qué va en su lugar"><button type="button" class="vz-bt lleno" data-vz-pcnog="' + esc(x.k) + '">Enviar</button>' +
             '<button type="button" class="vz-bt" data-vz-pcnox="1">Cancelar</button></div>' : '') + '</div>';
@@ -360,6 +364,15 @@
         if (S.abierto) pintar();
       }, function () { L.forEach(function (x) { delete S.pcOk[x]; }); S.pcMsg = 'Sin conexión: vuelve a tocar ✓.'; if (S.abierto) pintar(); });
     }, 1500);
+  }
+  function autorizarPc(k) {
+    var al = S.o && S.o.al; if (!al || typeof al.autorizarEstimado !== 'function') return;
+    S.pcOk[k] = true; S.pcMsg = ''; pintar();
+    Promise.resolve(al.autorizarEstimado([k])).then(function (r) {
+      if (!r || !r.ok) { delete S.pcOk[k]; S.pcMsg = 'No se pudo autorizar (' + ((r && r.error) || 'sin respuesta') + '). Vuelve a tocar el botón.'; }
+      else S.pcMsg = 'Autorizado: la cotización puede salir con el estimado; queda como decisión tuya, con fecha.';
+      if (S.abierto) pintar();
+    }, function () { delete S.pcOk[k]; S.pcMsg = 'Sin conexión: vuelve a tocar el botón.'; if (S.abierto) pintar(); });
   }
   function corregirPc(k) {
     var al = S.o && S.o.al, i = S.el.querySelector('#vzPcNo'), v = i ? String(i.value || '').trim() : '';
@@ -380,7 +393,9 @@
     var nSin = todas.filter(function (f) { return f.sin; }).length;
     var mar = margen(D.tot.c, D.tot.p, D.tot.com);
     // V1.63i A2 · la lista del motor (herramientas/avance/por-confirmar.js), la misma que cuenta «Hacia el 100»; sin lo que ya confirmó aquí.
-    var PC = prendido('por_confirmar_v163i') && an && an.por_confirmar ? { n: Math.max(0, Number(an.por_confirmar.n) - Object.keys(S.pcOk).length),
+    // V1.63i (#16, punto 6a) · N cuenta lo que frena: confirmar uno de «no frena» no lo baja.
+    var pcAll = an && an.por_confirmar ? arr(an.por_confirmar.items) : [], pcHechosFrenan = pcAll.filter(function (x) { return x && S.pcOk[x.k] && !x.no_frena; }).length;
+    var PC = prendido('por_confirmar_v163i') && an && an.por_confirmar ? { n: Math.max(0, Number(an.por_confirmar.n) - pcHechosFrenan),
       items: arr(an.por_confirmar.items).filter(function (x) { return x && x.k && !S.pcOk[x.k]; }) } : null;
 
     var h = '<div class="vz-barra"><button type="button" class="vz-atras" data-vz="cerrar" aria-label="Cerrar la vista ejecutiva">' +
@@ -506,6 +521,7 @@
     if (b.hasAttribute('data-vz-rev')) { var t2 = b.getAttribute('data-vz-rev').split(':'); marcar(t2[0], t2[1] === '1'); return; }
     if (a === 'pc') { S.pc = !S.pc; pintar(); return; }
     if (b.hasAttribute('data-vz-pcsi')) { confirmarPc(b.getAttribute('data-vz-pcsi')); return; }
+    if (b.hasAttribute('data-vz-pcae')) { autorizarPc(b.getAttribute('data-vz-pcae')); return; }
     if (b.hasAttribute('data-vz-pcno')) { S.pcNo = b.getAttribute('data-vz-pcno'); pintar(); var i1 = S.el.querySelector('#vzPcNo'); if (i1) i1.focus(); return; }
     if (b.hasAttribute('data-vz-pcnog')) { corregirPc(b.getAttribute('data-vz-pcnog')); return; }
     if (b.hasAttribute('data-vz-pcnox')) { S.pcNo = null; pintar(); return; }
@@ -652,6 +668,7 @@
     '#cz-vista .vz-pc [data-nivel="pendiente"]>.vz-fila{flex:1 1 320px;min-width:0;grid-template-columns:minmax(0,1fr) auto;padding:6px 4px}',
     '#cz-vista .vz-pc [data-nivel="pendiente"] .vz-nom span.d{white-space:normal;overflow:visible;overflow-wrap:anywhere}',
     '#cz-vista .vz-pc .vz-num{white-space:nowrap;font-variant-numeric:tabular-nums;align-self:start}',
+    '#cz-vista .vz-pc-nofrena{color:var(--vz-tenue,#6b7280);font-style:italic}',
     '#cz-vista .vz-pc-acc{display:flex;gap:6px;flex:0 0 auto}#cz-vista .vz-pc-no{display:flex;gap:6px;flex:1 1 100%}#cz-vista .vz-pc-no input{flex:1;min-width:0;height:34px;padding:0 8px;border:1px solid var(--vz-linea);border-radius:8px}',
     '#cz-vista .vz-fres{font-size:12.5px;color:var(--vz-sec);width:100%}',
     '#cz-vista .vz-fres button{color:var(--vz-marca);font-weight:600}',
