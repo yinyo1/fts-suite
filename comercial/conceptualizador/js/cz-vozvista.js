@@ -50,7 +50,9 @@
       // V1.63i A1 (`voz_previa_v163i`) · la previa de audios antes de enviar.
       revisar: function (n) { return 'Revisar (' + n + ')'; }, previa: 'Revisa antes de enviar', transcribiendo: 'transcribiendo…', sinTexto: 'Sin transcripción todavía: se puede enviar igual.',
       editar: 'Editar el texto', editadoTag: '✎ lo editaste: manda sobre el audio', ligadoA: 'Ligado a', cambiarLiga: 'Cambiar', ligaGeneralOp: '🌐 General',
-      eligeRenglon: 'Toca el renglón, la sección o el pendiente al que va esta nota', ligaCambiada: 'Ligado cambiado', sinLigar: 'sin ligar (nada en la línea guía) · toca «Cambiar»', transcritaEn: function (s) { return 'transcrita en ' + s + ' s · $0 (whisper local)'; } },
+      eligeRenglon: 'Toca el renglón, la sección o el pendiente al que va esta nota', ligaCambiada: 'Ligado cambiado', sinLigar: 'sin ligar (nada en la línea guía) · toca «Cambiar»', transcritaEn: function (s) { return 'transcrita en ' + s + ' s · $0 (whisper local)'; },
+      // V1.63i.2 (`mic_visible_v163i`) · la ráfaga que no entendió nada se cierra sola.
+      nadaEntendi: 'No entendí nada, vuelve a grabar.' },
     en: { listo: 'Hold to record · slide ↑ to lock', suelta: 'Release to save · ↑ lock', bloq: 'Locked · scroll and talk · tap ■ to finish',
       tocaHint: 'Tap a line to target it', corta: 'Too short: hold the mic while you talk', guardada: function (d) { return 'Note saved (' + d + ')'; },
       cortada: function (d) { return 'The browser cut a recording: I kept what it had (' + d + ')'; },
@@ -75,7 +77,8 @@
       general1: 'General',
       revisar: function (n) { return 'Review (' + n + ')'; }, previa: 'Review before sending', transcribiendo: 'transcribing…', sinTexto: 'No transcript yet: you can send it anyway.',
       editar: 'Edit the text', editadoTag: '✎ you edited it: it wins over the audio', ligadoA: 'Linked to', cambiarLiga: 'Change', ligaGeneralOp: '🌐 General',
-      eligeRenglon: 'Tap the line, section or pending item this note is about', ligaCambiada: 'Link changed', sinLigar: 'not linked (nothing on the guide line) · tap «Change»', transcritaEn: function (s) { return 'transcribed in ' + s + ' s · $0 (local whisper)'; } }
+      eligeRenglon: 'Tap the line, section or pending item this note is about', ligaCambiada: 'Link changed', sinLigar: 'not linked (nothing on the guide line) · tap «Change»', transcritaEn: function (s) { return 'transcribed in ' + s + ' s · $0 (local whisper)'; },
+      nadaEntendi: 'I didn’t understand anything, record it again.' }
   };
   var L = 'es', t = function (k) { return (T[L] || T.es)[k]; }, tl = function (lang, k) { return (T[lang] || T.es)[k]; };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
@@ -117,6 +120,11 @@
   var S = { el: null, caso: null, cola: null, notas: [], enviadas: [], espera: null, accion: null, resolver: null, montado: false,
     previa: null, eligiendo: null, sondeo: null };   // V1.63i A1 · {subir, transcripciones} de cz-app; la nota cuyo ligado se elige; el sondeo
   var previaOn = function () { try { return !!S.previa && typeof G.CzInterruptor === 'function' && G.CzInterruptor('voz_previa_v163i') === true; } catch (e) { return false; } };
+  /* V1.63i.2 (#16 punto 2, `mic_visible_v163i`) · una ráfaga que no entendió nada (0 cambios y 0 aplicados directo, como la nota de
+   * silencio de 70f5e9 del 27-oct) no deja tarjeta viva: no hay nada que aprobar, así que sin píldora, la tarjeta dice «No entendí nada,
+   * vuelve a grabar» (con la frase literal de lo dudoso, D138) y, si la mandó este teléfono, lo avisa al llegar. */
+  var micOn = function () { try { return typeof G.CzInterruptor === 'function' && G.CzInterruptor('mic_visible_v163i') === true; } catch (e) { return false; } };
+  function vacia(a) { var d = (a && a.datos) || {}; return !!a && a.tipo === 'voz_entendi' && a.estado === 'propuesta' && !(Array.isArray(d.cambios) && d.cambios.length) && !(Array.isArray(d.directos) && d.directos.length); }
   var R = null, apretado = false, guiaAct = null, objAct = null, sonando = null;
   var $ = function (id) { return document.getElementById(id); };
   var deCaso = function (n) { return S.caso && n.caso_id === S.caso.id; };
@@ -126,7 +134,11 @@
     var s = document.createElement('style'); s.id = 'czvv-css';
     s.textContent = [
       '.czvv-barra{position:fixed;left:0;right:0;bottom:0;z-index:2147483000;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));pointer-events:none;background:linear-gradient(to top,rgba(240,242,245,.97) 70%,rgba(240,242,245,0))}',
-      '.czvv-in{max-width:880px;margin:0 auto;display:flex;align-items:center;gap:10px;pointer-events:auto}',
+      '.czvv-in{max-width:880px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;pointer-events:auto}',
+      /* V1.63i.2 (#16, iPhone de Richard) · el micrófono nunca se sale: lo demás va en .czvv-fila, que se encoge (base 0) y baja de renglón;
+         la píldora «Esto entendí» va en su propio renglón en el teléfono. Solo acomodo: mismos botones, mismos textos, mismos gestos. */
+      '.czvv-fila{flex:1 1 0;min-width:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px}.czvv-fila>button,.czvv-ver{max-width:100%;overflow:hidden;text-overflow:ellipsis}',
+      '@media(max-width:679px){.czvv-barra{background:linear-gradient(to top,#f0f2f5 calc(100% - 12px),rgba(240,242,245,0))}.czvv-ver{flex:1 0 100%}.czvv-fila .czvv-estado{flex:1 0 100%;max-height:none}.czvv-fila .czvv-estado:empty{display:none}html.czvv-grabando .czvv-fila .czvv-estado{flex:1 1 0;max-height:2.6em}html.czvv-grabando .czvv-ver{display:none}#cz-vista.czvv-con{padding-bottom:200px}}',
       '.czvv-estado{flex:1;min-width:0;font-size:13.5px;color:#54656f;line-height:1.25;max-height:2.6em;overflow:hidden}.czvv-estado.rec{color:#e53935;font-weight:600}',
       '.czvv-enviar{height:44px;border-radius:22px;background:#00a884;color:#fff;font-weight:600;padding:0 16px;white-space:nowrap;border:0;box-shadow:0 1px 3px rgba(11,20,26,.2)}.czvv-enviar:disabled{background:#b9c4c9}',
       '.czvv-cuenta{min-width:64px;height:44px;border-radius:22px;background:#fff;border:0;box-shadow:0 1px 3px rgba(11,20,26,.2);font-weight:600;font-size:16px;padding:0 12px}.czvv-cuenta:disabled{opacity:.45}',
@@ -292,7 +304,7 @@
     var e = $('czvvEnviar'); e.textContent = t('enviar')(n); e.disabled = !n || !!R;
     var rv = $('czvvRevisar'); if (rv) { rv.hidden = !previaOn() || !n; rv.textContent = t('revisar')(n); rv.disabled = !!R; }
     var v = $('czvvVer'), a = S.accion;
-    v.hidden = !(a && a.estado === 'propuesta'); if (a) v.textContent = t('verTarjeta')(((a.datos || {}).cambios || []).length);
+    v.hidden = !(a && a.estado === 'propuesta' && !(micOn() && vacia(a))); if (a) v.textContent = t('verTarjeta')(((a.datos || {}).cambios || []).length);
     $('czvvMic').setAttribute('aria-label', L === 'en' ? 'Hold to record' : 'Mantén para grabar');
     pintarEstado();
   }
@@ -426,7 +438,8 @@
     var d = a.datos || {}, cam = Array.isArray(d.cambios) ? d.cambios : [], dud = Array.isArray(d.dudosas) ? d.dudosas : [], r = a.resultado || {}, mon = d.moneda || '';
     var gen = cam.filter(function (c) { return c.general; }), ren = cam.filter(function (c) { return !c.general; });
     var suma = function (L2) { return L2.reduce(function (s, c) { return s + (Number(c.mueve) || 0); }, 0); };
-    var abierta = a.estado === 'propuesta' && o.puede !== false;
+    var sola = micOn() && vacia(a);   // V1.63i.2 · nada que aprobar: cerrada
+    var abierta = a.estado === 'propuesta' && o.puede !== false && !sola;
     var fila = function (c) {
       var chk = abierta ? '<input type="checkbox" data-czvv-c="' + esc(c.id) + '"' + (c.confirmar ? '' : ' checked') + '>' : '';
       return '<label class="czvv-cam' + (c.confirmar ? ' conf' : '') + '">' + chk + '<div class="d"><b>' + esc(c.general ? tl(lang, 'general1') : (c.seccion || '')) + '</b>' +
@@ -436,7 +449,7 @@
     };
     var dir = Array.isArray(d.directos) ? d.directos : [];
     var h = '<div class="czvv-ent" data-czvv-a="' + esc(a.id) + '"' + (o.caso_id ? ' data-czvv-caso="' + esc(o.caso_id) + '"' : '') + '><h4>📝 ' + esc(tl(lang, 'entendi')) + '</h4>' +
-      (cam.length || !dir.length ? '<p>' + esc(dir.length ? tl(lang, 'quedanSub')(cam.length) : tl(lang, 'entendiSub')(Number(d.notas) || 1, cam.length)) + '</p>' : '');
+      (sola ? '' : cam.length || !dir.length ? '<p>' + esc(dir.length ? tl(lang, 'quedanSub')(cam.length) : tl(lang, 'entendiSub')(Number(d.notas) || 1, cam.length)) + '</p>' : '');
     // V1.63g.2 · lo aplicado directo al enviar (texto que no mueve el precio): sin palomita, con su «↺ Deshacer» y lo que releyó Odoo.
     if (dir.length) {
       h += '<div class="czvv-bloque">' + esc(tl(lang, 'directoT')) + '</div>' + dir.map(function (c) {
@@ -448,10 +461,11 @@
     if (gen.length) h += '<div class="czvv-bloque">' + esc(tl(lang, 'bloqGen')) + ' <span>' + esc(tl(lang, 'mueveTotal')(dinero(suma(gen), mon))) + '</span></div>' + gen.map(fila).join('');
     if (ren.length) h += '<div class="czvv-bloque">' + esc(tl(lang, 'bloqRen')) + ' <span>' + esc(tl(lang, 'mueveTotal')(dinero(suma(ren), mon))) + '</span></div>' + ren.map(fila).join('');
     h += dud.map(function (x) {   // D138: lo dudoso se pregunta con la frase literal y NUNCA se aplica
-      return '<div class="czvv-dud"><b>' + esc(tl(lang, 'dudosa')) + '</b><br>' + esc(tl(lang, 'dudosaP')) + '«' + esc(x.frase || '') + '»<br>' + esc(tl(lang, 'dudosaQ')) +
+      return '<div class="czvv-dud"><b>' + esc(tl(lang, 'dudosa')) + '</b><br>' + esc(tl(lang, 'dudosaP')) + '«' + esc(x.frase || '') + '»' + (sola ? '' : '<br>' + esc(tl(lang, 'dudosaQ'))) +
         (x.nota ? '<br><button type="button" class="czvv-oir" data-czvv-oir="' + esc(x.nota) + ':' + (Number(x.t) || 0) + '">' + esc(tl(lang, 'oirOrigen')(x.nota, dur(x.t))) + '</button>' : '') + '</div>';
     }).join('');
-    if (abierta && cam.length) h += '<div class="czvv-acc"><button type="button" class="fuerte" data-czvv-hacer="todo">' + esc(tl(lang, 'aprobarTodo')) + '</button><button type="button" data-czvv-hacer="sel">' + esc(tl(lang, 'aplicarSel')) +
+    if (sola) h += '<div class="czvv-hecho">' + esc(tl(lang, 'nadaEntendi')) + '</div>';
+    else if (abierta && cam.length) h += '<div class="czvv-acc"><button type="button" class="fuerte" data-czvv-hacer="todo">' + esc(tl(lang, 'aprobarTodo')) + '</button><button type="button" data-czvv-hacer="sel">' + esc(tl(lang, 'aplicarSel')) +
       '</button><button type="button" data-czvv-hacer="no">' + esc(tl(lang, 'rechazar')) + '</button></div>';
     else if (a.estado === 'hecha') {
       var lecA = o.codigo ? lecturaDespues(o.acciones, a.hecha_at, lang) : null;
@@ -523,11 +537,11 @@
     S.previa = o.previa && typeof o.previa.subir === 'function' && typeof o.previa.transcripciones === 'function' ? o.previa : null;
     S.el.classList.add('czvv-con');
     var w = document.createElement('div'); w.id = 'czvv';
-    w.innerHTML = '<div class="czvv-barra"><div class="czvv-in"><div class="czvv-estado" id="czvvEstado"></div>' +
-      '<button type="button" class="czvv-ver" id="czvvVer" hidden></button>' +
+    w.innerHTML = '<div class="czvv-barra"><div class="czvv-in">' +
+      '<button type="button" class="czvv-ver" id="czvvVer" hidden></button><div class="czvv-fila"><div class="czvv-estado" id="czvvEstado"></div>' +
       '<button type="button" class="czvv-cuenta czvv-revisar" id="czvvRevisar" hidden></button>' +
       '<button type="button" class="czvv-enviar" id="czvvEnviar" disabled></button>' +
-      '<button type="button" class="czvv-cuenta" id="czvvCuenta" disabled>🎤 0</button>' +
+      '<button type="button" class="czvv-cuenta" id="czvvCuenta" disabled>🎤 0</button></div>' +
       '<button type="button" class="czvv-mic" id="czvvMic"><span class="czvv-candado" aria-hidden="true"><span>🔒</span><span>⌃</span></span>' +
       '<svg class="ic-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21"/></svg>' +
       '<svg class="ic-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2" fill="#fff"/></svg></button></div></div>' +
@@ -580,7 +594,7 @@
     S.acc = (H && H.acciones) || []; S.codigo = !!(o && o.codigo);
     var A = ((H && H.acciones) || []).filter(function (a) { return a.tipo === 'voz_entendi'; });
     var ult = A.length ? A[A.length - 1] : null;
-    if (ult && S.espera && new Date(ult.created_at || ult.at || 0).getTime() >= S.espera.at - 60000) S.espera = null;
+    if (ult && S.espera && new Date(ult.created_at || ult.at || 0).getTime() >= S.espera.at - 60000) { S.espera = null; if (micOn() && vacia(ult) && S.montado) toast(t('nadaEntendi')); }
     S.accion = ult; if (S.montado) pintarBarra();
   }
 

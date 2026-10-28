@@ -1,6 +1,11 @@
 {
-  "version": "V1.63i.1",
+  "version": "V1.63i.2",
   "historial": [
+    {
+      "version": "V1.63i.2",
+      "fecha": "2026-10-28",
+      "nota": "fts-conceptualizador#16 punto 2 (Esteban, 28-oct 09:45 MT): el micrófono de la vista ejecutiva ya no se sale del borde en el iPhone. La barra se acomoda: el micrófono queda fijo a la derecha y lo demás se encoge o baja de renglón (la píldora «Esto entendí» en su propio renglón en el teléfono); probado a 320, 375, 390 y 430 px. Una ráfaga que no entendió nada (0 cambios) ya no deja tarjeta viva: se cierra sola con «No entendí nada, vuelve a grabar» (`mic_visible_v163i`, apagado = como antes)."
+    },
     {
       "version": "V1.63i.1",
       "fecha": "2026-10-28",
