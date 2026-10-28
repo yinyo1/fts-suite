@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.63i.2';
+  var VERSION = 'V1.63i.3';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -900,6 +900,8 @@
     ['borrador_n5_v163e', 'Borrador en Odoo con precios por confirmar', 'El borrador sale aunque haya renglones N5: van marcados «precio por confirmar» (USA «price TBC»). «Ya la mandé» sigue frenado hasta cero N5 y cero renglones por confirmar en la orden.'],
     ['borrador_robot_v163e', 'El robot crea y actualiza el borrador', 'Al final de cada avance el robot crea o actualiza el borrador de Odoo del caso, a nombre del autor: una sola orden por caso, nunca la marca enviada, nunca la confirma, nunca manda correo. El PDF borrador queda en el caso. Alarma borrador_robot_frenado si el mismo caso junta 3 rechazos en 24 h.'],
     ['pdf_unico_v163', 'PDF en un solo lugar', 'La respuesta que cambia la cotización trae el PDF nuevo como archivo, con «↺ Deshacer»; los borradores anteriores y «Ya la mandé» quedan plegados sin botones de PDF; «Correo para envío» y «Ya la mandé» una sola vez, al final; en ⋮ una sola entrada, «PDF de la cotización (última versión)».'],
+    // V1.63i D (fts-conceptualizador#16, pedido de Richard, D219).
+    ['ruido_chat_v163i', 'Sin ruido de regla 15, sentido y verificación en el chat', 'La nota fija de FTS USA no se marca; el agente reescribe solo las frases con cálculos que vería el cliente; lo que no pudo reescribir, el sentido y la verificación van a «⚠ Avisos» de la vista ejecutiva. En el chat solo una línea cuando algo frena el envío.'],
   ];
   /** Los interruptores que conoce el servidor (valores `interruptor:*` y `interruptores`), en el orden de arriba; uno nuevo
    * que la pantalla todavía no describe sale al final con su nombre, para que se pueda prender igual. */
