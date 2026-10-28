@@ -36,7 +36,7 @@
     preg: null, okInt: false,
     n0: null, n0msg: {},
     rt: {}, revMsg: {},
-    pc: false, pcOk: {}, pcNo: null, pcMsg: '' };   // V1.63i A2 (`por_confirmar_v163i`) · el chip prendido, lo confirmado en esta ráfaga, el ✗ abierto   // V1.63b (`secciones_v163`) · la pestaña abierta de cada sección y lo que contestó el servidor al marcarla   // V1.62a (`n0_v162`) · el renglón cuyo precio se está corrigiendo y lo que contestó el servidor   // V1.58 (`menu_vista_v158`) · la pregunta antes de lo interno (vista o Excel) y si ya se dijo que sí   // V1.57b · versión FTS o cliente, y el paso de la doble confirmación
+    pc: false, pcOk: {}, pcNo: null, pcMsg: '', av: false };   // V1.63i D (`ruido_chat_v163i`) · el chip «⚠ Avisos» prendido   // V1.63i A2 (`por_confirmar_v163i`) · el chip prendido, lo confirmado en esta ráfaga, el ✗ abierto   // V1.63b (`secciones_v163`) · la pestaña abierta de cada sección y lo que contestó el servidor al marcarla   // V1.62a (`n0_v162`) · el renglón cuyo precio se está corrigiendo y lo que contestó el servidor   // V1.58 (`menu_vista_v158`) · la pregunta antes de lo interno (vista o Excel) y si ya se dijo que sí   // V1.57b · versión FTS o cliente, y el paso de la doble confirmación
 
   /* ═══ V1.57b (fts-conceptualizador#12 punto 14, `vista_cliente`) · versión cliente y Excel ═══
    * Prototipo aprobado: prototipos/v157/vista-ejecutiva.html. La versión cliente es lo que el cliente puede ver: secciones,
@@ -352,6 +352,22 @@
             '<button type="button" class="vz-bt" data-vz-pcnox="1">Cancelar</button></div>' : '') + '</div>';
       }).join('') : '<p class="vz-nada">Nada por confirmar.</p>') + '</section>';
   }
+  /* ═══ V1.63i D (fts-conceptualizador#16 punto D, pedido de Richard, D219, `ruido_chat_v163i`) · «⚠ Avisos (N)» ═══
+   * Las advertencias de la regla 15 (lo que el agente no pudo reescribir solo), del sentido y de la verificación ya no van al chat ni a
+   * las tarjetas: viven aquí, con su contador. De una frase se enseña solo lo que se quita, nunca el texto dos veces. Arriba, cuántas
+   * frases reescribió el agente solo en este caso (la medición). Lo arma el motor (herramientas/motor/ruido-chat.js `avisos`). */
+  var TIPO_AV = { regla15: '🧹 Regla 15', sentido: '🧭 Sentido', verificacion: '🔎 Verificación' };
+  function pintarAvisos(AV) {
+    var r = AV.regla15 || {};
+    return '<section class="vz-caja vz-av" id="vzAv"><h2>Avisos (' + esc(AV.n) + ')</h2>' +
+      '<p class="vz-av-med" data-vz-av-med="1">Regla 15: el agente reescribió solo ' + esc(r.reescritas_total || 0) + (Number(r.reescritas_total) === 1 ? ' frase' : ' frases') +
+        ' en este caso' + (r.no_reescritas ? ' · <b>' + esc(r.no_reescritas) + ' sin poder reescribir (frena el borrador)</b>' : '') + '.</p>' +
+      (arr(AV.items).length ? arr(AV.items).map(function (x) {
+        return '<div class="vz-av-i' + (x.frena ? ' frena' : '') + '" data-av-k="' + esc(x.k) + '"><span class="vz-nom"><span class="d">' + esc(x.texto) + '</span><small>' + esc(TIPO_AV[x.tipo] || x.tipo) +
+          (x.frena ? ' · frena el envío' : ' · no frena') + (x.fuente ? ' · ' + esc(x.fuente) : '') + '</small>' +
+          (arr(x.quita).length && !x.quita_todo ? '<small class="vz-av-quita">Quitaría: ' + arr(x.quita).map(function (q) { return '«' + esc(q) + '»'; }).join(', ') + '</small>' : '') + '</span></div>';
+      }).join('') : '<p class="vz-nada">Sin avisos.</p>') + '</section>';
+  }
   var pcCola = [], pcT = null;
   function confirmarPc(k) {
     var al = S.o && S.o.al; if (!al || typeof al.confirmar !== 'function') return;
@@ -395,6 +411,7 @@
     // V1.63i A2 · la lista del motor (herramientas/avance/por-confirmar.js), la misma que cuenta «Hacia el 100»; sin lo que ya confirmó aquí.
     // V1.63i (#16, punto 6a) · N cuenta lo que frena: confirmar uno de «no frena» no lo baja.
     var pcAll = an && an.por_confirmar ? arr(an.por_confirmar.items) : [], pcHechosFrenan = pcAll.filter(function (x) { return x && S.pcOk[x.k] && !x.no_frena; }).length;
+    var AV = prendido('ruido_chat_v163i') && an && an.avisos ? an.avisos : null;
     var PC = prendido('por_confirmar_v163i') && an && an.por_confirmar ? { n: Math.max(0, Number(an.por_confirmar.n) - pcHechosFrenan),
       items: arr(an.por_confirmar.items).filter(function (x) { return x && x.k && !S.pcOk[x.k]; }) } : null;
 
@@ -431,6 +448,7 @@
       (pct !== null ? '<div class="vz-tile" data-vz-ind="hacia100"><small>Hacia el 100</small><b>' + esc(pct) + ' %</b><div class="vz-barra-av"><i style="width:' + Math.max(0, Math.min(100, Number(pct) || 0)) + '%"></i></div>' +
         (PC ? '<small>' + esc(PC.n) + ' por confirmar</small>' : '') + '</div>' : '') + '</section>';
     if (PC && S.pc) h += pintarPorConfirmar(PC, mon);
+    if (AV && S.av) h += pintarAvisos(AV);
     var pend = arr(o.decisionesPendientes).map(function (p) { return typeof p === 'string' ? { t: p } : { t: p.titulo || p.texto || p.q || '', por: p.por || p.id || '' }; }).filter(function (p) { return p.t; });
     var falta = arr(M.pendientes).map(function (p) { return { t: (p.titulo || '') + (arr(p.items).length ? ': ' + arr(p.items).join(' · ') : ''), por: 'para cotizar' }; }).filter(function (p) { return p.t; });
     h += '<section class="vz-caja"><h2>Decisiones pendientes vigentes (' + pend.length + ')</h2>' + (pend.length ? '<ul class="vz-pend">' +
@@ -450,7 +468,8 @@
       '<dt>Exclusiones</dt><dd>' + lista(T.exclusiones) + '</dd><dt>Supuestos</dt><dd>' + lista(sups) + '</dd>' +
       '<dt>Tiempo de ejecución</dt><dd>' + texto(T.tiempo) + '</dd><dt>Lugar</dt><dd>' + texto(lugar) + '</dd>' +
       '<dt>Moneda</dt><dd>' + texto(mon) + '</dd><dt>Impuestos</dt><dd>' + texto(T.impuestos) + '</dd></dl></div></section>';
-    h += '<div class="vz-filtros" id="vzFiltros">' + (PC ? '<button type="button" class="vz-chip vz-chip-pc" data-vz="pc" aria-pressed="' + S.pc + '">✋ Por confirmar<i>' + esc(PC.n) + '</i></button>' : '') + CHIPS.map(function (c) {
+    h += '<div class="vz-filtros" id="vzFiltros">' + (PC ? '<button type="button" class="vz-chip vz-chip-pc" data-vz="pc" aria-pressed="' + S.pc + '">✋ Por confirmar<i>' + esc(PC.n) + '</i></button>' : '') +
+      (AV ? '<button type="button" class="vz-chip vz-chip-av" data-vz="av" aria-pressed="' + S.av + '">⚠ Avisos<i>' + esc(AV.n) + '</i></button>' : '') + CHIPS.map(function (c) {
       var n = todas.filter(function (f) { return CHIP_FN[c[1]](f.r); }).length;
       return '<button type="button" class="vz-chip" data-vz-f="' + c[0] + ':' + c[1] + '" aria-pressed="' + !!S.f[c[0]][c[1]] + '">' + c[2] + '<i>' + n + '</i></button>';
     }).join('') + '<p class="vz-fres" id="vzFres">' + (hayFiltro()
@@ -520,6 +539,7 @@
     if (b.hasAttribute('data-vz-rt')) { var t = b.getAttribute('data-vz-rt').split(':'); S.rt[t[0]] = t[1]; pintar(); return; }
     if (b.hasAttribute('data-vz-rev')) { var t2 = b.getAttribute('data-vz-rev').split(':'); marcar(t2[0], t2[1] === '1'); return; }
     if (a === 'pc') { S.pc = !S.pc; pintar(); return; }
+    if (a === 'av') { S.av = !S.av; pintar(); return; }
     if (b.hasAttribute('data-vz-pcsi')) { confirmarPc(b.getAttribute('data-vz-pcsi')); return; }
     if (b.hasAttribute('data-vz-pcae')) { autorizarPc(b.getAttribute('data-vz-pcae')); return; }
     if (b.hasAttribute('data-vz-pcno')) { S.pcNo = b.getAttribute('data-vz-pcno'); pintar(); var i1 = S.el.querySelector('#vzPcNo'); if (i1) i1.focus(); return; }
@@ -669,6 +689,10 @@
     '#cz-vista .vz-pc [data-nivel="pendiente"] .vz-nom span.d{white-space:normal;overflow:visible;overflow-wrap:anywhere}',
     '#cz-vista .vz-pc .vz-num{white-space:nowrap;font-variant-numeric:tabular-nums;align-self:start}',
     '#cz-vista .vz-pc-nofrena{color:var(--vz-tenue,#6b7280);font-style:italic}',
+    '#cz-vista .vz-chip-av{border-color:#64748b}#cz-vista .vz-chip-av[aria-pressed="true"]{background:rgba(100,116,139,.18);color:inherit;border-color:#64748b}',
+    '#cz-vista .vz-av-med{padding:4px 12px 8px;font-size:13px;color:var(--vz-sec)}#cz-vista .vz-av-i{border-top:1px solid var(--vz-linea);padding:8px 12px}',
+    '#cz-vista .vz-av-i .vz-nom{display:flex;flex-direction:column;gap:2px;min-width:0}#cz-vista .vz-av-i .d{white-space:normal;overflow-wrap:anywhere}',
+    '#cz-vista .vz-av-i.frena .d{font-weight:600}#cz-vista .vz-av-quita{color:#b91c1c;overflow-wrap:anywhere}',
     '#cz-vista .vz-pc-acc{display:flex;gap:6px;flex:0 0 auto}#cz-vista .vz-pc-no{display:flex;gap:6px;flex:1 1 100%}#cz-vista .vz-pc-no input{flex:1;min-width:0;height:34px;padding:0 8px;border:1px solid var(--vz-linea);border-radius:8px}',
     '#cz-vista .vz-fres{font-size:12.5px;color:var(--vz-sec);width:100%}',
     '#cz-vista .vz-fres button{color:var(--vz-marca);font-weight:600}',

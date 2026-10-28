@@ -1,6 +1,11 @@
 {
-  "version": "V1.63i.2",
+  "version": "V1.63i.3",
   "historial": [
+    {
+      "version": "V1.63i.3",
+      "fecha": "2026-10-28",
+      "nota": "fts-conceptualizador#16 punto D (pedido de Richard, Esteban 28-oct 10:50 MT, D219), detrás de `ruido_chat_v163i` (apagado = como antes): la nota fija de FTS USA ya no se marca ni se enseña como liberada en la tarjeta del borrador; las frases con cálculos que vería el cliente las reescribe el agente solo; lo que no pudo reescribir, el sentido y la verificación viven en «⚠ Avisos (N)» de la vista ejecutiva, con cuántas frases reescribió el agente en el caso. En el chat solo una línea cuando eso frena el envío. Nunca el texto original y el corregido juntos."
+    },
     {
       "version": "V1.63i.2",
       "fecha": "2026-10-28",
