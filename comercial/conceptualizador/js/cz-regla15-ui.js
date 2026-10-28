@@ -18,7 +18,23 @@
   function hallazgos(a) {
     var c = ((a && a.datos) || {}).cotizacion; if (!c || !on()) return [];
     var L = c.regla15 && Array.isArray(c.regla15.hallazgos) ? c.regla15.hallazgos : G.CzRegla15.revisarCotizacion(c, []).hallazgos;
-    return L.filter(function (h) { return h && h.id; });
+    L = L.filter(function (h) { return h && h.id; });
+    // V1.63i D (`ruido_chat_v163i`, D219) · la nota fija de FTS USA es del decreto de Esteban: viaja liberada (el servidor viejo la pide;
+    // el nuevo ni la revisa) pero no se marca ni se enseña.
+    if (ruido()) L = L.map(function (h) { return soloNotaFija(h) && !h.liberada ? Object.assign({}, h, { liberada: true, decreto: true, razon: RAZON_NF }) : h; });
+    return L;
+  }
+  /* ═══ V1.63i D (fts-conceptualizador#16 punto D, pedido de Richard, D219) · `ruido_chat_v163i` ═══
+   * En la tarjeta no van las advertencias de la regla 15: lo liberado (por decreto o por la persona) no se enseña, lo que el agente
+   * reescribió solo ya viene limpio, y lo que no pudo reescribir queda en «⚠ Avisos» de la vista ejecutiva. Aquí solo va UNA línea
+   * cuando eso frena el borrador. Nunca el texto original y el corregido juntos. Apagado: como antes. */
+  var NF = 'Additional hours on weekends or holidays, if requested by the client, are billed at 50% above the regular hourly rate.';
+  var RAZON_NF = 'nota fija de FTS USA, decreto de Esteban (#12 6400134382)';
+  function ruido() { return typeof G.CzInterruptor === 'function' && G.CzInterruptor('ruido_chat_v163i') === true; }
+  function soloNotaFija(h) { var t = String((h && h.original) || ''); return t.indexOf(NF) >= 0 && !G.CzRegla15.revisar(t.split(NF).join(' ')).length; }
+  function lineaRuido(a, n) {
+    return '<div class="r15 r15-freno" data-r15="' + a.id + '"><p class="nota"><b>⛔ Falta reescribir ' + n + (n === 1 ? ' frase que vería el cliente' : ' frases que vería el cliente') +
+      ' con cálculos internos para mandarla: toca «⚠ Avisos» en la vista ejecutiva.</b></p></div>';
   }
   // V1.62a (`ruido_v162`) · lo que el autor pidió tal cual llega liberado con su razón («lo pidió Esteban (msg 1018)»).
   function decision(a, h) { if (h.liberada) return { uso: 'liberada', razon: h.razon || 'liberada antes', antes: true }; return (D[a.id] || {})[h.id] || null; }
@@ -30,6 +46,7 @@
     if (!on() || !a || a.tipo !== 'crear_borrador' || a.estado !== 'propuesta') return '';
     var L = hallazgos(a); if (!L.length) return '';
     var n = faltan(a);
+    if (ruido()) return n ? lineaRuido(a, n) : '';
     // V1.62a (`ruido_v162`) · si todo lo que marcó la regla lo pidió el autor tal cual, no es una alarma: una línea que dice que va
     // como lo pidió y quién (sin el recuadro rojo ni «Liberar…»).
     if (!n && typeof G.CzInterruptor === 'function' && G.CzInterruptor('ruido_v162') === true && L.every(function (h) { return h.liberada && /^lo pidió /.test(h.razon || ''); }))

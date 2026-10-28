@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.63i.2';
+  var VERSION = 'V1.63i.5';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -900,6 +900,12 @@
     ['borrador_n5_v163e', 'Borrador en Odoo con precios por confirmar', 'El borrador sale aunque haya renglones N5: van marcados «precio por confirmar» (USA «price TBC»). «Ya la mandé» sigue frenado hasta cero N5 y cero renglones por confirmar en la orden.'],
     ['borrador_robot_v163e', 'El robot crea y actualiza el borrador', 'Al final de cada avance el robot crea o actualiza el borrador de Odoo del caso, a nombre del autor: una sola orden por caso, nunca la marca enviada, nunca la confirma, nunca manda correo. El PDF borrador queda en el caso. Alarma borrador_robot_frenado si el mismo caso junta 3 rechazos en 24 h.'],
     ['pdf_unico_v163', 'PDF en un solo lugar', 'La respuesta que cambia la cotización trae el PDF nuevo como archivo, con «↺ Deshacer»; los borradores anteriores y «Ya la mandé» quedan plegados sin botones de PDF; «Correo para envío» y «Ya la mandé» una sola vez, al final; en ⋮ una sola entrada, «PDF de la cotización (última versión)».'],
+    // V1.63i D (fts-conceptualizador#16, pedido de Richard, D219).
+    ['ruido_chat_v163i', 'Sin ruido de regla 15, sentido y verificación en el chat', 'La nota fija de FTS USA no se marca; el agente reescribe solo las frases con cálculos que vería el cliente; lo que no pudo reescribir, el sentido y la verificación van a «⚠ Avisos» de la vista ejecutiva. En el chat solo una línea cuando algo frena el envío.'],
+    // V1.63i.4 (fts-conceptualizador#16 puntos 3 a 5, D220).
+    ['numero_directo_v163i', 'Decisión con número: directo a machote y Odoo', 'Un precio, margen, cantidad u horas que dice la persona (texto o voz no dudosa) se aplica en el mismo turno a machote y Odoo, con «↺ Deshacer» y sin tarjeta; el texto nunca dice «ahora mismo actualizo» si no lo hizo; el PDF dice versión y total, y avisa si Odoo no trae la versión vigente.'],
+    // V1.63i.5 (fts-conceptualizador#16 punto B, D223) · migración 0058.
+    ['pdf_odoo_v163i', 'Cotización en Odoo en el rayito y en ⋮', 'Con la orden ya en Odoo, el rayito y el ⋮ traen «📄 Cotización en Odoo (SO… · total)», que descarga el PDF de la orden tal como está, sin rehacer nada ni gastar modelo; si el machote vigente no coincide, lo dice en una línea con «Actualizar» sin bloquear la descarga. «Volver a armar» ya no se ofrece en el rayito cuando hay orden.'],
   ];
   /** Los interruptores que conoce el servidor (valores `interruptor:*` y `interruptores`), en el orden de arriba; uno nuevo
    * que la pantalla todavía no describe sale al final con su nombre, para que se pueda prender igual. */
@@ -1344,13 +1350,23 @@
       // V1.60 (`chat_limpio_v160`) · solo lo posible en el estado real del caso, y la salida del error vigente PRIMERO.
       var FVr = on('chat_limpio_v160') && G.CzLimpio ? G.CzLimpio.fallaVigente(H) : null, AXr = FVr ? G.CzLimpio.accion(FVr.codigo, H, FVr) : null;
       if (on('chat_limpio_v160') && G.CzLimpio) CL = G.CzLimpio.reglaClics(CL, H);
+      // V1.63i.5 (`pdf_odoo_v163i`, D223) · con la orden en el caso, «📄 Cotización en Odoo (SO… · total)» va PRIMERO y siempre (también
+      // con el caso cerrado); sustituye a «Ver cotización». «Volver a armar» deja de ofrecerse aquí: solo sin orden o si la persona lo pide.
+      var PO = pdfOdoo() && !(ST.sel || {}).menu && (yoDueno || adm) && G.CzEnviar && G.CzEnviar.bajar ? ordenOdoo(H) : null;
+      if (PO) {
+        CL = CL.filter(function (x) { return x.acc !== 'ver_cot'; });
+        if (AXr && AXr.hacer && AXr.hacer.acc === 'mandar' && G.CzLimpio && AXr.hacer.texto === G.CzLimpio.REARMAR) AXr = null;
+        sug.push({ texto: '📄 ' + PO.etiqueta, fuerte: true, attrs: { 'data-sug': 'pdf_odoo' }, hacer: function () { bajarOrden(c); } });
+        if (PO.linea && (yoDueno || ST.admin === true) && !CL.some(function (x) { return (x.txt || '').indexOf('Actualizar ' + PO.so) === 0; }))
+          sug.push({ texto: 'Actualizar ' + PO.so + ' en Odoo', attrs: { 'data-sug': 'pdf_odoo_act' }, hacer: function (bt) { actualizarOrden(c, bt); } });
+      }
       if (AXr && AXr.boton && AXr.hacer && yoDueno) sug.push({ texto: '⚠ ' + AXr.boton, fuerte: true, attrs: { 'data-sug': 'falla', 'data-sug-id': FVr.id }, hacer: function (bt) { salidaFalla(FVr, c, bt); } });
       var cubierto = !!sgF && ((sgF.acc === 'machote' && CL.some(function (x) { return x.acc === 'machote'; })) || (sgF.acc === 'ir' && sgF.a === 'accion') ||
         (sgF.acc === 'cotiza' && CL.some(function (x) { return x.acc === 'hacer' || x.acc === 'refok'; })));
       if (sgF && !sgF.espera && !cubierto) sug.push({ texto: sgF.txt, fuerte: true, attrs: { 'data-sug': sgF.acc }, hacer: function (bt) { lanzarSiguiente(sgF, c, bt); } });
       CL.forEach(function (x) { sug.push({ texto: (x.ico ? x.ico + ' ' : '') + x.txt, fuerte: true, attrs: { 'data-sug': x.acc, 'data-sug-id': x.id || '' }, hacer: function (bt) { lanzarClic(x, c, bt); } }); });
       if (abierta && !(ST.sel || {}).menu && H.caso && !/^Dame los generales/.test((sg && sg.txt) || '')) sug.push({ texto: 'Dame los generales', attrs: { 'data-sug': 'generales' }, hacer: function () { mandar('Dame los generales'); } });
-      BOL.poner(sug, { titulo: 'Sugerencias' });
+      BOL.poner(sug, PO && PO.linea ? { titulo: 'Sugerencias', nota: '⚠ ' + PO.linea } : { titulo: 'Sugerencias' });
       if (sg && !sg.espera) sg = null;
     } else if (BOL) BOL.poner([]);
     if (!sg) { el.style.display = 'none'; el.innerHTML = ''; return; }
@@ -2045,8 +2061,10 @@
       // caso tenga orden en Odoo, para el dueño y para Esteban, SIN depender de la tarjeta del borrador (Mattel se dio de alta por script
       // y no tenía ninguna). La base vuelve a decidir quién puede (cotizacion-cliente · ver, db/022). Van ARRIBA: a 380 px se ven sin bajar.
       // V1.63c (`pdf_unico_v163`, #12) · UNA sola entrada: abre el visor con «⬇ Descargar» adentro, siempre el último PDF de Odoo.
-      (pdfUnico() && G.CzEnviar && (cs.orden_id || c.orden_id) && (mia || ST.admin === true || ST.panelAdmin === true) ?
-        '<button data-a="pdf_ultimo">' + ico('pagina', 's') + '<span>PDF de la cotización (última versión)<small data-pdfu-sub>' + esc('Se descarga: ' + nombrePdf()) + '</small></span></button>' :
+      // V1.63i.5 (`pdf_odoo_v163i`, D223) · con la orden en el caso: «📄 Cotización en Odoo (SO… · total)», y «Actualizar» si quedó atrás.
+      (pdfOdoo() && G.CzEnviar && cs.orden_id && (mia || ST.admin === true || ST.panelAdmin === true) ? pdfOdooMenu(cs) :
+      pdfUnico() && G.CzEnviar && (cs.orden_id || c.orden_id) && (mia || ST.admin === true || ST.panelAdmin === true) ?
+        '<button data-a="pdf_ultimo">' + ico('pagina', 's') + '<span>PDF de la cotización (última versión)<small data-pdfu-sub>' + esc('Se descarga: ' + nombrePdf()) + '</small>' + pdfInfoHtml(H) + '</span></button>' :
       on('pdf_menu_v163') && G.CzEnviar && (cs.orden_id || c.orden_id) && (mia || ST.admin === true || ST.panelAdmin === true) ?
         '<button data-a="pdf_ver">' + ico('pagina', 's') + '<span>Ver cotización ' + esc(cs.orden_nombre || c.orden_nombre || '') + '<small>El PDF oficial de Odoo, tal como lo recibe el cliente</small></span></button>' +
         '<button data-a="pdf_bajar">' + ico('bajar', 's') + '<span>⬇ Descargar PDF<small>El mismo PDF, como archivo</small></span></button>' : '') +
@@ -2099,6 +2117,8 @@
     $$('[data-a]', v).forEach(function (b) { b.onclick = function () {
       // V1.63c (#12, Esteban 24-oct 21:18 CST) · «PDF de la cotización» DESCARGA directo, sin visor: «Generando…» en el mismo renglón.
       if (b.dataset.a === 'pdf_ultimo' && pdfUnico()) return pdfDelMenu(b, c);
+      if (b.dataset.a === 'pdf_odoo' && pdfOdoo()) return pdfDelMenu(b, c);
+      if (b.dataset.a === 'pdf_odoo_act' && pdfOdoo()) { cerrarVelo(); return actualizarOrden(c); }
       cerrarVelo(); var a = b.dataset.a;
       if (a.indexOf('push:') === 0) return G.CzPush.accion(a.slice(5));
       if (a === 'disparo') return confirmarDisparo(md);
@@ -2735,6 +2755,90 @@
     var n = [cs.orden_nombre || 'Cotizacion', cli, v ? 'v' + v : ''].filter(Boolean).join(' - ');
     return n.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').replace(/\s+/g, ' ').trim() + '.pdf';
   }
+  /** La versión y el total del PDF, y la leyenda si Odoo no trae el machote vigente (para el ⋮, el PDF de la respuesta y el estado vigente). */
+  function pdfInfoHtml(H, cls) {
+    if (!on('numero_directo_v163i')) return '';
+    var I = pdfVersionInfo(H); if (!I) return '';
+    return '<small class="pdfu-ver' + (cls ? ' ' + cls : '') + '" data-pdfu-ver>' + esc(I.etiqueta) + '</small>' +
+      (I.leyenda ? '<small class="pdfu-viejo" data-pdfu-leyenda role="status">⚠ ' + esc(I.leyenda) + '</small>' : '');
+  }
+  /* V1.63i.4 (`numero_directo_v163i`, fts-conceptualizador#16 punto 5, D220) · el PDF dice de qué versión es y cuánto suma, y avisa
+   * cuando Odoo no trae el machote vigente. 70f5e9, 28-oct: el machote ya iba en 20,150 (v8, 17:24 UTC) y Richard bajó el PDF de Odoo,
+   * que seguía en 18,756. El total de Odoo es el subtotal que releyó la última escritura de la orden (crear_borrador hecha, del agente,
+   * del robot o del clic); el del machote, el vigente de la base si viene (`caso.machote_vigente`) o el último «Actualizar el machote»
+   * hecho. Distintos = más que el redondeo al peso de sus renglones (D96). Sin interruptor no se llama. */
+  function pdfVersionInfo(H) {
+    H = H || {}; var c = H.caso || {}, oid = Number(c.orden_id) || 0, A = H.acciones || [];
+    var cuando = function (x) { return Date.parse(x.hecha_at || '') || 0; }, orden = function (a, b) { return cuando(a) - cuando(b) || Number(a.id) - Number(b.id); };
+    var B = A.filter(function (x) { var r = x.resultado || {}; return x.tipo === 'crear_borrador' && x.estado === 'hecha' && Number(r.subtotal) > 0 && (!oid || !r.orden_id || Number(r.orden_id) === oid); }).sort(orden);
+    var M = A.filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'hecha'; }).sort(orden);
+    var ub = B[B.length - 1] || null, um = M[M.length - 1] || null, mv = c.machote_vigente && Number(c.machote_vigente.total) > 0 ? c.machote_vigente : null;
+    var odoo = ub ? Number(ub.resultado.subtotal) : (H.ultimo_pdf && Number(H.ultimo_pdf.total) > 0 ? Number(H.ultimo_pdf.total) : null);
+    var mach = mv ? { version: Number(mv.version) || null, total: Number(mv.total) } :
+      um ? { version: Number((um.resultado || {}).version) || null, total: Number((um.resultado || {}).total) > 0 ? Number(um.resultado.total) : Number(((um.datos || {}).resumen || {}).total) || null } : null;
+    if (!odoo && !(mach && mach.total)) return null;
+    var mon = (ub && ub.resultado.moneda) || c.moneda || (H.ultimo_pdf || {}).moneda || '';
+    var $ = function (n) { return '$' + Number(n).toLocaleString('es-MX', { maximumFractionDigits: Number(n) % 1 ? 2 : 0, minimumFractionDigits: Number(n) % 1 ? 2 : 0 }); };
+    var n = Math.max(1, ((ub && ub.resultado.renglones) || []).length || 1);
+    var distinto = !!(odoo && mach && mach.total && (odoo < mach.total - 0.005 || odoo - mach.total >= n));
+    var folio = (um && (um.resultado || {}).folio) || c.machote_folio || '';
+    return { version: mach ? mach.version : null, total_machote: mach ? mach.total : null, total_pdf: odoo, moneda: mon, distinto: distinto,
+      etiqueta: [folio + (mach && mach.version ? ' v' + mach.version : ''), odoo ? 'PDF ' + $(odoo) + (mon ? ' ' + mon : '') : ''].filter(function (x) { return x.trim(); }).join(' · '),
+      leyenda: distinto ? 'Este PDF es de la versión anterior (' + $(odoo) + '); la nueva (' + $(Math.ceil(mach.total - 0.005)) + ') no ha llegado a Odoo' : null };
+  }
+  /* fin pdfVersionInfo */
+  /* V1.63i.5 (`pdf_odoo_v163i`, fts-conceptualizador#16 punto B, D223) · «📄 Cotización en Odoo (SO… · total)» en el rayito y en ⋮.
+   * a3d9c8, 28-oct: SO11941 (USD 8,365) existía y Richard no tenía cómo bajarla; pidió «Vuelve a armar» tres veces (cada una, un turno del
+   * modelo). Con la orden en el caso (`caso.orden_id`), el botón baja el PDF de la orden TAL COMO ESTÁ (cotizacion-cliente · ver, el mismo
+   * camino de «PDF de la cotización»): no rehace nada ni llama al modelo. El total es el de Odoo más reciente que conoce la pantalla: el
+   * `amount_untaxed` del último PDF leído (`hilo.ultimo_pdf`, pdf_v162b) o el subtotal que releyó la última escritura (crear_borrador
+   * hecha), el que sea más nuevo. Si el machote vigente no coincide, una línea con «Actualizar»; la descarga sigue. Sin interruptor no se llama. */
+  function pdfOdoo() { return on('pdf_odoo_v163i'); }
+  function ordenOdoo(H) {
+    H = H || ST.hilo || {}; var c = H.caso || {}, oid = Number(c.orden_id) || 0; if (!oid) return null;
+    var cuando = function (x) { return Date.parse(x || '') || 0; };
+    var ub = (H.acciones || []).filter(function (x) { var r = x.resultado || {}; return x.tipo === 'crear_borrador' && x.estado === 'hecha' && Number(r.subtotal) > 0 && (!r.orden_id || Number(r.orden_id) === oid); })
+      .sort(function (a, b) { return cuando(a.hecha_at) - cuando(b.hecha_at) || Number(a.id) - Number(b.id); }).pop() || null;
+    var up = H.ultimo_pdf && Number(H.ultimo_pdf.orden_id) === oid && Number(H.ultimo_pdf.total) > 0 ? H.ultimo_pdf : null;
+    var dePdf = !!up && (!ub || cuando(up.at) >= cuando(ub.hecha_at));
+    var tot = dePdf ? Number(up.total) : ub ? Number(ub.resultado.subtotal) : null;
+    var mon = (dePdf ? up.moneda : ub && ub.resultado.moneda) || c.moneda || '';
+    var so = c.orden_nombre || (ub && ub.resultado.orden_nombre) || (up && up.orden_nombre) || 'la orden';
+    var I = pdfVersionInfo(H) || {}, vig = Number(I.total_machote) > 0 ? Number(I.total_machote) : null;
+    var n = Math.max(1, ((ub && ub.resultado.renglones) || []).length || 1);
+    var distinto = !!(tot && vig && (tot < vig - 0.005 || tot - vig >= n));
+    var $ = function (x) { return '$' + Number(x).toLocaleString('es-MX', { maximumFractionDigits: Number(x) % 1 ? 2 : 0, minimumFractionDigits: Number(x) % 1 ? 2 : 0 }) + (mon ? ' ' + mon : ''); };
+    return { orden_id: oid, so: so, total: tot, moneda: mon, vigente: vig, distinto: distinto, fuente: dePdf ? 'ultimo_pdf' : ub ? 'crear_borrador' : null,
+      etiqueta: 'Cotización en Odoo (' + so + (tot ? ' · ' + $(tot) : '') + ')',
+      linea: distinto ? 'La orden es de la versión anterior: ' + $(tot) + '; la vigente: ' + $(Math.ceil(vig - 0.005)) : null };
+  }
+  /** «Actualizar» de la línea: el MISMO clic que la tarjeta del borrador si hay uno propuesto; si no, se le pide al motor (como el rayito de la V1.57a). */
+  function actualizarOrden(c, bt) {
+    var O = ordenOdoo(); if (!O) return;
+    var bp = ((ST.hilo && ST.hilo.acciones) || []).filter(function (a) { return a.tipo === 'crear_borrador' && a.estado === 'propuesta'; }).pop();
+    if (bp) return lanzarClic({ acc: bp.datos && bp.datos.referencias && bp.datos.referencias.n ? 'refok' : 'hacer', id: bp.id }, c, bt);
+    return lanzarSiguiente({ txt: 'Actualizar ' + O.so + ' en Odoo', acc: 'mandar', texto: 'Actualiza ' + O.so + ' en Odoo con el machote nuevo' }, c, bt || document.createElement('button'));
+  }
+  /** El clic del rayito: baja el PDF de la orden tal como está, con «Generando…» y el resultado en el aviso de abajo. */
+  function bajarOrden(c0) {
+    var O = ordenOdoo(); if (!O || !G.CzEnviar || !G.CzEnviar.bajar || ST.pdfoBaja) return;
+    var cs = (ST.hilo && ST.hilo.caso && ST.hilo.caso.id) ? ST.hilo.caso : c0, nombre = nombrePdf();
+    ST.pdfoBaja = true; toast('Generando el PDF de ' + O.so + '…');
+    return G.CzEnviar.bajar(Object.assign({}, cs, { orden_nombre: cs.orden_nombre || (c0 || {}).orden_nombre }), { nombre: nombre }).then(function (r) {
+      ST.pdfoBaja = false;
+      if (r && r.ok) { toast('✓ Descargado' + (r.guardado ? ' (el guardado: la orden no cambió)' : '') + ' · ' + nombre); return cargarHilo().catch(function () {}); }
+      toast('✕ No se generó: ' + ((r && (r.mensaje || r.error)) || 'Odoo no mandó el PDF'), 'Reintentar', function () { bajarOrden(c0); });
+    }, function () { ST.pdfoBaja = false; toast('✕ No se generó: sin respuesta del servidor', 'Reintentar', function () { bajarOrden(c0); }); });
+  }
+  /** La entrada del ⋮ (va arriba, en lugar de «PDF de la cotización (última versión)» / «Ver cotización» + «⬇ Descargar PDF»). El ícono de
+   * página del menú hace de 📄 (con los dos se veía doble a 380 px); en el rayito, que no lleva íconos, va el 📄. */
+  function pdfOdooMenu(c) {
+    var O = ordenOdoo(); if (!O) return '';
+    return '<button data-a="pdf_odoo" data-pdfo>' + ico('pagina', 's') + '<span>' + esc(O.etiqueta) + '<small data-pdfu-sub>' + esc('Tal como está en Odoo, sin rehacer nada · ' + nombrePdf()) + '</small>' +
+      (O.linea ? '<small class="pdfu-viejo" data-pdfo-linea role="status">⚠ ' + esc(O.linea) + '</small>' : '') + '</span></button>' +
+      (O.linea && (mia(c) || ST.admin === true) ? '<button data-a="pdf_odoo_act" data-pdfo-act>' + ico('enviar', 's') + '<span>Actualizar ' + esc(O.so) + ' en Odoo<small>' +
+        esc('Pasa la versión vigente a Odoo; mientras, el PDF de arriba se baja como está') + '</small></span></button>' : '');
+  }
   /** El renglón del ⋮: «Generando…» mientras Odoo lo arma (o sale el guardado al instante si la orden no cambió), y el error ahí mismo con «Reintentar». */
   function pdfDelMenu(b, c0) {
     if (b.dataset.trabajando === '1' || !G.CzEnviar || !G.CzEnviar.bajar) return;
@@ -2763,7 +2867,7 @@
     return '<div class="carta pdf-listo czp-resp" data-pdf-listo="' + esc(String(so)) + '">' +
       '<button type="button" class="czp-archivo" data-czp-pdf="1"' + (puede ? '' : ' disabled') + ' aria-label="Abrir el PDF de ' + esc(so) + (v ? ' versión ' + v : '') + '">' +
         '<span class="czp-ic" aria-hidden="true">PDF</span><span class="czp-tx"><b>' + esc(so) + (v ? ' · versión ' + v : '') + '</b>' +
-        '<small>' + esc(fechaCorta(U.created_at || (H.ultima || {}).created_at)) + ' · de Odoo, ya con este cambio' + esc(tot) + '</small></span></button>' +
+        '<small>' + esc(fechaCorta(U.created_at || (H.ultima || {}).created_at)) + ' · de Odoo, ya con este cambio' + esc(tot) + '</small>' + pdfInfoHtml(H) + '</span></button>' +
       (des ? '<div class="acc czp-acc">' + (des.estado === 'propuesta' && puede ? '<button data-hacer="' + des.id + '">' + esc(etiqueta(des)) + '</button>' : '') + '</div>' : '') + '</div>';
   }
   /** Un borrador hecho o un «Ya la mandé» hecho: una línea gris que se abre para leer. Ningún botón de PDF. */
@@ -2791,7 +2895,7 @@
     var bts = G.CzEnviar ? G.CzEnviar.botones(H, puede, { sinPdf: true }) : '';
     if (bLm) bts = /<div class="ce-bts">/.test(bts) ? bts.replace('<div class="ce-bts">', '<div class="ce-bts">' + bLm) : bts + '<div class="ce-bts">' + bLm + '</div>';
     return '<div class="fila el"><div class="czp-vig" data-czp-vigente="' + esc(String(v)) + '" aria-label="Estado vigente"><span class="czp-etq">Estado vigente · ' + esc(so) + (v ? ' versión ' + v : '') + '</span>' +
-      '<p>' + esc(txt) + '</p>' + bts + (bLm ? leyendaOdoo('enviada') : '') + '</div></div>';
+      '<p>' + esc(txt) + '</p>' + pdfInfoHtml(H, 'czp-ver') + bts + (bLm ? leyendaOdoo('enviada') : '') + '</div></div>';
   }
 
   /** V1.59 (`tarjetas_v159`) · el botón dice lo que hace: con la orden ya en Odoo, «Actualizar SO… en Odoo», no «Crear borrador». */

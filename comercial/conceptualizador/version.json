@@ -1,6 +1,21 @@
 {
-  "version": "V1.63i.2",
+  "version": "V1.63i.5",
   "historial": [
+    {
+      "version": "V1.63i.5",
+      "fecha": "2026-10-28",
+      "nota": "fts-conceptualizador#16 punto B (Esteban, 28-oct, D223), detrás de `pdf_odoo_v163i` (apagado = como antes): con la orden ya en Odoo, el rayito y el ⋮ traen siempre «📄 Cotización en Odoo (SO… · total)», que descarga el PDF de la orden tal como está, sin rehacer nada ni gastar modelo. Si el machote vigente no coincide con la orden, lo dice en una línea («La orden es de la versión anterior: $X; la vigente: $Y») con «Actualizar», sin bloquear la descarga. «Volver a armar» ya no se ofrece en el rayito cuando hay orden."
+    },
+    {
+      "version": "V1.63i.4",
+      "fecha": "2026-10-28",
+      "nota": "fts-conceptualizador#16 puntos 3 a 5 (Esteban, 28-oct 11:25 MT, D220), detrás de `numero_directo_v163i` (apagado = como antes): una decisión con número claro de la persona (precio total, margen, cantidad u horas, por texto o por voz no dudosa) se aplica en el mismo turno a machote y Odoo, con «↺ Deshacer» y sin tarjeta de confirmar; el agente ya no escribe «ahora mismo actualizo» ni «ya quedó» si no lo hizo (si algo espera tu toque, arriba dice «Falta tu ✓ para aplicar»); y el PDF dice de qué versión del machote es y cuánto suma, con «Este PDF es de la versión anterior ($X); la nueva ($Y) no ha llegado a Odoo» cuando Odoo no la trae."
+    },
+    {
+      "version": "V1.63i.3",
+      "fecha": "2026-10-28",
+      "nota": "fts-conceptualizador#16 punto D (pedido de Richard, Esteban 28-oct 10:50 MT, D219), detrás de `ruido_chat_v163i` (apagado = como antes): la nota fija de FTS USA ya no se marca ni se enseña como liberada en la tarjeta del borrador; las frases con cálculos que vería el cliente las reescribe el agente solo; lo que no pudo reescribir, el sentido y la verificación viven en «⚠ Avisos (N)» de la vista ejecutiva, con cuántas frases reescribió el agente en el caso. En el chat solo una línea cuando eso frena el envío. Nunca el texto original y el corregido juntos."
+    },
     {
       "version": "V1.63i.2",
       "fecha": "2026-10-28",
