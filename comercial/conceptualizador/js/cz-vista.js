@@ -35,7 +35,8 @@
     v: 'fts', aviso: 0, ok2: false,
     preg: null, okInt: false,
     n0: null, n0msg: {},
-    rt: {}, revMsg: {} };   // V1.63b (`secciones_v163`) · la pestaña abierta de cada sección y lo que contestó el servidor al marcarla   // V1.62a (`n0_v162`) · el renglón cuyo precio se está corrigiendo y lo que contestó el servidor   // V1.58 (`menu_vista_v158`) · la pregunta antes de lo interno (vista o Excel) y si ya se dijo que sí   // V1.57b · versión FTS o cliente, y el paso de la doble confirmación
+    rt: {}, revMsg: {},
+    pc: false, pcOk: {}, pcNo: null, pcMsg: '' };   // V1.63i A2 (`por_confirmar_v163i`) · el chip prendido, lo confirmado en esta ráfaga, el ✗ abierto   // V1.63b (`secciones_v163`) · la pestaña abierta de cada sección y lo que contestó el servidor al marcarla   // V1.62a (`n0_v162`) · el renglón cuyo precio se está corrigiendo y lo que contestó el servidor   // V1.58 (`menu_vista_v158`) · la pregunta antes de lo interno (vista o Excel) y si ya se dijo que sí   // V1.57b · versión FTS o cliente, y el paso de la doble confirmación
 
   /* ═══ V1.57b (fts-conceptualizador#12 punto 14, `vista_cliente`) · versión cliente y Excel ═══
    * Prototipo aprobado: prototipos/v157/vista-ejecutiva.html. La versión cliente es lo que el cliente puede ver: secciones,
@@ -328,6 +329,45 @@
     }, function () { S.revMsg[k] = { ok: false, texto: 'No se guardó: sin señal.' }; pintar(); });
   }
 
+  /* ═══ V1.63i A2 (fts-conceptualizador#16, `por_confirmar_v163i`) · «Por confirmar (N)» ═══
+   * Todo lo que espera confirmación humana, ordenado por cuánto mueve el total (lo ordena el motor). Cada pendiente es una fila
+   * `[data-nivel="pendiente"][data-k]`: con el micrófono abierto, tocarla la fija como objetivo de la voz (cz-vozvista.js), y «sí, va»
+   * la confirma. «✓ Confirmar» se junta 1.5 s y sale en UN evento; «✗ No» pide qué va en su lugar. Lo confirmado sale de la lista ya. */
+  var TIPO_PC = { supuesto: '🤖 Supuesto', pregunta: '❓ Pregunta', estimado: '≈ Estimado', n5: '⛔ Sin precio', alerta: '⚠ Alerta', decision: '🗂 Decisión', rubro: '📁 Rubro' };
+  function pintarPorConfirmar(PC, mon) {
+    var mv = function (x) { return x == null ? '' : (x < 0 ? '−' : '+') + (mon === 'USD' ? 'USD ' : '$') + Math.abs(Number(x)).toLocaleString('es-MX', { maximumFractionDigits: 0 }); };
+    return '<section class="vz-caja vz-pc" id="vzPc"><h2>Por confirmar (' + esc(PC.n) + ')</h2>' + (S.pcMsg ? '<p class="vz-nada">' + esc(S.pcMsg) + '</p>' : '') +
+      (PC.items.length ? PC.items.map(function (x) {
+        var no = S.pcNo === x.k;
+        return '<div class="vz-niv vz-n3" data-nivel="pendiente" data-k="' + esc(x.k) + '"><button type="button" class="vz-fila" aria-expanded="false" data-k="' + esc(x.k) + '">' +
+          '<span class="vz-nom"><span class="d">' + esc(x.texto) + '</span><small>' + esc(TIPO_PC[x.tipo] || x.tipo) + (x.fuente ? ' · ' + esc(x.fuente) : '') + '</small></span>' +
+          '<span class="vz-num"><b>' + esc(mv(x.mueve)) + '</b></span></button>' +
+          '<div class="vz-pc-acc">' + (x.si ? '<button type="button" class="vz-bt lleno" data-vz-pcsi="' + esc(x.k) + '">✓ Confirmar</button>' : '') +
+          (x.no ? '<button type="button" class="vz-bt" data-vz-pcno="' + esc(x.k) + '">✗ No</button>' : '') + '</div>' +
+          (no ? '<div class="vz-pc-no"><input id="vzPcNo" type="text" placeholder="¿Qué va en su lugar?" aria-label="Qué va en su lugar"><button type="button" class="vz-bt lleno" data-vz-pcnog="' + esc(x.k) + '">Enviar</button>' +
+            '<button type="button" class="vz-bt" data-vz-pcnox="1">Cancelar</button></div>' : '') + '</div>';
+      }).join('') : '<p class="vz-nada">Nada por confirmar.</p>') + '</section>';
+  }
+  var pcCola = [], pcT = null;
+  function confirmarPc(k) {
+    var al = S.o && S.o.al; if (!al || typeof al.confirmar !== 'function') return;
+    S.pcOk[k] = true; pcCola.push(k); S.pcMsg = ''; pintar();
+    clearTimeout(pcT); pcT = setTimeout(function () {
+      var L = pcCola.slice(); pcCola = [];
+      Promise.resolve(al.confirmar(L)).then(function (r) {
+        if (!r || !r.ok) { L.forEach(function (x) { delete S.pcOk[x]; }); S.pcMsg = 'No se pudo confirmar (' + ((r && r.error) || 'sin respuesta') + '). Vuelve a tocar ✓.'; }
+        else S.pcMsg = 'Confirmé ' + L.length + '. El agente lo cierra como decisión tuya.';
+        if (S.abierto) pintar();
+      }, function () { L.forEach(function (x) { delete S.pcOk[x]; }); S.pcMsg = 'Sin conexión: vuelve a tocar ✓.'; if (S.abierto) pintar(); });
+    }, 1500);
+  }
+  function corregirPc(k) {
+    var al = S.o && S.o.al, i = S.el.querySelector('#vzPcNo'), v = i ? String(i.value || '').trim() : '';
+    if (!al || typeof al.corregir !== 'function' || v.length < 2) return;
+    var it = arr(((S.o || {}).analisis || {}).por_confirmar && S.o.analisis.por_confirmar.items).filter(function (x) { return x.k === k; })[0]; if (!it) return;
+    S.pcOk[k] = true; S.pcNo = null; pintar();
+    Promise.resolve(al.corregir(it, v)).then(function (r) { S.pcMsg = r && r.ok ? 'Mandé tu corrección.' : 'No se pudo mandar la corrección.'; if (!(r && r.ok)) delete S.pcOk[k]; if (S.abierto) pintar(); });
+  }
   function pintar() {
     var o = S.o || {}, M = S.M || {}, caso = o.caso || {}, H = o.hilo || {}, U = H.ultima || {}, T = o.terminos || {}, an = o.analisis || null;
     var D = modelo(M), REF = M.decretos_ref || {}, todas = D.todas;
@@ -339,6 +379,9 @@
     var visibles = todas.filter(function (f) { return cumple(f.r, S.f); }).length;
     var nSin = todas.filter(function (f) { return f.sin; }).length;
     var mar = margen(D.tot.c, D.tot.p, D.tot.com);
+    // V1.63i A2 · la lista del motor (herramientas/avance/por-confirmar.js), la misma que cuenta «Hacia el 100»; sin lo que ya confirmó aquí.
+    var PC = prendido('por_confirmar_v163i') && an && an.por_confirmar ? { n: Math.max(0, Number(an.por_confirmar.n) - Object.keys(S.pcOk).length),
+      items: arr(an.por_confirmar.items).filter(function (x) { return x && x.k && !S.pcOk[x.k]; }) } : null;
 
     var h = '<div class="vz-barra"><button type="button" class="vz-atras" data-vz="cerrar" aria-label="Cerrar la vista ejecutiva">' +
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button><b>Vista ejecutiva del proyecto</b>' +
@@ -370,7 +413,9 @@
         '<div class="vz-tile" data-vz-ind="alertas" title="' + esc(G.CzIndicadores.textoAlertas(o.indicadores) || 'Sin alertas') + '"><small>Alertas</small><b>' + esc(o.indicadores.alertas.total) + '</b>' +
         (o.indicadores.alertas.total ? '<small>' + esc(G.CzIndicadores.textoAlertas(o.indicadores).replace(/^\d+ alertas? /, '')) + '</small>' : '') + '</div>' : '') +
       (secOn() && D.secs.length ? '<div class="vz-tile" data-vz-ind="secciones"><small>Secciones revisadas</small><b>' + D.secs.filter(function (s) { return revisadaDe(s.nombre); }).length + ' de ' + D.secs.length + '</b></div>' : '') +
-      (pct !== null ? '<div class="vz-tile"><small>Hacia el 100</small><b>' + esc(pct) + ' %</b><div class="vz-barra-av"><i style="width:' + Math.max(0, Math.min(100, Number(pct) || 0)) + '%"></i></div></div>' : '') + '</section>';
+      (pct !== null ? '<div class="vz-tile" data-vz-ind="hacia100"><small>Hacia el 100</small><b>' + esc(pct) + ' %</b><div class="vz-barra-av"><i style="width:' + Math.max(0, Math.min(100, Number(pct) || 0)) + '%"></i></div>' +
+        (PC ? '<small>' + esc(PC.n) + ' por confirmar</small>' : '') + '</div>' : '') + '</section>';
+    if (PC && S.pc) h += pintarPorConfirmar(PC, mon);
     var pend = arr(o.decisionesPendientes).map(function (p) { return typeof p === 'string' ? { t: p } : { t: p.titulo || p.texto || p.q || '', por: p.por || p.id || '' }; }).filter(function (p) { return p.t; });
     var falta = arr(M.pendientes).map(function (p) { return { t: (p.titulo || '') + (arr(p.items).length ? ': ' + arr(p.items).join(' · ') : ''), por: 'para cotizar' }; }).filter(function (p) { return p.t; });
     h += '<section class="vz-caja"><h2>Decisiones pendientes vigentes (' + pend.length + ')</h2>' + (pend.length ? '<ul class="vz-pend">' +
@@ -390,7 +435,7 @@
       '<dt>Exclusiones</dt><dd>' + lista(T.exclusiones) + '</dd><dt>Supuestos</dt><dd>' + lista(sups) + '</dd>' +
       '<dt>Tiempo de ejecución</dt><dd>' + texto(T.tiempo) + '</dd><dt>Lugar</dt><dd>' + texto(lugar) + '</dd>' +
       '<dt>Moneda</dt><dd>' + texto(mon) + '</dd><dt>Impuestos</dt><dd>' + texto(T.impuestos) + '</dd></dl></div></section>';
-    h += '<div class="vz-filtros" id="vzFiltros">' + CHIPS.map(function (c) {
+    h += '<div class="vz-filtros" id="vzFiltros">' + (PC ? '<button type="button" class="vz-chip vz-chip-pc" data-vz="pc" aria-pressed="' + S.pc + '">✋ Por confirmar<i>' + esc(PC.n) + '</i></button>' : '') + CHIPS.map(function (c) {
       var n = todas.filter(function (f) { return CHIP_FN[c[1]](f.r); }).length;
       return '<button type="button" class="vz-chip" data-vz-f="' + c[0] + ':' + c[1] + '" aria-pressed="' + !!S.f[c[0]][c[1]] + '">' + c[2] + '<i>' + n + '</i></button>';
     }).join('') + '<p class="vz-fres" id="vzFres">' + (hayFiltro()
@@ -459,6 +504,11 @@
     if (b.hasAttribute('data-vz-n0x')) { S.n0 = null; pintar(); return; }
     if (b.hasAttribute('data-vz-rt')) { var t = b.getAttribute('data-vz-rt').split(':'); S.rt[t[0]] = t[1]; pintar(); return; }
     if (b.hasAttribute('data-vz-rev')) { var t2 = b.getAttribute('data-vz-rev').split(':'); marcar(t2[0], t2[1] === '1'); return; }
+    if (a === 'pc') { S.pc = !S.pc; pintar(); return; }
+    if (b.hasAttribute('data-vz-pcsi')) { confirmarPc(b.getAttribute('data-vz-pcsi')); return; }
+    if (b.hasAttribute('data-vz-pcno')) { S.pcNo = b.getAttribute('data-vz-pcno'); pintar(); var i1 = S.el.querySelector('#vzPcNo'); if (i1) i1.focus(); return; }
+    if (b.hasAttribute('data-vz-pcnog')) { corregirPc(b.getAttribute('data-vz-pcnog')); return; }
+    if (b.hasAttribute('data-vz-pcnox')) { S.pcNo = null; pintar(); return; }
     if (a === 'cerrar') cerrar();
     else if (a === 'expandir') todo(true);
     else if (a === 'colapsar') todo(false);
@@ -514,7 +564,7 @@
     // V1.63g (`voz_visor_v163g`) · el micrófono de la vista: revisar la cotización por voz (cz-vozvista.js).
     // V1.63g.1 · el id del caso puede venir en `caso` o solo en `hilo.caso` (el camino real del ⋮ no lo traía en `caso`).
     var cidV = (S.o.caso && S.o.caso.id) || (S.o.hilo && S.o.hilo.caso && S.o.hilo.caso.id) || null;
-    if (prendido('voz_visor_v163g') && G.CzVozVista && cidV) G.CzVozVista.montar({ el: el, caso: Object.assign({}, S.o.caso, { id: cidV }), idioma: S.o.idioma, cola: G.CzCola, resolver: S.o.al && S.o.al.resolver });
+    if (prendido('voz_visor_v163g') && G.CzVozVista && cidV) G.CzVozVista.montar({ el: el, caso: Object.assign({}, S.o.caso, { id: cidV }), idioma: S.o.idioma, cola: G.CzCola, resolver: S.o.al && S.o.al.resolver, previa: S.o.al && S.o.al.previa });
   }
   function quitar() {
     if (!S.abierto) return;
@@ -596,6 +646,13 @@
     '#cz-vista .vz-chip{height:32px;padding:0 12px;border-radius:16px;border:1px solid var(--vz-linea);background:var(--vz-sup);font-size:13px;white-space:nowrap}',
     '#cz-vista .vz-chip[aria-pressed="true"]{background:var(--vz-marca);border-color:var(--vz-marca);color:#fff}',
     '#cz-vista .vz-chip i{font-style:normal;opacity:.75;margin-left:4px}',
+    // V1.63i A2 · «Por confirmar»: el chip va primero y resalta; cada pendiente con ✓ y ✗ a la derecha (abajo en teléfono).
+    '#cz-vista .vz-chip-pc{border-color:#b45309;font-weight:600}#cz-vista .vz-chip-pc[aria-pressed="true"]{background:rgba(245,158,11,.22);color:inherit;border-color:#b45309}',
+    '#cz-vista .vz-pc [data-nivel="pendiente"]{display:flex;flex-wrap:wrap;align-items:center;gap:6px;border-top:1px solid var(--vz-linea);padding:6px 0}',
+    '#cz-vista .vz-pc [data-nivel="pendiente"]>.vz-fila{flex:1 1 320px;min-width:0;grid-template-columns:minmax(0,1fr) auto;padding:6px 4px}',
+    '#cz-vista .vz-pc [data-nivel="pendiente"] .vz-nom span.d{white-space:normal;overflow:visible;overflow-wrap:anywhere}',
+    '#cz-vista .vz-pc .vz-num{white-space:nowrap;font-variant-numeric:tabular-nums;align-self:start}',
+    '#cz-vista .vz-pc-acc{display:flex;gap:6px;flex:0 0 auto}#cz-vista .vz-pc-no{display:flex;gap:6px;flex:1 1 100%}#cz-vista .vz-pc-no input{flex:1;min-width:0;height:34px;padding:0 8px;border:1px solid var(--vz-linea);border-radius:8px}',
     '#cz-vista .vz-fres{font-size:12.5px;color:var(--vz-sec);width:100%}',
     '#cz-vista .vz-fres button{color:var(--vz-marca);font-weight:600}',
     '#cz-vista .vz-leyenda{font-size:12px;color:var(--vz-ter);margin-bottom:8px}',

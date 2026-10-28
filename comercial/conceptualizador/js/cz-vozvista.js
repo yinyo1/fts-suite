@@ -46,7 +46,11 @@
       lecturaMal: function (so, f) { return '⚠ ' + so + ': no quedó en Odoo (' + f + ')'; },
       hechaCodigo: function (a, m) { return '✓ Aprobaste ' + a + ' de ' + m + '. Lo determinista se aplicó por código; lo de criterio lo hace el agente.'; },
       rechazada: 'Rechazado: no cambió nada.', verTarjeta: function (m) { return '📝 Esto entendí · ' + m + (m === 1 ? ' cambio' : ' cambios'); },
-      general1: 'General' },
+      general1: 'General',
+      // V1.63i A1 (`voz_previa_v163i`) · la previa de audios antes de enviar.
+      revisar: function (n) { return 'Revisar (' + n + ')'; }, previa: 'Revisa antes de enviar', transcribiendo: 'transcribiendo…', sinTexto: 'Sin transcripción todavía: se puede enviar igual.',
+      editar: 'Editar el texto', editadoTag: '✎ lo editaste: manda sobre el audio', ligadoA: 'Ligado a', cambiarLiga: 'Cambiar', ligaGeneralOp: '🌐 General',
+      eligeRenglon: 'Toca el renglón, la sección o el pendiente al que va esta nota', ligaCambiada: 'Ligado cambiado', sinLigar: 'sin ligar (nada en la línea guía) · toca «Cambiar»', transcritaEn: function (s) { return 'transcrita en ' + s + ' s · $0 (whisper local)'; } },
     en: { listo: 'Hold to record · slide ↑ to lock', suelta: 'Release to save · ↑ lock', bloq: 'Locked · scroll and talk · tap ■ to finish',
       tocaHint: 'Tap a line to target it', corta: 'Too short: hold the mic while you talk', guardada: function (d) { return 'Note saved (' + d + ')'; },
       cortada: function (d) { return 'The browser cut a recording: I kept what it had (' + d + ')'; },
@@ -68,7 +72,10 @@
       lecturaMal: function (so, f) { return '⚠ ' + so + ': it did not land in Odoo (' + f + ')'; },
       hechaCodigo: function (a, m) { return '✓ You approved ' + a + ' of ' + m + '. What is exact was applied by code; what needs judgment, the agent does.'; },
       rechazada: 'Rejected: nothing changed.', verTarjeta: function (m) { return '📝 What I understood · ' + m + (m === 1 ? ' change' : ' changes'); },
-      general1: 'General' }
+      general1: 'General',
+      revisar: function (n) { return 'Review (' + n + ')'; }, previa: 'Review before sending', transcribiendo: 'transcribing…', sinTexto: 'No transcript yet: you can send it anyway.',
+      editar: 'Edit the text', editadoTag: '✎ you edited it: it wins over the audio', ligadoA: 'Linked to', cambiarLiga: 'Change', ligaGeneralOp: '🌐 General',
+      eligeRenglon: 'Tap the line, section or pending item this note is about', ligaCambiada: 'Link changed', sinLigar: 'not linked (nothing on the guide line) · tap «Change»', transcritaEn: function (s) { return 'transcribed in ' + s + ' s · $0 (local whisper)'; } }
   };
   var L = 'es', t = function (k) { return (T[L] || T.es)[k]; }, tl = function (lang, k) { return (T[lang] || T.es)[k]; };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
@@ -107,7 +114,9 @@
   }
 
   /* ═══ Estado ═══ */
-  var S = { el: null, caso: null, cola: null, notas: [], enviadas: [], espera: null, accion: null, resolver: null, montado: false };
+  var S = { el: null, caso: null, cola: null, notas: [], enviadas: [], espera: null, accion: null, resolver: null, montado: false,
+    previa: null, eligiendo: null, sondeo: null };   // V1.63i A1 · {subir, transcripciones} de cz-app; la nota cuyo ligado se elige; el sondeo
+  var previaOn = function () { try { return !!S.previa && typeof G.CzInterruptor === 'function' && G.CzInterruptor('voz_previa_v163i') === true; } catch (e) { return false; } };
   var R = null, apretado = false, guiaAct = null, objAct = null, sonando = null;
   var $ = function (id) { return document.getElementById(id); };
   var deCaso = function (n) { return S.caso && n.caso_id === S.caso.id; };
@@ -158,7 +167,11 @@
       '.czvv-dir{border-top:1px solid #e3e6e8;padding:9px 0;display:flex;gap:10px;align-items:flex-start}.czvv-dir .d{flex:1;min-width:0;overflow-wrap:anywhere}.czvv-dir .ok{color:#00a884;font-weight:700}.czvv-dir .d small{display:block}',
       '.czvv-desh{display:flex;justify-content:flex-end;margin-top:6px}.czvv-desh button{border:1px solid #c9ced2;background:#fff;border-radius:18px;padding:7px 14px;font-size:14px;min-height:36px}',
       '.czvv-lect{margin-top:8px;font-size:13px;color:#2f6f4f;overflow-wrap:anywhere}.czvv-lect.mal{color:#b3261e}',
-      '#cz-vista.czvv-con{padding-bottom:120px}'
+      '#cz-vista.czvv-con{padding-bottom:120px}',
+      '.czvv-revisar{min-width:0;font-size:14px}.czvv-pv{border-top:1px solid #e3e7ea;padding:10px 0}.czvv-pv-cab{display:flex;align-items:center;gap:8px}.czvv-pv-cab small{color:#667781;flex:1}.czvv-pv-cab .borrN{margin-left:auto}',
+      '.czvv-pv-tx{width:100%;min-height:64px;margin-top:6px;padding:8px;border:1px solid #d1d7db;border-radius:8px;font:inherit;font-size:14px;resize:vertical;box-sizing:border-box}',
+      '.czvv-pv-est{display:block;color:#667781;font-size:12px;min-height:14px}.czvv-pv-liga{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px;font-size:13px}.czvv-pv-liga span{flex:1 1 200px;min-width:0;overflow-wrap:anywhere}',
+      '.czvv-mini{height:30px;padding:0 10px;border-radius:15px;border:1px solid #d1d7db;background:#fff;font-size:12.5px}'
     ].join('\n');
     document.head.appendChild(s);
   }
@@ -168,6 +181,11 @@
     var n = x && x.closest ? x.closest('[data-nivel]') : null; if (!n) return null;
     var sec = n.getAttribute('data-nivel') === 'seccion' ? n : n.closest('[data-nivel="seccion"]');
     var txtSec = sec ? (sec.querySelector(':scope>.vz-fila .vz-nom b') || {}).textContent : '';
+    // V1.63i A2 (`por_confirmar_v163i`) · un pendiente de «Por confirmar»: su llave (supuesto:S3, conjetura:206…) es el objetivo de la voz.
+    if (n.getAttribute('data-nivel') === 'pendiente') {
+      var dp = n.querySelector(':scope>.vz-fila .vz-nom .d');
+      return { sec: null, ren: n.getAttribute('data-k'), txt: String((dp && dp.textContent) || '').trim().slice(0, 160), stxt: '' };
+    }
     if (n.getAttribute('data-nivel') === 'renglon') {
       var d = n.querySelector(':scope>.vz-fila .vz-nom .d'), dt = '';
       if (d) { var c = d.cloneNode(true); [].slice.call(c.querySelectorAll('.vz-badge,[class*="niv"],[class*="chip"]')).forEach(function (x) { x.remove(); }); dt = c.textContent; }
@@ -247,7 +265,8 @@
       r.stream.getTracks().forEach(function (x) { x.stop(); });
       if (como !== 'cortada' && r.nota.dur < 0.8) { borrarNota(r.nota.id).then(recargar); toast(t('corta')); return; }
       r.nota.estado = como === 'cortada' ? 'cortada' : 'lista';
-      poner('notas', r.nota).then(recargar);
+      r.nota.fin = Date.now();
+      poner('notas', r.nota).then(recargar).then(function () { if (previaOn()) subirPrevia(r.nota.id); });
       toast(como === 'cortada' ? t('cortada')(dur(r.nota.dur)) : t('guardada')(dur(r.nota.dur)));
     };
     if (r.rec.state !== 'inactive') { r.rec.onstop = function () { setTimeout(cerrar, 50); }; try { r.rec.stop(); } catch (e) { cerrar(); } } else cerrar();
@@ -271,6 +290,7 @@
     var n = S.notas.length, b = $('czvvCuenta'); if (!b) return;
     b.textContent = '🎤 ' + n; b.disabled = !n; b.setAttribute('aria-label', t('notas') + ': ' + n);
     var e = $('czvvEnviar'); e.textContent = t('enviar')(n); e.disabled = !n || !!R;
+    var rv = $('czvvRevisar'); if (rv) { rv.hidden = !previaOn() || !n; rv.textContent = t('revisar')(n); rv.disabled = !!R; }
     var v = $('czvvVer'), a = S.accion;
     v.hidden = !(a && a.estado === 'propuesta'); if (a) v.textContent = t('verTarjeta')(((a.datos || {}).cambios || []).length);
     $('czvvMic').setAttribute('aria-label', L === 'en' ? 'Hold to record' : 'Mantén para grabar');
@@ -288,6 +308,7 @@
           (n.estado === 'cortada' ? ' <em>· ' + esc(t('cortadaTag')) + '</em>' : '') + '<small>' + esc(t('viendo')) + ': ' + esc(secsDe(n).join(' → ') || '—') + '</small></div>' +
           '<button type="button" class="czvv-ico borrN" aria-label="' + esc(t('borrar')) + '">🗑</button></div>';
       }).join('') : '<p>' + esc(t('vacia')) + '</p>'));
+    h.setAttribute('data-hoja', 'lista');
     h.querySelectorAll('.oirN').forEach(function (b) { b.onclick = function () { oir(b.closest('.czvv-nota').getAttribute('data-id'), 0, b); }; });
     h.querySelectorAll('.borrN').forEach(function (b) { b.onclick = async function () { if (!confirm(t('borrarQ'))) return; await borrarNota(b.closest('.czvv-nota').getAttribute('data-id')); await recargar(); abrirLista(); }; });
   }
@@ -300,6 +321,69 @@
     if (boton) { boton.textContent = '■'; a.onended = function () { boton.textContent = '▶'; sonando = null; }; }
   }
 
+  /* ═══ V1.63i A1 (fts-conceptualizador#16, `voz_previa_v163i`) · previa de audios antes de enviar (pedido de Montalvo) ═══
+   * Al soltar, la nota se sube SOLA como audio suelto del caso (C.subir, sin mensaje): el vigía la transcribe con whisper local
+   * (sin agente ni modelo: $0) y la transcripción se lee del hilo. «Revisar (N)» enseña cada nota con su texto («transcribiendo…»
+   * mientras no llega), a qué quedó ligada, y oír / editar / cambiar lo ligado / borrar. Todo vive en el IndexedDB de la nota hasta
+   * «Enviar». El texto editado a mano manda sobre el audio y no es dudoso (rafaga.js); el audio se vuelve a mandar con el mensaje
+   * y la base lo junta por su huella (no se duplica). Sin señal, la nota se queda y se sube al volver a abrir la vista. */
+  async function subirPrevia(id) {
+    var n = S.notas.filter(function (x) { return x.id === id; })[0]; if (!n || n.adjunto_id || n.subiendo || !previaOn()) return;
+    n.subiendo = true;
+    try {
+      var blob = new Blob(await partesDe(n.id), { type: n.mime }), ext = /mp4/.test(n.mime) ? 'm4a' : /ogg/.test(n.mime) ? 'ogg' : 'webm';
+      var r = await S.previa.subir({ caso_id: S.caso.id, nombre: 'nota-' + new Date(n.inicio).toISOString().slice(0, 19).replace(/[:T]/g, '') + '.' + ext, mime: n.mime.split(';')[0], blob: blob, duracion_s: Math.round(n.dur * 10) / 10, escrito_at: n.inicio });
+      if (r && r.ok && r.adjunto_id) { n.adjunto_id = r.adjunto_id; n.subida_at = Date.now(); }
+    } catch (e) { /* sin señal: se reintenta al volver a abrir */ }
+    delete n.subiendo; await poner('notas', n); sondearPrevia(); pintarPreviaSiAbierta();
+  }
+  function sondearPrevia() {
+    clearTimeout(S.sondeo);
+    var faltan = S.notas.filter(function (n) { return n.adjunto_id && !n.transcripcion; });
+    if (!faltan.length || !previaOn() || !S.montado) return;
+    S.sondeo = setTimeout(async function () {
+      var T0 = {}; try { T0 = (await S.previa.transcripciones()) || {}; } catch (e) { T0 = {}; }
+      for (var i = 0; i < faltan.length; i++) { var n = faltan[i], tx = T0[n.adjunto_id];
+        if (tx) { n.transcripcion = String(tx).replace(/^⚠ Transcripción dudosa: /, '').split(/\n\n— (?:Traducción|Translation|Tradução) /)[0].trim(); n.dudosa = /^⚠ Transcripción dudosa/.test(tx);
+          n.transcrita_at = Date.now(); if (!n.texto_editado) n.texto = n.transcripcion; await poner('notas', n); } }
+      pintarPreviaSiAbierta(); sondearPrevia();
+    }, 6000);
+  }
+  function ligadoTxt(n) {
+    if (n.liga) return n.liga.fuente === 'general' ? t('generalLbl') : '👆 ' + (n.liga.txt || n.liga.ren || n.liga.sec || '—');
+    return secsDe(n).join(' → ') || t('sinLigar');
+  }
+  function pintarPreviaSiAbierta() { var h = $('czvvHoja'); if (h && h.classList.contains('on') && h.getAttribute('data-hoja') === 'previa') abrirPrevia(); }
+  function abrirPrevia() {
+    var h = abrirHoja('<h3>' + esc(t('previa')) + ' <button type="button" id="czvvCerrarH" class="czvv-ico" aria-label="' + esc(t('cerrar')) + '">✕</button></h3>' +
+      (S.notas.length ? S.notas.map(function (n, i) {
+        var txt = n.texto_editado ? n.texto : n.transcripcion;
+        return '<div class="czvv-pv" data-id="' + esc(n.id) + '"><div class="czvv-pv-cab"><button type="button" class="czvv-ico oirN" aria-label="' + esc(t('oir')) + '">▶</button><b>' + (i + 1) + ' · ' + dur(n.dur) + '</b>' +
+          (n.transcrita_at && n.fin ? '<small>' + esc(t('transcritaEn')(Math.round((n.transcrita_at - n.fin) / 1000))) + '</small>' : '') +
+          '<button type="button" class="czvv-ico borrN" aria-label="' + esc(t('borrar')) + '">🗑</button></div>' +
+          '<textarea class="czvv-pv-tx" aria-label="' + esc(t('editar')) + '" placeholder="' + esc(txt ? '' : t('transcribiendo')) + '">' + esc(txt || '') + '</textarea>' +
+          '<small class="czvv-pv-est">' + (n.texto_editado ? esc(t('editadoTag')) : txt ? (n.dudosa ? '⚠ ' + esc(t('dudosa')) : '') : esc(t('transcribiendo')) + ' ' + esc(t('sinTexto'))) + '</small>' +
+          '<div class="czvv-pv-liga"><span>' + esc(t('ligadoA')) + ': <b>' + esc(ligadoTxt(n)) + '</b></span><button type="button" class="czvv-mini ligN">' + esc(t('cambiarLiga')) + '</button>' +
+          '<button type="button" class="czvv-mini genN">' + esc(t('ligaGeneralOp')) + '</button></div></div>';
+      }).join('') : '<p>' + esc(t('vacia')) + '</p>'));
+    h.setAttribute('data-hoja', 'previa');
+    var nota = function (b) { var id = b.closest('.czvv-pv').getAttribute('data-id'); return S.notas.filter(function (x) { return x.id === id; })[0]; };
+    h.querySelectorAll('.oirN').forEach(function (b) { b.onclick = function () { oir(b.closest('.czvv-pv').getAttribute('data-id'), 0, b); }; });
+    h.querySelectorAll('.borrN').forEach(function (b) { b.onclick = async function () { if (!confirm(t('borrarQ'))) return; await borrarNota(b.closest('.czvv-pv').getAttribute('data-id')); await recargar(); abrirPrevia(); }; });
+    h.querySelectorAll('.czvv-pv-tx').forEach(function (x) { x.oninput = function () { var n = nota(x); if (!n) return; n.texto = x.value; n.texto_editado = x.value.trim() !== String(n.transcripcion || '').trim(); poner('notas', n);
+      var e = x.parentNode.querySelector('.czvv-pv-est'); if (e) e.textContent = n.texto_editado ? t('editadoTag') : ''; }; });
+    h.querySelectorAll('.ligN').forEach(function (b) { b.onclick = function () { var n = nota(b); if (!n) return; S.eligiendo = n.id; cerrarHoja(); toast(t('eligeRenglon')); }; });
+    h.querySelectorAll('.genN').forEach(function (b) { b.onclick = async function () { var n = nota(b); if (!n) return; n.liga = { fuente: 'general' }; await poner('notas', n); toast(t('ligaCambiada')); abrirPrevia(); }; });
+  }
+  function elegirLiga(e) {
+    var b = e.target.closest ? e.target.closest('.vz-fila') : null; if (!b) return;
+    e.preventDefault(); e.stopPropagation();
+    var o = infoDe(b), n = S.notas.filter(function (x) { return x.id === S.eligiendo; })[0]; S.eligiendo = null;
+    if (!o || !n) return;
+    n.liga = { fuente: 'elegido', sec: o.sec || null, ren: o.ren || null, txt: o.txt || o.stxt || null };
+    poner('notas', n).then(function () { toast(t('ligaCambiada')); abrirPrevia(); });
+  }
+
   /* ═══ Enviar la ráfaga: UN mensaje con sus N audios por la cola de siempre + datos.rafaga ═══ */
   async function enviar() {
     var lote = S.notas.slice(); if (!lote.length || R || !S.cola) return;
@@ -310,7 +394,10 @@
       for (var i = 0; i < lote.length; i++) {
         var n = lote[i], blob = new Blob(await partesDe(n.id), { type: n.mime }), ext = /mp4/.test(n.mime) ? 'm4a' : /ogg/.test(n.mime) ? 'ogg' : 'webm';
         archivos.push({ nombre: 'nota-' + (i + 1) + '-' + new Date(n.inicio).toISOString().slice(0, 19).replace(/[:T]/g, '') + '.' + ext, mime: n.mime.split(';')[0], clase: 'audio', bytes: blob.size, duracion_s: Math.round(n.dur * 10) / 10, blob: blob });
-        notas.push({ dur: Math.round(n.dur * 10) / 10, inicio: n.inicio, cortada: n.estado === 'cortada', ctx: n.ctx.slice(0, 1200) });
+        notas.push(Object.assign({ dur: Math.round(n.dur * 10) / 10, inicio: n.inicio, cortada: n.estado === 'cortada', ctx: n.ctx.slice(0, 1200) },
+          // V1.63i A1 · lo revisado en la previa: el texto (editado manda), el audio ya subido y el ligado elegido; y la medición.
+          previaOn() ? { texto: n.texto_editado ? n.texto : (n.transcripcion || undefined), texto_editado: !!n.texto_editado, adjunto_id: n.adjunto_id || undefined, liga: n.liga || undefined,
+            transcrita_s: n.transcrita_at && n.fin ? Math.round((n.transcrita_at - n.fin) / 100) / 10 : undefined } : {}));
       }
       var it = await S.cola.encolar({ caso_id: S.caso.id }, '', archivos, lote[0].inicio, { rafaga: { v: 1, origen: 'vista', idioma: L, notas: notas } });
       for (var j = 0; j < lote.length; j++) { lote[j].enviada = Date.now(); lote[j].cliente_id = it && it.cliente_id; await poner('notas', lote[j]); }
@@ -417,6 +504,7 @@
   /* ═══ Montar en la vista ejecutiva ═══ */
   function onScroll() { if (onScroll.p) return; onScroll.p = true; requestAnimationFrame(function () { onScroll.p = false; marcarGuia(); }); }
   function onToque(e) {
+    if (!R && S.eligiendo && S.el && S.el.contains(e.target)) return elegirLiga(e);
     if (!R || !S.el || !S.el.contains(e.target)) return;
     var b = e.target.closest ? e.target.closest('.vz-fila') : null; if (!b) return;
     var n = b.closest('[data-nivel]'); if (!n) return;
@@ -432,10 +520,12 @@
     if (S.montado) desmontar();
     css(); L = o.idioma === 'en' ? 'en' : 'es';
     S.el = o.el; S.caso = o.caso; S.cola = o.cola || G.CzCola || null; S.resolver = o.resolver || S.resolver; S.montado = true;
+    S.previa = o.previa && typeof o.previa.subir === 'function' && typeof o.previa.transcripciones === 'function' ? o.previa : null;
     S.el.classList.add('czvv-con');
     var w = document.createElement('div'); w.id = 'czvv';
     w.innerHTML = '<div class="czvv-barra"><div class="czvv-in"><div class="czvv-estado" id="czvvEstado"></div>' +
       '<button type="button" class="czvv-ver" id="czvvVer" hidden></button>' +
+      '<button type="button" class="czvv-cuenta czvv-revisar" id="czvvRevisar" hidden></button>' +
       '<button type="button" class="czvv-enviar" id="czvvEnviar" disabled></button>' +
       '<button type="button" class="czvv-cuenta" id="czvvCuenta" disabled>🎤 0</button>' +
       '<button type="button" class="czvv-mic" id="czvvMic"><span class="czvv-candado" aria-hidden="true"><span>🔒</span><span>⌃</span></span>' +
@@ -461,7 +551,7 @@
       if (R.toque && R.toque.general) { R.toque = null; registrar('guia'); } else { R.toque = { general: true }; registrar('general'); if (navigator.vibrate) navigator.vibrate(15); }
       marcarGuia(); poner('notas', R.nota);
     });
-    $('czvvCuenta').onclick = abrirLista; $('czvvVelo').onclick = cerrarHoja; $('czvvEnviar').onclick = enviar; $('czvvVer').onclick = verTarjeta;
+    $('czvvCuenta').onclick = abrirLista; $('czvvRevisar').onclick = abrirPrevia; $('czvvVelo').onclick = cerrarHoja; $('czvvEnviar').onclick = enviar; $('czvvVer').onclick = verTarjeta;
     S.el.addEventListener('scroll', onScroll, { passive: true }); G.addEventListener('resize', onScroll);
     document.addEventListener('click', onToque, true);
     G.addEventListener('pagehide', pagehide);
@@ -470,6 +560,8 @@
       var ns = await todas();
       for (var i = 0; i < ns.length; i++) if (ns[i].estado === 'grabando' && !ns[i].enviada) { ns[i].estado = 'cortada'; await poner('notas', ns[i]); }
       await recargar(); marcarGuia();
+      if (previaOn()) S.notas.filter(function (n) { return !n.adjunto_id; }).forEach(function (n) { subirPrevia(n.id); });   // lo grabado sin señal
+      sondearPrevia();
     });
     pintarBarra();
   }
