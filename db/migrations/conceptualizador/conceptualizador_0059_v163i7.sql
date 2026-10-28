@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 -- conceptualizador_0059 · V1.63i.7 (fts-conceptualizador#16 d, e y f, Esteban 28-oct-2026 14:10 MT) · «que no salga» es ocultar, y el
--- candado de una persona no frena su propia decisión
+-- candado de una persona no frena su propia decisión; y una pregunta se contesta primero (#16 1c)
 --
 -- Caso real 70f5e9 (Calbee Clarifier, Richard, COT-0044, SO11938): «que en la cotización no salga nada de viáticos» (msg 1908) se aplicó
 -- como quitar del costo (10,546.71 → 9,946.71) y luego dos candados frenaron la decisión de Richard (la versión 10 que él mismo aceptó, y
@@ -9,6 +9,7 @@
 --   · viaje_oculto_v163i     (D224) guardia «quitar → ocultar» y «viaje incluido en el precio (no se muestra)»
 --   · candado_persona_v163i  (D225) el total que dijo la persona es el candado (no el reparto del agente); su decisión nueva levanta el
 --                                   candado de su versión; una pregunta no desbloquea
+--   · pregunta_primero_v163i (D226) una pregunta directa de la persona se contesta primero y con lo guardado (pregunta-primero.js)
 -- Ni funciones nuevas ni cambios a api_motor, agente_gate u orden-odoo: el workflow de n8n no cambia.
 -- Aditiva e idempotente. Reversa: reversas/059_reversa.sql.
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -54,7 +55,7 @@ LANGUAGE sql IMMUTABLE AS $in59$
                'rfc_usa_v163i','cliente_grupo_v163i',
                'ruido_chat_v163i','numero_directo_v163i',
                'sin_ciclo_v163i','alarma_ciclo_v163i','version_vigente_v163i','pdf_odoo_v163i',
-               'viaje_oculto_v163i','candado_persona_v163i']
+               'viaje_oculto_v163i','candado_persona_v163i','pregunta_primero_v163i']
 $in59$;
 INSERT INTO conceptualizador.config (clave, valor)
 SELECT 'interruptor:' || n, '0' FROM unnest(conceptualizador.interruptores_nombres()) n

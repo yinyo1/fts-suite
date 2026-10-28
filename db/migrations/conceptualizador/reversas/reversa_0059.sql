@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- reversa de la conceptualizador_0059 (V1.63i.7, #16 d, e y f): la lista de interruptores vuelve a la de la 0058 y se borran los dos
+-- reversa de la conceptualizador_0059 (V1.63i.7, #16 d, e y f): la lista de interruptores vuelve a la de la 0058 y se borran los tres
 -- renglones de config. Apagar los interruptores basta para volver al comportamiento de antes; esta reversa es para quitarlos también.
 -- ═══════════════════════════════════════════════════════════════════════════
 CREATE OR REPLACE FUNCTION conceptualizador.interruptores_nombres() RETURNS text[]
@@ -45,4 +45,4 @@ LANGUAGE sql IMMUTABLE AS $inr59$
                'ruido_chat_v163i','numero_directo_v163i',
                'sin_ciclo_v163i','alarma_ciclo_v163i','version_vigente_v163i','pdf_odoo_v163i']
 $inr59$;
-DELETE FROM conceptualizador.config WHERE clave IN ('interruptor:viaje_oculto_v163i', 'interruptor:candado_persona_v163i');
+DELETE FROM conceptualizador.config WHERE clave IN ('interruptor:viaje_oculto_v163i', 'interruptor:candado_persona_v163i', 'interruptor:pregunta_primero_v163i');
