@@ -1,6 +1,11 @@
 {
-  "version": "V1.63i.3",
+  "version": "V1.63i.4",
   "historial": [
+    {
+      "version": "V1.63i.4",
+      "fecha": "2026-10-28",
+      "nota": "fts-conceptualizador#16 puntos 3 a 5 (Esteban, 28-oct 11:25 MT, D220), detrás de `numero_directo_v163i` (apagado = como antes): una decisión con número claro de la persona (precio total, margen, cantidad u horas, por texto o por voz no dudosa) se aplica en el mismo turno a machote y Odoo, con «↺ Deshacer» y sin tarjeta de confirmar; el agente ya no escribe «ahora mismo actualizo» ni «ya quedó» si no lo hizo (si algo espera tu toque, arriba dice «Falta tu ✓ para aplicar»); y el PDF dice de qué versión del machote es y cuánto suma, con «Este PDF es de la versión anterior ($X); la nueva ($Y) no ha llegado a Odoo» cuando Odoo no la trae."
+    },
     {
       "version": "V1.63i.3",
       "fecha": "2026-10-28",

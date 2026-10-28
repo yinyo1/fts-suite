@@ -334,6 +334,10 @@
   /* V1.63d (#12, 24-oct 21:18 CST) · el ⋮ descarga el PDF directo: «Generando…» y el error con «Reintentar» en el mismo renglón. */
   button[data-a="pdf_ultimo"].pdfu-gen{opacity:.8;cursor:progress}
   .pdfu-mal{color:var(--rojo)}
+  /* V1.63i.4 (`numero_directo_v163i`, D220) · versión y total del PDF, y la leyenda si Odoo no trae el machote vigente. */
+  .pdfu-ver{display:block;color:var(--sec);font-size:12px;overflow-wrap:anywhere}
+  .pdfu-viejo{display:block;color:var(--rojo);font-size:12px;font-weight:500;overflow-wrap:anywhere;margin-top:2px}
+  .czp-vig .pdfu-ver,.czp-vig .pdfu-viejo{margin:4px 0 0}
   .pdfu-reint{display:inline-flex;align-self:flex-start;width:auto!important;max-width:calc(100% - 68px);box-sizing:border-box;flex:none;margin:-2px 16px 8px 52px;border:1px solid var(--acento-osc);color:var(--acento-osc);background:#fff;border-radius:16px;padding:5px 14px;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer}
   .rf-lista{list-style:none;padding:0;margin:8px 0;display:flex;flex-direction:column;gap:6px;font-size:14px}
   .rf-lista li small{display:block;color:var(--sec,#667781);font-size:12px;margin-left:18px}.rf-lista .rf-no{color:#8a5a00}
@@ -927,36 +931,36 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <link rel="stylesheet" href="../../shared/chat/chat-wa.css?v=V1.61" />
 <script src="../../shared/chat/chat-wa.js?v=V1.61"></script>
 <script src="../../shared/chat/chat-firma.js?v=V1.57b"></script>
-<script src="js/cz-cliente.js?v=V1.63i.3"></script>
-<script src="js/cz-medios.js?v=V1.63i.3"></script>
-<script src="js/cz-grabadora.js?v=V1.63i.3"></script>
-<script src="js/cz-archivos.js?v=V1.63i.3"></script>
-<script src="js/cz-ciudad.js?v=V1.63i.3"></script>
-<script src="js/cz-cola.js?v=V1.63i.3"></script>
-<script src="js/cz-acciones.js?v=V1.63i.3"></script>
-<script src="js/cz-regla15.js?v=V1.63i.3"></script>
-<script src="js/cz-regla15-ui.js?v=V1.63i.3"></script>
-<script src="js/cz-indicadores.js?v=V1.63i.3"></script>
-<script src="js/cz-niveles.js?v=V1.63i.3"></script>
-<script src="js/cz-estado.js?v=V1.63i.3"></script>
-<script src="js/cz-avance.js?v=V1.63i.3"></script>
-<script src="js/cz-ligas.js?v=V1.63i.3"></script>
-<script src="js/cz-tabla.js?v=V1.63i.3"></script>
-<script src="js/cz-visor.js?v=V1.63i.3"></script>
-<script src="js/cz-correo.js?v=V1.63i.3"></script>
-<script src="js/cz-enviar.js?v=V1.63i.3"></script>
-<script src="js/cz-condiciones.js?v=V1.63i.3"></script>
-<script src="js/cz-vista.js?v=V1.63i.3"></script>
-<script src="js/cz-vozvista.js?v=V1.63i.3"></script>
-<script src="js/cz-camara.js?v=V1.63i.3"></script>
+<script src="js/cz-cliente.js?v=V1.63i.4"></script>
+<script src="js/cz-medios.js?v=V1.63i.4"></script>
+<script src="js/cz-grabadora.js?v=V1.63i.4"></script>
+<script src="js/cz-archivos.js?v=V1.63i.4"></script>
+<script src="js/cz-ciudad.js?v=V1.63i.4"></script>
+<script src="js/cz-cola.js?v=V1.63i.4"></script>
+<script src="js/cz-acciones.js?v=V1.63i.4"></script>
+<script src="js/cz-regla15.js?v=V1.63i.4"></script>
+<script src="js/cz-regla15-ui.js?v=V1.63i.4"></script>
+<script src="js/cz-indicadores.js?v=V1.63i.4"></script>
+<script src="js/cz-niveles.js?v=V1.63i.4"></script>
+<script src="js/cz-estado.js?v=V1.63i.4"></script>
+<script src="js/cz-avance.js?v=V1.63i.4"></script>
+<script src="js/cz-ligas.js?v=V1.63i.4"></script>
+<script src="js/cz-tabla.js?v=V1.63i.4"></script>
+<script src="js/cz-visor.js?v=V1.63i.4"></script>
+<script src="js/cz-correo.js?v=V1.63i.4"></script>
+<script src="js/cz-enviar.js?v=V1.63i.4"></script>
+<script src="js/cz-condiciones.js?v=V1.63i.4"></script>
+<script src="js/cz-vista.js?v=V1.63i.4"></script>
+<script src="js/cz-vozvista.js?v=V1.63i.4"></script>
+<script src="js/cz-camara.js?v=V1.63i.4"></script>
 <script src="../../shared/chat/chat-gestos.js?v=V1.60"></script>
 <script src="../../shared/chat/chat-nucleo-cz.js?v=V1.57b"></script>
 <script src="../../shared/chat/chat-nucleo.js?v=V1.57b"></script>
-<script src="js/cz-push.js?v=V1.63i.3"></script>
-<script src="js/cz-limpio.js?v=V1.63i.3"></script>
-<script src="js/cz-pasos.js?v=V1.63i.3"></script>
-<script src="js/cz-app.js?v=V1.63i.3"></script>
-<script src="js/cz-version.js?v=V1.63i.3"></script>
+<script src="js/cz-push.js?v=V1.63i.4"></script>
+<script src="js/cz-limpio.js?v=V1.63i.4"></script>
+<script src="js/cz-pasos.js?v=V1.63i.4"></script>
+<script src="js/cz-app.js?v=V1.63i.4"></script>
+<script src="js/cz-version.js?v=V1.63i.4"></script>
 <script>window.CzApp.arrancar().then(function () { if (window.CzVersion) window.CzVersion.iniciar(); if (window.CzPush) window.CzPush.iniciar(); });</script>
 </body>
 </html>
