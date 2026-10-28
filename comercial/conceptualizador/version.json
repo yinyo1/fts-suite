@@ -1,6 +1,11 @@
 {
-  "version": "V1.63i.4",
+  "version": "V1.63i.5",
   "historial": [
+    {
+      "version": "V1.63i.5",
+      "fecha": "2026-10-28",
+      "nota": "fts-conceptualizador#16 punto B (Esteban, 28-oct, D223), detrás de `pdf_odoo_v163i` (apagado = como antes): con la orden ya en Odoo, el rayito y el ⋮ traen siempre «📄 Cotización en Odoo (SO… · total)», que descarga el PDF de la orden tal como está, sin rehacer nada ni gastar modelo. Si el machote vigente no coincide con la orden, lo dice en una línea («La orden es de la versión anterior: $X; la vigente: $Y») con «Actualizar», sin bloquear la descarga. «Volver a armar» ya no se ofrece en el rayito cuando hay orden."
+    },
     {
       "version": "V1.63i.4",
       "fecha": "2026-10-28",
