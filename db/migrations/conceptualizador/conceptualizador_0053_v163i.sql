@@ -2,7 +2,7 @@
 -- conceptualizador_0053 · V1.63i (fts-conceptualizador#16, Esteban 27-oct-2026): revisión rápida y reglas de campo
 --
 -- Todo nace APAGADO; apagado, cada función sale igual que con la 0052.
---   · 7 interruptores: criterio_v163i (B6–B9, solo motor), ruido_v163i (A5), voz_previa_v163i (A1), por_confirmar_v163i (A2),
+--   · 9 interruptores: criterio_v163i (B6–B9, solo motor), ruido_v163i (A5), voz_previa_v163i (A1), por_confirmar_v163i (A2),
 --     un_paso_v163i (A3, motor y suite), cambio_no_llegado_v163i (A4) y frenos_v163i (URGENTE 21fec6: la regla 6 no frena un N3 ni lo
 --     aceptado, el N3 se completa solo, el margen real en el texto y la vigencia no es «a mano»; solo motor).
 --   · A4 · tabla cambio_pedido: el motor anota el cambio que pidió una persona (api_motor `cambio_pedido`) y cuándo lo releyó
@@ -10,6 +10,11 @@
 --     Esteban (alarmas_motor) y UNA línea en el chat del dueño (encolar_alarmas): «el cambio del msg X no ha llegado a Odoo».
 --   · A5 · robot_sin_pasadas no suena cuando el vigía dice que la causa se resuelve sola: tope de ritmo, del día o de la
 --     semana, nada nuevo, ningún caso con trabajo o una pasada en curso.
+--   · A (agregado 27-oct, 21fec6 trabajo 960) · agente_gate (envoltura, `un_paso_v163i`): confirmar «Esto voy a poner en Odoo»
+--     (conjetura `odoo.vista` hecha) es la instrucción de quien la confirmó, con los mismos candados que la aprobación de voz (0049):
+--     la acción es de esa persona, del caso del trabajo, de menos de 2 horas, trabajo en curso, el machote del caso y puede_mover.
+--   · 2 interruptores más: regla_nueva_v163i (B: una regla nueva no frena lo ya aceptado, solo motor) y freno_arriba_v163i
+--     (C y D: el freno va arriba y nada lleva ✓ si algo quedó frenado o sin comprobar; relectura del renglón en Odoo; solo motor).
 --   · A1 · voz_rafaga_normal conserva por nota la transcripción revisada en el teléfono (`texto`, `texto_editado`), el
 --     audio ya subido (`adjunto_id`) y el ligado que la persona eligió en la previa (`liga`).
 -- Reversa: reversas/053_reversa.sql.
@@ -51,7 +56,7 @@ LANGUAGE sql IMMUTABLE AS $in53$
                'no_esperar_v163g4',
                'superadas_v163g5',
                'criterio_v163i','ruido_v163i','voz_previa_v163i','por_confirmar_v163i','un_paso_v163i','cambio_no_llegado_v163i',
-               'frenos_v163i']
+               'frenos_v163i','regla_nueva_v163i','freno_arriba_v163i']
 $in53$;
 INSERT INTO conceptualizador.config (clave, valor)
 SELECT 'interruptor:' || n, '0' FROM unnest(conceptualizador.interruptores_nombres()) n
@@ -275,3 +280,73 @@ BEGIN
 EXCEPTION WHEN others THEN RETURN v_out;
 END
 $vrn53$;
+
+-- ── A (21fec6 trabajo 960) · agente_gate (envoltura): confirmar «Esto voy a poner en Odoo» es la instrucción de quien la confirmó ──
+DO $ren53g$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+                  WHERE n.nspname = 'conceptualizador' AND p.proname = 'agente_gate_0053prev') THEN
+    ALTER FUNCTION conceptualizador.agente_gate(bigint, uuid, text) RENAME TO agente_gate_0053prev;
+  END IF;
+END
+$ren53g$;
+
+CREATE OR REPLACE FUNCTION conceptualizador.agente_gate(p_trabajo bigint, p_machote uuid, p_para text) RETURNS jsonb
+LANGUAGE plpgsql STABLE AS $ag53$
+DECLARE
+  v_sw   text := CASE WHEN p_para = 'orden' THEN 'todo_hecho_v162b' ELSE 'guardar_agente_v162b' END;
+  t      record;
+  v_ac   record;
+  v_ids  bigint[];
+  v_due  text;
+  v_mach uuid;
+BEGIN
+  SELECT tr.id, tr.caso_id, tr.estado, e.id AS ev_id, e.tipo AS ev_tipo, e.datos AS ev_datos, e.autor AS ev_autor INTO t
+    FROM conceptualizador.trabajo tr LEFT JOIN conceptualizador.evento e ON e.id = tr.evento_id WHERE tr.id = p_trabajo;
+  IF t.id IS NULL OR t.ev_tipo IS DISTINCT FROM 'accion' OR coalesce(t.ev_datos->>'tipo', '') <> 'conjetura'
+     OR coalesce(t.ev_datos->>'decision', '') <> 'hecha' OR t.ev_autor IS NULL
+     OR NOT conceptualizador.prendido('un_paso_v163i') OR NOT conceptualizador.prendido(v_sw) THEN
+    RETURN conceptualizador.agente_gate_0053prev(p_trabajo, p_machote, p_para);
+  END IF;
+  -- la acción del evento, o las del lote que se confirmaron
+  SELECT array_agg(x::bigint) INTO v_ids FROM (
+    SELECT t.ev_datos->>'accion_id' AS x
+    UNION ALL SELECT l->>'accion_id' FROM jsonb_array_elements(CASE WHEN jsonb_typeof(t.ev_datos->'lote') = 'array' THEN t.ev_datos->'lote' ELSE '[]'::jsonb END) l
+     WHERE coalesce(l->>'decision', '') = 'hecha') q WHERE x ~ '^[0-9]{1,15}\Z';
+  SELECT a.id, a.hecha_por, a.hecha_at INTO v_ac FROM conceptualizador.accion a
+   WHERE a.id = ANY (coalesce(v_ids, '{}'::bigint[])) AND a.caso_id = t.caso_id AND a.tipo = 'conjetura' AND a.estado = 'hecha'
+     AND coalesce(a.datos->>'campo', '') = 'odoo.vista' AND a.hecha_por = t.ev_autor
+   ORDER BY a.hecha_at DESC LIMIT 1;
+  IF v_ac.id IS NULL THEN RETURN conceptualizador.agente_gate_0053prev(p_trabajo, p_machote, p_para); END IF;
+  IF t.estado <> 'tomado' THEN RETURN jsonb_build_object('ok', false, 'error', 'SIN_INSTRUCCION', 'mensaje', 'Ese trabajo ya no está en curso.'); END IF;
+  IF v_ac.hecha_at < now() - interval '2 hours' THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'INSTRUCCION_VIEJA', 'mensaje', 'La confirmación tiene más de 2 horas: que la persona lo vuelva a pedir.');
+  END IF;
+  SELECT k.machote_id INTO v_mach FROM conceptualizador.caso k WHERE k.id = t.caso_id;
+  IF p_machote IS NULL OR v_mach IS DISTINCT FROM p_machote THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'OTRO_MACHOTE', 'mensaje', 'Ese machote no es el del caso de la confirmación.');
+  END IF;
+  IF to_regclass('comercial.machote') IS NOT NULL THEN
+    EXECUTE 'SELECT dueno FROM comercial.machote WHERE id = ' || quote_literal(p_machote::text) || '::uuid' INTO v_due;
+  END IF;
+  IF v_due IS NULL THEN RETURN jsonb_build_object('ok', false, 'error', 'MACHOTE_NO_ENCONTRADO'); END IF;
+  IF NOT (t.ev_autor = v_due OR conceptualizador.puede_mover(t.ev_autor, v_due)) THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'NO_PUEDE_MOVER', 'persona', t.ev_autor, 'dueno', v_due,
+      'mensaje', t.ev_autor || ' no tiene permiso para mover lo de ' || v_due || ': no guardé nada.');
+  END IF;
+  RETURN jsonb_build_object('ok', true, 'modo', 'vista_odoo', 'persona', t.ev_autor, 'dueno', v_due, 'mensaje_id', NULL, 'accion_id', v_ac.id,
+    'caso_id', t.caso_id, 'msg_at', v_ac.hecha_at, 'hora', to_char(v_ac.hecha_at AT TIME ZONE 'America/Monterrey', 'HH24:MI'),
+    'motivo', 'lo aplicó el agente porque ' || t.ev_autor || ' confirmó «Esto voy a poner en Odoo» (acción ' || v_ac.id || ')');
+END
+$ag53$;
+ALTER FUNCTION conceptualizador.agente_gate(bigint, uuid, text) SECURITY DEFINER SET search_path = conceptualizador, public;
+ALTER FUNCTION conceptualizador.agente_gate_0053prev(bigint, uuid, text) SECURITY DEFINER SET search_path = conceptualizador, public;
+REVOKE ALL ON FUNCTION conceptualizador.agente_gate(bigint, uuid, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION conceptualizador.agente_gate_0053prev(bigint, uuid, text) FROM PUBLIC;
+DO $gr53g$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'comercial_app') THEN
+    GRANT EXECUTE ON FUNCTION conceptualizador.agente_gate(bigint, uuid, text) TO comercial_app;
+  END IF;
+END
+$gr53g$;
