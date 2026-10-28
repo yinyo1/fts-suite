@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.63i.3';
+  var VERSION = 'V1.63i.4';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -902,6 +902,8 @@
     ['pdf_unico_v163', 'PDF en un solo lugar', 'La respuesta que cambia la cotización trae el PDF nuevo como archivo, con «↺ Deshacer»; los borradores anteriores y «Ya la mandé» quedan plegados sin botones de PDF; «Correo para envío» y «Ya la mandé» una sola vez, al final; en ⋮ una sola entrada, «PDF de la cotización (última versión)».'],
     // V1.63i D (fts-conceptualizador#16, pedido de Richard, D219).
     ['ruido_chat_v163i', 'Sin ruido de regla 15, sentido y verificación en el chat', 'La nota fija de FTS USA no se marca; el agente reescribe solo las frases con cálculos que vería el cliente; lo que no pudo reescribir, el sentido y la verificación van a «⚠ Avisos» de la vista ejecutiva. En el chat solo una línea cuando algo frena el envío.'],
+    // V1.63i.4 (fts-conceptualizador#16 puntos 3 a 5, D220).
+    ['numero_directo_v163i', 'Decisión con número: directo a machote y Odoo', 'Un precio, margen, cantidad u horas que dice la persona (texto o voz no dudosa) se aplica en el mismo turno a machote y Odoo, con «↺ Deshacer» y sin tarjeta; el texto nunca dice «ahora mismo actualizo» si no lo hizo; el PDF dice versión y total, y avisa si Odoo no trae la versión vigente.'],
   ];
   /** Los interruptores que conoce el servidor (valores `interruptor:*` y `interruptores`), en el orden de arriba; uno nuevo
    * que la pantalla todavía no describe sale al final con su nombre, para que se pueda prender igual. */
@@ -2048,7 +2050,7 @@
       // y no tenía ninguna). La base vuelve a decidir quién puede (cotizacion-cliente · ver, db/022). Van ARRIBA: a 380 px se ven sin bajar.
       // V1.63c (`pdf_unico_v163`, #12) · UNA sola entrada: abre el visor con «⬇ Descargar» adentro, siempre el último PDF de Odoo.
       (pdfUnico() && G.CzEnviar && (cs.orden_id || c.orden_id) && (mia || ST.admin === true || ST.panelAdmin === true) ?
-        '<button data-a="pdf_ultimo">' + ico('pagina', 's') + '<span>PDF de la cotización (última versión)<small data-pdfu-sub>' + esc('Se descarga: ' + nombrePdf()) + '</small></span></button>' :
+        '<button data-a="pdf_ultimo">' + ico('pagina', 's') + '<span>PDF de la cotización (última versión)<small data-pdfu-sub>' + esc('Se descarga: ' + nombrePdf()) + '</small>' + pdfInfoHtml(H) + '</span></button>' :
       on('pdf_menu_v163') && G.CzEnviar && (cs.orden_id || c.orden_id) && (mia || ST.admin === true || ST.panelAdmin === true) ?
         '<button data-a="pdf_ver">' + ico('pagina', 's') + '<span>Ver cotización ' + esc(cs.orden_nombre || c.orden_nombre || '') + '<small>El PDF oficial de Odoo, tal como lo recibe el cliente</small></span></button>' +
         '<button data-a="pdf_bajar">' + ico('bajar', 's') + '<span>⬇ Descargar PDF<small>El mismo PDF, como archivo</small></span></button>' : '') +
@@ -2737,6 +2739,38 @@
     var n = [cs.orden_nombre || 'Cotizacion', cli, v ? 'v' + v : ''].filter(Boolean).join(' - ');
     return n.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').replace(/\s+/g, ' ').trim() + '.pdf';
   }
+  /** La versión y el total del PDF, y la leyenda si Odoo no trae el machote vigente (para el ⋮, el PDF de la respuesta y el estado vigente). */
+  function pdfInfoHtml(H, cls) {
+    if (!on('numero_directo_v163i')) return '';
+    var I = pdfVersionInfo(H); if (!I) return '';
+    return '<small class="pdfu-ver' + (cls ? ' ' + cls : '') + '" data-pdfu-ver>' + esc(I.etiqueta) + '</small>' +
+      (I.leyenda ? '<small class="pdfu-viejo" data-pdfu-leyenda role="status">⚠ ' + esc(I.leyenda) + '</small>' : '');
+  }
+  /* V1.63i.4 (`numero_directo_v163i`, fts-conceptualizador#16 punto 5, D220) · el PDF dice de qué versión es y cuánto suma, y avisa
+   * cuando Odoo no trae el machote vigente. 70f5e9, 28-oct: el machote ya iba en 20,150 (v8, 17:24 UTC) y Richard bajó el PDF de Odoo,
+   * que seguía en 18,756. El total de Odoo es el subtotal que releyó la última escritura de la orden (crear_borrador hecha, del agente,
+   * del robot o del clic); el del machote, el vigente de la base si viene (`caso.machote_vigente`) o el último «Actualizar el machote»
+   * hecho. Distintos = más que el redondeo al peso de sus renglones (D96). Sin interruptor no se llama. */
+  function pdfVersionInfo(H) {
+    H = H || {}; var c = H.caso || {}, oid = Number(c.orden_id) || 0, A = H.acciones || [];
+    var cuando = function (x) { return Date.parse(x.hecha_at || '') || 0; }, orden = function (a, b) { return cuando(a) - cuando(b) || Number(a.id) - Number(b.id); };
+    var B = A.filter(function (x) { var r = x.resultado || {}; return x.tipo === 'crear_borrador' && x.estado === 'hecha' && Number(r.subtotal) > 0 && (!oid || !r.orden_id || Number(r.orden_id) === oid); }).sort(orden);
+    var M = A.filter(function (x) { return x.tipo === 'crear_machote' && x.estado === 'hecha'; }).sort(orden);
+    var ub = B[B.length - 1] || null, um = M[M.length - 1] || null, mv = c.machote_vigente && Number(c.machote_vigente.total) > 0 ? c.machote_vigente : null;
+    var odoo = ub ? Number(ub.resultado.subtotal) : (H.ultimo_pdf && Number(H.ultimo_pdf.total) > 0 ? Number(H.ultimo_pdf.total) : null);
+    var mach = mv ? { version: Number(mv.version) || null, total: Number(mv.total) } :
+      um ? { version: Number((um.resultado || {}).version) || null, total: Number((um.resultado || {}).total) > 0 ? Number(um.resultado.total) : Number(((um.datos || {}).resumen || {}).total) || null } : null;
+    if (!odoo && !(mach && mach.total)) return null;
+    var mon = (ub && ub.resultado.moneda) || c.moneda || (H.ultimo_pdf || {}).moneda || '';
+    var $ = function (n) { return '$' + Number(n).toLocaleString('es-MX', { maximumFractionDigits: Number(n) % 1 ? 2 : 0, minimumFractionDigits: Number(n) % 1 ? 2 : 0 }); };
+    var n = Math.max(1, ((ub && ub.resultado.renglones) || []).length || 1);
+    var distinto = !!(odoo && mach && mach.total && (odoo < mach.total - 0.005 || odoo - mach.total >= n));
+    var folio = (um && (um.resultado || {}).folio) || c.machote_folio || '';
+    return { version: mach ? mach.version : null, total_machote: mach ? mach.total : null, total_pdf: odoo, moneda: mon, distinto: distinto,
+      etiqueta: [folio + (mach && mach.version ? ' v' + mach.version : ''), odoo ? 'PDF ' + $(odoo) + (mon ? ' ' + mon : '') : ''].filter(function (x) { return x.trim(); }).join(' · '),
+      leyenda: distinto ? 'Este PDF es de la versión anterior (' + $(odoo) + '); la nueva (' + $(Math.ceil(mach.total - 0.005)) + ') no ha llegado a Odoo' : null };
+  }
+  /* fin pdfVersionInfo */
   /** El renglón del ⋮: «Generando…» mientras Odoo lo arma (o sale el guardado al instante si la orden no cambió), y el error ahí mismo con «Reintentar». */
   function pdfDelMenu(b, c0) {
     if (b.dataset.trabajando === '1' || !G.CzEnviar || !G.CzEnviar.bajar) return;
@@ -2765,7 +2799,7 @@
     return '<div class="carta pdf-listo czp-resp" data-pdf-listo="' + esc(String(so)) + '">' +
       '<button type="button" class="czp-archivo" data-czp-pdf="1"' + (puede ? '' : ' disabled') + ' aria-label="Abrir el PDF de ' + esc(so) + (v ? ' versión ' + v : '') + '">' +
         '<span class="czp-ic" aria-hidden="true">PDF</span><span class="czp-tx"><b>' + esc(so) + (v ? ' · versión ' + v : '') + '</b>' +
-        '<small>' + esc(fechaCorta(U.created_at || (H.ultima || {}).created_at)) + ' · de Odoo, ya con este cambio' + esc(tot) + '</small></span></button>' +
+        '<small>' + esc(fechaCorta(U.created_at || (H.ultima || {}).created_at)) + ' · de Odoo, ya con este cambio' + esc(tot) + '</small>' + pdfInfoHtml(H) + '</span></button>' +
       (des ? '<div class="acc czp-acc">' + (des.estado === 'propuesta' && puede ? '<button data-hacer="' + des.id + '">' + esc(etiqueta(des)) + '</button>' : '') + '</div>' : '') + '</div>';
   }
   /** Un borrador hecho o un «Ya la mandé» hecho: una línea gris que se abre para leer. Ningún botón de PDF. */
@@ -2793,7 +2827,7 @@
     var bts = G.CzEnviar ? G.CzEnviar.botones(H, puede, { sinPdf: true }) : '';
     if (bLm) bts = /<div class="ce-bts">/.test(bts) ? bts.replace('<div class="ce-bts">', '<div class="ce-bts">' + bLm) : bts + '<div class="ce-bts">' + bLm + '</div>';
     return '<div class="fila el"><div class="czp-vig" data-czp-vigente="' + esc(String(v)) + '" aria-label="Estado vigente"><span class="czp-etq">Estado vigente · ' + esc(so) + (v ? ' versión ' + v : '') + '</span>' +
-      '<p>' + esc(txt) + '</p>' + bts + (bLm ? leyendaOdoo('enviada') : '') + '</div></div>';
+      '<p>' + esc(txt) + '</p>' + pdfInfoHtml(H, 'czp-ver') + bts + (bLm ? leyendaOdoo('enviada') : '') + '</div></div>';
   }
 
   /** V1.59 (`tarjetas_v159`) · el botón dice lo que hace: con la orden ya en Odoo, «Actualizar SO… en Odoo», no «Crear borrador». */
