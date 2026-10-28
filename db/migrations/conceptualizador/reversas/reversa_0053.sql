@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 -- reversa de la conceptualizador_0053 (V1.63i, #16): las funciones vuelven a la 0052. La tabla cambio_pedido y los renglones de
--- config se quedan (no estorban apagados). ⚠ Antes de correrla, los 6 interruptores de la V1.63i en '0'.
+-- config se quedan (no estorban apagados). ⚠ Antes de correrla, los 7 interruptores de la V1.63i en '0'.
 -- ═══════════════════════════════════════════════════════════════════════════
 DO $r53$
 BEGIN
@@ -63,7 +63,7 @@ LANGUAGE sql IMMUTABLE AS $inr53$
                'superadas_v163g5']
 $inr53$;
 DELETE FROM conceptualizador.config WHERE clave IN ('interruptor:criterio_v163i','interruptor:ruido_v163i','interruptor:voz_previa_v163i',
-  'interruptor:por_confirmar_v163i','interruptor:un_paso_v163i','interruptor:cambio_no_llegado_v163i');
+  'interruptor:por_confirmar_v163i','interruptor:un_paso_v163i','interruptor:cambio_no_llegado_v163i','interruptor:frenos_v163i');
 DO $gr53r$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'conceptualizador_app') THEN

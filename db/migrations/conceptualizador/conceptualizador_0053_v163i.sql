@@ -2,8 +2,9 @@
 -- conceptualizador_0053 · V1.63i (fts-conceptualizador#16, Esteban 27-oct-2026): revisión rápida y reglas de campo
 --
 -- Todo nace APAGADO; apagado, cada función sale igual que con la 0052.
---   · 6 interruptores: criterio_v163i (B6–B9, solo motor), ruido_v163i (A5), voz_previa_v163i (A1), por_confirmar_v163i (A2),
---     un_paso_v163i (A3, motor y suite) y cambio_no_llegado_v163i (A4).
+--   · 7 interruptores: criterio_v163i (B6–B9, solo motor), ruido_v163i (A5), voz_previa_v163i (A1), por_confirmar_v163i (A2),
+--     un_paso_v163i (A3, motor y suite), cambio_no_llegado_v163i (A4) y frenos_v163i (URGENTE 21fec6: la regla 6 no frena un N3 ni lo
+--     aceptado, el N3 se completa solo, el margen real en el texto y la vigencia no es «a mano»; solo motor).
 --   · A4 · tabla cambio_pedido: el motor anota el cambio que pidió una persona (api_motor `cambio_pedido`) y cuándo lo releyó
 --     en Odoo (`cambio_llego`). A las `alarma_cambio_no_llegado_min` (120) sin llegar: alarma `cambio_no_llegado` en el correo de
 --     Esteban (alarmas_motor) y UNA línea en el chat del dueño (encolar_alarmas): «el cambio del msg X no ha llegado a Odoo».
@@ -49,7 +50,8 @@ LANGUAGE sql IMMUTABLE AS $in53$
                'estimados_v163h','sentido_v163h',
                'no_esperar_v163g4',
                'superadas_v163g5',
-               'criterio_v163i','ruido_v163i','voz_previa_v163i','por_confirmar_v163i','un_paso_v163i','cambio_no_llegado_v163i']
+               'criterio_v163i','ruido_v163i','voz_previa_v163i','por_confirmar_v163i','un_paso_v163i','cambio_no_llegado_v163i',
+               'frenos_v163i']
 $in53$;
 INSERT INTO conceptualizador.config (clave, valor)
 SELECT 'interruptor:' || n, '0' FROM unnest(conceptualizador.interruptores_nombres()) n
