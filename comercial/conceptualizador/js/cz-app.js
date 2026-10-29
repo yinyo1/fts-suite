@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.63i.5';
+  var VERSION = 'V1.63i.7';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -906,7 +906,15 @@
     ['numero_directo_v163i', 'Decisión con número: directo a machote y Odoo', 'Un precio, margen, cantidad u horas que dice la persona (texto o voz no dudosa) se aplica en el mismo turno a machote y Odoo, con «↺ Deshacer» y sin tarjeta; el texto nunca dice «ahora mismo actualizo» si no lo hizo; el PDF dice versión y total, y avisa si Odoo no trae la versión vigente.'],
     // V1.63i.5 (fts-conceptualizador#16 punto B, D223) · migración 0058.
     ['pdf_odoo_v163i', 'Cotización en Odoo en el rayito y en ⋮', 'Con la orden ya en Odoo, el rayito y el ⋮ traen «📄 Cotización en Odoo (SO… · total)», que descarga el PDF de la orden tal como está, sin rehacer nada ni gastar modelo; si el machote vigente no coincide, lo dice en una línea con «Actualizar» sin bloquear la descarga. «Volver a armar» ya no se ofrece en el rayito cuando hay orden.'],
+    // V1.63i.7 (fts-conceptualizador#16 punto 3, D227) · migración 0060.
+    ['rayito_v163i', 'Rayito sin ciclos', 'El número del rayito cuenta solo lo que espera a la persona (una decisión que frena el envío o una pregunta suya); al abrirlo, «Pendientes tuyos» y «Cosas que puedes hacer». Volver a armar, Actualizar el machote y Actualizar SO… en Odoo piden confirmación con lo que van a hacer, y salen en gris con su razón si el agente está trabajando, si ya se pidió hace menos de 30 min, si hay un mensaje sin contestar o si la orden ya coincide con el machote. Cada clic queda medido (panel «Rayito · 24 h»).'],
   ];
+  function rayitoPanel(R) {
+    var A = R.por_accion || {}, ks = Object.keys(A).sort(function (a, b) { var t = function (k) { return A[k].hecha + A[k].cancelada + A[k].bloqueada; }; return t(b) - t(a); });
+    return '<h3>Rayito · 24 h</h3><div class="czc-tarj" data-rayito-panel><div>Clics: <b>' + Number(R.total || 0) + '</b></div>' +
+      (ks.length ? ks.map(function (k) { return '<div>' + esc(k) + ' · <b>' + Number(A[k].hecha) + '</b> hechas · ' + Number(A[k].cancelada) + ' canceladas · ' + Number(A[k].bloqueada) + ' en gris</div>'; }).join('') : '<div class="czc-k">Sin clics en 24 h.</div>') +
+      ((R.por_caso || []).length ? '<div class="czc-k">Por caso: ' + R.por_caso.map(function (x) { return esc(String(x.titulo || '').slice(0, 40)) + ' ' + Number(x.n) + (x.rehace_hechas ? ' (' + Number(x.rehace_hechas) + ' rehechas)' : ''); }).join(' · ') + '</div>' : '') + '</div>';
+  }
   /** Los interruptores que conoce el servidor (valores `interruptor:*` y `interruptores`), en el orden de arriba; uno nuevo
    * que la pantalla todavía no describe sale al final con su nombre, para que se pueda prender igual. */
   function listaInterruptores(r) {
@@ -973,6 +981,8 @@
         '<div>Pasos: ' + Object.keys(B6.pasos || {}).map(function (k) { var ok = !G.CzPasos || G.CzPasos.traducir(k).conocido; return (ok ? '' : '<span style="color:var(--rojo);font-weight:600">') + esc(k) + ' ' + Number(B6.pasos[k]) + (ok ? '' : ' (sin traducir)</span>'); }).join(' · ') + '</div></div>'; }
     if (r.fallas_odoo_24h && Object.keys(r.fallas_odoo_24h).length) h += '<h3>Errores de Odoo · 24 h</h3><div class="czc-tarj">' +
       Object.keys(r.fallas_odoo_24h).sort(function (a, b) { return r.fallas_odoo_24h[b] - r.fallas_odoo_24h[a]; }).map(function (k) { return '<div>' + esc(k) + ' · <b>' + Number(r.fallas_odoo_24h[k]) + '</b></div>'; }).join('') + '</div>';
+    // V1.63i.7 (`rayito_v163i`, D227) · medición del rayito: por acción y los casos con más clics (rayito_clic, 0060).
+    if (r.rayito_24h) h += rayitoPanel(r.rayito_24h);
     var INTS = listaInterruptores(r), nOn = INTS.filter(function (x) { return String(V['interruptor:' + x[0]]) === '1'; }).length;
     h += '<h3>Interruptores · ' + nOn + ' de ' + INTS.length + ' prendidos</h3><p class="czc-k">Todo entró apagado: apagado hace lo de V1.51. Prende uno a la vez, con su razón; queda en la bitácora.</p><div class="czc-ints">' +
       INTS.map(function (x) { return campo('interruptor:' + x[0], [x[1], x[2]], 'sw'); }).join('') + '</div>';
@@ -1344,7 +1354,9 @@
       /* V1.56 (#12 punto I) · el rayito trae SIEMPRE los clics que el flujo pide (machote → cotizar con referencias / crear la
        * cotización en Odoo → Ver cotización → Ya la mandé), con el MISMO efecto que el botón de su tarjeta: nunca esconde una
        * acción que pide clic. El siguiente paso de la franja va primero, salvo que ya sea uno de esos clics. Las acciones
-       * solo para el dueño del caso; «Ver cotización» también para Esteban. Y «Dame los generales» siempre. */
+       * solo para el dueño del caso; «Ver cotización» también para Esteban. Y «Dame los generales» siempre.
+       * ⛔ SUPERADA en parte por la V1.63i.7 (`rayito_v163i`, D227, [S-rayito-mismo-efecto] y [S-rayito-cuenta-todo]): lo que REHACE ya no
+       * tiene el mismo efecto inmediato (pide confirmación, o sale en gris con su razón) y el número ya no cuenta todas las sugerencias. */
       var CL = abierta && !(ST.sel || {}).menu && G.CzAvance.clics ? G.CzAvance.clics(H) : [], yoDueno = mia(c), adm = ST.admin === true || ST.panelAdmin === true;
       CL = CL.filter(function (x) { return x.acc === 'ver_cot' ? (yoDueno || adm) : yoDueno; });
       // V1.60 (`chat_limpio_v160`) · solo lo posible en el estado real del caso, y la salida del error vigente PRIMERO.
@@ -1356,17 +1368,21 @@
       if (PO) {
         CL = CL.filter(function (x) { return x.acc !== 'ver_cot'; });
         if (AXr && AXr.hacer && AXr.hacer.acc === 'mandar' && G.CzLimpio && AXr.hacer.texto === G.CzLimpio.REARMAR) AXr = null;
-        sug.push({ texto: '📄 ' + PO.etiqueta, fuerte: true, attrs: { 'data-sug': 'pdf_odoo' }, hacer: function () { bajarOrden(c); } });
+        sug.push({ texto: '📄 ' + PO.etiqueta, fuerte: true, attrs: { 'data-sug': 'pdf_odoo' }, hacer: function () { bajarOrden(c); }, _s: { acc: 'pdf_odoo', txt: PO.etiqueta } });
         if (PO.linea && (yoDueno || ST.admin === true) && !CL.some(function (x) { return (x.txt || '').indexOf('Actualizar ' + PO.so) === 0; }))
-          sug.push({ texto: 'Actualizar ' + PO.so + ' en Odoo', attrs: { 'data-sug': 'pdf_odoo_act' }, hacer: function (bt) { actualizarOrden(c, bt); } });
+          sug.push({ texto: 'Actualizar ' + PO.so + ' en Odoo', attrs: { 'data-sug': 'pdf_odoo_act' }, hacer: function (bt) { actualizarOrden(c, bt); }, _s: { acc: 'pdf_odoo_act', txt: 'Actualizar ' + PO.so + ' en Odoo' } });
       }
-      if (AXr && AXr.boton && AXr.hacer && yoDueno) sug.push({ texto: '⚠ ' + AXr.boton, fuerte: true, attrs: { 'data-sug': 'falla', 'data-sug-id': FVr.id }, hacer: function (bt) { salidaFalla(FVr, c, bt); } });
+      if (AXr && AXr.boton && AXr.hacer && yoDueno) sug.push({ texto: '⚠ ' + AXr.boton, fuerte: true, attrs: { 'data-sug': 'falla', 'data-sug-id': FVr.id }, hacer: function (bt) { salidaFalla(FVr, c, bt); },
+        _s: { acc: 'falla', txt: AXr.boton, hacerAcc: AXr.hacer.acc, texto: AXr.hacer.texto || '' } });
       var cubierto = !!sgF && ((sgF.acc === 'machote' && CL.some(function (x) { return x.acc === 'machote'; })) || (sgF.acc === 'ir' && sgF.a === 'accion') ||
         (sgF.acc === 'cotiza' && CL.some(function (x) { return x.acc === 'hacer' || x.acc === 'refok'; })));
-      if (sgF && !sgF.espera && !cubierto) sug.push({ texto: sgF.txt, fuerte: true, attrs: { 'data-sug': sgF.acc }, hacer: function (bt) { lanzarSiguiente(sgF, c, bt); } });
-      CL.forEach(function (x) { sug.push({ texto: (x.ico ? x.ico + ' ' : '') + x.txt, fuerte: true, attrs: { 'data-sug': x.acc, 'data-sug-id': x.id || '' }, hacer: function (bt) { lanzarClic(x, c, bt); } }); });
-      if (abierta && !(ST.sel || {}).menu && H.caso && !/^Dame los generales/.test((sg && sg.txt) || '')) sug.push({ texto: 'Dame los generales', attrs: { 'data-sug': 'generales' }, hacer: function () { mandar('Dame los generales'); } });
-      BOL.poner(sug, PO && PO.linea ? { titulo: 'Sugerencias', nota: '⚠ ' + PO.linea } : { titulo: 'Sugerencias' });
+      if (sgF && !sgF.espera && !cubierto) sug.push({ texto: sgF.txt, fuerte: true, attrs: { 'data-sug': sgF.acc }, hacer: function (bt) { lanzarSiguiente(sgF, c, bt); }, _s: sgF });
+      CL.forEach(function (x) { sug.push({ texto: (x.ico ? x.ico + ' ' : '') + x.txt, fuerte: true, attrs: { 'data-sug': x.acc, 'data-sug-id': x.id || '' }, hacer: function (bt) { lanzarClic(x, c, bt); }, _s: x }); });
+      if (abierta && !(ST.sel || {}).menu && H.caso && !/^Dame los generales/.test((sg && sg.txt) || '')) sug.push({ texto: 'Dame los generales', attrs: { 'data-sug': 'generales' }, hacer: function () { mandar('Dame los generales'); }, _s: { acc: 'generales', txt: 'Dame los generales' } });
+      // V1.63i.7 (`rayito_v163i`, D227) · el número cuenta solo lo que espera a la persona; dos grupos; confirmación y gris en lo que rehace.
+      if (rayito()) { var RG = rayitoArmar(sug, H, c, yoDueno && abierta && !(ST.sel || {}).menu);
+        BOL.poner(RG.lista, Object.assign({ titulo: 'Sugerencias', n: RG.n }, PO && PO.linea ? { nota: '⚠ ' + PO.linea } : {})); }
+      else BOL.poner(sug, PO && PO.linea ? { titulo: 'Sugerencias', nota: '⚠ ' + PO.linea } : { titulo: 'Sugerencias' });
       if (sg && !sg.espera) sg = null;
     } else if (BOL) BOL.poner([]);
     if (!sg) { el.style.display = 'none'; el.innerHTML = ''; return; }
@@ -1425,6 +1441,66 @@
         if (t) { t.scrollIntoView({ block: 'center', behavior: 'smooth' }); var k = t.closest('.carta') || t; k.classList.add('resalta'); setTimeout(function () { k.classList.remove('resalta'); }, 1600); }
       }
     })();
+  }
+
+  /* V1.63i.7 (`rayito_v163i`, fts-conceptualizador#16 punto 3, D227) · el rayito ya no causa ciclos. Richard veía «3» y lo leía como
+   * pendientes suyos (a3d9c8, d9159b): picaba «Vuelve a armar» una y otra vez. La regla vive en cz-rayito.js; aquí solo se arma:
+   * el número cuenta lo que espera a la persona (y nada más), dos grupos, confirmación con lo que va a pasar en lo que rehace, gris
+   * con su razón en lo que causaría descontrol, y cada clic medido (evento `rayito`, db/060). Apagado: el rayito de la V1.63i.5. */
+  function rayito() { return on('rayito_v163i') && !!G.CzRayito; }
+  function rayitoCtx(H) {
+    H = H || ST.hilo || {};
+    var ag = agenteVivo(ST.srvAgente), O = ordenOdoo(H), od = G.CzAvance && G.CzAvance.odooDesactualizada ? G.CzAvance.odooDesactualizada(H) : null;
+    var cm = (H.acciones || []).filter(function (a) { return a.tipo === 'crear_machote' && a.estado === 'propuesta'; }).pop();
+    ST.rayitoLocal = ST.rayitoLocal || {};
+    return { ahora: Date.now(), agente: ag ? { quien: ag.quien, estado: 'trabajando' } : ST.srvAgente && ST.srvAgente.estado === 'cola' ? { estado: 'cola' } : null,
+      orden: O, desactualizada: !!(od && (od.hueco || od.propuesto)), local: ST.rayitoLocal[(H.caso || {}).id] || {},
+      folio: cm && cm.datos && cm.datos.actualiza && cm.datos.actualiza.folio };
+  }
+  function rayitoArmar(sug, H, c, puede) {
+    var R = G.CzRayito, ctx = rayitoCtx(H), nab = puede && G.CzAvance && G.CzAvance.abiertas ? G.CzAvance.abiertas(H).length : 0;
+    // a · las preguntas abiertas son pendientes de la persona aunque la franja traiga otro siguiente.
+    if (nab && !sug.some(function (x) { return x._s && x._s.acc === 'ir' && x._s.a === 'conjetura'; }))
+      sug.unshift({ texto: nab === 1 ? 'Contestar 1 pregunta' : 'Contestar ' + nab + ' preguntas', fuerte: true, attrs: { 'data-sug': 'preguntas' },
+        hacer: function (bt) { lanzarSiguiente({ acc: 'ir', a: 'conjetura', txt: '' }, c, bt); }, _s: { acc: 'preguntas' } });
+    sug.forEach(function (x) {
+      var r = x._r = R.clasificar({ sug: x._s || {} }), orig = x.hacer;
+      x.attrs = Object.assign({}, x.attrs, { 'data-ray-grupo': r.grupo, 'data-ray-accion': r.accion });
+      if (r.rehace) {
+        var rz = R.razon(r.rehace, H, ctx);
+        if (rz) { x.gris = rz.texto; x.fuerte = false; x.attrs['data-ray-razon'] = rz.codigo; x.hacer = null;
+          x.alGris = function () { medirRayito(c, r, 'bloqueada', rz.codigo, x.texto); }; return; }
+        x.hacer = function (bt) { confirmarRehace(c, r, x.texto, ctx, function () { if (orig) orig(bt); }); };
+      } else x.hacer = function (bt) { medirRayito(c, r, 'hecha', null, x.texto); if (orig) orig(bt); };
+    });
+    return R.agrupar(sug);
+  }
+  /** e · un clic medido (sin trabajo del motor; la base lo guarda en rayito_clic). Si no llega, la alarma `rayito_sin_medicion` lo dice. */
+  function medirRayito(c, r, resultado, razon, texto, origen) {
+    if (!rayito() || !c || !c.id || !C.evento) return;
+    var d = { accion: r.accion, resultado: resultado, grupo: r.grupo, origen: origen || 'rayito', texto: String(texto || '').slice(0, 200) };
+    if (razon) d.razon = razon;
+    if (resultado === 'hecha' && r.rehace) { ST.rayitoLocal = ST.rayitoLocal || {}; (ST.rayitoLocal[c.id] = ST.rayitoLocal[c.id] || {})[r.rehace] = Date.now(); }
+    try { var p = C.evento({ caso_id: c.id, tipo: 'rayito', datos: d }); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+  }
+  /** c · antes de rehacer: qué va a pasar, con «Cancelar» (no hace nada, solo se mide) y el sí. */
+  function confirmarRehace(c, r, texto, ctx, hacerlo, origen) {
+    var K = G.CzRayito.confirmacion(r.rehace, ST.hilo, ctx), listo = false;
+    modal('<h3>' + esc(K.titulo) + '</h3><p class="sub" data-ray-conf>' + esc(K.texto) + '</p>' +
+      '<div class="acc der"><button class="boton" data-ray-no>Cancelar</button><button class="boton si" id="okRay">' + esc(K.si) + '</button></div>');
+    var m = $('#modal'), no = function () { if (listo) return; listo = true; cerrarModal(); medirRayito(c, r, 'cancelada', null, texto, origen); };
+    $('[data-ray-no]', m).onclick = no;
+    m.onclick = function (e) { if (e.target === m) no(); };
+    $('#okRay', m).onclick = function () { if (listo) return; listo = true; this.disabled = true; cerrarModal(); medirRayito(c, r, 'hecha', null, texto, origen); hacerlo(); pintarFijo(); };
+  }
+  /** La tarjeta de la falla en el chat también rehace con «Volver a armar»: misma confirmación y mismo gris (con un aviso, no se puede pintar gris ahí). */
+  function rayitoTarjeta(f, c, b) {
+    var AX = G.CzLimpio.accion(f.codigo, ST.hilo, f), hx = AX.hacer || {};
+    var r = G.CzRayito.clasificar({ sug: { acc: hx.acc || 'mandar', txt: AX.boton, texto: hx.texto || (hx.acc ? '' : G.CzLimpio.REARMAR) } });
+    if (!r.rehace) return salidaFalla(f, c, b);
+    var ctx = rayitoCtx(ST.hilo), rz = G.CzRayito.razon(r.rehace, ST.hilo, ctx);
+    if (rz) { medirRayito(c, r, 'bloqueada', rz.codigo, AX.boton, 'tarjeta'); return toast(rz.texto); }
+    confirmarRehace(c, r, AX.boton, ctx, function () { salidaFalla(f, c, b); }, 'tarjeta');
   }
 
   /* V1.40 · la franja de avance como UNA línea (visto bueno de Esteban al prototipo V1.39 · 1, #4). Sustituye a la franja
@@ -3094,7 +3170,7 @@
     $$('[data-pleg]', M).forEach(function (b) { b.onclick = function () { ST.verPleg = ST.verPleg || {}; ST.verPleg[b.dataset.pleg] = true; pintarChat(); }; });
     var o = $('#bOcultos', M); if (o) o.onclick = function () { ST.verTodoChat = !ST.verTodoChat; pintarChat(); };
     $$('[data-falla-hacer]', M).forEach(function (b) { b.onclick = function () {
-      var f = ((ST.hilo && ST.hilo.fallas_odoo) || []).filter(function (x) { return String(x.id) === b.dataset.fallaHacer; })[0]; if (f) salidaFalla(f, ST.hilo.caso, b); }; });
+      var f = ((ST.hilo && ST.hilo.fallas_odoo) || []).filter(function (x) { return String(x.id) === b.dataset.fallaHacer; })[0]; if (f) (rayito() ? rayitoTarjeta : salidaFalla)(f, ST.hilo.caso, b); }; });
   }
   /** Guarda el error del clic en la base (evento `falla_odoo`, sin trabajo del motor): así se ve al recargar y queda medido. */
   function guardarFalla(a, r) {
