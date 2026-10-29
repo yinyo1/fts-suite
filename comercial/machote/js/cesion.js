@@ -94,7 +94,28 @@
     document.body.appendChild(caja);
 
     const forz = $('#cesForz'), motL = $('#cesMotivoL'), aviso = $('#cesAviso');
-    if (forz) forz.onchange = () => { motL.hidden = !forz.checked; };
+    /* En una reasignación FORZADA, dirección también puede quedársela: el
+     * servidor lo permite (machote-archivar solo rechaza cederse a sí mismo
+     * en la VOLUNTARIA) y la lista de personas sale de los dueños de machotes
+     * ajenos, así que quien está en sesión nunca aparecía (#442). La opción
+     * se agrega solo con la casilla marcada y se quita al desmarcarla: en una
+     * cesión normal cederse a sí mismo no tiene sentido. */
+    const yo = (() => {
+      try { const s = G.SuiteAuth && G.SuiteAuth.getSession(); return s || null; } catch (e) { return null; }
+    })();
+    const ponerYo = (si) => {
+      const sel = $('#cesPara');
+      const vieja = sel && sel.querySelector('option[data-yo]');
+      if (vieja) { if (sel.value === vieja.value) sel.value = ''; vieja.remove(); }
+      if (!si || !sel || !yo || !yo.actor) return;
+      const ya = Array.prototype.some.call(sel.options, o => o.value === yo.actor);
+      if (ya) return;
+      const o = document.createElement('option');
+      o.value = yo.actor; o.dataset.nom = yo.nombre || yo.actor; o.dataset.yo = '1';
+      o.textContent = (yo.nombre || yo.actor) + ' (yo)';
+      sel.insertBefore(o, sel.options[1] || null);
+    };
+    if (forz) forz.onchange = () => { motL.hidden = !forz.checked; ponerYo(forz.checked); };
     $('#cesCancel').onclick = cerrar;
     caja.onclick = (e) => { if (e.target === caja) cerrar(); };
 

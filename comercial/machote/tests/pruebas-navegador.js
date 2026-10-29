@@ -6446,6 +6446,11 @@ await sembrarMachotes(q);
       await q.goto(BASE); await q.waitForTimeout(1400);
       await q.evaluate(() => { location.hash = '#/m/M-1041'; }); await q.waitForTimeout(900);
 
+      /* La banda fija de «pendientes de subir» (#avPend) tapa el botón en
+       * este montaje (M-1041 no está sincronizado) y el clic se iba a
+       * timeout también en main. No es lo que se mide aquí: se quita. */
+      const sinBanda = () => q.evaluate(() => { const a = document.getElementById('avPend'); if (a) a.remove(); });
+      await sinBanda();
       const bot = await q.$('#btnCeder');
       if (!bot) throw new Error('no hay botón de Ceder');
       await bot.click(); await q.waitForTimeout(400);
@@ -6472,7 +6477,7 @@ await sembrarMachotes(q);
       // 2 · FORZADA: exige motivo, y lo manda marcado.
       await q.evaluate(() => { window.__cesiones = []; location.hash = '#/m/M-1041'; });
       await q.waitForTimeout(700);
-      await q.click('#btnCeder'); await q.waitForTimeout(400);
+      await sinBanda(); await q.click('#btnCeder'); await q.waitForTimeout(400);
       await q.selectOption('#cesPara', ops[0]);
       await q.check('#cesForz'); await q.waitForTimeout(200);
       if (await q.evaluate(() => document.querySelector('#cesMotivoL').hidden))
@@ -6492,7 +6497,28 @@ await sembrarMachotes(q);
       if (c2[0].forzada !== true) throw new Error('NO la marcó como forzada: el rastro sería igual al voluntario');
       if (!/Salida de FTS/.test(c2[0].motivo || ''))
         throw new Error('no mandó el motivo: ' + c2[0].motivo);
-      console.log('    voluntaria forzada=false sin motivo · forzada=true con «' + c2[0].motivo + '»');
+      // 3 · #442 · en la FORZADA dirección se puede elegir a sí misma; en la voluntaria no aparece.
+      await q.evaluate(() => { window.__cesiones = []; location.hash = '#/m/M-1041'; });
+      await q.waitForTimeout(700);
+      await sinBanda(); await q.click('#btnCeder'); await q.waitForTimeout(400);
+      const antes = await q.$$eval('#cesPara option', els => els.map(e => e.value));
+      if (antes.indexOf('esteban.delacruz') >= 0) throw new Error('ofrece cederse a sí mismo en una voluntaria');
+      await q.check('#cesForz'); await q.waitForTimeout(200);
+      const con = await q.$$eval('#cesPara option', els => els.map(e => e.value));
+      if (con.indexOf('esteban.delacruz') < 0) throw new Error('en la forzada no aparece quien está en sesión: ' + con.join(','));
+      await q.selectOption('#cesPara', 'esteban.delacruz');
+      await q.fill('#cesMotivo', 'Recotización Albuquerque la lleva Esteban');
+      await q.uncheck('#cesForz'); await q.waitForTimeout(150);
+      const sin = await q.$$eval('#cesPara option', els => els.map(e => e.value));
+      if (sin.indexOf('esteban.delacruz') >= 0) throw new Error('al desmarcar la forzada se quedó la opción «yo»');
+      if (await q.$eval('#cesPara', e => e.value) === 'esteban.delacruz') throw new Error('quedó seleccionado «yo» en una voluntaria');
+      await q.check('#cesForz'); await q.waitForTimeout(150);
+      await q.selectOption('#cesPara', 'esteban.delacruz');
+      await q.click('#cesOk'); await q.waitForTimeout(700);
+      const c3 = await q.evaluate(() => window.__cesiones || []);
+      if (c3.length !== 1 || c3[0].para !== 'esteban.delacruz' || c3[0].forzada !== true)
+        throw new Error('la forzada a sí mismo no salió bien: ' + JSON.stringify(c3));
+      console.log('    voluntaria forzada=false sin motivo · forzada=true con «' + c2[0].motivo + '» · forzada a sí mismo → ' + c3[0].para);
     } finally { await q.close(); }
   });
 
