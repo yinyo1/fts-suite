@@ -102,7 +102,7 @@
     // V1.64a (#20, `una_cotizacion_v164`) · una sola cotización por caso: si el caso YA tiene machote, «Crear» guarda una versión del
     // MISMO y nunca crea otro (8894ce: una tarjeta «Crear» de antes de que el robot armara COT-0062 creó COT-0064 sin orden y desde ahí
     // cada actualización salió SIN_ORDEN). Sin la versión leída no se pisa lo editado a mano: solo se llenan renglones sin precio.
-    if (prendido('una_cotizacion_v164') && caso && caso.machote_id)
+    if (caso && prendido('una_cotizacion_v164', caso.id) && caso.machote_id)
       return actualizarMachote({ tipo: a.tipo, datos: Object.assign({}, d, { actualiza: { machote_id: caso.machote_id, folio: caso.machote_folio || null } }) }, ctx);
     var S = G.SuiteAuth.getSession() || {};
     var m = JSON.parse(JSON.stringify(d.documento));
@@ -219,7 +219,7 @@
   // ── crear borrador en Odoo ──────────────────────────────────────────────
   /** V1.52 §12 · la moneda del caso que dice el servidor (caso.moneda, la cambia un decreto); si no la trae, la de la empresa. */
   /** V1.52 §15 · interruptores (los da el servidor; cz-app.js expone G.CzInterruptor). Sin él, apagado. */
-  function prendido(n) { return typeof G.CzInterruptor === 'function' && G.CzInterruptor(n) === true; }
+  function prendido(n, cid) { return typeof G.CzInterruptor === 'function' && G.CzInterruptor(n, cid) === true; }
   function monedaCaso(caso) {
     var m = String((caso && caso.moneda) || '').toUpperCase();
     if (m === 'USD' || m === 'MXN') return m;
@@ -286,7 +286,7 @@
     }
     // V1.64a (#20, `una_cotizacion_v164`) · la orden sale del machote que ACABA de guardarse (el combinado), no de otro: en 8894ce el botón
     // guardaba COT-0062 y pedía la orden con COT-0064 → SIN_ORDEN en cada clic, y la orden se quedaba igual.
-    var mOrden = (prendido('una_cotizacion_v164') && rm && rm.ok && rm.resultado && rm.resultado.machote_id) || caso.machote_id;
+    var mOrden = (prendido('una_cotizacion_v164', caso.id) && rm && rm.ok && rm.resultado && rm.resultado.machote_id) || caso.machote_id;
     var cuerpo = { modo: modo, machote_id: mOrden, version_leida: vComb || (cm.resultado || {}).version || 1,
       caso_id: caso.id, cotizacion: cot, acepta_referencias: conRef && (!!ctx.aceptaReferencias || !prendido('revision_v162b')) },
       // V1.52 §12 · la moneda del caso (la decide el servidor, p. ej. por decreto): orden-odoo la compara con la del machote.

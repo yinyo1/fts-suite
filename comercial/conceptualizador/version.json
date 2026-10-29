@@ -1,6 +1,11 @@
 {
-  "version": "V1.64a",
+  "version": "V1.64a.1",
   "historial": [
+    {
+      "version": "V1.64a.1",
+      "fecha": "2026-10-29",
+      "nota": "fts-conceptualizador#20 (Esteban, 29-oct 16:00 CST, D5): la pantalla lee el interruptor POR CASO (`interruptores_caso` que manda el servidor desde la migración 0063). El renglón del caso manda si existe; si no, el global. Así una_cotizacion_v164 se prende primero solo en 8894ce y ccae8e. Sin el campo, igual que antes."
+    },
     {
       "version": "V1.64a",
       "fecha": "2026-10-29",

@@ -110,8 +110,17 @@
    * todo apagado. Apagado, la pantalla hace exactamente lo de V1.51. Los de la pantalla: estados_reales, un_solo_dato,
    * menu_hoja y moneda_decreto. cz-avance, cz-acciones y cz-vista preguntan por G.CzInterruptor(nombre). */
   ST.int = {};
-  function on(n) { return !!(ST.int && ST.int[n] === true); }
-  function ponInterruptores(r) { if (!r || !r.ok) return; var I = r.interruptores; ST.int = I && typeof I === 'object' && !Array.isArray(I) ? I : {}; avisoNucleo(); }
+  /* V1.64a (fts-conceptualizador#20, D5, db/063) · interruptor POR CASO: el servidor manda también `interruptores_caso: {<caso_id>:
+   * {<nombre>: bool}}`. Para el caso abierto (o el que se pase), su renglón manda si existe (prende O apaga); si no, el global. Misma
+   * regla que el motor (herramientas/motor/interruptores.js `efectivo`) y la base (prendido_caso). Sin el campo, todo igual que antes. */
+  ST.intCaso = {};
+  function on(n, cid) {
+    var id = cid || (ST.sel && ST.sel.id), m = id && ST.intCaso ? ST.intCaso[id] : null;
+    if (m && typeof m === 'object' && Object.prototype.hasOwnProperty.call(m, n)) return m[n] === true;
+    return !!(ST.int && ST.int[n] === true);
+  }
+  function ponInterruptores(r) { if (!r || !r.ok) return; var I = r.interruptores; ST.int = I && typeof I === 'object' && !Array.isArray(I) ? I : {};
+    var K = r.interruptores_caso; ST.intCaso = K && typeof K === 'object' && !Array.isArray(K) ? K : {}; avisoNucleo(); }
   /* V1.53c (fts-conceptualizador#11 E4) · `nucleo_chat`: la pantalla se monta sobre el núcleo de shared/chat (ChatNucleo.crear en
    * modo marco: el DOM y el look son del núcleo; la conducta sigue aquí, sobre los mismos ids). El marco se decide ANTES de
    * cargar los casos, así que se recuerda el último valor que dijo el servidor (comodidad de este aparato, apagado por omisión);

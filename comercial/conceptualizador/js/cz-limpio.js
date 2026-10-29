@@ -21,7 +21,7 @@
 (function (G) {
   'use strict';
   function on() { try { return typeof G.CzInterruptor === 'function' && G.CzInterruptor('chat_limpio_v160') === true; } catch (e) { return false; } }
-  function prendido(n) { try { return typeof G.CzInterruptor === 'function' && G.CzInterruptor(n) === true; } catch (e) { return false; } }
+  function prendido(n, cid) { try { return typeof G.CzInterruptor === 'function' && G.CzInterruptor(n, cid) === true; } catch (e) { return false; } }
 
   /* ── paja ── */
   // Los acuses de recibo del motor que no traen dato (el catálogo medido en los 19 casos: 156 de 159 ya contestados).
@@ -132,8 +132,9 @@
       // V1.64a (#20, `una_cotizacion_v164`, Esteban 29-oct 14:55 CST) · un error repetido lo atiende el DUEÑO del caso con lo que falta;
       // «Lo hace: Esteban» solo cuando lo que falta es una decisión suya (las fallas que ya dicen «Esteban» en su `quien`). 8894ce: el
       // aviso decía «Lo hace: Esteban» de un SIN_ORDEN que era una liga rota entre machotes, no algo que Esteban tuviera que decidir.
-      if (repite && prendido('una_cotizacion_v164')) {
-        var cs0 = (H && H.caso) || {}, dueno = cs0.autor_nombre || cs0.autor || 'quien cotiza', deEsteban = /esteban/i.test(String(r.quien || ''));
+      var cs0 = (H && H.caso) || {};
+      if (repite && prendido('una_cotizacion_v164', cs0.id)) {
+        var dueno = cs0.autor_nombre || cs0.autor || 'quien cotiza', deEsteban = /esteban/i.test(String(r.quien || ''));
         return { texto: (causa ? 'Causa: ' + causa + ' ' : '') + 'Es la ' + vez + '.ª vez con el mismo error, así que repetirlo no lo arregla. Lo que falta: ' + r.texto,
           boton: null, hacer: null, quien: deEsteban ? r.quien : dueno, codigo: codigo, causa: causa || null, vez: vez };
       }
