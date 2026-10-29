@@ -46,3 +46,20 @@ LANGUAGE sql IMMUTABLE AS $inr59$
                'sin_ciclo_v163i','alarma_ciclo_v163i','version_vigente_v163i','pdf_odoo_v163i']
 $inr59$;
 DELETE FROM conceptualizador.config WHERE clave IN ('interruptor:viaje_oculto_v163i', 'interruptor:candado_persona_v163i', 'interruptor:pregunta_primero_v163i');
+-- V1.63i.7b · api_suite vuelve a la cadena de la 0058 y se va vigente_corto.
+DO $r59s$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'conceptualizador' AND p.proname = 'api_suite_0059prev') THEN
+    DROP FUNCTION conceptualizador.api_suite(jsonb);
+    ALTER FUNCTION conceptualizador.api_suite_0059prev(jsonb) RENAME TO api_suite;
+  END IF;
+END
+$r59s$;
+DROP FUNCTION IF EXISTS conceptualizador.vigente_corto(uuid);
+DO $gr59r$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'conceptualizador_app') THEN
+    GRANT EXECUTE ON FUNCTION conceptualizador.api_suite(jsonb) TO conceptualizador_app;
+  END IF;
+END
+$gr59r$;

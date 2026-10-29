@@ -60,3 +60,48 @@ $in59$;
 INSERT INTO conceptualizador.config (clave, valor)
 SELECT 'interruptor:' || n, '0' FROM unnest(conceptualizador.interruptores_nombres()) n
 ON CONFLICT (clave) DO NOTHING;
+
+-- ── V1.63i.7b (#16, 28-oct 18:00 CST) · la pantalla recibe la versión VIGENTE del machote ─────────────────────────────────────
+-- Medido antes de prender pdf_odoo_v163i: el `hilo` de la pantalla (api_suite) no traía `caso.machote_vigente` (solo el `tomar` del
+-- motor, 0032). Sin él, la pantalla tomaba como vigente la ÚLTIMA tarjeta «crear machote» hecha, que no existe cuando el machote lo
+-- guardó el agente: en a3d9c8 decía «la vigente: USD 8,378» (la v4) con la v5 de USD 8,363.79 guardada. Con pdf_odoo_v163i o
+-- numero_directo_v163i (los dos pintan la versión), el hilo trae la última versión de comercial.machote_version, SIN el documento.
+CREATE OR REPLACE FUNCTION conceptualizador.vigente_corto(p_machote uuid) RETURNS jsonb
+LANGUAGE sql STABLE AS $vc59$
+  SELECT CASE WHEN v IS NULL THEN NULL ELSE v - 'documento' END FROM (SELECT conceptualizador.vigente_de(p_machote) AS v) x
+$vc59$;
+REVOKE ALL ON FUNCTION conceptualizador.vigente_corto(uuid) FROM PUBLIC;
+
+DO $ren59s$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+                  WHERE n.nspname = 'conceptualizador' AND p.proname = 'api_suite_0059prev') THEN
+    ALTER FUNCTION conceptualizador.api_suite(jsonb) RENAME TO api_suite_0059prev;
+  END IF;
+END
+$ren59s$;
+
+CREATE OR REPLACE FUNCTION conceptualizador.api_suite(p jsonb) RETURNS jsonb
+LANGUAGE plpgsql AS $sui59$
+DECLARE
+  v_r jsonb := conceptualizador.api_suite_0059prev(p);
+  v_m jsonb;
+BEGIN
+  IF coalesce(p->>'modo', '') <> 'hilo' OR NOT coalesce((v_r->>'ok')::boolean, false) OR jsonb_typeof(v_r->'hilo'->'caso') IS DISTINCT FROM 'object'
+     OR NOT (conceptualizador.prendido('pdf_odoo_v163i') OR conceptualizador.prendido('numero_directo_v163i')) THEN RETURN v_r; END IF;
+  v_m := conceptualizador.vigente_corto(conceptualizador.a_uuid(v_r->'hilo'->'caso'->>'machote_id'));
+  IF v_m IS NOT NULL THEN v_r := jsonb_set(v_r, ARRAY['hilo','caso','machote_vigente'], v_m); END IF;
+  RETURN v_r;
+END
+$sui59$;
+ALTER FUNCTION conceptualizador.api_suite(jsonb) SECURITY DEFINER SET search_path = conceptualizador, public;
+ALTER FUNCTION conceptualizador.api_suite_0059prev(jsonb) SECURITY DEFINER SET search_path = conceptualizador, public;
+REVOKE ALL ON FUNCTION conceptualizador.api_suite_0059prev(jsonb) FROM PUBLIC;
+DO $gr59s$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'conceptualizador_app') THEN
+    REVOKE ALL ON FUNCTION conceptualizador.api_suite_0059prev(jsonb) FROM conceptualizador_app;
+    GRANT EXECUTE ON FUNCTION conceptualizador.api_suite(jsonb) TO conceptualizador_app;
+  END IF;
+END
+$gr59s$;
