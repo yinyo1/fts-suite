@@ -1,6 +1,11 @@
 {
-  "version": "V1.63i.7",
+  "version": "V1.64a",
   "historial": [
+    {
+      "version": "V1.64a",
+      "fecha": "2026-10-29",
+      "nota": "fts-conceptualizador#20 (Esteban, 29-oct 14:55 CST, D231), detrás de `una_cotizacion_v164` (apagado = como antes; migración 0062): una sola cotización por caso. «Crear el machote» en un caso que ya tiene machote guarda una versión del MISMO (no crea otro); el botón combinado «Actualizar machote y Odoo» pide la orden con el machote que acaba de guardar; un error repetido lo atiende el dueño del caso con lo que falta («Lo hace: Esteban» solo si es decisión suya). Caso real 8894ce: COT-0064 creado por una tarjeta vieja dejó SO11936 sin moverse en 4 clics."
+    },
     {
       "version": "V1.63i.7",
       "fecha": "2026-10-28",

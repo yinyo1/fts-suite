@@ -99,6 +99,11 @@
     var d = a.datos || {}, caso = ctx.caso;
     if (!d.documento) return { ok: false, mensaje: 'El motor no mandó el machote. Pídele que lo arme otra vez.' };
     if (d.actualiza) return actualizarMachote(a, ctx);
+    // V1.64a (#20, `una_cotizacion_v164`) · una sola cotización por caso: si el caso YA tiene machote, «Crear» guarda una versión del
+    // MISMO y nunca crea otro (8894ce: una tarjeta «Crear» de antes de que el robot armara COT-0062 creó COT-0064 sin orden y desde ahí
+    // cada actualización salió SIN_ORDEN). Sin la versión leída no se pisa lo editado a mano: solo se llenan renglones sin precio.
+    if (prendido('una_cotizacion_v164') && caso && caso.machote_id)
+      return actualizarMachote({ tipo: a.tipo, datos: Object.assign({}, d, { actualiza: { machote_id: caso.machote_id, folio: caso.machote_folio || null } }) }, ctx);
     var S = G.SuiteAuth.getSession() || {};
     var m = JSON.parse(JSON.stringify(d.documento));
     /* Id de la forma que genera la aplicación (`M-<epoch>`): así se distingue
@@ -279,7 +284,10 @@
         if (prendido('oportunidad_v162')) await guardarEleccion(caso, eleccion);
       }
     }
-    var cuerpo = { modo: modo, machote_id: caso.machote_id, version_leida: vComb || (cm.resultado || {}).version || 1,
+    // V1.64a (#20, `una_cotizacion_v164`) · la orden sale del machote que ACABA de guardarse (el combinado), no de otro: en 8894ce el botón
+    // guardaba COT-0062 y pedía la orden con COT-0064 → SIN_ORDEN en cada clic, y la orden se quedaba igual.
+    var mOrden = (prendido('una_cotizacion_v164') && rm && rm.ok && rm.resultado && rm.resultado.machote_id) || caso.machote_id;
+    var cuerpo = { modo: modo, machote_id: mOrden, version_leida: vComb || (cm.resultado || {}).version || 1,
       caso_id: caso.id, cotizacion: cot, acepta_referencias: conRef && (!!ctx.aceptaReferencias || !prendido('revision_v162b')) },
       // V1.52 §12 · la moneda del caso (la decide el servidor, p. ej. por decreto): orden-odoo la compara con la del machote.
       // Solo con el interruptor `moneda_decreto` prendido; apagado, el cuerpo es el de V1.51.
