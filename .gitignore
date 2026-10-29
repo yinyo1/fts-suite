@@ -24,3 +24,7 @@ docs/trazabilidad/_privado/
 # pueden traer datos de pantalla; el repo es público. Se miran en la máquina y
 # lo que queda en el repo es la conclusión, no la imagen.
 comercial/machote/tests/_capturas-*/
+
+# Descargas temporales (p. ej. facturas del expediente E-2, #440). ESTE REPO ES
+# PÚBLICO: lo que se baja de Odoo se queda en la máquina y nunca se commitea.
+tmp/
