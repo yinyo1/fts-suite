@@ -1,6 +1,11 @@
 {
-  "version": "V1.63i.5",
+  "version": "V1.63i.7",
   "historial": [
+    {
+      "version": "V1.63i.7",
+      "fecha": "2026-10-28",
+      "nota": "fts-conceptualizador#16 punto 3 (Esteban, 28-oct 14:50 MT, D227), detrás de `rayito_v163i` (apagado = como antes; migración 0060): el número del rayito cuenta solo lo que espera a la persona (una decisión que frena el envío o una pregunta suya) y sin eso no hay número; al abrirlo, «Pendientes tuyos» y «Cosas que puedes hacer». Volver a armar, Actualizar el machote y Actualizar SO… en Odoo piden confirmación diciendo qué van a hacer (cancelar no hace nada) y salen en gris con la razón en una línea si el agente está trabajando el caso, si ya se pidió hace menos de 30 min, si hay un mensaje sin contestar o si la orden ya coincide con el machote vigente. Cada clic queda medido (panel «Rayito · 24 h»)."
+    },
     {
       "version": "V1.63i.5",
       "fecha": "2026-10-28",
