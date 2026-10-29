@@ -121,7 +121,13 @@
     '.chn-acc-menu{position:absolute;right:52px;bottom:0;background:var(--chn-sup,#fff);color:var(--chn-texto,#111b21);border-radius:14px;box-shadow:0 4px 18px rgba(11,20,26,.22);padding:6px;min-width:220px;max-width:calc(100vw - 90px)}',
     '.chn-acc-menu[hidden]{display:none}.chn-acc-menu small{display:block;font-size:11.5px;color:var(--chn-sec,#667781);padding:4px 12px}',
     '.chn-acc-menu button{display:block;width:100%;text-align:left;padding:10px 12px;border-radius:9px;font:inherit;font-size:14.5px;line-height:1.3;background:none;border:0;color:inherit;cursor:pointer}',
-    '.chn-acc-menu button:hover{background:var(--chn-sup2,#f6f5f3)}.chn-acc-menu button.fuerte{color:var(--chn-acento-osc,#008069);font-weight:600}'
+    '.chn-acc-menu button:hover{background:var(--chn-sup2,#f6f5f3)}.chn-acc-menu button.fuerte{color:var(--chn-acento-osc,#008069);font-weight:600}',
+    // V1.63i.7 (#16 punto 3, aditivo: solo con `grupo` o `gris` en los renglones) · encabezados de grupo y renglón en gris con su razón
+    '.chn-acc-menu.agrupado{max-height:calc(100vh - 150px);max-height:calc(100dvh - 150px);overflow-y:auto;overscroll-behavior:contain}',
+    '.chn-acc-menu small.chn-acc-grupo{font-size:11.5px;font-weight:700;letter-spacing:.02em;color:var(--chn-sec,#667781);padding:8px 12px 2px}',
+    '.chn-acc-menu small.chn-acc-grupo:not(:first-child){border-top:1px solid var(--chn-borde,#e9edef);margin-top:4px}',
+    '.chn-acc-menu button.gris,.chn-acc-menu button.gris.fuerte{color:var(--chn-sec,#667781);font-weight:500;cursor:default}.chn-acc-menu button.gris:hover{background:none}',
+    '.chn-acc-menu .chn-acc-razon{display:block;font-size:12.5px;font-weight:400;line-height:1.3;margin-top:3px;color:var(--chn-sec,#667781)}'
   ].join('\n');
   function cssPiezas() { if (!document.getElementById('chn-css-piezas')) { var s = document.createElement('style'); s.id = 'chn-css-piezas'; s.textContent = CSS_PIEZAS; document.head.appendChild(s); } }
   var RAYO = '<svg class="ico s" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3L5 13h6l-1 8 8-10h-6z"/></svg>';
@@ -170,9 +176,24 @@
     function pintar() {
       A.classList.toggle('on', L.length > 0);
       if (!L.length) { ab = false; A.innerHTML = ''; return; }
+      // V1.63i.7 (#16 punto 3) · ADITIVO: con `grupo` en los renglones van encabezados por grupo, y con `gris` el renglón no se hace y
+      // dice su razón; `op.n` (número) es lo que cuenta la bolita (0 = sin número). Sin esos campos, el HTML es el de siempre.
+      if (typeof op.n === 'number' || L.some(function (x) { return x.grupo || x.gris; })) return pintarAgrupado();
       A.innerHTML = '<button type="button" class="chn-rayo" data-chn="rayo" aria-label="' + esc(op.aria || 'Acciones sugeridas') + '" aria-expanded="' + ab + '">' + RAYO +
         (L.length > 1 ? '<span class="n">' + L.length + '</span>' : '') + '</button><div class="chn-acc-menu" role="menu"' + (ab ? '' : ' hidden') + '>' +
         '<small>' + esc(op.titulo || 'Sugerencias') + '</small>' + L.map(function (x, i) { return '<button type="button" role="menuitem" data-acc-i="' + i + '"' + attrs(x.attrs) + (x.fuerte ? ' class="fuerte"' : '') + '>' + esc(x.texto) + '</button>'; }).join('') +
+        (op.nota ? '<small>' + esc(op.nota) + '</small>' : '') + '</div>';
+      if (op0 && op0.alCambiar) op0.alCambiar();
+    }
+    function pintarAgrupado() {
+      var n = typeof op.n === 'number' ? op.n : L.length, hayG = L.some(function (x) { return x.grupo; }), prev = null;
+      A.innerHTML = '<button type="button" class="chn-rayo" data-chn="rayo" aria-label="' + esc((op.aria || 'Acciones sugeridas') + (n > 0 ? ' · ' + n + ' pendiente' + (n === 1 ? '' : 's') : '')) + '" aria-expanded="' + ab + '">' + RAYO +
+        (n > 0 ? '<span class="n">' + n + '</span>' : '') + '</button><div class="chn-acc-menu agrupado" role="menu"' + (ab ? '' : ' hidden') + '>' +
+        (hayG ? '' : '<small>' + esc(op.titulo || 'Sugerencias') + '</small>') + L.map(function (x, i) {
+          var cab = hayG && x.grupo !== prev ? '<small class="chn-acc-grupo" data-chn-grupo>' + esc(x.grupo || '') + '</small>' : ''; prev = x.grupo;
+          return cab + '<button type="button" role="menuitem" data-acc-i="' + i + '"' + attrs(x.attrs) + (x.gris ? ' aria-disabled="true" data-gris' : '') +
+            ' class="' + [x.fuerte ? 'fuerte' : '', x.gris ? 'gris' : ''].filter(Boolean).join(' ') + '">' + esc(x.texto) +
+            (x.gris ? '<span class="chn-acc-razon" data-chn-razon>' + esc(x.gris) + '</span>' : '') + '</button>'; }).join('') +
         (op.nota ? '<small>' + esc(op.nota) + '</small>' : '') + '</div>';
       if (op0 && op0.alCambiar) op0.alCambiar();
     }
@@ -180,6 +201,8 @@
       if (!L.length) return;
       var r = e.target.closest && e.target.closest('[data-chn="rayo"]'), i = e.target.closest && e.target.closest('[data-acc-i]');
       if (r && A.contains(r)) { ab = !ab; pintar(); return; }
+      // V1.63i.7 · un renglón en gris no se hace ni cierra el menú: avisa (alGris) para que se mida y se lea la razón.
+      if (i && A.contains(i) && L[+i.dataset.accI] && L[+i.dataset.accI].gris) { var g = L[+i.dataset.accI]; if (g.alGris) g.alGris(i); return; }
       if (i && A.contains(i)) { ab = false; var x = L[+i.dataset.accI]; pintar(); if (x && x.hacer) x.hacer(i); return; }
       if (ab && !A.contains(e.target)) { ab = false; pintar(); }
     });
