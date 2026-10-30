@@ -6704,7 +6704,7 @@
           "accion": "solicitud"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "cerrada_sin_asistencia",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 17,
@@ -6719,7 +6719,18 @@
       "rh_directo_ceo": false,
       "directo_ceo": false,
       "sin_supervisor": false,
-      "tag_disputa_activo": true
+      "tag_disputa_activo": false,
+      "cierre": {
+        "tipo": "administrativo_por_imposibilidad",
+        "resuelta": false,
+        "fecha": "2026-10-30T18:57:16.352Z",
+        "autorizo": "Esteban De La Cruz (CEO) — issue #446",
+        "ejecuto": "Claude Code (sesion de auditoria #446)",
+        "motivo": "Se cierra porque es IMPOSIBLE resolverla, NO porque se haya revisado ni aprobado. La asistencia 13216 a la que apunta ya no existe en Odoo (hr.attendance ids=[13216] devuelve 0 filas, verificado 2026-10-30 por Esteban y por CC). Sin la checada no hay nada que aprobar, ajustar ni rechazar: el resolver intentaria escribir sobre un id inexistente.",
+        "por_que_no_se_reasigno": "Estuvo atorada desde el 2026-05-21 porque su supervisor congelado (98, Ricardo Hernandez) dejo de tener reportes y no recibe el rol supervisor en el panel. Reasignarla al supervisor actual de Hector (112, Felipe) solo movia el atasco: seguiria sin checada que resolver.",
+        "contexto_odoo": "Para el dia 2026-05-20 Hector SI tiene otra checada en Odoo: att 13204, check_in 2026-05-20 13:44:00 UTC (07:44 CST), check_out 23:45:00 UTC (17:45 CST), 10.02 h, create_date 2026-05-21 00:04:30 UTC (= 18:04 CST del 20-may), sin TAG de disputa. Se anota como dato; esta incidencia NO valida ni corrige esa checada.",
+        "status_anterior": "pendiente_supervisor"
+      }
     },
     {
       "id_interno": "INC-AUTO-CIERRE-98-2026-05-19T14-43-31-312Z",
