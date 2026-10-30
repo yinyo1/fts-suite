@@ -125,7 +125,7 @@
 
   /** V1.65 (fts-suite#442, `adoptar_orden_v165`) · ligar al machote del caso una orden que YA existe en Odoo (conceptualizador/orden-odoo
    *  modo adoptar): respaldo de sus líneas, las dos ligas, el PDF previo y la nota en el chatter. Nunca reescribe las líneas.
-   *  Firmado con el token como el alta: ts · nonce · modo · machote · orden · caso (orden-verificar.js · firmaAdoptar). */
+   *  Firmado con el token como el alta: ts · nonce · modo · machote · orden · caso (fts-conceptualizador n8n/codigo/adoptar-verificar.js). */
   async function adoptar(campos) {
     var A = G.SuiteAuth, token = A && A.getToken();
     if (!token) return { ok: false, error: 'SIN_SESION', clase: 'sesion' };
