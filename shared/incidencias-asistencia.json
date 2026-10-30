@@ -158,9 +158,19 @@
           "hora_propuesta_cst": "2026-10-28 07:29:00",
           "comentario": "Olvide checar",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 149,
+          "usuario": "Erick Belmont Kato",
+          "timestamp": "2026-10-30T19:13:20.228Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Incidencia confirmada",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 18,
