@@ -70,11 +70,21 @@
           "hora_propuesta_cst": null,
           "comentario": "Sí aprobo la solicitud, el dia de ayer ha estado sin internet por la mañana.",
           "accion": "aprobado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 63,
+          "usuario": "Magaly Estefanía Pérez García",
+          "timestamp": "2026-10-30T17:12:29.634Z",
+          "hora_propuesta_cst": "08:18",
+          "comentario": "SE COTEJO CON AUDIO DEL SR. JUAN",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_rh",
-      "hora_final_aplicada_utc": null,
-      "aplicado_en_odoo": false,
+      "status": "aprobada_con_ajuste",
+      "hora_final_aplicada_utc": "2026-10-29 14:18:00",
+      "aplicado_en_odoo": true,
       "department_id": 6,
       "department_name": "Comercial",
       "sin_departamento": false,
@@ -87,7 +97,7 @@
       "rh_directo_ceo": false,
       "directo_ceo": false,
       "sin_supervisor": false,
-      "tag_disputa_activo": true
+      "tag_disputa_activo": false
     },
     {
       "id_interno": "INC-AUTO-CIERRE-98-2026-10-28T18-03-01-640Z",
