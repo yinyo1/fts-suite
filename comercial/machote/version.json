@@ -1,11 +1,16 @@
 {
-  "version": "V1.55",
-  "build": "V1.55",
-  "fecha": "2026-10-21",
+  "version": "V1.56",
+  "build": "V1.56",
+  "fecha": "2026-10-29",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.56",
+      "fecha": "2026-10-29",
+      "nota": "CEDER: EN LA REASIGNACION FORZADA, DIRECCION PUEDE QUEDARSE EL MACHOTE (#442). La lista de a quien ceder sale de los duenos de machotes ajenos y quitaba a quien esta en sesion, asi que direccion no podia reasignarse a si misma una cotizacion de alguien que se fue, aunque comercial/machote-archivar si lo permite (solo rechaza cederse a si mismo en la VOLUNTARIA). Ahora, con comercial:admin y la casilla «Su dueno ya no esta en FTS» marcada, aparece tambien «<tu nombre> (yo)»; al desmarcarla la opcion se quita y no queda seleccionada. Prueba V1.29 A2 ampliada; ademas se le quita la banda fija de pendientes que tapaba el boton en el montaje y hacia fallar la prueba tambien en main."
+    },
     {
       "version": "V1.55",
       "fecha": "2026-10-21",
