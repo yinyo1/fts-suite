@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.63i.7';
+  var VERSION = 'V1.65';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -114,13 +114,18 @@
    * {<nombre>: bool}}`. Para el caso abierto (o el que se pase), su renglón manda si existe (prende O apaga); si no, el global. Misma
    * regla que el motor (herramientas/motor/interruptores.js `efectivo`) y la base (prendido_caso). Sin el campo, todo igual que antes. */
   ST.intCaso = {};
+  /* V1.65 (fts-suite#442, db/064) · y POR PERSONA: `interruptores_actor: {<nombre>: bool}` (lo nuevo nace prendido solo para quien lo
+   * pidió). Orden: el caso, la persona, el global; la misma regla que la base (prendido_para). Sin el campo, igual que antes. */
+  ST.intActor = {};
   function on(n, cid) {
     var id = cid || (ST.sel && ST.sel.id), m = id && ST.intCaso ? ST.intCaso[id] : null;
     if (m && typeof m === 'object' && Object.prototype.hasOwnProperty.call(m, n)) return m[n] === true;
+    if (ST.intActor && Object.prototype.hasOwnProperty.call(ST.intActor, n)) return ST.intActor[n] === true;
     return !!(ST.int && ST.int[n] === true);
   }
   function ponInterruptores(r) { if (!r || !r.ok) return; var I = r.interruptores; ST.int = I && typeof I === 'object' && !Array.isArray(I) ? I : {};
-    var K = r.interruptores_caso; ST.intCaso = K && typeof K === 'object' && !Array.isArray(K) ? K : {}; avisoNucleo(); }
+    var K = r.interruptores_caso; ST.intCaso = K && typeof K === 'object' && !Array.isArray(K) ? K : {};
+    var P = r.interruptores_actor; ST.intActor = P && typeof P === 'object' && !Array.isArray(P) ? P : {}; avisoNucleo(); }
   /* V1.53c (fts-conceptualizador#11 E4) · `nucleo_chat`: la pantalla se monta sobre el núcleo de shared/chat (ChatNucleo.crear en
    * modo marco: el DOM y el look son del núcleo; la conducta sigue aquí, sobre los mismos ids). El marco se decide ANTES de
    * cargar los casos, así que se recuerda el último valor que dijo el servidor (comodidad de este aparato, apagado por omisión);
@@ -1135,10 +1140,14 @@
       lineaGeo() +
       '<div class="opciones">' +
       '<button class="opc" data-modo="acompanamiento"><b>1 · Voy a hacer un levantamiento</b><small>Te acompaño en planta: te pido fotos, la ruta, medidas y acceso según el trabajo.</small></button>' +
-      '<button class="opc" data-modo="levantamiento"><b>2 · Ya tengo el levantamiento</b><small>Me mandas todo (fotos, audios, PDFs, notas) y al final tocas «Ya es todo».</small></button></div>' +
+      '<button class="opc" data-modo="levantamiento"><b>2 · Ya tengo el levantamiento</b><small>Me mandas todo (fotos, audios, PDFs, notas) y al final tocas «Ya es todo».</small></button>' +
+      // V1.65 (fts-suite#442, `recotizar_v165`) · recotizar sobre un machote que ya existe: mismo folio, versiones nuevas, su orden.
+      (on('recotizar_v165') ? '<button class="opc" id="bRecotizar"><b>3 · Recotizar sobre un machote que ya existe</b><small>Partes de su última versión; lo nuevo (fotos, notas, PDFs) se propone por sección y tú apruebas. Mismo folio y, si la tiene, la misma orden.</small></button>' : '') +
+      '</div>' +
       '<p class="nota">Empresa y ciudad se cambian después desde&nbsp;⋮.</p></div></div>';
     $$('#msgs [data-emp]').forEach(function (b) { b.onclick = function () { ST.empresa = b.dataset.emp; pintarMenu(); }; });
     $('#bCiudadIni').onclick = function () { dlgCiudad(ciudadMenu(), function (x) { ST.ciuNueva = Object.assign({ fuente: 'elegida' }, x); pintarMenu(); }); };
+    if ($('#bRecotizar')) $('#bRecotizar').onclick = function () { dlgRecotizar(); };
     $$('#msgs [data-modo]').forEach(function (b) { b.onclick = async function () {
       var m = b.dataset.modo, cp = ciudadMenu(), per = ST.geo && ST.geo.persona;
       b.disabled = true;
@@ -1148,6 +1157,41 @@
         persona: per ? { ciudad: per.c, estado: per.e || '', fuente: per.fuente } : null });
       ST.locales = await Q.casosLocales(); $('#app').classList.remove('en-menu'); abrir({ local: c.local_id });
     }; });
+  }
+  /** V1.65 (fts-suite#442) · «Recotizar sobre un machote»: la lista de machotes (comercial/machotes-leer, solo lectura), se elige uno
+   *  y se crea el caso EN LÍNEA (no en la cola: si la base dice que no —no es tuyo, sin total, ya es de otro caso— se dice aquí, sin
+   *  dejar un caso local a medias). Quién puede lo decide la base (recotizar_v165), no esta pantalla. */
+  async function dlgRecotizar() {
+    modal('<div class="recot"><h3>Recotizar sobre un machote</h3><p class="nota">Elige el machote. El caso parte de su última versión guardada y la mantiene: mismo folio, versiones nuevas.</p>' +
+      '<input id="rqBus" class="rq-bus" placeholder="Folio, cliente o nombre" autocomplete="off"><div id="rqL" class="rq-l"><p class="nota">' + GIRO + 'Cargando machotes…</p></div>' +
+      '<div id="rqAv" class="nota mal" hidden></div><div class="acc der"><button type="button" class="boton" id="rqNo">Cancelar</button></div></div>');
+    var cerrar = cerrarModal;
+    $('#rqNo').onclick = cerrar;
+    var l = await C.suite('/webhook/comercial/machotes-leer', {});
+    if (!l || !l.ok || !Array.isArray(l.machotes)) { $('#rqL').innerHTML = '<p class="nota mal">No se pudieron leer los machotes: ' + esc((l && (l.mensaje || l.error)) || 'sin respuesta') + '.</p>'; return; }
+    var M = l.machotes.filter(function (m) { return m && !m.archivado && m.documento; });
+    var fila = function (m) { var d = m.documento || {};
+      return '<button type="button" class="rq-op" data-rq="' + esc(m.id) + '"><span class="rq-f">' + esc(m.folio_txt || m.id_local || '') + '</span>' +
+        '<span class="rq-n">' + esc(d.cliente || '') + ' · ' + esc(d.nombre || '') + '</span><span class="rq-m">' + esc(m.moneda || d.moneda || '') + ' ' + (typeof m.total === 'number' ? dinero(m.total) : 'sin total guardado') +
+        ' · v' + esc(m.version || '') + ' · ' + esc(m.dueno_nombre || m.dueno || '') + '</span></button>'; };
+    var pinta = function () { var q = CI.norm($('#rqBus').value || '');
+      var L = M.filter(function (m) { var d = m.documento || {}; return !q || CI.norm([m.folio_txt, d.cliente, d.nombre, m.dueno_nombre].join(' ')).indexOf(q) >= 0; }).slice(0, 40);
+      $('#rqL').innerHTML = L.length ? L.map(fila).join('') : '<p class="nota">No encontré machotes con eso.</p>';
+      $$('#rqL [data-rq]').forEach(function (b) { b.onclick = function () { elegir(M.filter(function (m) { return m.id === b.dataset.rq; })[0], b); }; });
+    };
+    $('#rqBus').oninput = pinta; pinta(); $('#rqBus').focus();
+    var elegir = async function (m, b) {
+      if (!m) return; var d = m.documento || {}, av = $('#rqAv'); av.hidden = true;
+      var emp = Number(d.empresa_id) === 6 ? 'usa_usd' : (m.moneda || d.moneda) === 'USD' ? 'mx_usd' : 'mx_mxn';
+      var titulo = [d.cliente, d.nombre].filter(Boolean).join(' · ').slice(0, 110) || (m.folio_txt || 'Recotización');
+      b.disabled = true; b.insertAdjacentHTML('beforeend', '<span class="rq-giro">' + GIRO + 'Creando el caso…</span>');
+      var cp = ciudadMenu();
+      var r = await C.nueva({ titulo: titulo, cliente: d.cliente || '', pais: emp === 'usa_usd' ? 'usa' : 'mx', modo_sesion: 'acompanamiento', empresa: emp,
+        datos: Object.assign({ machote_base: { machote_id: m.id } }, cp ? { proyecto: { ciudad: cp.c, estado: cp.e || '', pais: cp.pais === 'US' ? 'US' : 'MX', fuente: cp.fuente || 'elegida' } } : {}) });
+      if (!r || !r.ok || !r.caso_id) { b.disabled = false; var g = b.querySelector('.rq-giro'); if (g) g.remove(); av.hidden = false; av.textContent = (r && (r.mensaje || r.error)) || 'No se pudo crear el caso.'; return; }
+      cerrar(); await cargarCasos(); $('#app').classList.remove('en-menu'); abrir({ id: r.caso_id });
+      toast('Caso creado sobre ' + ((r.recotizacion && r.recotizacion.folio) || m.folio_txt || 'el machote') + ' (versión base ' + ((r.recotizacion && r.recotizacion.version_base) || '') + ').');
+    };
   }
   /** V1.39 (#4 punto 9) · selector de ciudad con el catálogo COMPLETO (INEGI municipios + Census places), que se baja
    *  SOLO al abrir (CI.catalogo). Sin texto: la actual, las del estado donde está la persona (ubicación o zona
@@ -2296,10 +2340,18 @@
      * mostrar todo» lo devuelve. El último mensaje del motor nunca se oculta (CzLimpio). */
     var LIM = on('chat_limpio_v160') && G.CzLimpio && !ST.verTodoChat, nOc = 0, prevMot = null; ST.ocTarj = 0; ST.pdfuDesh = null; ST.pdfuArch = false;
     var MSG = (H && H.mensajes) || [], ultMot = -1; MSG.forEach(function (x, i) { if (x.rol === 'motor' && x.autor !== 'acuse' && x.texto !== SIN_AVISO) ultMot = i; });
+    var enHist = false;   // V1.65 · ¿ya se abrió el bloque de historia?
     MSG.forEach(function (m, iM) {
       var t = m.escrito_at || m.created_at;
       while (ORF.length && Date.parse(ORF[0].hecha_at) <= Date.parse(t)) { var a0 = ORF.shift(); dia(a0.hecha_at); aparte(historialPlegado(a0)); pintadas['sin-' + a0.id] = 1; }
       dia(t);
+      // V1.65 (fts-suite#442) · la HISTORIA del proyecto (lo que pasó antes de este chat): marcada, con su fecha y su fuente original;
+      // nunca parece un mensaje nuevo. La base la manda arriba y en orden cronológico; aquí se pinta con su encabezado una vez.
+      if (m.rol === 'sistema' && m.historia) {
+        if (!enHist) { enHist = true; aparte('<div class="hist-ban">📜 <b>Historia del proyecto</b> · lo que pasó antes de este chat, con su fecha y de dónde salió. No son mensajes nuevos.</div>'); }
+        return aparte(historiaHtml(m, meta));
+      }
+      if (enHist) { enHist = false; aparte('<div class="hist-fin">— Aquí termina la historia; desde aquí, el chat de hoy —</div>'); }
       if (m.rol === 'sistema') return aparte('<div class="sis"><span>' + esc(m.texto) + '</span></div>');
       if (m.rol === 'motor' && m.texto === SIN_AVISO) return;          // V1.46 · el «revisa» sin aviso no se pinta
       if (LIM && G.CzLimpio.acuseContestado(m, iM, MSG)) { nOc++; return; }
@@ -2367,6 +2419,7 @@
         if (acc[m.trabajo_id]) { aparte(tarjetaAcciones(acc[m.trabajo_id].filter(function (a) { return a.tipo !== 'conjetura'; }))); pintadas[m.trabajo_id] = 1; }
       }
     });
+    if (enHist) { enHist = false; aparte('<div class="hist-fin">— Aquí termina la historia; desde aquí, el chat de hoy —</div>'); }
     // Acciones que no cuelgan de un mensaje del motor (p. ej. «¿la cierro?» de los cierres automáticos).
     Object.keys(acc).forEach(function (k) { if (!pintadas[k]) aparte(tarjetaAcciones(acc[k])); });
     // V1.63c (`pdf_unico_v163`) · «Correo para envío» y «Ya la mandé» una sola vez, al final, en el estado vigente.
@@ -3266,6 +3319,8 @@
         (nueva ? 'El agente tiene una versión nueva de ' + esc(folioCaso() || 'tu machote') : esc(a.titulo)) + '</h4>' +
         (nueva ? '<p class="tb-dif">' + esc(nueva) + '</p><p class="nota">Tu machote guardado sigue en la versión anterior. Cuando el machote acepte al agente, esto se guarda solo y la tarjeta desaparece.</p>' : '') +
         (d.detalle ? '<div class="odoo">' + md(d.detalle) + '</div>' : '') +
+        // V1.65 (fts-suite#442) · recotización: la propuesta por sección, con su palomita.
+        (a.tipo === 'crear_machote' && d.recotizacion === true && on('recotizar_v165') ? deltasHtml(a) : '') +
         // V1.55 (`ficha_cliente`) · lo que va a quedar en la ficha de la empresa en Odoo.
         (a.tipo === 'actualizar_cliente' && G.CzAcciones && G.CzAcciones.fichaHtml ? G.CzAcciones.fichaHtml(d, ST.hilo && ST.hilo.caso) : '') +
         // V1.36 · lo que falta para cotizar en Odoo, con su número y renglón por renglón.
@@ -3297,13 +3352,46 @@
          (a.tipo === 'enviada' || a.tipo === 'cerrar' || manejador) ?
            // V1.62b (`revision_v162b`) · las referencias se aceptan en la revisión final, antes de «Ya la mandé»: aquí ya no frenan.
            (a.tipo === 'crear_borrador' && d.referencias && d.referencias.n && !on('revision_v162b') ? botonReferencias(a) :
-           '<div class="acc"><button class="si" data-hacer="' + a.id + '">' + esc(nueva ? 'Guardar en el machote' : etiqueta(a)) + '</button><button data-descartar="' + a.id + '">' + (a.tipo === 'cerrar' ? 'Todavía no' : 'No') + '</button></div>') +
+           '<div class="acc"><button class="si" data-hacer="' + a.id + '">' + esc(a.tipo === 'crear_machote' && d.recotizacion === true && on('recotizar_v165') ? 'Guardar lo marcado en el machote' : nueva ? 'Guardar en el machote' : etiqueta(a)) + '</button><button data-descartar="' + a.id + '">' + (a.tipo === 'cerrar' ? 'Todavía no' : 'No') + '</button></div>') +
            (a.tipo === 'crear_borrador' || a.tipo === 'enviada' ? leyendaOdoo(a.tipo) : '') :
            '<p class="nota">Este botón se enciende cuando se active la escritura a Odoo correspondiente.</p>') + '</div>';
     });
     return h;
   }
 
+  /** V1.65 (fts-suite#442) · un renglón de historia: fecha ORIGINAL (no la de hoy), su fuente y su texto; los adjuntos (p. ej. el PDF
+   *  de la orden que tiene el cliente) se abren como cualquier otro. */
+  function historiaHtml(m, meta) {
+    var h = m.historia || {}, f = h.fecha ? new Date(h.fecha) : null;
+    var fecha = f && !isNaN(f) ? f.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '';
+    return '<div class="fila hist" data-hist="' + esc(m.id) + '"><div class="carta hist-c"><div class="hist-t"><span class="hist-tag">HISTORIA</span>' +
+      (fecha ? '<span class="hist-f">' + esc(fecha) + '</span>' : '') + '<span class="hist-s">' + esc(h.fuente || '') + '</span></div>' +
+      adjuntosHtml((m.adjuntos || []).map(function (a) { return Object.assign({}, a, (meta || {})[a.id] || {}); }), false) +
+      '<div class="txt">' + md(m.texto || '') + '</div></div></div>';
+  }
+  /** V1.65 (fts-suite#442) · la propuesta del agente en una RECOTIZACIÓN, sección por sección contra el machote guardado: la persona
+   *  palomea lo que va y solo eso se guarda (cz-deltas.js). Sin el documento guardado en el hilo, no se ofrece mezclar. */
+  ST.deltaNo = ST.deltaNo || {};
+  function deltasHtml(a) {
+    var D = G.CzDeltas, base = ST.hilo && ST.hilo.machote_doc && ST.hilo.machote_doc.documento;
+    var d = a.datos || {}; if (!D || !base || !d.documento) return '<p class="nota">No tengo la versión guardada del machote para compararla: recarga.</p>';
+    var calc = G.MachoteCalc && G.MachoteCalc.calcular ? G.MachoteCalc.calcular : null, L = D.deltas(base, d.documento, calc), no = ST.deltaNo[a.id] || {};
+    // Sin el motor del machote todavía cargado, los montos llegan en el siguiente pintado (una sola vez).
+    if (!calc && G.CzAcciones && G.CzAcciones.cargarCalc && !ST.calcPedido) { ST.calcPedido = true; G.CzAcciones.cargarCalc().then(function () { pintarChat(); }, function () {}); }
+    var cuenta = { modificada: 0, nueva: 0, eliminada: 0, sin_cambio: 0 }; L.forEach(function (x) { cuenta[x.estado]++; });
+    var mon = (ST.hilo.caso && ST.hilo.caso.moneda) || '';
+    var monto = function (x) { return typeof x === 'number' ? dinero(x) : '—'; };
+    var fila = function (x) {
+      if (x.estado === 'sin_cambio') return '';
+      var r = x.renglones, det = [r.nuevos ? '+' + r.nuevos : '', r.quitados ? '−' + r.quitados : '', r.cambian ? r.cambian + ' cambian' : ''].filter(Boolean).join(' · ');
+      return '<label class="dl-f dl-' + x.estado + '"><input type="checkbox" data-delta="' + a.id + '" value="' + esc(x.clave) + '"' + (no[x.clave] ? '' : ' checked') + (a.estado !== 'propuesta' ? ' disabled' : '') + '>' +
+        '<span class="dl-n"><b>' + esc(x.nombre || 'Sección') + '</b> <span class="dl-e">' + ({ modificada: 'cambia', nueva: 'nueva', eliminada: 'se quita' }[x.estado]) + (det ? ' · ' + esc(det) + ' renglones' : '') + '</span></span>' +
+        '<span class="dl-m">' + monto(x.precio.antes) + ' → ' + monto(x.precio.despues) + ' ' + esc(mon) + '</span></label>';
+    };
+    return '<div class="deltas" data-deltas="' + a.id + '"><p class="nota">Propuesta contra la versión guardada' + (ST.hilo.caso.recotizacion ? ' (base v' + esc(ST.hilo.caso.recotizacion.version_base) + ')' : '') +
+      ': ' + cuenta.modificada + ' cambian · ' + cuenta.nueva + ' nuevas · ' + cuenta.eliminada + ' se quitan · ' + cuenta.sin_cambio + ' sin cambio. Desmarca lo que no va: solo lo marcado se guarda.</p>' +
+      L.map(fila).join('') + '</div>';
+  }
   /** V1.48 · «$7,761,174.29 · diferencia +$0.00 · +1 renglón» de la versión nueva que el agente propone guardar. */
   function versionNueva() {
     var H = ST.hilo, M = ((H && (H.propuesta || H.ultima)) || {}).machote; if (!M || typeof M.precio !== 'number') return '';
@@ -3442,6 +3530,8 @@
     var bl = $('#bListo', M); if (bl) bl.onclick = listoSigue;
     var be = $('#bEscribe', M); if (be) be.onclick = function () { var tq = trabajoQueContesta(); ST.abiertoReg = ST.abiertoReg === (tq && tq.id) ? null : (tq && tq.id); pintarChat(); };
     $$('[data-hacer]', M).forEach(function (b) { b.onclick = function () { hacer(b.dataset.hacer, b); }; });
+    // V1.65 · la palomita de cada sección de la recotización (sobrevive al sondeo: vive en ST.deltaNo).
+    $$('[data-delta]', M).forEach(function (c) { c.onchange = function () { var k = c.dataset.delta; ST.deltaNo[k] = ST.deltaNo[k] || {}; if (c.checked) delete ST.deltaNo[k][c.value]; else ST.deltaNo[k][c.value] = 1; }; });
     // V1.63c (`pdf_unico_v163`) · el archivo de la respuesta abre el último PDF de Odoo en el visor (con «⬇ Descargar» adentro).
     $$('[data-czp-pdf]', M).forEach(function (b) { b.onclick = function () { var c = ST.hilo && ST.hilo.caso; if (c && G.CzEnviar) G.CzEnviar.ver(c, false, opcPdfUltimo()); }; });   // el visor: solo el PDF de la respuesta
     $$('[data-pdf]', M).forEach(function (b) { b.onclick = verPdf; });
@@ -3645,6 +3735,14 @@
     if (a.tipo === 'enviada' && !(G.CzAcciones && G.CzAcciones.enviada)) return resolver(id, 'hecha', { texto: 'Marcada como enviada al cliente' }, b);
     if (a.tipo === 'cerrar') return confirmarCierre(function () { return resolver(id, 'hecha', { texto: 'Cerrada a mano' }, b); });
     var m = G.CzAcciones && G.CzAcciones[a.tipo]; if (!m) return;
+    // V1.65 (fts-suite#442) · recotización: solo las secciones palomeadas (las demás se quedan como en el machote guardado).
+    if (a.tipo === 'crear_machote' && a.datos && a.datos.recotizacion === true && G.CzDeltas) {
+      var bD = ST.hilo && ST.hilo.machote_doc && ST.hilo.machote_doc.documento, noD = ST.deltaNo[a.id] || {};
+      if (!bD) { toast('No tengo la versión guardada del machote para compararla: recarga y vuelve a tocar.'); return; }
+      var apr = G.CzDeltas.deltas(bD, a.datos.documento).filter(function (x) { return x.estado !== 'sin_cambio' && !noD[x.clave]; }).map(function (x) { return x.clave; });
+      if (!apr.length) { toast('No marcaste ninguna sección: no hay nada que guardar.'); return; }
+      a = Object.assign({}, a, { datos: Object.assign({}, a.datos, { aprobadas: apr }) });
+    }
     // V1.57b · regla 15: sin decidir cada frase no se manda (el servidor también lo frena).
     if (a.tipo === 'crear_borrador' && G.CzR15 && !G.CzR15.listo(a)) { toast('Primero decide las frases de la regla 15: texto limpio o liberar con su razón.'); return; }
     b.disabled = true;

@@ -1,6 +1,11 @@
 {
-  "version": "V1.64a.1",
+  "version": "V1.65",
   "historial": [
+    {
+      "version": "V1.65",
+      "fecha": "2026-10-30",
+      "nota": "fts-suite#442 (recotización Mission Foods Albuquerque): «3 · Recotizar sobre un machote que ya existe» en el menú (recotizar_v165, prendido solo para quien lo tiene): el caso nace sobre el MISMO machote (mismo folio, versiones nuevas) con su versión base y su orden; la HISTORIA del proyecto (mensajes de sistema con fecha original y fuente) se pinta arriba, sepia y marcada, nunca como mensaje nuevo; la propuesta del agente en una recotización sale por SECCIÓN contra la versión guardada (cz-deltas.js) y solo lo palomeado se guarda; adoptar una orden existente (CzCliente.adoptar, firmado). Además VERSION y version.json vuelven a coincidir (la pantalla decía V1.63i.7 y version.json V1.64a.1)."
+    },
     {
       "version": "V1.64a.1",
       "fecha": "2026-10-29",
