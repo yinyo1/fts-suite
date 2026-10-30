@@ -60,9 +60,19 @@
           "hora_propuesta_cst": "2026-10-29 08:11:00",
           "comentario": "No pude realizar checada ya que no habia Internet",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 97,
+          "usuario": "Rissia Xavier de Araujo",
+          "timestamp": "2026-10-30T17:06:08.350Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Sí aprobo la solicitud, el dia de ayer ha estado sin internet por la mañana.",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 6,
