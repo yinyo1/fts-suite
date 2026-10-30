@@ -1,6 +1,11 @@
 {
-  "version": "V1.65",
+  "version": "V1.65.1",
   "historial": [
+    {
+      "version": "V1.65.1",
+      "fecha": "2026-10-30",
+      "nota": "fts-suite#442 · el nombre del chat ya no parte palabras: con cliente «Mission Foods» y título «Mission Foods Albuquerque · …» salía «Mission · Foods Albuquerque»; ahora se quita el cliente del principio solo si termina en corte de palabra (primero el nombre completo, si no el corto) → «Mission · Albuquerque · Cooling Loop 25TR»."
+    },
     {
       "version": "V1.65",
       "fecha": "2026-10-30",

@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.65';
+  var VERSION = 'V1.65.1';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -322,7 +322,11 @@
     var t = String(c.titulo || '').trim(); if (!on('pantalla_v153')) return t;
     var cc = clienteCorto(c.cliente); if (!cc) return t;
     if (/^cotizacion-nueva-[0-9a-f]{6}$/i.test(t)) t = 'Cotización nueva';   // el nombre de carpeta no es un nombre
-    if (sinAcento(t).indexOf(sinAcento(cc)) === 0) t = t.slice(cc.length).replace(/^[\s·:,\-]+/, '');
+    // V1.65 (#442) · se quita el cliente del principio del título solo si termina en un corte de palabra: «Mission Foods Albuquerque»
+    // con cliente «Mission Foods» salía «Mission · Foods Albuquerque». Primero el nombre completo; si no, el corto.
+    var ta = sinAcento(t), corte = function (n) { return !/[0-9A-Za-zÀ-ÿ]/.test(ta.charAt(n)); }, full = sinAcento(String(c.cliente || '').trim());
+    if (full && ta.indexOf(full) === 0 && corte(full.length)) t = t.slice(full.length).replace(/^[\s·:,\-]+/, '');
+    else if (ta.indexOf(sinAcento(cc)) === 0 && corte(cc.length)) t = t.slice(cc.length).replace(/^[\s·:,\-]+/, '');
     return t ? cc + ' · ' + t : cc;
   }
   /** Una fila de la lista (la misma en la lista de siempre y en la V1.60). `x` = { monto, due } solo con `lista_v160`. */
