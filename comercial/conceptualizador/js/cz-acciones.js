@@ -146,6 +146,22 @@
     if (!fila || !fila.documento) return { ok: false, mensaje: 'No encontré el machote ' + (u.folio || '') + ' entre los tuyos. Si es de otra persona, que lo actualice ella' + (prendido('delegacion_v159') ? ' o que Esteban te lo delegue en el panel.' : '.') };
     var actual = fila.documento, nuevo = JSON.parse(JSON.stringify(d.documento)), doc, llenos = [], sinLugar = [];
     var intacto = u.version && Number(fila.version) === Number(u.version);
+    // V1.65 (fts-suite#442) · recotización: se parte de lo GUARDADO y solo entran las secciones que la persona palomeó
+    // (cz-deltas.js). Lo demás se queda exactamente como estaba, aunque la propuesta lo traiga distinto.
+    var recot = d.recotizacion === true && Array.isArray(d.aprobadas) && G.CzDeltas ? G.CzDeltas.mezclar(actual, nuevo, d.aprobadas) : null;
+    if (recot) {
+      doc = recot.documento; intacto = false;
+      ['id', 'nombre', 'cliente', 'cliente_id', 'creado_por', 'creado_por_nombre', 'origen', 'oportunidad'].forEach(function (k) { if (actual[k] !== undefined) doc[k] = actual[k]; });
+      var rR = await C.suite('/webhook/comercial/machote-guardar', { id_local: fila.id_local, cliente_odoo_id: doc.cliente_id || null, version_leida: Number(fila.version) || 0,
+        estado: fila.estado || 'borrador', motivo: ('Recotización: ' + recot.aplicadas.length + ' sección(es) aprobada(s)' + (recot.rechazadas.length ? ', ' + recot.rechazadas.length + ' rechazada(s)' : '') + ' (conceptualizador)').slice(0, 300),
+        documento: doc, resumen: await resumenDe(doc) });
+      if (!rR.ok) return { ok: false, error: rR.error, mensaje: rR.error === 'CONFLICTO_DE_VERSION' ? 'Alguien guardó el machote en este momento. Vuelve a tocar.' :
+        rR.error === 'MACHOTE_DE_OTRA_PERSONA' ? 'El machote es de ' + (fila.dueno_nombre || fila.dueno || 'otra persona') + ': pídele que te lo ceda o te lo preste.' : (rR.mensaje || ('No se guardó: ' + (rR.error || 'error'))) };
+      return { ok: true, resultado: { machote_id: rR.machote_id || fila.id, folio: rR.folio_txt || fila.folio_txt || u.folio || '', version: rR.version, id_local: fila.id_local, actualizado: true,
+        recotizacion: { aplicadas: recot.aplicadas, rechazadas: recot.rechazadas },
+        texto: 'Machote ' + (rR.folio_txt || fila.folio_txt || '') + ' actualizado (versión ' + rR.version + '): ' + recot.aplicadas.length + ' sección(es) aprobada(s)' +
+          (recot.rechazadas.length ? '; ' + recot.rechazadas.length + ' se quedaron como estaban' : '') + '. La orden de Odoo no se tocó.' } };
+    }
     if (intacto) {
       doc = nuevo;
       ['id', 'nombre', 'cliente', 'cliente_id', 'creado_por', 'creado_por_nombre', 'origen', 'oportunidad'].forEach(function (k) { if (actual[k] !== undefined) doc[k] = actual[k]; });
@@ -557,7 +573,7 @@
       '</div>';
   }
 
-  G.CzAcciones = { crear_machote: crearMachote, crear_borrador: crearBorrador, alta_contacto: altaContacto, actualizar_cliente: actualizarCliente, fichaHtml: fichaHtml, enviada: enviada,
+  G.CzAcciones = { cargarCalc: cargarCalc, crear_machote: crearMachote, crear_borrador: crearBorrador, alta_contacto: altaContacto, actualizar_cliente: actualizarCliente, fichaHtml: fichaHtml, enviada: enviada,
     pendientes: pendientes, textoPendientes: textoPendientes, permiso: permiso, ordenDe: ordenDe,
     _pdfCliente: pdfCliente, _bloques: bloques, _releido: releido };
 })(window);
