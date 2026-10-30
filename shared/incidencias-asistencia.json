@@ -4502,9 +4502,19 @@
           "fecha": "2026-07-03T01:57:42.933Z",
           "hora_propuesta_cst": "17:40",
           "comentario": "Marcaba error el checador"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 149,
+          "usuario": "Erick Belmont Kato",
+          "timestamp": "2026-10-30T19:13:42.232Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Incidencia confirmada",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": "2026-07-02 23:40:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
