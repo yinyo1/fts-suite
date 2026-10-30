@@ -1,23 +1,23 @@
 {
   "_meta": {
     "version": 3,
-    "generated_at": "2026-10-29T10:00:02.574Z",
+    "generated_at": "2026-10-30T01:16:36.329Z",
     "source": "Odoo hr.employee live sync via workflow rh/empleados-master/sync",
     "auto_update_status": "auto_synced",
     "auto_update_status_explicacion": "Workflow n8n rh/empleados-master/sync ACTIVO. Cron 6am CST diario + webhook on-change POST /rh/empleados-master/refresh.",
     "fase": "3-active",
-    "last_sync_event": "cron 6am CST",
-    "last_sync_started_at": "2026-10-29T10:00:00.388Z",
-    "last_sync_completed_at": "2026-10-29T10:00:02.574Z",
+    "last_sync_event": "webhook on-change",
+    "last_sync_started_at": "2026-10-30T01:16:35.547Z",
+    "last_sync_completed_at": "2026-10-30T01:16:36.329Z",
     "sync_strategy": "Cron 6am diario (Schedule Trigger) + webhook on-change desde panel admin (Fase 4 cuando exista).",
-    "total_active": 30,
-    "total_con_departamento": 29,
+    "total_active": 31,
+    "total_con_departamento": 30,
     "total_sin_departamento": 1,
-    "total_con_hora_entrada": 29,
+    "total_con_hora_entrada": 30,
     "total_sin_hora_entrada": 1,
     "total_con_categoria_explicita": 7,
-    "total_con_categoria_default": 23,
-    "total_ppa_aplica": 27,
+    "total_con_categoria_default": 24,
+    "total_ppa_aplica": 28,
     "total_ppa_no_aplica": 3,
     "distribucion_categorias_explicitas": {
       "ceo": 1,
@@ -541,6 +541,23 @@
       "x_studio_retardos_15_dias": 0,
       "x_categoria_nomina": null,
       "x_aplica_ppa": false
+    },
+    {
+      "id": 160,
+      "name": "Manuel Eduardo Reyes",
+      "department_id": 17,
+      "department_name": "Ingenieria",
+      "parent_id": 8,
+      "parent_name": "Francisco Montalvo Ramirez",
+      "resource_calendar_id": 2,
+      "resource_calendar_name": "Horas operaciones",
+      "work_email": "manuel97eduardo@outlook.es",
+      "work_phone": null,
+      "mobile_phone": "8124468445",
+      "x_studio_hora_entrada": 7,
+      "x_studio_retardos_15_dias": 0,
+      "x_categoria_nomina": null,
+      "x_aplica_ppa": true
     }
   ]
 }
