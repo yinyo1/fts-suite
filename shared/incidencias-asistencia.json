@@ -4,7 +4,7 @@
     {
       "id_interno": "INC-AUTO-CIERRE-149-2026-10-30T13-16-03-526Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "fecha_creacion": "2026-10-30T13:16:05.091Z",
       "empleado_id": 149,
       "empleado_nombre": "Erick Belmont Kato",
@@ -14,7 +14,7 @@
       "check_out_aplicado_utc": "2026-10-29 22:42:53",
       "horas_originales": "24.15",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -22,7 +22,18 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-10-30T15:37:40.015Z",
+          "hora_propuesta_cst": "17:40",
+          "comentario": "Incidencia verificada",
+          "accion": "aprobado"
+        }
+      ]
     },
     {
       "id_interno": "INC-OLV-108-2026-10-29T15-30-38-097Z",
