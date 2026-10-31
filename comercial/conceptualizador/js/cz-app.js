@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.65.1';
+  var VERSION = 'V1.65.2';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -3779,13 +3779,13 @@
       if (on('chat_limpio_v160') && G.CzLimpio) {
         var AX = G.CzLimpio.accion((r && r.error) || 'NO_SE_ESCRIBIO', ST.hilo, r), f0 = { codigo: (r && r.error) || 'NO_SE_ESCRIBIO', que: a.tipo, accion_id: a.id, mensaje: (r && r.mensaje) || null };
         est.error({ titulo: so ? 'No se actualizó ' + so + ' en Odoo' : 'No se creó la cotización en Odoo', motivo: AX.texto, codigo: (r && r.error) || 'NO_SE_ESCRIBIO',
-          nota: (AX.quien ? 'Lo hace: ' + AX.quien + '. ' : '') + (so ? 'La orden no cambió.' : 'No se escribió nada en Odoo.'),
+          nota: (AX.quien ? 'Lo hace: ' + AX.quien + '. ' : '') + (r && r.sin_confirmar ? 'No sé si llegó a Odoo: revísalo antes de reintentar.' : so ? 'La orden no cambió.' : 'No se escribió nada en Odoo.'),
           acciones: AX.boton && AX.hacer ? [{ txt: AX.boton, si: true, fn: function (bt) { if (AX.hacer.acc === 'reintentar') return reintenta(); salidaFalla(f0, ST.hilo.caso, bt); } }] : [] });
         ST.estErr = { h: est, caso: ((ST.hilo && ST.hilo.caso) || {}).id };
         return;
       }
       est.error({ titulo: so ? 'No se actualizó ' + so + ' en Odoo' : 'No se creó la cotización en Odoo', motivo: (r && r.mensaje) || 'sin respuesta', codigo: (r && r.error) || 'NO_SE_ESCRIBIO',
-        nota: so ? 'La orden no cambió.' : 'No se escribió nada en Odoo.', reintentar: reintenta });
+        nota: r && r.sin_confirmar ? 'No sé si llegó a Odoo: revísalo antes de reintentar.' : so ? 'La orden no cambió.' : 'No se escribió nada en Odoo.', reintentar: reintenta });
     };
     try {
       // El manejador hace la escritura con su propio endpoint (machote-guardar,

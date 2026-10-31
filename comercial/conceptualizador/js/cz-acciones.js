@@ -227,6 +227,20 @@
       todos: (r.renglones || []).map(function (x) { return { tipo: x.tipo, texto: x.texto, precio: x.precio, opcional: !!x.opcional }; }),
       avisos: r.avisos || [] };
   }
+  /** V1.64a (`relee_orden_v164`) · ¿el machote ya tiene orden en Odoo? comercial/machotes-leer en modo historial (solo lectura). Hasta 4
+   *  lecturas, 5 s entre una y otra: tras un tiempo de espera el servidor normalmente ya terminó. {leido, so, nombre}. */
+  async function releerOrden(machoteId) {
+    var leido = false;
+    for (var i = 0; i < 4; i++) {
+      if (i) await new Promise(function (ok) { setTimeout(ok, G.__czReleerMs === undefined ? 5000 : G.__czReleerMs); });
+      var l = await C.suite('/webhook/comercial/machotes-leer', { machote_id: machoteId }, 20000);
+      if (!l || !l.ok || !Array.isArray(l.versiones)) continue;
+      leido = true;
+      var v = l.versiones.filter(function (x) { return x && Number(x.odoo_so_id) > 0; })[0];
+      if (v) return { leido: true, so: Number(v.odoo_so_id), nombre: v.odoo_so_name || null };
+    }
+    return { leido: leido, so: null, nombre: null };
+  }
   function textoOrden(o, que) {
     return que + ' ' + (o.orden_nombre || o.orden_id) + ' · ' + (o.partner || '') + ' · subtotal ' + dinero(o.subtotal, o.moneda) +
       ' · total con IVA ' + dinero(o.total, o.moneda) + (o.avisos.length ? '. Revisa: ' + o.avisos.join(' ') : '.');
@@ -312,6 +326,16 @@
     if (R15 && R15.liberadas.length) cuerpo.regla15_liberadas = R15.liberadas;
     if (eleccion) cuerpo.oportunidad = eleccion;
     var r = await C.suite(RUTA_ORDEN, cuerpo, 120000);
+    // V1.64a (#20, Esteban 31-oct 00:05 CST, `relee_orden_v164`) · un tiempo de espera NO es «no se creó». ZZ2, 31-oct 04:55 UTC: Odoo creó
+    // SO11945 a los 10 s y la pantalla dijo «No se creó la cotización en Odoo · No se escribió nada en Odoo». Antes de decir que falló se
+    // relee el machote (comercial/machotes-leer, solo lectura): si ya tiene su orden, se dice «se creó» con ella y la tarjeta se cierra
+    // con esa orden (así el caso la conoce y nadie crea otra). Si no, se dice que no se pudo comprobar, nunca que no se escribió.
+    if (!r.ok && modo === 'crear' && (r.error === 'SIN_RED' || r.clase === 'red') && prendido('relee_orden_v164', caso.id)) {
+      var rl = await releerOrden(mOrden);
+      if (rl.so) r = { ok: true, odoo_so_id: rl.so, odoo_so_name: rl.nombre, estado: null, renglones: [], releida_tras_espera: true };
+      else return { ok: false, error: 'SIN_CONFIRMAR', sin_confirmar: true, mensaje: 'El servidor tardó en contestar y no pude comprobar si la cotización llegó a Odoo' +
+        (rl.leido ? ': el machote todavía no tiene orden. Espera un minuto y vuelve a mirar antes de reintentar.' : ' (tampoco pude releer el machote).') };
+    }
     // El servidor encontró una frase que la pantalla no vio (la cotización cambió): se dice cuál, no se escribe nada.
     if (!r.ok && r.error === 'REGLA15_CALCULOS') return { ok: false, error: r.error, mensaje: r.mensaje || 'La cotización trae cálculos que vería el cliente.' };
     if (md && !r.ok && r.error === 'MONEDA_DISTINTA_AL_CASO') {
@@ -325,6 +349,9 @@
       oportunidad_creada: r.oportunidad_creada || undefined };
     var o = releido(r);
     o.texto = textoOrden(o, modo === 'crear' ? 'Borrador' : 'Actualizado');
+    if (r.releida_tras_espera) { o.releida_tras_espera = true;
+      o.texto = 'Se creó la cotización en Odoo: ' + (r.odoo_so_name || 'orden ' + r.odoo_so_id) + '. El servidor tardó en contestar; lo confirmé releyendo el machote, no lo supuse. ' +
+        'El detalle (renglones y PDF) se ve en Odoo; el siguiente «Actualizar» trabaja sobre esta misma orden, no crea otra.'; }
     if (comb && vComb) { o.texto = txtComb + ' ' + o.texto + ' El PDF nuevo está abajo.'; o.combinado = { machote_version: vComb }; }
     // V1.61 (`barra_v161`, #12 punto 9, D96) · la línea fija del redondeo la arma orden-odoo con el subtotal RELEÍDO de Odoo.
     if (prendido('barra_v161') && r.linea_redondeo && r.linea_redondeo.texto) { o.linea_redondeo = r.linea_redondeo; o.texto += ' ' + r.linea_redondeo.texto; }

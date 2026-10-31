@@ -1,6 +1,11 @@
 {
-  "version": "V1.65.1",
+  "version": "V1.65.2",
   "historial": [
+    {
+      "version": "V1.65.2",
+      "fecha": "2026-10-31",
+      "nota": "fts-conceptualizador#20 (V1.64a, Esteban 31-oct 00:05 CST, `relee_orden_v164`, apagado): un tiempo de espera ya no se pinta como «No se creó la cotización en Odoo · No se escribió nada». Antes de decir que falló, la pantalla relee el machote (comercial/machotes-leer, solo lectura); si ya tiene su orden, la tarjeta se cierra con ESA orden y dice «Se creó …»; si no, dice que no pudo comprobarlo. Caso real: ZZ2, SO11945 creada a los 10 s y la pantalla dijo lo contrario. Prueba: pruebas/pantalla-relee-orden-v164.js (fts-conceptualizador)."
+    },
     {
       "version": "V1.65.1",
       "fecha": "2026-10-30",
