@@ -1,7 +1,7 @@
 // ═══ FTS Kiosk — Lógica principal ═══
 // Script clásico, estado global compartido
 
-const KIOSK_BUILD = '20261008-kiosk-zona-usa';
+const KIOSK_BUILD = '20261101-kiosk-nomina-usa';
 console.log('[kiosk] build:', KIOSK_BUILD);
 window.KIOSK_BUILD = KIOSK_BUILD;
 // PR-7: auto version-check — si el navegador sirve un bundle viejo cacheado
@@ -819,6 +819,14 @@ async function afterVerifyContinue(){
 
   // Liberar bloqueo antes de avanzar a siguiente pantalla
   if(verifyEl) verifyEl.classList.remove('ks-verify-busy');
+
+  // Nómina USA (#448): solo para personas con bandera, interruptor prendido y checada
+  // desde USA (o sin ubicación). Para todos los demás KioskoUSA.aplica() es false y el
+  // flujo sigue EXACTAMENTE como hoy, sin red ni pantalla de más.
+  if(window.KioskoUSA && window.KioskoUSA.aplica(K.seleccionado)){
+    try{ if((await window.KioskoUSA.decidir(geoResult)) === 'tomado') return; }
+    catch(e){ console.warn('[nomina-usa] falló el flujo USA, sigue el de hoy:', e && e.message); }
+  }
 
   if(!geoResult.autorizado){
     mostrarModalGeo(geoResult);
