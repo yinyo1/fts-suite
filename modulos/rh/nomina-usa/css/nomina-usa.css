@@ -49,3 +49,6 @@ td.nu-fecha{white-space:nowrap}
 }
 @media (max-width:640px){ .nu-tabla .nu-oc{display:none} }
 @media (max-width:640px){ .nu-tabla{font-size:13px} .nu-tabla th,.nu-tabla td{padding:6px 4px} .nu-so{padding:10px} }
+.nu-reparto{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px 12px;margin:6px 0}.nu-reparto label{display:flex;align-items:center;gap:6px;justify-content:space-between}
+.nu-rol{margin-top:10px;padding-top:8px;border-top:1px solid var(--border)}
+.nu-est{max-width:520px}
