@@ -28,17 +28,26 @@
       // Primero las que NO tienen bolsa: es a lo que se viene a esta forma.
       opts = (r.catalogo || []).map(function (s, i) { return { o: opts[i], tiene: !!conBolsa[s.so_id] }; }).sort(function (a, b) { return a.tiene - b.tiene; }).map(function (x) { return x.o; }).join('');
       h += '<div class="cab"><h1>Capturar bolsa provisional</h1></div><form class="caja nu-ficha" id="nu-prov"><div class="nu-f">' +
-        '<label>SO<select name="so">' + opts + '</select></label><label>Folio de Esteban<input name="folio" placeholder="EDC-2026-11-01"></label>' +
+        '<label>SO<select name="so">' + opts + '<option value="otra">Otra SO (escribirla)…</option></select></label>' +
+        '<label class="nu-otra hid">Id de la SO en el kiosko (proyecto)<input name="otra_id" inputmode="numeric"></label><label class="nu-otra hid">Nombre de la SO<input name="otra_nombre" placeholder="SO11xxx - ..."></label>' +
+        '<label>Id de la orden de venta en Odoo (para traer del machote)<input name="sale_order" inputmode="numeric"></label><label>Folio de Esteban<input name="folio" placeholder="EDC-2026-11-01"></label>' +
         '<label>Bolsa supervisor USD<input name="supervisor" inputmode="decimal"></label><label>Bolsa técnicos USD<input name="tecnicos" inputmode="decimal"></label>' +
         '<label>Ya pagado supervisor<input name="ps" inputmode="decimal" value="0"></label><label>Ya pagado técnicos<input name="pt" inputmode="decimal" value="0"></label></div>' +
         '<div class="nu-acc"><button class="btn" type="button" id="nu-machote">Traer del machote</button><button class="btn pri" type="submit">Guardar provisional</button></div><div class="err hid"></div></form>';
     }
     el.innerHTML = h;
     var f = el.querySelector('#nu-prov'); if (!f) return;
-    function so() { var o = f.so.selectedOptions[0]; return { so_id: Number(o.value), so_nombre: o.dataset.nombre, sale_order_id: Number(o.dataset.so) || null }; }
+    function so() {
+      var o = f.so.selectedOptions[0], so = f.so.value === 'otra' ? { so_id: Number(f.otra_id.value) || null, so_nombre: f.otra_nombre.value.trim() || null, sale_order_id: null }
+                                                                : { so_id: Number(o.value), so_nombre: o.dataset.nombre, sale_order_id: Number(o.dataset.so) || null };
+      if (Number(f.sale_order.value)) so.sale_order_id = Number(f.sale_order.value);
+      return so;
+    }
+    f.so.addEventListener('change', function () { f.querySelectorAll('.nu-otra').forEach(function (l) { l.classList.toggle('hid', f.so.value !== 'otra'); }); });
     function err(t) { var b = f.querySelector('.err'); b.textContent = t; b.classList.remove('hid'); }
     f.addEventListener('submit', async function (ev) {
       ev.preventDefault();
+      if (!so().so_id) return err('Elige o escribe la SO.');
       var r2 = await c.llamar(Object.assign({ accion: 'bolsa_provisional', folio: f.folio.value, supervisor: Number(f.supervisor.value) || 0, tecnicos: Number(f.tecnicos.value) || 0,
         pagado_previo_supervisor: Number(f.ps.value) || 0, pagado_previo_tecnicos: Number(f.pt.value) || 0 }, so()));
       if (!r2 || r2.ok === false) return err(c.mensaje(r2) === 'FOLIO_REQUERIDO' ? 'Escribe el folio.' : c.mensaje(r2));

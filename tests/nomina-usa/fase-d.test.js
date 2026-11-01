@@ -60,4 +60,6 @@ check('avance diario: 28-oct 70 % con quién trabajó y horas', r.ok && r.dias[0
 check('día sin reporte arrastra el avance vigente (29-oct = 70 %)', r.dias[1].avance === null && r.dias[1].avance_al === 70);
 check('30-oct 100 %', r.dias[2].avance_al === 100);
 check('re-subir las horas de una asistencia no duplica', (db.q(`SELECT nomina_usa.horas_registrar('{"horas":[{"attendance_id":1,"employee_id":75,"fecha":"2026-10-28","so_id":501,"horas":9.6}]}'::jsonb)`), db.q('SELECT count(*)||\'/\'||sum(horas) FROM nomina_usa.horas_dia')) === '2/20.28');
+r = db.panel({ accion: 'bolsas' }, ['nomina_usa:validar']);
+check('bolsas trae catálogo de SO con y sin bolsa (para la provisional en modo real)', r.ok && Array.isArray(r.catalogo) && r.catalogo.some(c => c.so_id === 501) && r.catalogo.some(c => c.so_id === 502), r.catalogo);
 fin();
