@@ -16,7 +16,7 @@ seccion('Migraciones listas para el aplicador (nomina-usa/db-migrate)');
   const fs = require('fs'), path = require('path');
   const dir = path.join(__dirname, '../../db/migrations/nomina_usa');
   const arch = fs.readdirSync(dir).filter(f => f.endsWith('.sql')).sort();
-  check('seis migraciones nomina_usa_0001…0006, numeradas sin huecos', arch.length === 6 && arch.every((f, i) => f.startsWith('nomina_usa_' + String(i + 1).padStart(4, '0') + '_')), arch);
+  check('migraciones nomina_usa_0001…000N numeradas sin huecos', arch.length >= 7 && arch.every((f, i) => f.startsWith('nomina_usa_' + String(i + 1).padStart(4, '0') + '_')), arch);
   const code = fs.readFileSync(path.join(__dirname, '../../nomina-usa/n8n/code/db-migrate-decidir.js'), 'utf8');
   arch.forEach((f, i) => {
     const sql = fs.readFileSync(path.join(dir, f), 'utf8');

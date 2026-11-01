@@ -1,9 +1,15 @@
 {
-  "version": "V1.04",
+  "version": "V1.05",
   "fecha": "2026-11-01",
   "modulo": "rh/nomina-usa",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Contador propio de este modulo.",
   "historial": [
+    {
+      "version": "V1.05",
+      "fecha": "2026-11-01",
+      "titulo": "Catalogo de SO en Bolsas para modo real (#448)",
+      "nota": "La pestana Bolsas recibe el catalogo de SO de la base (con horas, avance o SO al entrar) y deja escribir otra SO a mano y el id de la orden de venta para traer la bolsa del machote. En practica no se notaba porque el ejemplo traia su propio catalogo."
+    },
     {
       "version": "V1.04",
       "fecha": "2026-11-01",
