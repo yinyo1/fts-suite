@@ -1,0 +1,75 @@
+/* Datos reales de octubre de Ricardo (empleado 98) para el modo práctica (#448).
+ * COPIA de tests/nomina-usa/fixtures/octubre-98.json; fase-c.test.js falla si se separan.
+ * Solo ids, horas UTC y SO; sin datos personales. */
+window.NusaOctubre = {
+ "_fuente": "Odoo hr.attendance, employee_id=98, check_in >= 2026-10-20, leído el 2026-11-01 con odoo_query (issue #448, cuerpo §1.6). Solo ids, horas UTC y nombre corto de la SO; sin datos personales.",
+ "employee_id": 98,
+ "asistencias": [
+  {
+   "id": 16169,
+   "check_in": "2026-10-21 01:28:49",
+   "check_out": "2026-10-21 01:29:20",
+   "x_studio_project_id": "SO11791 - Power and control panels"
+  },
+  {
+   "id": 16195,
+   "check_in": "2026-10-21 15:47:53",
+   "check_out": "2026-10-22 01:58:01",
+   "x_studio_project_id": "SO11791 - Power and control panels"
+  },
+  {
+   "id": 16221,
+   "check_in": "2026-10-22 15:54:47",
+   "check_out": "2026-10-23 15:16:06",
+   "x_studio_project_id": "SO11791 - Power and control panels"
+  },
+  {
+   "id": 16251,
+   "check_in": "2026-10-23 15:16:21",
+   "check_out": "2026-10-24 00:52:21",
+   "x_studio_project_id": "SO11791 - Power and control panels"
+  },
+  {
+   "id": 16255,
+   "check_in": "2026-10-24 16:47:41",
+   "check_out": "2026-10-25 03:23:24",
+   "x_studio_project_id": "SO11791 - Power and control panels"
+  },
+  {
+   "id": 16281,
+   "check_in": "2026-10-26 16:31:32",
+   "check_out": "2026-10-27 14:28:38",
+   "x_studio_project_id": "SO11791 - Power and control panels"
+  },
+  {
+   "id": 16306,
+   "check_in": "2026-10-27 14:28:57",
+   "check_out": "2026-10-28 00:04:57",
+   "x_studio_project_id": false
+  },
+  {
+   "id": 16339,
+   "check_in": "2026-10-28 18:03:00",
+   "check_out": "2026-10-29 04:43:52",
+   "x_studio_project_id": "SO11842 - prensas materials"
+  },
+  {
+   "id": 16363,
+   "check_in": "2026-10-29 15:21:06",
+   "check_out": "2026-10-30 02:07:51",
+   "x_studio_project_id": "SO11842 - prensas materials"
+  },
+  {
+   "id": 16394,
+   "check_in": "2026-10-30 18:47:54",
+   "check_out": "2026-10-31 14:40:49",
+   "x_studio_project_id": "SO11842 - prensas materials"
+  },
+  {
+   "id": 16395,
+   "check_in": "2026-10-31 16:07:55",
+   "check_out": false,
+   "x_studio_project_id": false
+  }
+ ]
+};

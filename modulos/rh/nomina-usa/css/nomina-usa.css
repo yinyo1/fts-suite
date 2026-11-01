@@ -35,3 +35,15 @@
 .nu-f{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:8px 12px;margin:8px 0}
 input.nu-in{width:84px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;background:var(--card);text-align:right}
 input.nu-in.malo{border-color:var(--red)}
+.nu-acc-fila{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.nu-acc-fila .btn{font-size:12px;padding:4px 9px}
+td.nu-fecha{white-space:nowrap}
+/* En teléfono la tabla de alertas se vuelve tarjetas: los botones de RH tienen que verse sin scroll. */
+@media (max-width:640px){
+  .nu-tabla.nu-cards thead{display:none}
+  .nu-tabla.nu-cards tr{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:10px 4px;border-bottom:1px solid var(--border)}
+  .nu-tabla.nu-cards td{border:none;padding:0}
+  .nu-tabla.nu-cards td:nth-child(1){font-weight:600}
+  .nu-tabla.nu-cards td:nth-child(2){grid-column:2;grid-row:1;color:var(--muted2);font-size:13px}
+  .nu-tabla.nu-cards td:nth-child(3){grid-column:1 / -1}
+  .nu-tabla.nu-cards td:nth-child(4){grid-column:1 / -1}
+}

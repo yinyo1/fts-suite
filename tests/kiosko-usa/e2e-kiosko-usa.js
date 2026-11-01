@@ -188,7 +188,10 @@ async function esperarPost(posts, n) { for (let i = 0; i < 60 && posts.length < 
     check('entrada validada como usa sin aprobación', e && e.geo_zona === 'usa' && e.geo_status === 'autorizado', e && JSON.stringify({ z: e.geo_zona, s: e.geo_status }));
     await page.context().setGeolocation(PUNTO.oficinaMty);
     await checar(page, 'salida');
-    await page.waitForFunction(() => getComputedStyle(document.getElementById('ksProjectPlan')).display !== 'none' || document.querySelectorAll('#ksSOsList .kiosk-so-card').length > 0, null, { timeout: 15000 });
+    // K.planLoading === false: showScreen('ks-project') pinta las tarjetas de SO en la lista OCULTA
+    // mientras carga el plan, así que «hay tarjetas» se cumplía antes de tiempo (carrera de la prueba,
+    // no del kiosko; ver #448 fase C). El escenario 9 ya esperaba así.
+    await page.waitForFunction(() => K.planLoading === false && (getComputedStyle(document.getElementById('ksProjectPlan')).display !== 'none' || document.querySelectorAll('#ksSOsList .kiosk-so-card').length > 0), null, { timeout: 15000 });
     const st = await page.evaluate(() => ({ usa: K.usaSalida, plan: document.getElementById('ksProjectPlan').textContent }));
     check('fuera de USA: flujo de hoy (banner de bolsa)', st.usa === false && /Tu bolsa/.test(st.plan), JSON.stringify(st));
     await page.evaluate(() => confirmarBolsa());
