@@ -1,6 +1,6 @@
 {
-  "build": "20261008-kiosk-zona-usa",
+  "build": "20261101-kiosk-nomina-usa",
   "modulo": "kiosk",
-  "updated": "2026-10-08",
+  "updated": "2026-11-01",
   "_nota": "build DEBE coincidir con KIOSK_BUILD en js/kiosk.js. Bumpear ambos al mismo string en cada deploy (ver FASE15 Parte 12)."
 }
