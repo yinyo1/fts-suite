@@ -8,7 +8,7 @@ try {
 var b = $('Webhook').first().json.body || {};
 var ACC = { contexto: 1, evento: 1 }, TIPOS = { dia: 1, entrada_so: 1, plan: 1, salida: 1 };
 if (!ACC[b.accion]) return [{ json: { ok: false, error: 'ACCION_DESCONOCIDA' } }];
-if (!/^\d{1,7}$/.test(String(b.employee_id || ''))) return [{ json: { ok: false, error: 'EMPLEADO_INVALIDO' } }];
+if (!/^[0-9]{1,7}$/.test(String(b.employee_id || ''))) return [{ json: { ok: false, error: 'EMPLEADO_INVALIDO' } }];
 if (JSON.stringify(b).length > 20000) return [{ json: { ok: false, error: 'DEMASIADO_GRANDE' } }];
 var p = { accion: b.accion, employee_id: Number(b.employee_id), tz_evento: typeof b.tz_evento === 'string' ? b.tz_evento.slice(0, 64) : null, checada: b.checada === 'salida' ? 'salida' : (b.checada === 'entrada' ? 'entrada' : null) };
 if (b.accion === 'evento') {

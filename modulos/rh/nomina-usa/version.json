@@ -1,9 +1,15 @@
 {
-  "version": "V1.00",
+  "version": "V1.01",
   "fecha": "2026-11-01",
   "modulo": "rh/nomina-usa",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Contador propio de este modulo.",
   "historial": [
+    {
+      "version": "V1.01",
+      "fecha": "2026-11-01",
+      "titulo": "Alertas de checada en modo sombra e incidencias del periodo (#448, fase C)",
+      "nota": "Pestana Alertas e incidencias: entrada faltante (hora de referencia + 15 min, L-V), salida faltante a 14 h y al dia siguiente a RH, incidencias del periodo (dia sin checada, salida sin cerrar, sin SO) y dias sin ubicacion por validar. RH marca falta justificada, falta injustificada, error de checada corregido o en disputa; todo a bitacora. Modo sombra: se registran y no sale ningun correo."
+    },
     {
       "version": "V1.00",
       "fecha": "2026-11-01",
