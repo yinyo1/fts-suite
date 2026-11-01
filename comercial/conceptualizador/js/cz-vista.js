@@ -397,6 +397,23 @@
     S.pcOk[k] = true; S.pcNo = null; pintar();
     Promise.resolve(al.corregir(it, v)).then(function (r) { S.pcMsg = r && r.ok ? 'Mandé tu corrección.' : 'No se pudo mandar la corrección.'; if (!(r && r.ok)) delete S.pcOk[k]; if (S.abierto) pintar(); });
   }
+  function pintarMetricas(m) {
+    var ab = abiertoK('metricas'), F = m.fuente || {}, t = m.toques || {}, d = m.decisiones || {}, a = m.afirmaciones || {}, v = m.versiones || {}, r = m.reintentos_odoo || {};
+    var n = function (x) { return x === null || x === undefined ? '—' : esc(x); };
+    var fila = function (k, val, f) { return '<dt>' + esc(k) + '</dt><dd>' + val + (f ? '<br><small>' + esc(f) + '</small>' : '') + '</dd>'; };
+    var mins = m.minutos_a_borrador === null || m.minutos_a_borrador === undefined ? 'todavía sin borrador' : n(m.minutos_a_borrador) + ' min' + (m.primer_borrador_so ? ' (' + esc(m.primer_borrador_so) + ')' : '');
+    return '<section class="vz-caja vz-info vz-n1" data-k="metricas" data-vz-metricas="1"><button type="button" class="vz-fila" aria-expanded="' + ab + '" data-k="metricas">' + CHEV +
+      '<span class="vz-nom"><b>Métricas del caso</b><small>' + mins + ' · ' + n(t.total) + ' toques · ' + n(v.total) + ' versiones</small></span><span></span></button>' +
+      '<div class="vz-cuerpo"' + (ab ? '' : ' hidden') + '><dl>' +
+      fila('De la primera nota al primer borrador en Odoo', mins, (F.primera_nota || '') + ' → ' + (F.primer_borrador || '')) +
+      fila('Toques de la persona', n(t.total) + ': ' + n(t.mensajes_texto) + ' mensajes de texto, ' + n(t.notas_voz) + ' notas de voz, ' + n(t.otros_adjuntos) + ' otros archivos, ' + n(t.clics) + ' clics', F.toques) +
+      fila('Decisiones', n(d.sin_clic_voz) + ' aplicadas sin clic (voz) · ' + n(d.en_tarjeta_voz) + ' quedaron en tarjeta · ' + n(d.aprobadas_con_clic) + ' aprobadas con clic · «sí, aplícalo» por texto: ' + n(d.texto_aplicalo_aplicadas) + ' de ' + n(d.texto_aplicalo) + ' aplicadas', F.decisiones) +
+      fila('Afirmaciones sobre la orden (✓)', n(a.sostenidas) + ' sostenidas contra Odoo · ' + n(a.no_sostenidas) + ' no sostenidas · ' + n(a.sin_monto) + ' sin monto (no medible) · ' + n(a.avisos) + ' avisos ⚠' +
+        (arr(a.no_sostenidas_detalle).length ? lista(arr(a.no_sostenidas_detalle).map(function (x) { return 'msg ' + x.msg + ': ' + x.renglon; })) : ''), F.afirmaciones) +
+      fila('Versiones del machote', n(v.total) + ' (' + n(v.persona) + ' de la persona, ' + n(v.motor) + ' del motor)', F.versiones) +
+      fila('Reintentos de Odoo', n(r.total) + ' (' + n(r.fallas) + ' fallas registradas, ' + n(r.releida_2_intentos) + ' releídas con 2 intentos)', F.reintentos_odoo) +
+      '</dl></div></section>';
+  }
   function pintar() {
     var o = S.o || {}, M = S.M || {}, caso = o.caso || {}, H = o.hilo || {}, U = H.ultima || {}, T = o.terminos || {}, an = o.analisis || null;
     var D = modelo(M), REF = M.decretos_ref || {}, todas = D.todas;
@@ -468,6 +485,9 @@
       '<dt>Exclusiones</dt><dd>' + lista(T.exclusiones) + '</dd><dt>Supuestos</dt><dd>' + lista(sups) + '</dd>' +
       '<dt>Tiempo de ejecución</dt><dd>' + texto(T.tiempo) + '</dd><dt>Lugar</dt><dd>' + texto(lugar) + '</dd>' +
       '<dt>Moneda</dt><dd>' + texto(mon) + '</dd><dt>Impuestos</dt><dd>' + texto(T.impuestos) + '</dd></dl></div></section>';
+    // V1.64a parte 12 (fts-conceptualizador#20 punto 1, D250) · métricas del caso: las calcula la base (db/072, metricas_caso) y solo
+    // llegan en el hilo con `metricas_caso_v164` prendido en el caso o la persona. Cada número dice de dónde sale.
+    if (H.metricas && typeof H.metricas === 'object') h += pintarMetricas(H.metricas);
     h += '<div class="vz-filtros" id="vzFiltros">' + (PC ? '<button type="button" class="vz-chip vz-chip-pc" data-vz="pc" aria-pressed="' + S.pc + '">✋ Por confirmar<i>' + esc(PC.n) + '</i></button>' : '') +
       (AV ? '<button type="button" class="vz-chip vz-chip-av" data-vz="av" aria-pressed="' + S.av + '">⚠ Avisos<i>' + esc(AV.n) + '</i></button>' : '') + CHIPS.map(function (c) {
       var n = todas.filter(function (f) { return CHIP_FN[c[1]](f.r); }).length;

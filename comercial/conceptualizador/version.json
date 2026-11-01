@@ -1,6 +1,11 @@
 {
-  "version": "V1.65.2",
+  "version": "V1.65.3",
   "historial": [
+    {
+      "version": "V1.65.3",
+      "fecha": "2026-11-01",
+      "nota": "fts-conceptualizador#20 (V1.64a parte 12, D250, `metricas_caso_v164`, apagado): la vista interna trae «Métricas del caso» (minutos de la primera nota al primer borrador, toques, decisiones sin clic y con clic, afirmaciones sobre la orden sostenidas contra Odoo, versiones del machote y reintentos de Odoo), cada número con su fuente. Solo aparece cuando la base la manda en el hilo (db/072); apagado, la pantalla es idéntica."
+    },
     {
       "version": "V1.65.2",
       "fecha": "2026-10-31",
