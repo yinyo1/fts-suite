@@ -87,6 +87,12 @@
         (p.fijo_semanal_usd > 0 ? '<div>Fijo semanal ' + $$(p.fijo_semanal_usd) + ' · faltas confirmadas por RH: ' + (p.faltas_injustificadas || 0) + ' → <b>' + $$(monto) + '</b></div>'
                                 : '<div class="nu-bloq">Falta capturar su fijo semanal en la ficha. No se incluye.</div>') + '</div>';
     });
+    // Ajuste del viernes: lo que se estimó el miércoles contra lo real. Precargado, no se edita.
+    var ajustes = (x.ajustes || []).concat(x.ajustes_previos || []).filter(function (a) { return !a.informativo; });
+    var totAj = ajustes.reduce(function (a, j) { return a + Number(j.monto || 0); }, 0);
+    if (ajustes.length) h += '<div class="caja nu-so" id="nu-ajuste"><h3>Ajuste de la semana anterior</h3><p class="muted">Se compara lo estimado el miércoles contra lo real. Va precargado y no se edita.</p><div class="nu-scroll"><table class="nu-tabla"><thead><tr><th>Persona</th><th>Día</th><th class="n">Estimado</th><th class="n">Real</th><th class="n">Ajuste</th></tr></thead><tbody>' +
+      ajustes.map(function (a) { return '<tr><td>' + e(a.alias || nom(a.employee_id)) + '</td><td>' + e(a.fecha || '') + '</td><td class="n">' + a.estimado + '%</td><td class="n">' + a.real + '%</td><td class="n"><b>' + $$(a.monto) + '</b></td></tr>'; }).join('') +
+      '</tbody></table></div></div>';
     h += '<div class="nu-kpis"><div class="nu-kpi"><b id="nu-total">—</b><small>total de la solicitud</small></div></div>' +
       '<div class="err hid" id="nu-envio-err"></div>' +
       (puede ? '<div class="nu-acc"><button class="btn pri" id="nu-enviar"' + (disp.length ? ' disabled title="Hay una incidencia en disputa"' : '') + '>Enviar solicitud</button></div>' : '');
@@ -125,6 +131,7 @@
         var tc = N.pagoComercial(dias, tar).total; el.querySelector('#nu-com-total').textContent = $$(tc); total += tc;
       }
       fijos.forEach(function (p) { if (p.fijo_semanal_usd > 0) total += N.fijoAsistencia(p.fijo_semanal_usd, p.faltas_injustificadas || 0); });
+      total += totAj;
       el.querySelector('#nu-total').textContent = $$(total);
       var b = el.querySelector('#nu-enviar'); if (b && !disp.length) b.disabled = errores > 0;
     }

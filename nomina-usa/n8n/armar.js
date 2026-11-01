@@ -10,7 +10,9 @@ const R = __dirname, RAIZ = path.join(R, '..', '..');
 const PIEZAS = {
   panel: { __PUERTA__: 'panel-puerta.js' },
   kiosko: { __VALIDAR__: 'kiosko-validar.js' },
-  alertas: { __LEER__: 'alertas-leer.js' }
+  alertas: { __LEER__: 'alertas-leer.js' },
+  'ajuste-viernes': {},
+  'db-migrate': { __DECIDIR__: 'db-migrate-decidir.js' }
 };
 const LIBS = { '/*__SESION__*/': 'retardos/lib/sesion.js', '/*__KIOSKO__*/': 'shared/nomina-usa/kiosko.js', '/*__ALERTAS__*/': 'shared/nomina-usa/alertas.js' };
 function armar(wf) {

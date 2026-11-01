@@ -6,7 +6,7 @@
 -- Este esquema guarda lo que Odoo no tiene y no se puede escribir sin «va»:
 -- país de nómina, tipo de pago, hora de referencia, banderas por persona.
 --
--- Reglas de db/README.md: idempotente, sin `$$` (etiquetas con nombre), nunca
+-- Reglas de db/README.md: idempotente, sin el doble signo de dólar (etiquetas con nombre), nunca
 -- se edita aplicado. TODO entra apagado: kiosko_activo=false y
 -- alertas_modo='sombra'. Encender cualquiera es clic de Esteban.
 --

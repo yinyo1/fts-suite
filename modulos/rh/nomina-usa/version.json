@@ -1,9 +1,15 @@
 {
-  "version": "V1.03",
+  "version": "V1.04",
   "fecha": "2026-11-01",
   "modulo": "rh/nomina-usa",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Contador propio de este modulo.",
   "historial": [
+    {
+      "version": "V1.04",
+      "fecha": "2026-11-01",
+      "titulo": "Ajuste del viernes (#448, fase F)",
+      "nota": "La solicitud trae precargado el ajuste de la semana anterior: lo estimado el miercoles (comercial de miercoles y jueves) contra lo real. Ejemplo: jueves estimado 20 por ciento comercial y real 0 da -28. No se edita y la base lo aplica una sola vez. El ajuste del avance es informativo: el disponible ya usa el avance real."
+    },
     {
       "version": "V1.03",
       "fecha": "2026-11-01",

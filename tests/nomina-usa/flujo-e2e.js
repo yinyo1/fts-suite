@@ -65,6 +65,8 @@ const T = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css
   await page.click('[data-marca$="|error_corregido"]'); await page.waitForTimeout(150);
   await como('richard', 'solicitud');
   check('liberada: el botón se habilita', !(await page.isDisabled('#nu-enviar')));
+  // Jueves 5-nov: estima 20 % comercial (el viernes se comparará contra lo real).
+  await page.fill('#nu-com tr[data-fecha="2026-11-05"] [data-pct]', '20');
   await page.click('#nu-enviar'); await page.waitForTimeout(200);
   check('solicitud enviada', /Ya enviada: enviada/.test(await txt()), await txt());
 
@@ -98,6 +100,13 @@ const T = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css
   await page.click('[data-acc=solicitud_subida]'); await page.waitForTimeout(150);
   check('marcada como subida', /subido/.test(await txt()));
   await fotos('gerardo-revision');
+
+  seccion('Viernes: ajuste precargado en la siguiente solicitud');
+  await como('richard', 'solicitud');
+  await page.click('[data-sem="7"]'); await page.waitForFunction(() => /2026-11-06/.test(document.getElementById('vista').innerText));
+  t = await txt();
+  check('la semana del 6-nov trae «Ajuste de la semana anterior» con −28 (jueves estimado 20 %, real 0 %)', /Ajuste de la semana anterior/.test(t) && /\$-28\.00/.test(t), t.slice(0, 800));
+  await fotos('richard-ajuste');
   check('cero errores de JavaScript en todo el flujo', errs.length === 0, errs.join(' | '));
   await browser.close(); srv.close(); fin();
 })();
