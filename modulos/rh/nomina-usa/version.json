@@ -1,9 +1,15 @@
 {
-  "version": "V1.01",
+  "version": "V1.02",
   "fecha": "2026-11-01",
   "modulo": "rh/nomina-usa",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Contador propio de este modulo.",
   "historial": [
+    {
+      "version": "V1.02",
+      "fecha": "2026-11-01",
+      "titulo": "Bolsas por SO y avance diario (#448, fase D)",
+      "nota": "Pestana Bolsas por SO: bolsa por rol (supervisor y tecnicos) desde el machote digital o provisional con folio de Esteban, lo ya pagado antes del sistema, bolsa por avance y disponible. Aviso de SO sin bolsa: no se puede pedir pago hasta capturarla."
+    },
     {
       "version": "V1.01",
       "fecha": "2026-11-01",

@@ -47,3 +47,5 @@ td.nu-fecha{white-space:nowrap}
   .nu-tabla.nu-cards td:nth-child(3){grid-column:1 / -1}
   .nu-tabla.nu-cards td:nth-child(4){grid-column:1 / -1}
 }
+@media (max-width:640px){ .nu-tabla .nu-oc{display:none} }
+@media (max-width:640px){ .nu-tabla{font-size:13px} .nu-tabla th,.nu-tabla td{padding:6px 4px} .nu-so{padding:10px} }

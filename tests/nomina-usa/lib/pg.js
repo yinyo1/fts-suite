@@ -14,7 +14,7 @@ function psql(db, sql, extra) {
 function crear() {
   const db = 'nusa_' + process.pid + '_' + Date.now();
   psql('postgres', 'CREATE DATABASE ' + db);
-  const dirs = ['retardos', 'nomina_usa'];
+  const dirs = ['retardos', 'comercial', 'nomina_usa'];
   for (const d of dirs) {
     const dir = path.join(RAIZ, 'db', 'migrations', d);
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.sql')).sort()) psql(db, fs.readFileSync(path.join(dir, f), 'utf8'));
