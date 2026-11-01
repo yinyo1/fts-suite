@@ -9,5 +9,7 @@ module.exports = [
   { rol: 'esteban', tab: 'bolsas', espera: { nombre: 'SO11842 con disponible 960 y 2,160; SO11791 marcada sin bolsa', fn: () => /\$960\.00/.test(document.body.innerText) && /\$2,160\.00/.test(document.body.innerText) && /Sin bolsa: SO11791/.test(document.body.innerText) } },
   { rol: 'esteban', tab: 'bolsas', nombre: 'provisional', accion: async () => { const f = document.getElementById('nu-prov'); f.so.value = '11791'; f.folio.value = 'EDC-2026-11-01'; f.supervisor.value = '2000'; f.tecnicos.value = '6000'; f.requestSubmit(); await new Promise(r => setTimeout(r, 250)); },
     espera: { nombre: 'Esteban captura la provisional y SO11791 deja de estar sin bolsa', fn: () => !/Sin bolsa/.test(document.body.innerText) && /provisional · folio EDC-2026-11-01/.test(document.body.innerText) } },
-  { rol: 'richard', tab: 'bolsas', espera: { nombre: 'Richard ve bolsas sin poder capturar', fn: () => !document.getElementById('nu-prov') } }
+  { rol: 'richard', tab: 'bolsas', espera: { nombre: 'Richard ve bolsas sin poder capturar', fn: () => !document.getElementById('nu-prov') } },
+  { rol: 'richard', tab: 'solicitud', espera: { nombre: 'Richard ve su solicitud con SO11842 y el comercial', fn: () => /Solicitud de la semana/.test(document.body.innerText) && /Comercial de Ricardo/.test(document.body.innerText) && !!document.getElementById('nu-enviar') } },
+  { rol: 'erick', tab: 'revision', espera: { nombre: 'sin solicitudes todavía, lo dice', fn: () => /Todavía no hay solicitudes/.test(document.body.innerText) } }
 ];

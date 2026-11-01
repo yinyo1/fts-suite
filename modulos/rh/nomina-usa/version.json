@@ -1,9 +1,15 @@
 {
-  "version": "V1.02",
+  "version": "V1.03",
   "fecha": "2026-11-01",
   "modulo": "rh/nomina-usa",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Contador propio de este modulo.",
   "historial": [
+    {
+      "version": "V1.03",
+      "fecha": "2026-11-01",
+      "titulo": "Solicitud del miercoles, revision y archivo para Auris (#448, fase E)",
+      "nota": "Pestana Solicitud del miercoles (Richard): avance por dia con quien trabajo y horas, estimado de miercoles y jueves que no baja, bolsa por rol y disponible, reparto sugerido por horas editable sin pasar el disponible, comercial dia por dia con excepciones y fijos. Una incidencia en disputa bloquea el envio con Validala con Magaly y el boton Pedir a Magaly que la revise. Pestana Revision: Magaly valida, Erick autoriza (aprueba o baja al sugerido cada excepcion), Gerardo descarga el CSV de netos para Auris y marca subido. Cada linea con su cuenta analitica."
+    },
     {
       "version": "V1.02",
       "fecha": "2026-11-01",
