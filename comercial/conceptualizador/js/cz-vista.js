@@ -452,6 +452,7 @@
       var y0 = S.el.scrollTop; S.el.innerHTML = h; S.el.classList.add('vz-ver-cliente'); S.el.scrollTop = y0; return;
     }
     S.el.classList.remove('vz-ver-cliente');
+    S.el.classList.toggle('vz-limpio', prendido('limpio_v164'));   // V1.64a parte 12 (#20 punto 3) · el h1 repetido se esconde en pantalla
     if (!todas.length) h += '<p class="vz-vacio">Todavía no hay machote en esta conversación. Cuando el agente mande el BOM, aquí sale todo.</p>';
     h += '<section class="vz-tiles" id="vzResumen" data-costo="' + D.tot.c + '" data-precio="' + D.tot.p + '">' +
       '<div class="vz-tile"><small>Precio a cliente (total' + (mon ? ', ' + esc(mon) : '') + ')</small><b>' + dinero(D.tot.p) + '</b></div>' +
@@ -468,7 +469,8 @@
     if (AV && S.av) h += pintarAvisos(AV);
     var pend = arr(o.decisionesPendientes).map(function (p) { return typeof p === 'string' ? { t: p } : { t: p.titulo || p.texto || p.q || '', por: p.por || p.id || '' }; }).filter(function (p) { return p.t; });
     var falta = arr(M.pendientes).map(function (p) { return { t: (p.titulo || '') + (arr(p.items).length ? ': ' + arr(p.items).join(' · ') : ''), por: 'para cotizar' }; }).filter(function (p) { return p.t; });
-    h += '<section class="vz-caja"><h2>Decisiones pendientes vigentes (' + pend.length + ')</h2>' + (pend.length ? '<ul class="vz-pend">' +
+    // V1.64a parte 12 (#20 punto 3, `limpio_v164`) · sin pendientes ni «falta», la caja «Ninguna.» no se pinta.
+    if (!(prendido('limpio_v164') && !pend.length && !falta.length)) h += '<section class="vz-caja"><h2>Decisiones pendientes vigentes (' + pend.length + ')</h2>' + (pend.length ? '<ul class="vz-pend">' +
       pend.map(function (p) { return '<li>' + esc(p.t) + (p.por ? ' <small>(' + esc(p.por) + ')</small>' : '') + '</li>'; }).join('') + '</ul>' : '<p class="vz-nada">Ninguna.</p>') +
       (falta.length ? '<h2>Falta para cotizar (' + falta.length + ')</h2><ul class="vz-pend">' + falta.map(function (p) { return '<li>' + esc(p.t) + '</li>'; }).join('') + '</ul>' : '') + '</section>';
     var ops = arr(M.opciones).filter(function (x) { return x && x.nombre; });
@@ -659,6 +661,7 @@
     '#cz-vista .vz-cerrar{flex-shrink:0;font-weight:600;font-size:13.5px;color:var(--vz-marca);padding:6px 10px;border-radius:16px}',
     '#cz-vista .vz-pag{max-width:1080px;margin:0 auto;padding:14px 16px 40px}',
     '#cz-vista .vz-cab h1{font-size:20px;font-weight:700;line-height:1.25}',
+    '@media screen{#cz-vista.vz-limpio .vz-cab h1{display:none}}',
     '#cz-vista .vz-sub{color:var(--vz-sec);font-size:13px;margin-top:2px;overflow-wrap:anywhere}',
     '#cz-vista .vz-vivo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:13px}',
     '#cz-vista .vz-dato{display:inline-flex;align-items:center;gap:6px;background:var(--vz-ok);color:var(--vz-ok-t);border-radius:14px;padding:3px 10px;font-weight:600;max-width:100%}',

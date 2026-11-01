@@ -1,6 +1,11 @@
 {
-  "version": "V1.65.3",
+  "version": "V1.65.4",
   "historial": [
+    {
+      "version": "V1.65.4",
+      "fecha": "2026-11-01",
+      "nota": "fts-conceptualizador#20 (V1.64a parte 12, punto 3, `limpio_v164`, apagado): menos ruido. «Supuse esto» cuenta un solo «otros»; la vista ejecutiva no repite su título ni pinta «Decisiones pendientes (0) · Ninguna.»; el BOM del chat esconde los filtros en 0, la instrucción y la leyenda repetida, y dice «solo mano de obra» en vez de «0 renglones». Apagado, idéntico."
+    },
     {
       "version": "V1.65.3",
       "fecha": "2026-11-01",

@@ -154,22 +154,23 @@
     var TODAS = SEC.reduce(function (a, s) { return a.concat(s.filas); }, []);
     var cuenta = function (f) { return TODAS.filter(f).length; };
     var porChip = { tu: function (r) { return r.o === 'tu'; }, agente: function (r) { return r.o === 'agente'; }, alerta: conAlerta, ref: esRef, n5: esN5 };
-    var chips = CHIPS.map(function (c) { var on = !!S.f[c[0]][c[1]];
+    var LV = on('limpio_v164');   // V1.64a parte 12 (#20 punto 3) · sin filtros en 0, sin leyenda repetida, «solo mano de obra»
+    var chips = CHIPS.map(function (c) { var on = !!S.f[c[0]][c[1]]; if (LV && !on && !cuenta(porChip[c[1]])) return '';
       return '<button type="button" class="tb-chip' + (on ? ' on' : '') + '" data-tb-f="' + c[0] + ':' + c[1] + '" aria-pressed="' + on + '">' + esc(c[2]) + ' <small>' + cuenta(porChip[c[1]]) + '</small></button>'; }).join('');
     var hf = hayFiltro(), n = cuenta(cumple);
     var secs = SEC.map(function (s, i) {
       var L = s.filas.filter(cumple), ab = hf ? L.length > 0 || !!S.secAbiertas[i] : !!S.secAbiertas[i];
       return '<div class="tb-sec' + (ab ? ' abierta' : '') + (hf && !L.length ? ' apagada' : '') + '"><button type="button" class="tb-sh" data-tb-sec="' + i + '" aria-expanded="' + ab + '"><span class="tb-sn"><b>' + esc(s.nombre) + '</b><span>' +
-        (hf ? '<b class="tb-cumplen">' + L.length + ' de ' + s.filas.length + '</b> cumplen el filtro' : s.filas.length + (s.filas.length === 1 ? ' renglón' : ' renglones')) + '</span></span>' +
+        (hf ? '<b class="tb-cumplen">' + L.length + ' de ' + s.filas.length + '</b> cumplen el filtro' : (LV && !s.filas.length && s.mo.length ? 'solo mano de obra' : s.filas.length + (s.filas.length === 1 ? ' renglón' : ' renglones'))) + '</span></span>' +
         '<span class="tb-st"><b>' + din(s.costo) + '</b><span>costo</span></span><span class="tb-chev">▾</span></button>' +
         (ab ? '<div class="tb-srs">' + (L.length ? L.map(function (r) { return renglon(r, REF, false, puede); }).join('') : '<div class="nota">Ningún renglón cumple el filtro.</div>') +
           (s.mo.length && !hf ? '<div class="tb-mo">Mano de obra: ' + s.mo.map(function (m) { return esc(m.d) + ' ' + din(m.costo); }).join(' · ') + '</div>' : '') + '</div>' : '') + '</div>';
     }).join('');
     return '<div class="carta tb-bom' + (S.bomAbierto ? ' abierta' : '') + '"><button type="button" class="tb-bh" data-tb-bom="1" aria-expanded="' + S.bomAbierto + '"><span>📋</span><span class="tb-bt"><b>BOM · ' + TODAS.length + ' renglones en ' + SEC.length + ' secciones</b>' +
       '<span>costo ' + din(M.costo) + ' · filtra por origen y estado</span></span><span class="tb-chev">▾</span></button>' +
-      (S.bomAbierto ? '<div class="tb-filtros"><div class="tb-chips">' + chips + '</div><div class="tb-frow"><span>' + (hf ? '<b>' + n + '</b> de ' + TODAS.length + ' renglones cumplen' + (tiene(S.f.origen) && tiene(S.f.estado) ? ' (origen Y estado)' : '') : 'Prende uno o varios filtros: se combinan.') + '</span>' +
+      (S.bomAbierto ? '<div class="tb-filtros"><div class="tb-chips">' + chips + '</div><div class="tb-frow"><span>' + (hf ? '<b>' + n + '</b> de ' + TODAS.length + ' renglones cumplen' + (tiene(S.f.origen) && tiene(S.f.estado) ? ' (origen Y estado)' : '') : (LV ? '' : 'Prende uno o varios filtros: se combinan.')) + '</span>' +
         (hf ? '<button type="button" class="tb-quitar" data-tb-quitar="1">Quitar filtros</button>' : '') + '</div></div>' +
-        '<div class="tb-ley">🔒 lo dijiste tú (el dueño o Esteban: precio, cantidad, material, proveedor, exclusión, viáticos) · 🤖 lo supuso el agente · ⚠ alerta · 🔎 referencia N3/N4 · ⛔ sin precio N5</div>' + secs : '') + '</div>';
+        (LV ? '' : '<div class="tb-ley">🔒 lo dijiste tú (el dueño o Esteban: precio, cantidad, material, proveedor, exclusión, viáticos) · 🤖 lo supuso el agente · ⚠ alerta · 🔎 referencia N3/N4 · ⛔ sin precio N5</div>') + secs : '') + '</div>';
   }
 
   /** Los clics. `alCambiar(descripcion)` lo pone cz-app.js (abre la caja de texto con el renglón). `repinta()` repinta el chat. */

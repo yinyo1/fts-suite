@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.65.3';
+  var VERSION = 'V1.65.4';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -1789,7 +1789,9 @@
   var RUB_CORTO = { mat: 'materiales', mec: 'mecánica', ele: 'eléctrico', sol: 'soldadura', pru: 'pruebas', fec: 'fechas', cua: 'cuadrilla' };
   /** «Supuse 9 cosas» · «3 de materiales, 3 de mecánica y 3 más». */
   function resumenSupuestos(L) {
-    var c = {}, orden; L.forEach(function (x) { var k = x.rubro || 'otro'; c[k] = (c[k] || 0) + 1; });
+    var c = {}, orden, LV = on('limpio_v164'); L.forEach(function (x) { var k = x.rubro || 'otro';
+      // V1.64a parte 12 (#20 punto 3, `limpio_v164`) · un rubro que no se conoce se cuenta como «otro»: antes salía «6 de otros, 3 de otros».
+      if (LV && k !== 'otro' && !((G.CzAvance && rubroDe(k)) || RUB_CORTO[k])) k = 'otro'; c[k] = (c[k] || 0) + 1; });
     orden = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; });
     var nom = function (k) { var r = G.CzAvance && rubroDe(k); return r ? String(r.nombre || '').toLowerCase() : (RUB_CORTO[k] || 'otros'); };
     var dos = orden.slice(0, 2).map(function (k) { return c[k] + ' de ' + nom(k); }), resto = orden.slice(2).reduce(function (a, k) { return a + c[k]; }, 0);
