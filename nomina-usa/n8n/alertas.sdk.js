@@ -12,7 +12,7 @@ const secreto = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name:
   { id: 'a4', name: 'ouser', type: 'string', value: 'estebandelacruz@fts.mx' } ] }, options: {} } } });
 const leer = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Code - Leer y calcular', parameters: { mode: 'runOnceForAllItems', jsCode: __LEER__ } } });
 const siOk = ifElse({ version: 2.2, config: { name: 'IF - Lectura OK?', parameters: { conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'loose' }, conditions: [ { leftValue: '={{ $json.ok }}', operator: { type: 'boolean', operation: 'true', singleValue: true } } ], combinator: 'and' } } } });
-const registrar = node({ type: 'n8n-nodes-base.postgres', version: 2.6, config: { name: 'Postgres - Registrar', credentials: PG, parameters: { operation: 'executeQuery', query: 'SELECT nomina_usa.alertas_registrar($1::jsonb) AS r', options: { queryReplacement: '={{ JSON.stringify($json.payload) }}' } } } });
+const registrar = node({ type: 'n8n-nodes-base.postgres', version: 2.6, config: { name: 'Postgres - Registrar', credentials: PG, parameters: { operation: 'executeQuery', query: 'SELECT nomina_usa.alertas_registrar($1::jsonb) AS r, nomina_usa.horas_registrar($1::jsonb) AS h', options: { queryReplacement: '={{ JSON.stringify($json.payload) }}' } } } });
 const truena = node({ type: 'n8n-nodes-base.stopAndError', version: 1, config: { name: 'Stop - Avisar error', parameters: { errorMessage: "={{ 'nomina-usa/alertas no pudo leer Odoo: ' + $json.error }}" } } });
 export default workflow('nomina-usa-alertas', 'nomina-usa/alertas')
   .add(cron).to(params).to(secreto).to(leer).to(siOk.onTrue(registrar).onFalse(truena));

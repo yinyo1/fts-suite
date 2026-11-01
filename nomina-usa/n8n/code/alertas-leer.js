@@ -13,7 +13,7 @@ try {
   if (KEY.length < 8) return [{ json: { ok: false, error: 'SIN_LLAVE_ODOO' } }];
   var par = $('Postgres - Parametros').first().json.p || {};
   var personas = (par.personas || []).filter(function (x) { return !x.excluido_hoy; });
-  if (!personas.length) return [{ json: { ok: true, payload: { alertas: [] }, leidos: 0 } }];
+  if (!personas.length) return [{ json: { ok: true, payload: { alertas: [], horas: [] }, leidos: 0 } }];
   var hh = null;
   try { if (typeof $helpers !== 'undefined' && $helpers && $helpers.httpRequest) hh = $helpers; } catch (e) {}
   if (!hh) { try { if (this && this.helpers && this.helpers.httpRequest) hh = this.helpers; } catch (e) {} }
@@ -38,6 +38,19 @@ try {
     [[['employee_id', 'in', ids], '|', ['check_in', '>=', desde], ['check_out', '=', false]]],
     { fields: ['id', 'employee_id', 'check_in', 'check_out'], order: 'check_in asc', limit: 5000 }] });
   if (att.err) return [{ json: { ok: false, error: 'CONTRATO_ROTO:hr.attendance', detalle: att.err } }];
+  // Horas cerradas de los últimos 8 días (para la nómina USA: quién trabajó cuánto en cada SO).
+  var desde8 = new Date(ahora.getTime() - 8 * 86400000).toISOString().slice(0, 19).replace('T', ' ');
+  var cer = await rpc({ service: 'object', method: 'execute_kw', args: [DB, uid, KEY, 'hr.attendance', 'search_read',
+    [[['employee_id', 'in', ids], ['check_in', '>=', desde8], ['check_out', '!=', false]]],
+    { fields: ['id', 'employee_id', 'check_in', 'check_out', 'worked_hours', 'x_studio_project_id'], order: 'check_in asc', limit: 5000 }] });
+  if (cer.err) return [{ json: { ok: false, error: 'CONTRATO_ROTO:hr.attendance(horas)', detalle: cer.err } }];
+  var zonaDe = {}; personas.forEach(function (p) { zonaDe[p.employee_id] = p.zona; });
+  var horas = (cer.val || []).map(function (a) {
+    var e = Array.isArray(a.employee_id) ? a.employee_id[0] : a.employee_id, so = a.x_studio_project_id;
+    return { attendance_id: a.id, employee_id: e, fecha: A.local(A.utc(a.check_in), zonaDe[e]).fecha,
+      so_id: Array.isArray(so) ? so[0] : null, so_nombre: Array.isArray(so) ? so[1] : null,
+      horas: Math.round((Number(a.worked_hours) || 0) * 100) / 100, check_in_utc: A.utc(a.check_in).toISOString(), check_out_utc: A.utc(a.check_out).toISOString() };
+  });
   var porEmp = {};
   (att.val || []).forEach(function (a) { var e = Array.isArray(a.employee_id) ? a.employee_id[0] : a.employee_id; (porEmp[e] = porEmp[e] || []).push(a); });
   var alertas = [];
@@ -55,7 +68,7 @@ try {
       });
     });
   });
-  return [{ json: { ok: true, payload: { alertas: alertas }, leidos: (att.val || []).length } }];
+  return [{ json: { ok: true, payload: { alertas: alertas, horas: horas }, leidos: (att.val || []).length } }];
 } catch (e) {
   return [{ json: { ok: false, error: 'FALLO_ALERTAS', detalle: String(e && e.message || e).slice(0, 200) } }];
 }
