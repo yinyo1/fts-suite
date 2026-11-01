@@ -1,0 +1,14 @@
+{
+  "version": "V1.00",
+  "fecha": "2026-11-01",
+  "modulo": "rh/nomina-usa",
+  "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Contador propio de este modulo.",
+  "historial": [
+    {
+      "version": "V1.00",
+      "fecha": "2026-11-01",
+      "titulo": "Ficha del empleado y banderas (#448, fase A)",
+      "nota": "Pantalla nueva de RH. Ficha por persona: pais de nomina (Mexico, USA, hibrido), tipo de pago USA, pide SO al entrar, jefe directo, hora y zona de referencia, fijo semanal y bandera del kiosko. Banderas generales del kiosko USA (apagado) y de alertas (sombra). Solo nomina_usa:admin edita. Modo practica con los cuatro casos."
+    }
+  ]
+}

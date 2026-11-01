@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nómina USA · RH · FTS Suite</title>
+<link rel="stylesheet" href="../retardos/css/retardos.css?v=V1.00">
+<link rel="stylesheet" href="css/nomina-usa.css?v=V1.00">
+</head>
+<body>
+<div class="rh-topbar">
+  <a href="../index.html">← Volver a RH</a>
+  <span class="t">Nómina USA</span>
+  <!-- Se bumpea JUNTO con version.json. -->
+  <span class="badge" id="ver-badge">V1.00</span>
+  <span class="badge hid" id="modo">PRÁCTICA</span>
+  <span class="sp"></span>
+  <span class="quien" id="quien"></span>
+  <button class="hid" id="salir">Salir</button>
+</div>
+
+<div id="puerta" class="login">
+  <h1>Nómina USA</h1>
+  <div class="sub">FTS Full Technology Systems LLC · pago por Auris. Entra con tu usuario del Suite. Cada pantalla pide su permiso <b>nomina_usa:*</b>.</div>
+  <label for="u">Usuario</label>
+  <input id="u" autocomplete="username" autocapitalize="none" spellcheck="false">
+  <label for="p">Contraseña</label>
+  <input id="p" type="password" autocomplete="current-password">
+  <button class="btn pri" id="entrar">Entrar</button>
+  <div id="login-err" class="err hid"></div>
+  <button class="enlace" id="demo">Practicar con datos de ejemplo</button>
+</div>
+
+<div class="wrap hid" id="app">
+  <div class="aviso demo hid" id="aviso-demo"><div><b>Práctica</b>Nada de lo que hagas aquí llega al servidor.
+    <span id="como-wrap" class="hid">Ver como <select id="como">
+      <option value="esteban">Esteban (admin)</option><option value="richard">Ricardo (solicita)</option>
+      <option value="magaly">Magaly (valida)</option><option value="erick">Erick (autoriza)</option>
+      <option value="gerardo">Gerardo (archivo Auris)</option></select></span></div></div>
+  <div class="tabs" role="tablist" id="tabs"></div>
+  <div id="vista"></div>
+</div>
+
+<script src="../../../shared/auth-jwt.js?v=V1.00"></script>
+<script src="../../../retardos/lib/sesion.js?v=V1.00"></script>
+<script src="../../../shared/nomina-usa/ficha.js?v=V1.00"></script>
+<script src="js/api.js?v=V1.00"></script>
+<script src="js/demo.js?v=V1.00"></script>
+<script src="js/app.js?v=V1.00"></script>
+<script src="js/tab-ficha.js?v=V1.00"></script>
+</body>
+</html>

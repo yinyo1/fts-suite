@@ -1,0 +1,37 @@
+/* ═══ RH · Nómina USA (#448) — encima de retardos.css (misma paleta y tokens) ═══
+   Regla heredada: nada desborda la página; las tablas anchas scrollean dentro de su caja. */
+.muted{color:var(--muted2)} .warn{color:var(--amber)} .ok{color:var(--green)} .mal{color:var(--red)}
+.vacio{padding:24px;color:var(--muted2);text-align:center}
+#como{margin-left:6px}
+.nu-banderas{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:12px 0}
+.nu-band{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.nu-band span{font-weight:700;font-size:13px} .nu-band.off span{color:var(--muted2)} .nu-band.on span{color:var(--red)}
+.nu-band small{color:var(--muted2)} .nu-band .btn{align-self:flex-start;margin-top:4px}
+.nu-fichas{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:12px}
+.nu-ficha{padding:12px 14px}
+.nu-ficha-cab{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.nu-ficha-cab .chip{margin-left:auto}
+.nu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:8px 12px}
+.nu-grid label,.nu-f label{display:flex;flex-direction:column;font-size:12px;color:var(--muted2);gap:3px;min-width:0}
+.nu-grid input,.nu-grid select,.nu-f input,.nu-f select,.nu-f textarea{padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:var(--card);min-width:0;width:100%}
+.nu-checks{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0 4px;font-size:14px}
+.nu-perfil{font-size:13px;margin-top:4px}
+.nu-acc{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap} .nu-acc input{flex:1 1 180px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:var(--card)}
+.nu-tabla{width:100%;border-collapse:collapse;font-size:14px}
+.nu-tabla th,.nu-tabla td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+.nu-tabla td.n,.nu-tabla th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.nu-scroll{overflow-x:auto;max-width:100%}
+.nu-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0}
+.nu-kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 12px}
+.nu-kpi b{display:block;font-size:20px;font-variant-numeric:tabular-nums} .nu-kpi small{color:var(--muted2)}
+.nu-bloq{background:var(--red-l);color:var(--red);border-radius:10px;padding:10px 12px;margin:8px 0}
+.nu-exc{background:var(--amber-l);color:var(--amber);border-radius:6px;padding:1px 6px;font-size:12px;font-weight:600}
+.nu-so{margin:12px 0;padding:12px 14px}
+.nu-so h3{margin:0 0 6px;font-size:16px}
+.nu-pasos{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.nu-paso{font-size:12px;border:1px solid var(--border);border-radius:999px;padding:3px 10px;color:var(--muted2)}
+.nu-paso.hecho{background:var(--green-l);color:var(--green);border-color:transparent}
+.nu-paso.actual{border-color:var(--blue);color:var(--blue);font-weight:600}
+.nu-f{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:8px 12px;margin:8px 0}
+input.nu-in{width:84px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;background:var(--card);text-align:right}
+input.nu-in.malo{border-color:var(--red)}

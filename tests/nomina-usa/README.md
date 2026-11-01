@@ -1,0 +1,17 @@
+# Pruebas de Nómina USA (#448)
+
+`tests/nomina-usa/correr.sh` corre todo. Ninguna fase se mergea sin `TODO VERDE`.
+
+| Archivo | Qué prueba |
+|---|---|
+| `fase-*.test.js` | Reglas puras (`shared/nomina-usa/*.js`) y el esquema `nomina_usa` en un Postgres real desechable |
+| `kiosko-e2e.js` | El kiosko real en Chromium: flujo USA por persona y **México igual que hoy** |
+| `pantalla.js` | La pantalla de RH en modo práctica, por rol, a 380/760/900/1280 px, sin errores JS ni desborde |
+| `../kiosko-usa/*` | Las pruebas del kiosko que ya existían (#394). Tienen que seguir verdes sin tocarlas |
+
+## Postgres de pruebas
+Las pruebas SQL crean una base nueva, aplican **todas** las migraciones de `retardos` y `nomina_usa` en orden y la tiran al final. Por omisión buscan el clúster en el socket `/var/tmp/pgnusa`, puerto `55432` (`NUSA_PGHOST`, `NUSA_PGPORT` para otro). Para levantarlo en el contenedor (Postgres no corre como root):
+```
+P=/var/tmp/pgnusa; mkdir -p $P && chown nobody $P
+su -s /bin/sh nobody -c "/usr/lib/postgresql/16/bin/initdb -D $P/d -U postgres -A trust && /usr/lib/postgresql/16/bin/pg_ctl -D $P/d -o '-p 55432 -k $P' -l $P/log start"
+```
