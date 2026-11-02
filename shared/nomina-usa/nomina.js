@@ -88,10 +88,10 @@
     return { total: d(tot), dias: det };
   }
 
-  /** Fijo por asistencia (Rissia): fijo semanal menos la parte proporcional de faltas confirmadas por RH. */
-  function fijoAsistencia(fijo, faltasConfirmadas, diasLaborables) {
-    var n = diasLaborables || 5, f = Math.min(n, Math.max(0, num(faltasConfirmadas)));
-    return d(Math.round(c(fijo) * (n - f) / n));
+  /** Fijo por asistencia (Rissia): TODO O NADA (Esteban, 2-nov). Una sola falta INJUSTIFICADA confirmada
+   *  por RH en la semana y el fijo no se paga; la justificada (permiso, vacaciones) no cuenta aquí. */
+  function fijoAsistencia(fijo, faltasInjustificadas) {
+    return num(faltasInjustificadas) > 0 ? 0 : d(c(fijo));
   }
 
   /** Candados del ENVÍO (Richard) y de la AUTORIZACIÓN (Erick).

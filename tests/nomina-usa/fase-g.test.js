@@ -23,8 +23,13 @@ const pl = { 7: { lat: 10.0001, lng: 10 } };
 check('bloque con SO en planta = obra → sugerido 0', E.evaluarDia([{ attendance_id: 1, horas: 8, so_id: 7, lat: 10, lng: 10 }], [], pl).sugerido === 0);
 check('bloque sin SO = comercial → sugerido 100', E.evaluarDia([{ attendance_id: 1, horas: 8, so_id: null, lat: 10, lng: 10 }], [], pl).sugerido === 100);
 check('con SO, fuera de planta y sin compra = comercial', (d => d.sugerido === 100 && d.bloques[0].motivo === 'FUERA_DE_PLANTA')(E.evaluarDia([{ attendance_id: 1, horas: 8, so_id: 7, lat: 11, lng: 10 }], [], pl)));
-check('con SO, fuera de planta pero compra de material = obra', (d => d.sugerido === 0 && d.bloques[0].motivo === 'COMPRA_MATERIAL')(E.evaluarDia([{ attendance_id: 1, horas: 8, so_id: 7, lat: 11, lng: 10 }], [{ monto: -50, proveedor: 'GRAINGER' }], pl)));
-check('una compra de material NO vuelve obra un bloque sin SO', E.evaluarDia([{ attendance_id: 1, horas: 8, so_id: null }], [{ monto: -50, proveedor: 'GRAINGER' }], pl).sugerido === 100);
+// 2-nov: una compra cuenta como obra SOLO 1 hora alrededor de la compra (antes: todo el bloque).
+check('con SO, fuera de planta y compra de material = 1 h de obra de 8 → 87.5 % → 90 %', (d => d.sugerido === 90 && d.bloques[0].motivo === 'COMPRA_MATERIAL_1H' && d.bloques[0].obra_horas === 1)(E.evaluarDia([{ attendance_id: 1, horas: 8, so_id: 7, lat: 11, lng: 10 }], [{ monto: -50, proveedor: 'GRAINGER' }], pl)));
+check('una compra vale 1 hora también en un bloque sin SO (8 h → 90 %), nunca el bloque entero', E.evaluarDia([{ attendance_id: 1, horas: 8, so_id: null }], [{ monto: -50, proveedor: 'GRAINGER' }], pl).sugerido === 90);
+check('dos renglones del mismo proveedor el mismo día son UNA visita = 1 h', E.evaluarDia([{ attendance_id: 1, horas: 8, so_id: null }], [{ monto: -50, proveedor: 'GRAINGER' }, { monto: -9, proveedor: 'GRAINGER #2' }], pl).visitas_compra === 1);
+check('dos proveedores distintos = 2 visitas = 2 h (8 h → 75 % → 80 %)', E.evaluarDia([{ attendance_id: 1, horas: 8, so_id: null }], [{ monto: -50, proveedor: 'GRAINGER' }, { monto: -9, proveedor: 'Home Depot' }], pl).sugerido === 80);
+check('con hora de la compra: solo cuenta la hora que cae dentro del bloque (compra 30 min antes de entrar = 30 min)', (d => d.bloques[0].obra_horas === 0.5)(E.evaluarDia([{ attendance_id: 1, horas: 8, so_id: null, ent: '2026-10-27T15:00:00Z', sal: '2026-10-27T23:00:00Z' }], [{ monto: -50, proveedor: 'GRAINGER', hora: '2026-10-27T15:00:00Z' }], pl)));
+check('una compra nunca hace obra más horas que las del bloque', E.evaluarDia([{ attendance_id: 1, horas: 0.5, so_id: null }], [{ monto: -50, proveedor: 'GRAINGER' }], pl).sugerido === 0);
 check('un reembolso (monto positivo) no cuenta como compra', E.evaluarDia([{ attendance_id: 1, horas: 8, so_id: 7, lat: 11, lng: 10 }], [{ monto: 20.58, proveedor: 'GRAINGER' }], pl).sugerido === 100);
 check('mezcla: 6 h obra + 2 h comercial = 25 % → redondeado a 30 %', E.evaluarDia([{ attendance_id: 1, horas: 6, so_id: 7, lat: 10, lng: 10 }, { attendance_id: 2, horas: 2, so_id: null }], [], pl).sugerido === 30);
 check('sin horas checadas → 0 (no divide entre cero)', E.evaluarDia([], [], pl).sugerido === 0);
@@ -42,8 +47,8 @@ check('21-oct (SO11791, en planta, compra en Platt) → sugerido BAJO (0 %)', di
 check('21-oct reconoce la compra de material de Platt', (dia('2026-10-21').compras_material || []).some(c => /PLATT/.test(c.proveedor)));
 check('23-oct (SO11791, en planta) → sugerido BAJO (0 %)', dia('2026-10-23').sugerido === 0, dia('2026-10-23'));
 check('23-oct: Staples no es material; cuenta como obra por la ubicación', (d => d.compras_material.length === 0 && d.bloques[0].motivo === 'EN_PLANTA')(dia('2026-10-23')));
-check('27-oct (sin SO, fuera de planta) → sugerido ALTO (100 %)', dia('2026-10-27').sugerido === 100, dia('2026-10-27'));
-check('27-oct: Grainger del estado de cuenta NO vuelve obra un bloque sin SO', (d => d.compras_material.length === 2 && d.bloques[0].motivo === 'SIN_SO')(dia('2026-10-27')));
+check('27-oct (sin SO, fuera de planta, 2 compras de Grainger) → sugerido 90 % (antes 100 %): 1 h de obra de 9.6', dia('2026-10-27').sugerido === 90, dia('2026-10-27'));
+check('27-oct: las dos de Grainger son UNA visita y valen 1 hora, no el bloque', (d => d.compras_material.length === 2 && d.visitas_compra === 1 && d.bloques[0].obra_horas === 1 && d.bloques[0].motivo === 'COMPRA_MATERIAL_1H')(dia('2026-10-27')));
 check('las horas se topan en 14 (la del 22-oct sin cerrar no infla el día)', dias.every(d => d.horas_checadas <= 14));
 
 seccion('Código embebido en n8n');

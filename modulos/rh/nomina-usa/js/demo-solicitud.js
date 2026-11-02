@@ -76,7 +76,7 @@
       monto: N._d(Math.round(N._c(tar) * c.pct / 100)), sugerido: N._d(Math.round(N._c(tar) * (c.sugerido || 0) / 100)), excepcion: !!c.excepcion, explicacion: c.explicacion || null,
       cuenta: 'COMERCIAL-USA', detalle: { pct: c.pct, sugerido_pct: c.sugerido, estimado: !!c.estimado } }); });
     (e.fijos || []).forEach(function (f) { var fi = S.fichas.find(function (x) { return x.employee_id === f.employee_id; }), fal = S.alertas.filter(function (a) { return a.employee_id === f.employee_id && a.estado === 'falta_injustificada' && sem.dias.indexOf(a.fecha) >= 0; }).length;
-      lineas.push({ id: id * 100 + ln++, tipo: 'fijo', employee_id: f.employee_id, alias: fi.alias, monto: N.fijoAsistencia(fi.fijo_semanal_usd, fal), cuenta: 'COMERCIAL-USA', detalle: { faltas: fal, fijo: fi.fijo_semanal_usd } }); });
+      lineas.push({ id: id * 100 + ln++, tipo: 'fijo', employee_id: f.employee_id, alias: fi.alias, monto: N.fijoAsistencia(fi.fijo_semanal_usd, fal), cuenta: fi.cuenta_analitica || 'COMERCIAL-USA', detalle: { faltas: fal, fijo: fi.fijo_semanal_usd } }); });
     var s = { id: id, semana: sem.inicio, estado: 'enviada', enviada_por: q.actor, enviada_at: new Date().toISOString(), envio: e, lineas: lineas,
               sos: (e.sos || []).map(function (so) { return { so_id: so.so_id, so_nombre: so.so_nombre, est_mie: so.est_mie, est_jue: so.est_jue }; }) };
     S.solicitudes.push(s); D.log(q.actor, 'solicitud_enviada', 'semana:' + s.semana, null, { id: id });
@@ -88,7 +88,7 @@
     if (!a) return { ok: false, error: 'ALERTA_INEXISTENTE' };
     if (a.estado !== 'en_disputa') return { ok: false, error: 'NO_ESTA_EN_DISPUTA' };
     a.revision_pedida_por = q.actor; D.log(q.actor, 'revision_pedida', 'alerta:' + a.id);
-    return { ok: true, notificada: S.config.alertas_modo === 'real', modo: S.config.alertas_modo };
+    return { ok: true, notificada: S.config.alertas_modo_usa === 'real', modo: S.config.alertas_modo_usa };
   });
   function porId(id) { return S.solicitudes.find(function (s) { return s.id === Number(id); }); }
   function ver(s) { return { ok: true, solicitud: s, sos: s.sos, lineas: s.lineas, bloqueos: bloqueos(s.semana, s.lineas.map(function (l) { return l.employee_id; })) }; }

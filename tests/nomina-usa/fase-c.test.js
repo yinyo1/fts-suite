@@ -62,24 +62,25 @@ db.q(`INSERT INTO retardos.empleado (employee_id, nombre, activo, hora_entrada, 
              (9, 'z', true, 8, 'mx9@fts.mx', true, 112, '[{"campo":"work_email","email":"mx9@fts.mx"}]')`);
 db.q("UPDATE nomina_usa.ficha SET hora_entrada_ref='07:00', zona_horaria='America/Chicago' WHERE employee_id=75");
 const par = db.j('SELECT nomina_usa.alertas_parametros()');
-check('nacen en sombra', par.modo === 'sombra');
+check('nacen en sombra (USA y México)', par.modos.usa === 'sombra' && par.modos.mx === 'sombra');
 check('Mateo se evalúa con su ficha (07:00 Chicago)', par.personas.some(p => p.employee_id === 75 && p.hora_ref === '07:00' && p.zona === 'America/Chicago' && p.fuente === 'ficha'));
 check('México se evalúa con el padrón de Retardos (08:00 Monterrey)', par.personas.some(p => p.employee_id === 9 && p.hora_ref === '08:00' && p.zona === 'America/Monterrey'));
 check('Ricardo sin hora: va sin hora (no alerta de entrada)', par.personas.some(p => p.employee_id === 98 && p.hora_ref === null));
 const reg = al => db.j("SELECT nomina_usa.alertas_registrar($q$" + JSON.stringify({ alertas: al }) + "$q$::jsonb)");
-const AL = [{ clave: 'entrada:75:2026-11-02', tipo: 'entrada_faltante', employee_id: 75, fecha: '2026-11-02' }, { clave: 'salida:500', tipo: 'salida_faltante', employee_id: 75, fecha: '2026-11-02', attendance_id: 500 }];
+const DZ = { zona: 'America/Chicago' };
+const AL = [{ clave: 'entrada:75:2026-11-02', tipo: 'entrada_faltante', employee_id: 75, fecha: '2026-11-02', detalle: DZ }, { clave: 'salida:500', tipo: 'salida_faltante', employee_id: 75, fecha: '2026-11-02', attendance_id: 500, detalle: DZ }];
 let r = reg(AL);
-check('en sombra se registran las alertas', r.ok && r.modo === 'sombra' && r.nuevas === 2 && r.encoladas === 0, r);
+check('en sombra se registran las alertas', r.ok && r.modos.usa === 'sombra' && r.nuevas === 2 && r.encoladas === 0, r);
 check('EN SOMBRA NO SALE NINGÚN CORREO: retardos.envio vacío', db.q('SELECT count(*) FROM retardos.envio') === '0');
 check('repetir la corrida no duplica', reg(AL).nuevas === 0 && db.q('SELECT count(*) FROM nomina_usa.alerta') === '2');
 let txt = ''; try { db.q("INSERT INTO nomina_usa.alerta (clave,tipo,employee_id,fecha,modo_al_crear,encolada) VALUES ('x','entrada_faltante',1,current_date,'sombra',true)"); } catch (e) { txt = String(e.stderr || e.message); }
 check('la base impide una alerta en sombra marcada como encolada', /alerta_sombra_ck/.test(txt));
-db.panel({ accion: 'config_guardar', clave: 'alertas_modo', valor: 'real', motivo: 'prueba de paso a real' });
-r = reg([{ clave: 'entrada:75:2026-11-03', tipo: 'entrada_faltante', employee_id: 75, fecha: '2026-11-03' }]);
+db.panel({ accion: 'config_guardar', clave: 'alertas_modo_usa', valor: 'real', motivo: 'prueba de paso a real' });
+r = reg([{ clave: 'entrada:75:2026-11-03', tipo: 'entrada_faltante', employee_id: 75, fecha: '2026-11-03', detalle: DZ }]);
 check('en real se encola en retardos.envio (reusa la bandeja de Retardos)', r.encoladas === 1 && db.q("SELECT count(*) FROM retardos.envio WHERE tipo='alerta' AND clave_dedupe LIKE 'nomina_usa:%'") === '1', r);
 const env = db.j("SELECT jsonb_build_object('para', para, 'cc', cc) FROM retardos.envio LIMIT 1");
 check('a la persona, con copia al jefe', JSON.stringify(env.para).includes('persona75@fts.mx') && JSON.stringify(env.cc).includes('jefe112@fts.mx'), env);
-db.panel({ accion: 'config_guardar', clave: 'alertas_modo', valor: 'sombra', motivo: 'regreso' });
+db.panel({ accion: 'config_guardar', clave: 'alertas_modo_usa', valor: 'sombra', motivo: 'regreso' });
 // marcas de RH
 const id = db.q("SELECT id FROM nomina_usa.alerta WHERE clave='entrada:75:2026-11-02'");
 r = db.panel({ accion: 'alerta_marcar', id: Number(id), estado: 'en_disputa' }, ['nomina_usa:validar'], 'magaly');

@@ -8,7 +8,7 @@
   'use strict';
   var A = G.NusaApi, NU = G.NominaUSA;
   var S = G.NusaDemoEstado = {
-    config: { kiosko_activo: false, alertas_modo: 'sombra', entrada_tolerancia_min: 15, salida_faltante_horas: 14,
+    config: { kiosko_activo: false, alertas_modo_usa: 'sombra', alertas_modo_mx: 'sombra', entrada_tolerancia_min: 15, salida_faltante_horas: 14,
               tope_excepcion_puntos: 10, tope_contra_plan_puntos: 20, tarifa_comercial_usd: 140 },
     fichas: [
       { employee_id: 75, alias: 'Mateo', pais_nomina: 'HIBRIDO', tipo_pago_usa: 'bolsa_avance', pide_so_entrada: true, kiosko_usa: false, jefe_employee_id: 112, hora_entrada_ref: null, zona_horaria: null, fijo_semanal_usd: null, activo: true },
@@ -37,7 +37,8 @@
   reg('config_ver', TODOS, function () { return { ok: true, config: JSON.parse(JSON.stringify(S.config)) }; });
   reg('config_guardar', ['nomina_usa:admin'], function (p, q) {
     if (!(p.clave in S.config)) return { ok: false, error: 'CLAVE_DESCONOCIDA' };
-    if (p.clave === 'alertas_modo' && ['sombra', 'real'].indexOf(p.valor) < 0) return { ok: false, error: 'MODO_INVALIDO' };
+    if (p.clave === 'alertas_modo') return { ok: false, error: 'CLAVE_OBSOLETA' };
+    if ((p.clave === 'alertas_modo_usa' || p.clave === 'alertas_modo_mx') && ['sombra', 'real'].indexOf(p.valor) < 0) return { ok: false, error: 'MODO_INVALIDO' };
     if (!String(p.motivo || '').trim()) return { ok: false, error: 'MOTIVO_REQUERIDO' };
     var antes = S.config[p.clave]; S.config[p.clave] = p.valor;
     log(q.actor, 'config', p.clave, antes, p.valor, p.motivo);

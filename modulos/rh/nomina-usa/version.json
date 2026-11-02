@@ -1,9 +1,15 @@
 {
-  "version": "V1.05",
-  "fecha": "2026-11-01",
+  "version": "V1.06",
+  "fecha": "2026-11-02",
   "modulo": "rh/nomina-usa",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Contador propio de este modulo.",
   "historial": [
+    {
+      "version": "V1.06",
+      "fecha": "2026-11-02",
+      "titulo": "Ajustes de decisiones de Esteban (#448)",
+      "nota": "Dos banderas de alertas independientes (USA y Mexico): Pasar a real de USA ya no prende los correos de Mexico. La alerta de entrada se evalua en la zona de la ultima checada. La ficha guarda a quien van las alertas de la persona (Ricardo: Magaly y Erick, sin copia al jefe) y la cuenta analitica del fijo. El fijo de Rissia es todo o nada: una falta injustificada confirmada por RH y no se paga."
+    },
     {
       "version": "V1.05",
       "fecha": "2026-11-01",
