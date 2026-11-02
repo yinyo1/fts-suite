@@ -15,7 +15,7 @@ check('80 → 90 → 100 pasa', N.validarEstimados(80, 90, 100) === null);
 const rs = N.repartoSugerido(2160, { 75: 18, 79: 16 });
 check('reparto sugerido de técnicos por horas cuadra al centavo (2,160)', Math.round((rs[75] + rs[79]) * 100) === 216000 && rs[75] > rs[79], rs);
 check('comercial: 140 × 30 % = 42 por día', N.pagoComercial([{ fecha: 'x', pct: 30 }]).total === 42);
-check('fijo 700 con 1 falta confirmada = 560', N.fijoAsistencia(700, 1) === 560);
+check('fijo TODO O NADA (2-nov): 507.59 sin faltas = 507.59; con 1 injustificada = 0; con 3 = 0', N.fijoAsistencia(507.59, 0) === 507.59 && N.fijoAsistencia(507.59, 1) === 0 && N.fijoAsistencia(507.59, 3) === 0);
 const cd = N.candados({ personas: [75, 79, 98], alertas: [{ id: 9, employee_id: 79, estado: 'en_disputa' }], dias_pendientes: [{ employee_id: 98, fecha: '2026-11-02' }],
   sos: [{ so_id: 1, so_nombre: 'SO11842', bolsa: { supervisor: 3200, tecnicos: 7200 }, avance_jueves: 100, pagado: { supervisor: 2240, tecnicos: 5040 }, reparto: { supervisor: { 98: 960 }, tecnicos: { 75: 1440, 79: 1440 } } },
         { so_id: 2, so_nombre: 'SO11791', bolsa: null, reparto: { tecnicos: { 75: 100 } } }] });

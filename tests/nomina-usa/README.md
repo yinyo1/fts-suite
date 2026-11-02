@@ -4,7 +4,7 @@
 
 | Archivo | Qué prueba |
 |---|---|
-| `fase-*.test.js` | Reglas puras (la `fase-g` es el alimentador de evidencia comercial, paso 6 del 2-nov) (`shared/nomina-usa/*.js`) y el esquema `nomina_usa` en un Postgres real desechable |
+| `fase-*.test.js` | Reglas puras (la `fase-g` es el alimentador de evidencia comercial; la `fase-h`, los ajustes de Esteban del 2-nov: bandera por país, zona de la última checada, destinatarios y fijo todo o nada) (`shared/nomina-usa/*.js`) y el esquema `nomina_usa` en un Postgres real desechable |
 | `kiosko-e2e.js` | El kiosko real en Chromium: flujo USA por persona y **México igual que hoy** |
 | `pantalla.js` | La pantalla de RH en modo práctica, por rol, a 380/760/900/1280 px, sin errores JS ni desborde |
 | `../kiosko-usa/*` | Las pruebas del kiosko que ya existían (#394). Tienen que seguir verdes sin tocarlas |

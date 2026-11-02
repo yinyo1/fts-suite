@@ -84,7 +84,7 @@
     fijos.forEach(function (p) {
       var monto = N.fijoAsistencia(p.fijo_semanal_usd || 0, p.faltas_injustificadas || 0);
       h += '<div class="caja nu-so nu-fijo" data-fijo="' + p.employee_id + '"><h3>Fijo de ' + e(p.alias) + '</h3>' +
-        (p.fijo_semanal_usd > 0 ? '<div>Fijo semanal ' + $$(p.fijo_semanal_usd) + ' · faltas confirmadas por RH: ' + (p.faltas_injustificadas || 0) + ' → <b>' + $$(monto) + '</b></div>'
+        (p.fijo_semanal_usd > 0 ? '<div>Fijo semanal ' + $$(p.fijo_semanal_usd) + ' · faltas injustificadas confirmadas por RH: ' + (p.faltas_injustificadas || 0) + ' → <b>' + $$(monto) + '</b>' + (p.faltas_injustificadas > 0 ? ' <span class="nu-bloq">Todo o nada: con una falta injustificada el fijo de la semana no se paga.</span>' : '') + '</div>'
                                 : '<div class="nu-bloq">Falta capturar su fijo semanal en la ficha. No se incluye.</div>') + '</div>';
     });
     // Ajuste del viernes: lo que se estimó el miércoles contra lo real. Precargado, no se edita.

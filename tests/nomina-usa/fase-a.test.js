@@ -51,7 +51,7 @@ if (!pg.disponible()) { check('Postgres de pruebas disponible (NUSA_PGHOST)', fa
 seccion('Esquema nomina_usa (Postgres real)');
 const db = pg.crear();
 check('todo nace apagado: kiosko_activo=false', db.q("SELECT nomina_usa.cfg('kiosko_activo')") === 'false');
-check('todo nace apagado: alertas en sombra', db.q("SELECT nomina_usa.cfg('alertas_modo')") === '"sombra"');
+check('todo nace apagado: alertas de USA y de México en sombra (0009)', db.q("SELECT nomina_usa.cfg('alertas_modo_usa')") === '"sombra"' && db.q("SELECT nomina_usa.cfg('alertas_modo_mx')") === '"sombra"');
 check('las cuatro fichas con bandera apagada', db.q('SELECT count(*) FROM nomina_usa.ficha WHERE NOT kiosko_usa') === '4');
 check('ninguna ficha con hora inventada', db.q('SELECT count(*) FROM nomina_usa.ficha WHERE hora_entrada_ref IS NOT NULL') === '0');
 let r = db.panel({ accion: 'ficha_guardar', ficha: { employee_id: 75, alias: 'Mateo', pais_nomina: 'HIBRIDO', tipo_pago_usa: 'bolsa_avance', pide_so_entrada: true, kiosko_usa: true } }, ['nomina_usa:validar']);
@@ -63,12 +63,14 @@ check('admin guarda la ficha', r.ok === true && r.ficha.hora_entrada_ref === '07
 check('el cambio queda en bitácora', db.q("SELECT count(*) FROM nomina_usa.bitacora WHERE evento='ficha' AND objeto='75'") === '1');
 let txt = ''; try { db.q('DELETE FROM nomina_usa.bitacora'); } catch (e) { txt = String(e.stderr || e.message); }
 check('la bitácora no se puede borrar', /BITACORA_INMUTABLE/.test(txt), txt.slice(0, 120));
-r = db.panel({ accion: 'config_guardar', clave: 'alertas_modo', valor: 'real' });
+r = db.panel({ accion: 'config_guardar', clave: 'alertas_modo_usa', valor: 'real' });
 check('cambiar bandera sin motivo se rechaza', r.error === 'MOTIVO_REQUERIDO', r);
-r = db.panel({ accion: 'config_guardar', clave: 'alertas_modo', valor: 'real', motivo: 'x' }, ['nomina_usa:validar']);
+r = db.panel({ accion: 'config_guardar', clave: 'alertas_modo_mx', valor: 'real', motivo: 'x' }, ['nomina_usa:validar']);
 check('solo admin cambia banderas', r.error === 'SCOPE_INSUFICIENTE', r);
-r = db.panel({ accion: 'config_guardar', clave: 'alertas_modo', valor: 'otro', motivo: 'x' });
+r = db.panel({ accion: 'config_guardar', clave: 'alertas_modo_usa', valor: 'otro', motivo: 'x' });
 check('modo de alertas solo sombra o real', r.error === 'MODO_INVALIDO', r);
+r = db.panel({ accion: 'config_guardar', clave: 'alertas_modo', valor: 'real', motivo: 'x' });
+check('la bandera única vieja ya no se puede mover (0009: CLAVE_OBSOLETA)', r.error === 'CLAVE_OBSOLETA', r);
 const p = { accion: 'config_ver', nonce: 'repetido-123456789', actor: 'x', scopes: ['nomina_usa:kiosko'] };
 const uno = db.j("SELECT nomina_usa.panel_seguro($q$" + JSON.stringify(p) + "$q$::jsonb)"), dos = db.j("SELECT nomina_usa.panel_seguro($q$" + JSON.stringify(p) + "$q$::jsonb)");
 check('nonce repetido = REPLAY', uno.ok === true && dos.error === 'REPLAY', [uno.ok, dos.error]);

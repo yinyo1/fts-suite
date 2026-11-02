@@ -21,14 +21,20 @@
     var rf = await c.llamar({ accion: 'ficha_listar' }), rc = await c.llamar({ accion: 'config_ver' });
     if (!rf || rf.ok === false) { el.innerHTML = '<div class="err">' + e(c.mensaje(rf)) + '</div>'; return; }
     var cfg = (rc && rc.config) || {};
-    var kOn = cfg.kiosko_activo === true, aReal = cfg.alertas_modo === 'real';
+    var kOn = cfg.kiosko_activo === true;
+    // Dos banderas independientes (2-nov): «Pasar a real» de USA NO prende los correos de México.
+    function bandAlertas(clave, titulo, quien) {
+      var real = cfg[clave] === 'real';
+      return '<div class="nu-band ' + (real ? 'on' : 'off') + '" data-band="' + clave + '"><b>' + titulo + '</b><span>' + (real ? 'REAL' : 'SOMBRA') + '</span>' +
+        '<small>' + quien + ' ' + (real ? 'Se encolan correos.' : 'Se registran y NO sale ningún correo.') + '</small>' +
+        (admin ? '<button class="btn" data-cfg="' + clave + '" data-val="' + (real ? 'sombra' : 'real') + '">' + (real ? 'Volver a sombra' : 'Pasar a real') + '</button>' : '') + '</div>';
+    }
     var h = '<div class="nu-banderas">' +
       '<div class="nu-band ' + (kOn ? 'on' : 'off') + '"><b>Kiosko USA</b><span>' + (kOn ? 'ENCENDIDO' : 'APAGADO') + '</span>' +
         '<small>Interruptor general. Además cada persona necesita su bandera y checar desde USA.</small>' +
         (admin ? '<button class="btn" data-cfg="kiosko_activo" data-val="' + (!kOn) + '">' + (kOn ? 'Apagar' : 'Encender') + '</button>' : '') + '</div>' +
-      '<div class="nu-band ' + (aReal ? 'on' : 'off') + '"><b>Alertas de checada</b><span>' + (aReal ? 'REAL' : 'SOMBRA') + '</span>' +
-        '<small>' + (aReal ? 'Se encolan correos a la persona, RH y jefe.' : 'Se registran y NO sale ningún correo.') + '</small>' +
-        (admin ? '<button class="btn" data-cfg="alertas_modo" data-val="' + (aReal ? 'sombra' : 'real') + '">' + (aReal ? 'Volver a sombra' : 'Pasar a real') + '</button>' : '') + '</div>' +
+      bandAlertas('alertas_modo_usa', 'Alertas USA', 'Fichas USA, y las híbridas en día USA.') +
+      bandAlertas('alertas_modo_mx', 'Alertas México', 'El resto del padrón de Retardos.') +
       '</div>';
     h += '<div class="cab"><h1>Fichas</h1></div><div class="nu-fichas">';
     rf.fichas.forEach(function (f) {
@@ -43,12 +49,15 @@
         '<label>Hora de entrada (local)<input name="hora_entrada_ref" placeholder="HH:MM" value="' + e(f.hora_entrada_ref ? String(f.hora_entrada_ref).slice(0, 5) : '') + '"' + (admin ? '' : ' disabled') + '></label>' +
         '<label>Zona horaria<select name="zona_horaria"' + (admin ? '' : ' disabled') + '>' + zonas(f.zona_horaria) + '</select></label>' +
         '<label>Fijo semanal USD<input name="fijo_semanal_usd" inputmode="decimal" value="' + e(f.fijo_semanal_usd) + '"' + (admin ? '' : ' disabled') + '></label>' +
+        '<label>Alertas van a (empleados, separados por coma)<input name="destinatarios_alerta" inputmode="numeric" placeholder="vacío = RH y jefe" value="' + e((f.destinatarios_alerta || []).join(', ')) + '"' + (admin ? '' : ' disabled') + '></label>' +
+        '<label>Cuenta analítica del fijo<input name="cuenta_analitica" placeholder="vacío = COMERCIAL-USA" value="' + e(f.cuenta_analitica || '') + '"' + (admin ? '' : ' disabled') + '></label>' +
         '</div><div class="nu-checks">' +
         '<label><input type="checkbox" name="pide_so_entrada"' + (f.pide_so_entrada ? ' checked' : '') + (admin ? '' : ' disabled') + '> Pide SO al entrar</label>' +
         '<label><input type="checkbox" name="kiosko_usa"' + (f.kiosko_usa ? ' checked' : '') + (admin ? '' : ' disabled') + '> Bandera del kiosko USA</label>' +
         '</div>' +
         '<div class="muted nu-perfil">Flujo en USA: <b>' + e(PERFIL[perfil] || 'México') + '</b>' +
-        (f.hora_entrada_ref ? '' : ' · <span class="warn">sin hora de referencia: no corre la alerta de entrada</span>') + '</div>' +
+        (f.hora_entrada_ref ? ' · la entrada se evalúa en la zona de su última checada' : ' · <span class="warn">sin hora de referencia: no corre la alerta de entrada</span>') +
+        ((f.destinatarios_alerta || []).length ? ' · alertas a ' + e(f.destinatarios_alerta.join(', ')) + ' (sin RH ni jefe)' : '') + '</div>' +
         (admin ? '<div class="nu-acc"><input name="motivo" placeholder="Motivo del cambio"><button class="btn pri" type="submit">Guardar</button></div>' : '') +
         '<div class="err hid"></div></form>';
     });
@@ -74,6 +83,9 @@
         if (f.pais_nomina === 'MX') f.tipo_pago_usa = null;
         if (f.jefe_employee_id) f.jefe_employee_id = Number(f.jefe_employee_id);
         f.pide_so_entrada = d.get('pide_so_entrada') === 'on'; f.kiosko_usa = d.get('kiosko_usa') === 'on';
+        f.destinatarios_alerta = String(d.get('destinatarios_alerta') || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean).map(Number);
+        f.cuenta_analitica = String(d.get('cuenta_analitica') || '').trim() || null;
+        if (f.destinatarios_alerta.some(function (x) { return !(x > 0) || x !== Math.floor(x); })) { var b0 = fm.querySelector('.err'); b0.textContent = 'Destinatarios: números de empleado separados por coma.'; b0.classList.remove('hid'); return; }
         var err = NU.ficha.validarFicha(f), box = fm.querySelector('.err');
         if (err.length) { box.textContent = err.join(' '); box.classList.remove('hid'); return; }
         var r = await c.llamar({ accion: 'ficha_guardar', ficha: f, motivo: d.get('motivo') || null });

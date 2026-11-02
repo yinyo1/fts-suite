@@ -38,37 +38,45 @@ try {
     [[['employee_id', 'in', ids], '|', ['check_in', '>=', desde], ['check_out', '=', false]]],
     { fields: ['id', 'employee_id', 'check_in', 'check_out'], order: 'check_in asc', limit: 5000 }] });
   if (att.err) return [{ json: { ok: false, error: 'CONTRATO_ROTO:hr.attendance', detalle: att.err } }];
+  // Zona de la ÚLTIMA checada (ajuste del 2-nov): solo para quien tiene ficha de Nómina USA. Viajan
+  // entre California y Texas, así que la zona sale de la ubicación de su checada más reciente.
+  var FG = ['id', 'employee_id', 'check_in', 'check_out', 'in_latitude', 'in_longitude', 'out_latitude', 'out_longitude'];
+  var idsFicha = personas.filter(function (x) { return x.fuente === 'ficha'; }).map(function (x) { return x.employee_id; });
+  var desde15 = new Date(ahora.getTime() - 15 * 86400000).toISOString().slice(0, 19).replace('T', ' ');
+  var geo = { val: [] };
+  if (idsFicha.length) {
+    geo = await rpc({ service: 'object', method: 'execute_kw', args: [DB, uid, KEY, 'hr.attendance', 'search_read',
+      [[['employee_id', 'in', idsFicha], ['check_in', '>=', desde15]]], { fields: FG, order: 'check_in desc', limit: 2000 }] });
+    if (geo.err) return [{ json: { ok: false, error: 'CONTRATO_ROTO:hr.attendance(ubicacion)', detalle: geo.err } }];
+  }
+  var geoEmp = {};
+  (geo.val || []).forEach(function (a) { var e = Array.isArray(a.employee_id) ? a.employee_id[0] : a.employee_id; (geoEmp[e] = geoEmp[e] || []).push(a); });
   // Horas cerradas de los últimos 8 días (para la nómina USA: quién trabajó cuánto en cada SO).
   var desde8 = new Date(ahora.getTime() - 8 * 86400000).toISOString().slice(0, 19).replace('T', ' ');
   var cer = await rpc({ service: 'object', method: 'execute_kw', args: [DB, uid, KEY, 'hr.attendance', 'search_read',
     [[['employee_id', 'in', ids], ['check_in', '>=', desde8], ['check_out', '!=', false]]],
-    { fields: ['id', 'employee_id', 'check_in', 'check_out', 'worked_hours', 'x_studio_project_id'], order: 'check_in asc', limit: 5000 }] });
+    { fields: ['id', 'employee_id', 'check_in', 'check_out', 'worked_hours', 'x_studio_project_id', 'in_latitude', 'in_longitude'], order: 'check_in asc', limit: 5000 }] });
   if (cer.err) return [{ json: { ok: false, error: 'CONTRATO_ROTO:hr.attendance(horas)', detalle: cer.err } }];
   var zonaDe = {}; personas.forEach(function (p) { zonaDe[p.employee_id] = p.zona; });
   var horas = (cer.val || []).map(function (a) {
     var e = Array.isArray(a.employee_id) ? a.employee_id[0] : a.employee_id, so = a.x_studio_project_id;
-    return { attendance_id: a.id, employee_id: e, fecha: A.local(A.utc(a.check_in), zonaDe[e]).fecha,
+    // Con ficha USA: la fecha local de cada bloque sale de la zona de SU propia entrada (sin ubicación,
+    // la de la ficha). El padrón de México sigue en Monterrey, igual que antes.
+    var zb = (idsFicha.indexOf(e) >= 0 ? A.zonaDeCoordenadas(a.in_latitude, a.in_longitude) : null) || zonaDe[e];
+    return { attendance_id: a.id, employee_id: e, fecha: A.local(A.utc(a.check_in), zb).fecha, zona: zb,
       so_id: Array.isArray(so) ? so[0] : null, so_nombre: Array.isArray(so) ? so[1] : null,
       horas: Math.round((Number(a.worked_hours) || 0) * 100) / 100, check_in_utc: A.utc(a.check_in).toISOString(), check_out_utc: A.utc(a.check_out).toISOString() };
   });
   var porEmp = {};
   (att.val || []).forEach(function (a) { var e = Array.isArray(a.employee_id) ? a.employee_id[0] : a.employee_id; (porEmp[e] = porEmp[e] || []).push(a); });
-  var alertas = [];
+  var alertas = [], zonas = {};
   personas.forEach(function (p) {
-    var mias = porEmp[p.employee_id] || [];
-    var hoy = A.local(ahora, p.zona).fecha;
-    var entradasHoy = mias.filter(function (a) { return A.local(A.utc(a.check_in), p.zona).fecha === hoy; }).length;
-    var e = A.entradaFaltante(p, entradasHoy, ahora, par.tolerancia_min, par.festivos);
-    if (e.alerta) alertas.push({ clave: e.clave, tipo: 'entrada_faltante', employee_id: p.employee_id, fecha: e.fecha, attendance_id: null,
-      detalle: { hora_ref: p.hora_ref, zona: p.zona, segundos_tarde: e.segundos_tarde, fuente: p.fuente } });
-    mias.forEach(function (a) {
-      A.salidaFaltante(a, ahora, par.salida_horas, p.zona).forEach(function (x) {
-        alertas.push({ clave: x.clave, tipo: x.tipo, employee_id: p.employee_id, fecha: x.fecha, attendance_id: a.id,
-          detalle: { check_in_utc: a.check_in, zona: p.zona } });
-      });
-    });
+    var r = A.alertasPersona(p, porEmp[p.employee_id] || [], geoEmp[p.employee_id] || [], ahora,
+      { tolerancia_min: par.tolerancia_min, salida_horas: par.salida_horas, festivos: par.festivos });
+    if (p.fuente === 'ficha') zonas[p.employee_id] = r.zona;
+    r.alertas.forEach(function (x) { alertas.push(x); });
   });
-  return [{ json: { ok: true, payload: { alertas: alertas, horas: horas }, leidos: (att.val || []).length } }];
+  return [{ json: { ok: true, payload: { alertas: alertas, horas: horas }, leidos: (att.val || []).length, zonas: zonas } }];
 } catch (e) {
   return [{ json: { ok: false, error: 'FALLO_ALERTAS', detalle: String(e && e.message || e).slice(0, 200) } }];
 }

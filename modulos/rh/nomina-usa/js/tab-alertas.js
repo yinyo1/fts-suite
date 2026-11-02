@@ -15,9 +15,11 @@
     var e = c.esc, puede = c.tiene('nomina_usa:validar');
     var ra = await c.llamar({ accion: 'alertas', solo_abiertas: !G.NusaApp._st.todasAlertas }), rd = await c.llamar({ accion: 'dias', solo_pendientes: true });
     if (!ra || ra.ok === false) { el.innerHTML = '<div class="err">' + e(c.mensaje(ra)) + '</div>'; return; }
-    var modo = ra.modo === 'real' ? 'REAL: las alertas nuevas mandan correo.' : 'SOMBRA: se registran y no sale ningún correo.';
+    var md = ra.modos || {}, txt = function (m) { return m === 'real' ? 'REAL (manda correo)' : 'SOMBRA (sin correo)'; };
+    var algunaReal = md.usa === 'real' || md.mx === 'real';
+    var modo = ' USA: ' + txt(md.usa) + ' · México: ' + txt(md.mx) + '.';
     var abiertas = ra.alertas.filter(function (a) { return a.estado === 'abierta'; }).length, disp = ra.alertas.filter(function (a) { return a.estado === 'en_disputa'; }).length;
-    var h = '<div class="aviso ' + (ra.modo === 'real' ? '' : 'demo') + '"><div><b>Alertas en ' + (ra.modo === 'real' ? 'modo real' : 'modo sombra') + '</b>' + modo + '</div></div>' +
+    var h = '<div class="aviso ' + (algunaReal ? '' : 'demo') + '"><div><b>Alertas por país</b>' + modo + '</div></div>' +
       '<div class="nu-kpis"><div class="nu-kpi"><b>' + abiertas + '</b><small>abiertas</small></div><div class="nu-kpi"><b>' + disp + '</b><small>en disputa (bloquean nómina)</small></div>' +
       '<div class="nu-kpi"><b>' + ((rd && rd.dias) || []).length + '</b><small>días sin ubicación por validar</small></div></div>';
     if (rd && rd.dias && rd.dias.length) {
@@ -35,7 +37,7 @@
           (a.attendance_id ? ' <span class="muted">· asistencia ' + a.attendance_id + '</span>' : '') +
           (a.detalle && a.detalle.horas ? ' <span class="muted">· ' + a.detalle.horas + ' h</span>' : '') +
           (a.detalle && a.detalle.hora_ref ? ' <span class="muted">· referencia ' + e(a.detalle.hora_ref) + ' ' + e(a.detalle.zona) + '</span>' : '') +
-          (a.modo_al_crear === 'sombra' && a.tipo !== 'incidencia_periodo' ? ' <span class="chip e-otro">sombra</span>' : '');
+          (a.modo_al_crear === 'sombra' && a.tipo !== 'incidencia_periodo' ? ' <span class="chip e-otro">sombra</span>' : '') + (a.pais ? ' <span class="chip e-otro">' + e(a.pais) + '</span>' : '');
         var acc = puede ? ['falta_justificada', 'falta_injustificada', 'error_corregido', 'en_disputa'].filter(function (x) { return x !== a.estado; })
           .map(function (x) { return '<button class="btn" data-marca="' + a.id + '|' + x + '">' + ESTADO[x] + '</button>'; }).join(' ') : '';
         return '<tr><td>' + e(a.alias) + '</td><td class="nu-fecha">' + e(a.fecha) + '</td><td>' + que + (a.nota ? '<div class="muted">Nota: ' + e(a.nota) + '</div>' : '') +
