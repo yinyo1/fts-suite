@@ -79,12 +79,12 @@ LANGUAGE plpgsql STABLE AS $fn$
 DECLARE r jsonb;
 BEGIN
   IF to_regclass('comercial.machote_orden') IS NULL THEN RETURN NULL; END IF;
-  EXECUTE $q$
+  EXECUTE format($q$
     WITH v AS (
       SELECT mv.id, mv.documento, mv.moneda FROM comercial.machote_orden mo
         JOIN comercial.machote m ON m.id = mo.machote_id AND m.deleted_at IS NULL
         JOIN LATERAL (SELECT * FROM comercial.machote_version x WHERE x.machote_id = m.id ORDER BY x.version DESC LIMIT 1) mv ON true
-       WHERE mo.odoo_so_id = $1 AND mo.principal AND mo.desligado_at IS NULL LIMIT 1
+       WHERE mo.odoo_so_id = %s AND mo.principal AND mo.desligado_at IS NULL LIMIT 1
     ), l AS (
       SELECT v.id, v.moneda, x->>'rol' AS rol,
              coalesce(nullif(x->>'personas', '')::numeric, 1) * coalesce(nullif(x->>'qty', '')::numeric, 0) * coalesce(nullif(x->>'pu', '')::numeric, 0) AS imp,
@@ -96,7 +96,7 @@ BEGIN
       'supervisor', coalesce(round(sum(imp) FILTER (WHERE rol IN ('supervisor_sr','supervisor_jr','he_supervisor','he_jr')), 2), 0),
       'tecnicos',   coalesce(round(sum(imp) FILTER (WHERE rol IN ('tecnicos','he_tecnicos')), 2), 0))
       FROM l HAVING count(*) > 0
-  $q$ INTO r USING p_sale_order;
+  $q$, p_sale_order) INTO r;
   RETURN r;
 END
 $fn$;

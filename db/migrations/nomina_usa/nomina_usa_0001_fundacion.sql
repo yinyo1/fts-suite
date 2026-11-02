@@ -124,7 +124,8 @@ CREATE TABLE IF NOT EXISTS nomina_usa.accion (
   nombre   text PRIMARY KEY,
   funcion  text NOT NULL,
   scopes   text[] NOT NULL,
-  CONSTRAINT accion_funcion_ck CHECK (funcion ~ '^nomina_usa\.[a-z_]+$')
+  -- Sin ancla de fin (db/README regla 8): empieza con nomina_usa., un solo punto y nada fuera de [a-z_.].
+  CONSTRAINT accion_funcion_ck CHECK (funcion ~ '^nomina_usa[.][a-z_]' AND funcion !~ '[^a-z_.]' AND funcion !~ '[.].*[.]')
 );
 
 CREATE TABLE IF NOT EXISTS nomina_usa.nonce (
@@ -147,7 +148,8 @@ BEGIN
   IF NOT (v_scopes && a.scopes OR 'nomina_usa:admin' = ANY (v_scopes)) THEN
     RETURN jsonb_build_object('ok', false, 'error', 'SCOPE_INSUFICIENTE', 'pide', to_jsonb(a.scopes));
   END IF;
-  EXECUTE format('SELECT %s($1)', a.funcion) INTO r USING p;
+  -- El argumento va como literal (%L) y no como parámetro posicional: db/README regla 8.
+  EXECUTE format('SELECT %s(%L::jsonb)', a.funcion, p::text) INTO r;
   RETURN r;
 END
 $fn$;
