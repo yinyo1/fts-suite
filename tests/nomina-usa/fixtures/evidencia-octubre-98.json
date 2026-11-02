@@ -1,0 +1,23 @@
+{
+ "_nota": "Ricardo (98), dias de prueba del paso 6 (#448): 21, 23 y 27-oct-2026. Horas y SO de hr.attendance; compras del diario 123 (Chase Ink Unlimited 9207, account.bank.statement.line), leidos de Odoo el 2-nov. SIN coordenadas reales (dato personal, CLAUDE.md 20 #7): cada checada lleva solo si la entrada quedo dentro o fuera del radio de la planta de su SO, medido en la sesion contra las checadas de la cuadrilla. La prueba lo traduce a coordenadas sinteticas.",
+ "zona": "America/Los_Angeles",
+ "ricardo": [
+  { "id": 16195, "check_in": "2026-10-21 15:47:53", "check_out": "2026-10-22 01:58:01", "so_id": 2361, "ubicacion": "planta" },
+  { "id": 16251, "check_in": "2026-10-23 15:16:21", "check_out": "2026-10-24 00:52:21", "so_id": 2361, "ubicacion": "planta" },
+  { "id": 16306, "check_in": "2026-10-27 14:28:57", "check_out": "2026-10-28 00:04:57", "so_id": null, "ubicacion": "fuera" }
+ ],
+ "cuadrilla_so": [2361, 2361, 2361, 2361, 2361],
+ "compras": [
+  { "date": "2026-10-21", "amount": -472.81, "payment_ref": "PLATT ELECTRIC 032" },
+  { "date": "2026-10-21", "amount": -38.08, "payment_ref": "Lowe's Home Improvement" },
+  { "date": "2026-10-21", "amount": -128.91, "payment_ref": "AutoZone" },
+  { "date": "2026-10-21", "amount": -432.40, "payment_ref": "UNITED 0162150854649" },
+  { "date": "2026-10-23", "amount": -15.21, "payment_ref": "Staples" },
+  { "date": "2026-10-23", "amount": -48.69, "payment_ref": "Staples" },
+  { "date": "2026-10-23", "amount": -26.75, "payment_ref": "Chick-fil-A" },
+  { "date": "2026-10-27", "amount": -66.89, "payment_ref": "Lyft" },
+  { "date": "2026-10-27", "amount": -31.39, "payment_ref": "TST*AMOURA CAFE SFO" },
+  { "date": "2026-10-27", "amount": -164.99, "payment_ref": "GRAINGER" },
+  { "date": "2026-10-27", "amount": -404.60, "payment_ref": "GRAINGER" }
+ ]
+}
