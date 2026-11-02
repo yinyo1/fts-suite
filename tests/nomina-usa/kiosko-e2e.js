@@ -77,7 +77,12 @@ async function fotos(page, nombre) { if (!OUT) return; for (const w of [380, 128
 
   // ── México igual que hoy ──
   const linea = await escenario(browser, base, 'México · línea base: kiosko.json del repo (apagado)', { punto: PUNTO.mty, emp: EMP.mx }, async (page, posts) => {
-    check('el kiosko.json del repo viene APAGADO', await page.evaluate(() => KioskoUSA._st.cfg.activo === false));
+    // Con las banderas del lunes 2-nov (#448) el JSON puede venir prendido, pero SOLO para 75, 79 y 98:
+    // nadie de México puede entrar al flujo USA por el JSON. La línea base usa a un empleado de México.
+    check('el kiosko.json del repo solo puede prender a 75, 79 y 98', await page.evaluate(() => {
+      const c = KioskoUSA._st.cfg || {}; const ids = Object.keys(c.personas || {});
+      return ids.every(id => ['75', '79', '98'].indexOf(id) >= 0) && (c.activo === false || ids.length === 3);
+    }));
     await checar(page, 'entrada'); await esperar(posts, 1);
   });
   for (const [nombre, kcfg] of [['interruptor PRENDIDO', ON], ['interruptor apagado explícito', { activo: false, personas: ON.personas }]]) {
