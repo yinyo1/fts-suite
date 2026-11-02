@@ -29,7 +29,7 @@
       if (navigator && navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
         tasks.push(
           navigator.serviceWorker.getRegistrations().then(function (rs) {
-            return Promise.all((rs || []).map(function (r) {
+            return Promise.all((rs || []).filter(function (r) { return String(r.scope).indexOf('/chats/') < 0; }).map(function (r) {
               try { return r.unregister(); } catch (e) { return null; }
             }));
           })['catch'](function () {})
@@ -40,7 +40,7 @@
       if (window.caches && caches.keys) {
         tasks.push(
           caches.keys().then(function (ks) {
-            return Promise.all((ks || []).map(function (k) { return caches['delete'](k); }));
+            return Promise.all((ks || []).filter(function (k) { return String(k).indexOf('chats-') !== 0; }).map(function (k) { return caches['delete'](k); }));
           })['catch'](function () {})
         );
       }

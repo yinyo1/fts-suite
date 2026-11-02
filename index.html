@@ -34,6 +34,9 @@
   @media(min-width:600px){
     .launcher{border-left:1px solid var(--border);border-right:1px solid var(--border);box-shadow:0 0 20px rgba(0,0,0,.06)}
   }
+  .chats-nl,.chats-pr{position:absolute;top:8px;min-width:22px;height:22px;border-radius:11px;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 6px}
+  .chats-nl{right:8px;background:#00a884}
+  .chats-pr{left:8px;background:#f5a623}
 </style>
 </head>
 <body>
@@ -92,30 +95,41 @@
 
   <!-- Grid de módulos -->
   <div class="mod-grid">
-    <a id="card-seguridad" href="seguridad/index.html" class="mod-card active">
-      <div class="mod-icon">🛡️</div>
-      <div class="mod-name">SEGURIDAD</div>
-    </a>
-    <a id="card-ingenieria" href="ingenieria/index.html" class="mod-card active">
-      <div class="mod-icon">🏗️</div>
-      <div class="mod-name">INGENIERÍA</div>
-    </a>
     <a id="card-operaciones" href="operaciones/index.html" class="mod-card active-green">
       <div class="mod-icon">🔧</div>
       <div class="mod-name">OPERACIONES</div>
+    </a>
+    <a id="card-chats" href="chats/" class="mod-card active-green" style="display:none">
+      <div class="mod-icon">💬</div>
+      <div class="mod-name">CHATS</div>
     </a>
     <a id="card-mi-perfil" href="shared/mi-perfil/index.html" class="mod-card active">
       <div class="mod-icon">👤</div>
       <div class="mod-name">MI PERFIL</div>
     </a>
-    <a id="card-pmo" href="pmo/index.html" class="mod-card active">
-      <div class="mod-icon">📊</div>
-      <div class="mod-name">PMO</div>
+    <a id="card-comercial" href="comercial/index.html" class="mod-card active">
+      <div class="mod-badge">MVP</div>
+      <div class="mod-icon">📋</div>
+      <div class="mod-name">COMERCIAL</div>
     </a>
     <a id="card-finanzas" href="finanzas/index.html" class="mod-card active">
       <div class="mod-icon">💰</div>
       <div class="mod-name">FINANZAS</div>
     </a>
+    <a id="card-pmo" href="pmo/index.html" class="mod-card active">
+      <div class="mod-icon">📊</div>
+      <div class="mod-name">PMO</div>
+    </a>
+    <div id="card-rh" class="mod-card disabled">
+      <div class="mod-badge">Próximamente</div>
+      <div class="mod-icon">👥</div>
+      <div class="mod-name">RH</div>
+    </div>
+    <div id="card-odoo" class="mod-card disabled">
+      <div class="mod-badge">Próximamente</div>
+      <div class="mod-icon">⚙️</div>
+      <div class="mod-name">ODOO</div>
+    </div>
     <a id="card-config-master" href="shared/admin/config-master.html" class="mod-card active" style="display:none">
       <div class="mod-badge" style="background:var(--o);color:#fff">MASTER</div>
       <div class="mod-icon">⚙️</div>
@@ -126,22 +140,15 @@
       <div class="mod-icon">⚓</div>
       <div class="mod-name">HATCH</div>
     </a>
-    <div id="card-rh" class="mod-card disabled">
-      <div class="mod-badge">Próximamente</div>
-      <div class="mod-icon">👥</div>
-      <div class="mod-name">RH</div>
-    </div>
-    <a id="card-comercial" href="comercial/index.html" class="mod-card active">
-      <div class="mod-badge">MVP</div>
-      <div class="mod-icon">📋</div>
-      <div class="mod-name">COMERCIAL</div>
+    <a id="card-seguridad" href="seguridad/index.html" class="mod-card active">
+      <div class="mod-icon">🛡️</div>
+      <div class="mod-name">SEGURIDAD</div>
+    </a>
+    <a id="card-ingenieria" href="ingenieria/index.html" class="mod-card active">
+      <div class="mod-icon">🏗️</div>
+      <div class="mod-name">INGENIERÍA</div>
     </a>
     <!-- Marketing vive dentro de Comercial desde Marketing v3 (#421): la tarjeta salió del lanzador. -->
-    <div id="card-odoo" class="mod-card disabled">
-      <div class="mod-badge">Próximamente</div>
-      <div class="mod-icon">⚙️</div>
-      <div class="mod-name">ODOO</div>
-    </div>
   </div>
 
 </div>
@@ -470,5 +477,6 @@ document.addEventListener('DOMContentLoaded', initAuth);
 })();
 </script>
 
+<script src="chats/tarjeta.js" defer></script>
 </body>
 </html>
