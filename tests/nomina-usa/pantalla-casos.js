@@ -14,5 +14,7 @@ module.exports = [
     espera: { nombre: 'Esteban captura la provisional y SO11791 deja de estar sin bolsa', fn: () => !/Sin bolsa/.test(document.body.innerText) && /provisional · folio EDC-2026-11-01/.test(document.body.innerText) } },
   { rol: 'richard', tab: 'bolsas', espera: { nombre: 'Richard ve bolsas sin poder capturar', fn: () => !document.getElementById('nu-prov') } },
   { rol: 'richard', tab: 'solicitud', espera: { nombre: 'Richard ve su solicitud con SO11842 y el comercial', fn: () => /Solicitud de la semana/.test(document.body.innerText) && /Comercial de Ricardo/.test(document.body.innerText) && !!document.getElementById('nu-enviar') } },
-  { rol: 'erick', tab: 'revision', espera: { nombre: 'sin solicitudes todavía, lo dice', fn: () => /Todavía no hay solicitudes/.test(document.body.innerText) } }
+  { rol: 'erick', tab: 'revision', espera: { nombre: 'sin solicitudes todavía, lo dice', fn: () => /Todavía no hay solicitudes/.test(document.body.innerText) } },
+  { rol: 'esteban', tab: 'avisos', espera: { nombre: 'Avisos: cuatro banderas en sombra o apagadas y el aviso de práctica del vigilante', fn: () => document.querySelectorAll('.nu-band[data-band]').length === 4 && /SO11791 sin avance/.test(document.body.innerText) && !!document.querySelector('[data-cfg="costo_odoo_activo"]') } },
+  { rol: 'gerardo', tab: 'avisos', espera: { nombre: 'Gerardo ve los avisos sin poder mover banderas', fn: () => !document.querySelector('[data-cfg]') && /Avisos registrados/.test(document.body.innerText) } }
 ];
