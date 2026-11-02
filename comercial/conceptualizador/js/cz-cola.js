@@ -83,7 +83,7 @@
    *  pedido `enviar` (firmado: json:datos); hoy solo lleva `responde_a` cuando el mensaje responde citando. */
   async function encolar(destino, texto, archivos, escritoAt, datos) {
     var it = { cliente_id: id('msg'), actor: actor(), caso_id: destino.caso_id || null, caso_local: destino.local_id || null,
-               texto: texto || '', escrito_at: escritoAt || Date.now(), estado: 'pendiente', error: null, intentos: 0,
+               texto: texto || '', escrito_at: escritoAt || Date.now(), encolado_at: Date.now(), estado: 'pendiente', error: null, intentos: 0, fallas: 0,
                datos: datos && typeof datos === 'object' ? datos : null,
                archivos: (archivos || []).map(function (a) { return { local: id('adj'), nombre: a.nombre, mime: a.mime, clase: a.clase,
                  bytes: a.bytes, duracion_s: a.duracion_s || null, blob: a.blob, sha256: null, adjunto_id: null }; }) };
@@ -91,70 +91,209 @@
     return it;
   }
 
+  /* ── V1.65.8 (fts-conceptualizador#20, V1.64a · la cola de Richard) ────────────────────────────────────────────
+   * Hasta la V1.65.7 una excepción al leer o subir UN adjunto (el iPhone que ya no puede leer un audio guardado) caía
+   * en el catch general de correr(), se trataba como «sin red» y DETENÍA toda la cola sin decir nada: el primer
+   * mensaje quedaba en «subiendo 1/3 · 0 %» para siempre y los de atrás en «pendiente de enviar». Ahora:
+   *   · cada mensaje se intenta solo (try/catch por mensaje): uno atorado NO bloquea a los demás;
+   *   · cada intento firma con ts y nonce NUEVOS (CzCliente.pedir) y la hora real viaja en escrito_at (ya firmada);
+   *   · un rechazo que no se arregla reintentando deja de reintentarse: rojo, con el motivo en palabras simples;
+   *   · uno que sí puede arreglarse se reintenta con espera creciente (15 s → 5 min) sin frenar a los demás;
+   *   · 3 fallas seguidas, o más de 30 min en la cola con al menos una falla → «Este audio no se ha podido mandar:
+   *     <motivo>» y aviso al servidor (evento `cola_atorada`, alarma en el correo diario);
+   *   · nunca se borra de la cola un adjunto que el servidor no confirmó (descartar() se niega). */
+  var ESPERA = [15000, 30000, 60000, 120000, 300000], ATORADO_MS = 30 * 60 * 1000, FALLAS_ALARMA = 3;
+  // Errores que SÍ pueden arreglarse solos con otro intento (red, servidor caído o saturado, reloj, firma repetida).
+  var REINTENTABLES = ['SIN_RED', 'RESPUESTA_INVALIDA', 'RESPUESTA_VACIA', 'FALLO_VERIFICAR', 'NO_PUBLICADO', 'FUERA_DE_VENTANA',
+                       'REPETIDA', 'SECRETO_NO_CONFIGURADO', 'TOPE_SESIONES'];
+  var MOTIVOS = {
+    SIN_RED: 'el servidor no contesta o no hay señal',
+    RESPUESTA_INVALIDA: 'el servidor contestó con un error',
+    RESPUESTA_VACIA: 'el servidor no contestó nada',
+    FALLO_VERIFICAR: 'el servidor no pudo revisar el envío',
+    NO_PUBLICADO: 'el servicio está apagado en el servidor',
+    FUERA_DE_VENTANA: 'la hora del teléfono no coincide con la del servidor (revisa fecha y hora automáticas)',
+    FIRMA_INVALIDA: 'el envío no pasó la verificación de seguridad',
+    ADJUNTO_GRANDE: 'el archivo pasa de 10 MB',
+    ADJUNTO_ALTERADO: 'el archivo llegó dañado',
+    ADJUNTO_ILEGIBLE: 'el archivo llegó dañado',
+    ADJUNTO_VACIO: 'el archivo está vacío',
+    ADJUNTO_NO_EXISTE: 'el archivo ya no está en el servidor',
+    CASO_NO_EXISTE: 'la conversación ya no existe en el servidor',
+    NO_AUTORIZADO: 'no tienes permiso de escribir en esta conversación',
+    SOLO_LECTURA: 'esta conversación es de solo lectura para ti',
+    TEXTO_VACIO: 'el mensaje está vacío',
+    AUDIO_ILEGIBLE: 'el teléfono ya no puede leer este audio guardado',
+    ARCHIVO_ILEGIBLE: 'el teléfono ya no puede leer este archivo guardado',
+    FALLO_LOCAL: 'el teléfono no pudo preparar el envío'
+  };
+  function motivo(codigo, mensaje) { return MOTIVOS[codigo] || mensaje || ('error ' + (codigo || 'desconocido')); }
+  function reintentable(codigo) { return REINTENTABLES.indexOf(codigo) >= 0; }
+  function sinConfirmar(it) { return (it.archivos || []).some(function (a) { return !a.adjunto_id; }); }
+  function tieneAudio(it) { return (it.archivos || []).some(function (a) { return a.clase === 'audio'; }); }
+  function desde(it) { return it.encolado_at || it.escrito_at || Date.now(); }
+  /** ¿Ya hay que avisar? 3 fallas seguidas, o más de 30 min en la cola con al menos una falla. */
+  function atorado(it, ahora) {
+    if (!it || !it.fallas) return false;
+    return it.fallas >= FALLAS_ALARMA || ((ahora || Date.now()) - desde(it) > ATORADO_MS);
+  }
+  function aviso(it) {
+    var cosa = tieneAudio(it) ? 'Este audio' : (it.archivos && it.archivos.length ? 'Este archivo' : 'Este mensaje');
+    return cosa + ' no se ha podido mandar: ' + (it.motivo || motivo(it.error_codigo, it.error)) + '.';
+  }
+
   async function reintentar(cid) {
     var it = MEMORIA.salida[cid] || (await todos('salida')).filter(function (x) { return x.cliente_id === cid; })[0];
-    if (!it) return; it.estado = 'pendiente'; it.error = null; it.intentos = 0; await poner('salida', it); correr(true);
+    if (!it) return;
+    it.estado = 'pendiente'; it.error = null; it.error_codigo = null; it.motivo = null; it.intentos = 0; it.fallas = 0; it.proximo_at = 0;
+    await poner('salida', it); avisar(); correr(true);
   }
-  async function descartar(cid) { await quitar('salida', cid); avisar(); }
+  /** «Reintentar» del letrero: todos los atorados vuelven a intentarse YA, con firma nueva. */
+  async function reintentarTodo() {
+    var L = await todos('salida');
+    for (var i = 0; i < L.length; i++) { var it = L[i]; it.proximo_at = 0; if (it.estado === 'error') { it.estado = 'pendiente'; it.fallas = 0; } await poner('salida', it); }
+    avisar(); correr(true);
+  }
+  /** Nunca se borra un adjunto que el servidor no confirmó: devuelve false y no toca nada. */
+  async function descartar(cid) {
+    var it = MEMORIA.salida[cid] || (await todos('salida')).filter(function (x) { return x.cliente_id === cid; })[0];
+    if (it && sinConfirmar(it)) return false;
+    await quitar('salida', cid); avisar(); return true;
+  }
 
-  function programar(ms) { clearTimeout(espera); espera = setTimeout(function () { correr(); }, ms); }
+  function programar(ms) { clearTimeout(espera); espera = setTimeout(function () { correr(); }, Math.max(500, ms)); }
 
-  /** Procesa en orden: altas de sesión, luego mensajes (subir cada archivo, luego enviar). */
+  /** Una falla de UN mensaje: se anota en ese mensaje y solo en ese. */
+  async function anotarFalla(it, codigo, mensaje) {
+    it.fallas = (it.fallas || 0) + 1; it.error_codigo = codigo || 'FALLO_LOCAL'; it.motivo = motivo(it.error_codigo, mensaje);
+    it.ultimo_fallo_at = Date.now();
+    if (reintentable(it.error_codigo) && it.fallas < FALLAS_ALARMA) {
+      it.estado = 'pendiente'; it.error = null;
+      it.proximo_at = Date.now() + ESPERA[Math.min(it.fallas - 1, ESPERA.length - 1)];
+    } else if (reintentable(it.error_codigo)) {
+      // Sigue intentándose solo (la red puede volver), pero ya avisa: 3 seguidas.
+      it.estado = 'pendiente'; it.error = null; it.proximo_at = Date.now() + ESPERA[ESPERA.length - 1];
+    } else {
+      it.estado = 'error'; it.error = it.motivo; it.proximo_at = 0;   // no se arregla reintentando: rojo con su motivo
+    }
+    await poner('salida', it);
+  }
+
+  /** Avisa al servidor (una vez por mensaje, reintento cada 10 min) que algo no se ha podido mandar. Best-effort. */
+  async function reportar(it) {
+    if (!it.caso_id || it.reportado_at || (it.reporte_intento_at && Date.now() - it.reporte_intento_at < 600000)) return;
+    it.reporte_intento_at = Date.now(); await poner('salida', it);
+    try {
+      var r = await C.evento({ caso_id: it.caso_id, tipo: 'cola_atorada', datos: {
+        cliente_id: it.cliente_id, codigo: it.error_codigo || null, motivo: it.motivo || null, fallas: it.fallas || 0,
+        escrito_at: Number(it.escrito_at) || null, encolado_at: Number(desde(it)) || null,
+        adjuntos: (it.archivos || []).length, sin_subir: (it.archivos || []).filter(function (a) { return !a.adjunto_id; }).length,
+        clases: (it.archivos || []).map(function (a) { return a.clase; }).slice(0, 20), estado: it.estado,
+        navegador: String((G.navigator && G.navigator.userAgent) || '').slice(0, 160) } });
+      if (r && r.ok) { it.reportado_at = Date.now(); await poner('salida', it); }
+    } catch (e) {}
+  }
+
+  /** Lee un adjunto guardado. Si el teléfono ya no puede leerlo, lo dice con nombre propio en vez de lanzar. */
+  async function leer(a, fn) {
+    try { if (!a.blob) throw new Error('sin blob'); return { ok: true, v: await fn(a.blob) }; }
+    catch (e) { return { ok: false, error: a.clase === 'audio' ? 'AUDIO_ILEGIBLE' : 'ARCHIVO_ILEGIBLE', mensaje: (e && (e.name || e.message)) || '' }; }
+  }
+
+  /** Un mensaje, de punta a punta. Devuelve 'ok' | 'falla' | 'sesion'. NUNCA lanza. */
+  async function mandarUno(it) {
+    try {
+      it.estado = 'subiendo'; it.intentos = (it.intentos || 0) + 1; await poner('salida', it); avisar();
+      for (var k = 0; k < it.archivos.length; k++) {
+        var a = it.archivos[k]; if (a.adjunto_id) continue;
+        if (!a.sha256) {
+          var h = await leer(a, Me.sha256);
+          if (!h.ok) { await anotarFalla(it, h.error, h.mensaje); return 'falla'; }
+          a.sha256 = h.v; await poner('salida', it);
+        }
+        progreso[a.local] = 0; avisar();
+        var b = await leer(a, Me.base64);
+        if (!b.ok) { delete progreso[a.local]; await anotarFalla(it, b.error, b.mensaje); return 'falla'; }
+        var rs = await C.subir({ caso_id: it.caso_id, archivo: a.nombre, mime: a.mime, clase: a.clase, sha256: a.sha256,
+          duracion_s: a.duracion_s, escrito_at: String(it.escrito_at), b64: b.v },
+          function (p) { progreso[a.local] = p; avisar(); });
+        delete progreso[a.local];
+        if (rs.ok) { a.adjunto_id = rs.adjunto_id; await poner('salida', it); avisar(); continue; }
+        if (rs.clase === 'sesion') { it.estado = 'pendiente'; await poner('salida', it); return 'sesion'; }
+        await anotarFalla(it, rs.error, rs.mensaje); return 'falla';
+      }
+      it.estado = 'enviando'; await poner('salida', it); avisar();
+      var pe = { caso_id: it.caso_id, texto: it.texto, cliente_id: it.cliente_id, escrito_at: String(it.escrito_at),
+        adjuntos: it.archivos.map(function (a) { return a.adjunto_id; }) };
+      if (it.datos) pe.datos = it.datos;   // sin datos el pedido queda idéntico al de antes (firma: json:datos = null)
+      var re = await C.enviar(pe);
+      if (re.ok) {
+        await quitar('salida', it.cliente_id); avisar();
+        oyentes.forEach(function (f) { try { f({ enviado: re }); } catch (e) {} });
+        return 'ok';
+      }
+      if (re.clase === 'sesion') { it.estado = 'pendiente'; await poner('salida', it); return 'sesion'; }
+      await anotarFalla(it, re.error, re.mensaje); return 'falla';
+    } catch (e) {
+      Object.keys(progreso).forEach(function (l) { if (it.archivos.some(function (a) { return a.local === l; })) delete progreso[l]; });
+      try { await anotarFalla(it, 'FALLO_LOCAL', e && (e.name || e.message)); } catch (e2) {}
+      return 'falla';
+    }
+  }
+
+  /** Procesa: altas de sesión, luego cada mensaje por su lado (subir cada archivo, luego enviar). */
   async function correr(ya) {
     if (corriendo) return; corriendo = true;
-    var red = false;
+    var parar = false, ahora = Date.now();
     try {
       var casos = await todos('casos');
       for (var i = 0; i < casos.length; i++) {
         var c = casos[i]; if (c.caso_id) continue;
-        var dt = {}; if (c.proyecto) dt.proyecto = c.proyecto; if (c.persona) dt.persona = c.persona;
-        var r = await C.nueva({ titulo: c.titulo, cliente: c.cliente, pais: c.pais, modo_sesion: c.modo || 'libre', empresa: c.empresa || undefined,
-          datos: Object.keys(dt).length ? dt : undefined });
-        if (r.ok) { c.caso_id = r.caso_id; await poner('casos', c); avisar(); }
-        else if (r.clase === 'red') { red = true; break; }
+        try {
+          var dt = {}; if (c.proyecto) dt.proyecto = c.proyecto; if (c.persona) dt.persona = c.persona;
+          var r = await C.nueva({ titulo: c.titulo, cliente: c.cliente, pais: c.pais, modo_sesion: c.modo || 'libre', empresa: c.empresa || undefined,
+            datos: Object.keys(dt).length ? dt : undefined });
+          if (r.ok) { c.caso_id = r.caso_id; await poner('casos', c); avisar(); }
+          else if (r.clase === 'sesion') { parar = true; break; }
+        } catch (e) {}
       }
       var cola = (await todos('salida')).sort(function (a, b) { return a.escrito_at - b.escrito_at; });
-      for (var j = 0; j < cola.length && !red; j++) {
+      for (var j = 0; j < cola.length && !parar; j++) {
         var it = cola[j];
         if (it.estado === 'error') continue;
+        if (!ya && it.proximo_at && it.proximo_at > ahora) continue;   // su espera, sin frenar a los demás
         if (!it.caso_id && it.caso_local) {
           var cl = casos.filter(function (x) { return x.local_id === it.caso_local; })[0];
           if (!cl || !cl.caso_id) continue;
           it.caso_id = cl.caso_id;
         }
-        it.estado = 'subiendo'; it.intentos++; await poner('salida', it); avisar();
-        var fallo = null;
-        for (var k = 0; k < it.archivos.length; k++) {
-          var a = it.archivos[k]; if (a.adjunto_id) continue;
-          if (!a.sha256) { a.sha256 = await Me.sha256(a.blob); await poner('salida', it); }
-          progreso[a.local] = 0; avisar();
-          var rs = await C.subir({ caso_id: it.caso_id, archivo: a.nombre, mime: a.mime, clase: a.clase, sha256: a.sha256,
-            duracion_s: a.duracion_s, escrito_at: String(it.escrito_at), b64: await Me.base64(a.blob) },
-            function (p) { progreso[a.local] = p; avisar(); });
-          delete progreso[a.local];
-          if (rs.ok) { a.adjunto_id = rs.adjunto_id; await poner('salida', it); avisar(); }
-          else { fallo = rs; break; }
-        }
-        if (!fallo) {
-          it.estado = 'enviando'; await poner('salida', it); avisar();
-          var pe = { caso_id: it.caso_id, texto: it.texto, cliente_id: it.cliente_id, escrito_at: String(it.escrito_at),
-            adjuntos: it.archivos.map(function (a) { return a.adjunto_id; }) };
-          if (it.datos) pe.datos = it.datos;   // sin datos el pedido queda idéntico al de antes (firma: json:datos = null)
-          var re = await C.enviar(pe);
-          if (re.ok) { await quitar('salida', it.cliente_id); avisar(); oyentes.forEach(function (f) { try { f({ enviado: re }); } catch (e) {} }); continue; }
-          fallo = re;
-        }
-        if (fallo.clase === 'red') { it.estado = 'pendiente'; await poner('salida', it); red = true; }
-        else if (fallo.clase === 'sesion') { it.estado = 'pendiente'; await poner('salida', it); red = true; }
-        else { it.estado = 'error'; it.error = fallo.mensaje || fallo.error || 'error'; await poner('salida', it); }
+        if (!it.encolado_at) { it.encolado_at = Number(it.escrito_at) || ahora; }
+        var res = await mandarUno(it);
+        if (res === 'sesion') parar = true;   // CzCliente ya mandó al login; la cola sobrevive en IndexedDB
         avisar();
       }
+      // Los que ya ameritan aviso: al servidor (una vez) para la alarma del correo diario.
+      var L = await todos('salida');
+      for (var m = 0; m < L.length; m++) if (atorado(L[m]) || L[m].estado === 'error') await reportar(L[m]);
     } catch (e) {
-      red = true;
+      // No debería llegar aquí (cada mensaje tiene su try); si llega, NO se cuenta como «sin red» de todos.
     } finally { corriendo = false; }
-    var quedan = (await todos('salida')).some(function (x) { return x.estado !== 'error'; }) ||
-                 (await todos('casos')).some(function (x) { return !x.caso_id; });
-    if (quedan) programar(red ? 15000 : (ya ? 500 : 3000));
+    var rest = await todos('salida'), prox = Infinity, t = Date.now();
+    rest.forEach(function (x) { if (x.estado !== 'error') prox = Math.min(prox, x.proximo_at && x.proximo_at > t ? x.proximo_at - t : (ya ? 500 : 3000)); });
+    if ((await todos('casos')).some(function (x) { return !x.caso_id; })) prox = Math.min(prox, 15000);
+    if (prox !== Infinity) programar(parar ? 15000 : prox);
+    avisar();
+  }
+
+  /** Al abrir: lo que quedó «subiendo» o «enviando» de una pestaña que se cerró vuelve a «pendiente» (el 0 % no es real). */
+  async function sanear() {
+    var L = await todos('salida');
+    for (var i = 0; i < L.length; i++) {
+      var it = L[i], cambio = false;
+      if (it.estado === 'subiendo' || it.estado === 'enviando') { it.estado = 'pendiente'; cambio = true; }
+      if (!it.encolado_at) { it.encolado_at = Number(it.escrito_at) || Date.now(); cambio = true; }
+      if (cambio) await poner('salida', it);
+    }
   }
 
   /* V1.32 · dictados de las cajitas sin señal: { k, caso_id, nota:{blob,mime,duracion_s,nombre,escrito_at} } */
@@ -164,9 +303,11 @@
   G.addEventListener('online', function () { correr(true); });
 
   G.CzCola = {
-    iniciar: async function () { await abrir(); correr(true); return persistente; },
+    iniciar: async function () { await abrir(); await sanear(); correr(true); return persistente; },
     persistente: function () { return persistente; },
-    nuevaSesion: nuevaSesion, encolar: encolar, reintentar: reintentar, descartar: descartar, correr: correr,
+    nuevaSesion: nuevaSesion, encolar: encolar, reintentar: reintentar, reintentarTodo: reintentarTodo, descartar: descartar, correr: correr,
+    // V1.65.8 · para la pantalla: ¿ya hay que avisar?, el texto del aviso, y si el mensaje trae algo sin confirmar.
+    atorado: function (it) { return atorado(it); }, aviso: aviso, sinConfirmar: sinConfirmar, motivo: motivo,
     salida: function () { return todos('salida'); }, casosLocales: function () { return todos('casos'); },
     dictados: function () { return todos('dictados'); }, guardarDictado: guardarDictado, quitarDictado: quitarDictado,
     progreso: function (local) { return progreso[local]; },
