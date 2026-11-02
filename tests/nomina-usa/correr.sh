@@ -6,7 +6,7 @@ set -u
 cd "$(dirname "$0")/../.."
 fallas=0
 for t in tests/nomina-usa/fase-*.test.js tests/kiosko-usa/zona-usa.test.js tests/kiosko-usa/tz-viaje.test.js \
-         tests/kiosko-usa/e2e-kiosko-usa.js tests/nomina-usa/kiosko-e2e.js tests/nomina-usa/pantalla.js tests/nomina-usa/flujo-e2e.js; do
+         tests/kiosko-usa/e2e-kiosko-usa.js tests/nomina-usa/kiosko-e2e.js tests/nomina-usa/pantalla.js tests/nomina-usa/flujo-e2e.js tests/nomina-usa/ensayo-general.js tests/nomina-usa/guias.js; do
   [ -f "$t" ] || continue
   if node "$t" > /tmp/nusa-prueba.log 2>&1; then echo "OK    $t ($(tail -1 /tmp/nusa-prueba.log))"
   else echo "FALLA $t"; tail -15 /tmp/nusa-prueba.log; fallas=$((fallas+1)); fi

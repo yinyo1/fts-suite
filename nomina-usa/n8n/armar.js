@@ -13,6 +13,9 @@ const PIEZAS = {
   alertas: { __LEER__: 'alertas-leer.js' },
   'ajuste-viernes': {},
   evidencia: { __LEER__: 'evidencia-leer.js' },
+  vigilante: {},
+  'odoo-lectura': { __LEER__: 'odoo-lectura-leer.js' },
+  'costo-odoo': { __CREAR__: 'costo-crear.js' },
   'db-migrate': { __DECIDIR__: 'db-migrate-decidir.js' }
 };
 const LIBS = { '/*__SESION__*/': 'retardos/lib/sesion.js', '/*__KIOSKO__*/': 'shared/nomina-usa/kiosko.js', '/*__ALERTAS__*/': 'shared/nomina-usa/alertas.js', '/*__EVIDENCIA__*/': 'shared/nomina-usa/evidencia.js' };

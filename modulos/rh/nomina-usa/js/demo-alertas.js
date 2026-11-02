@@ -22,7 +22,7 @@
   var LEER = ['nomina_usa:validar', 'nomina_usa:autorizar'];
   D.reg('alertas', LEER, function (p) {
     var l = S.alertas.filter(function (a) { return !p.solo_abiertas || a.estado === 'abierta' || a.estado === 'en_disputa'; });
-    return { ok: true, modo: S.config.alertas_modo, alertas: JSON.parse(JSON.stringify(l)) };
+    return { ok: true, modos: { usa: S.config.alertas_modo_usa, mx: S.config.alertas_modo_mx }, alertas: JSON.parse(JSON.stringify(l)) };
   });
   D.reg('alerta_marcar', ['nomina_usa:validar'], function (p, q) {
     var a = S.alertas.find(function (x) { return x.id === Number(p.id); });

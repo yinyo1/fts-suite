@@ -94,7 +94,84 @@
     return r;
   }
 
+  /* ── Zona horaria por coordenadas (ajuste de Esteban, 2-nov) ───────────────────────────────
+   * Mateo, José Luis y Ricardo viajan entre California y Texas: la alerta de entrada se evalúa
+   * en la zona de su ÚLTIMA checada, no en una fija. Odoo no guarda la zona de la checada, pero
+   * sí la ubicación de entrada (in_latitude / in_longitude), y con eso basta.
+   * Es una APROXIMACIÓN por franjas, a propósito chica para poder embeberla en n8n (el contorno
+   * real pesa 500 KB): la frontera con México va como polilínea de ~25 puntos y las fronteras
+   * entre zonas de EE.UU. como líneas de longitud por banda de latitud. Es exacta para donde
+   * trabajan (California, Texas, Nuevo León) y puede fallar a unos km de una frontera de zona
+   * dentro de EE.UU. o junto al río Bravo. Sin ubicación devuelve null: nunca inventa. */
+  var FRONTERA_MX = [[-117.13, 32.53], [-114.72, 32.72], [-111.07, 31.33], [-108.21, 31.33], [-108.2, 31.78], [-106.53, 31.78],
+    [-106.45, 31.74], [-105.85, 31.29], [-104.9, 30.6], [-104.37, 29.56], [-103.6, 29.16], [-103.15, 28.98], [-102.9, 29.18],
+    [-102.45, 29.78], [-101.4, 29.77], [-100.9, 29.36], [-100.5, 28.71], [-99.95, 27.95], [-99.5, 27.5], [-99.27, 26.9],
+    [-98.82, 26.38], [-98.3, 26.11], [-97.7, 26.05], [-97.5, 25.9], [-97.14, 25.96]];
+  function latFrontera(lng) {
+    for (var i = 1; i < FRONTERA_MX.length; i++) {
+      var a = FRONTERA_MX[i - 1], b = FRONTERA_MX[i];
+      if (lng >= a[0] && lng <= b[0]) return a[1] + (b[1] - a[1]) * (lng - a[0]) / (b[0] - a[0]);
+    }
+    return null;
+  }
+  function enMexico(lat, lng) {
+    if (lng < -117.13) return lat < 32.53;
+    if (lng <= -97.14) return lat < latFrontera(lng);
+    return lat < 25.8 && lng < -86.7;      // costa del Golfo y Yucatán; Florida queda fuera
+  }
+  function zonaDeCoordenadas(lat, lng) {
+    lat = Number(lat); lng = Number(lng);
+    if (!isFinite(lat) || !isFinite(lng) || (lat === 0 && lng === 0)) return null;   // 0,0 = Odoo sin ubicación
+    if (lat < 14 || lat > 50 || lng < -125 || lng > -66) return null;               // fuera de México y EE.UU. continental
+    if (enMexico(lat, lng)) return 'America/Monterrey';
+    if (lat >= 31.33 && lat <= 37 && lng >= -114.82 && lng <= -109.05) return 'America/Phoenix';
+    if (lng <= -114.05) return 'America/Los_Angeles';
+    var oeste = lat < 32 ? -104.92 : lat < 37 ? -103.04 : -101;      // Mountain | Central
+    if (lng <= oeste) return 'America/Denver';
+    var este = lat < 37 ? -85.3 : -86.5;                              // Central | Eastern
+    return lng <= este ? 'America/Chicago' : 'America/New_York';
+  }
+  /** Zona en la que se evalúa a una persona: la de su ÚLTIMA checada (entrada o salida) anterior a
+   *  `ahora` con ubicación; si no hay ninguna, la de la ficha; si tampoco, Monterrey.
+   *  atts: [{check_in, check_out, in_latitude, in_longitude, out_latitude, out_longitude}] */
+  function zonaUltimaChecada(atts, ahora, zonaFicha) {
+    var lim = ahora instanceof Date ? ahora : new Date(ahora), mejor = null;
+    (atts || []).forEach(function (a) {
+      [['check_in', 'in_latitude', 'in_longitude'], ['check_out', 'out_latitude', 'out_longitude']].forEach(function (k) {
+        var t = utc(a[k[0]]); if (!t || t > lim) return;
+        var z = zonaDeCoordenadas(a[k[1]], a[k[2]]); if (!z) return;
+        if (!mejor || t > mejor.t) mejor = { t: t, zona: z };
+      });
+    });
+    return mejor ? { zona: mejor.zona, fuente: 'ultima_checada', at: mejor.t.toISOString() }
+                 : { zona: zonaFicha || 'America/Monterrey', fuente: zonaFicha ? 'ficha' : 'omision', at: null };
+  }
+  /** Alertas de UNA persona en el instante `ahora`. Es lo que corre el workflow cada 15 min y lo que
+   *  repite la prueba de octubre. p: {employee_id, hora_ref, zona, fuente}. mias: sus asistencias
+   *  recientes (abiertas o de las últimas 40 h). historial: sus asistencias con ubicación (para la
+   *  zona de la última checada; solo se usa si p.fuente === 'ficha'). par: {tolerancia_min, salida_horas, festivos}. */
+  function alertasPersona(p, mias, historial, ahora, par) {
+    par = par || {};
+    var z = p.fuente === 'ficha' ? zonaUltimaChecada(historial, ahora, p.zona) : { zona: p.zona || 'America/Monterrey', fuente: 'padron', at: null };
+    var pz = { employee_id: p.employee_id, hora_ref: p.hora_ref, zona: z.zona };
+    var hoy = local(ahora, z.zona).fecha;
+    var entradasHoy = (mias || []).filter(function (a) { return local(utc(a.check_in), z.zona).fecha === hoy; }).length;
+    var e = entradaFaltante(pz, entradasHoy, ahora, par.tolerancia_min, par.festivos), out = [];
+    if (e.alerta) out.push({ clave: e.clave, tipo: 'entrada_faltante', employee_id: p.employee_id, fecha: e.fecha, attendance_id: null,
+      detalle: { hora_ref: p.hora_ref, zona: z.zona, zona_fuente: z.fuente, zona_ficha: p.zona || null, segundos_tarde: e.segundos_tarde, fuente: p.fuente } });
+    (mias || []).forEach(function (a) {
+      salidaFaltante(a, ahora, par.salida_horas, z.zona).forEach(function (x) {
+        out.push({ clave: x.clave, tipo: x.tipo, employee_id: p.employee_id, fecha: x.fecha, attendance_id: a.id,
+          detalle: { check_in_utc: a.check_in, zona: z.zona, zona_fuente: z.fuente } });
+      });
+    });
+    return { zona: z, entrada: e, alertas: out };
+  }
+  var ZONAS_USA = ['America/Los_Angeles', 'America/Denver', 'America/Phoenix', 'America/Chicago', 'America/New_York'];
+  function esZonaUSA(z) { return ZONAS_USA.indexOf(z) >= 0; }
+
   NU.alertas = { local: local, utc: utc, entradaFaltante: entradaFaltante, salidaFaltante: salidaFaltante,
-    incidencias: incidencias, sosPorDia: sosPorDia, dias: dias };
+    incidencias: incidencias, sosPorDia: sosPorDia, dias: dias,
+    zonaDeCoordenadas: zonaDeCoordenadas, zonaUltimaChecada: zonaUltimaChecada, esZonaUSA: esZonaUSA, alertasPersona: alertasPersona };
   if (typeof module !== 'undefined' && module.exports) module.exports = NU.alertas;
 })(typeof window !== 'undefined' ? window : globalThis);

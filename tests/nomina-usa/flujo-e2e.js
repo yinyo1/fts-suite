@@ -101,6 +101,31 @@ const T = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css
   check('marcada como subida', /subido/.test(await txt()));
   await fotos('gerardo-revision');
 
+  seccion('MVP: costo por SO (vista previa) y conciliación de Auris');
+  t = await txt();
+  check('Gerardo ve el asiento de costo guardado al marcar subido, con la bandera APAGADA', /Costo en Odoo por SO/.test(t) && /vista previa guardada/.test(t) && /APAGADA/.test(t), t.slice(-1500));
+  const costo = await page.evaluate(() => [...document.querySelectorAll('#nu-costo tbody tr')].map(r => r.innerText.replace(/\s+/g, ' ')));
+  check('Ricardo $960 a SO11842 · analítica 3104', costo.some(x => /Ricardo/.test(x) && /SO11842/.test(x) && /3104/.test(x) && /\$960\.00/.test(x)), costo);
+  check('faltantes a la vista: diario y cuenta puente de la empresa 6', /Falta para crearlo en Odoo: DIARIO/.test(t) && /CUENTA_PUENTE/.test(t));
+  check('el asiento cuadra: debe = haber', await page.evaluate(() => { const k = [...document.querySelectorAll('#nu-costo .nu-kpi b')].map(b => b.textContent); return k.length === 2 && k[0] === k[1]; }));
+  await page.click('#nu-au-ej'); await page.waitForTimeout(200);
+  t = await txt();
+  check('registro de Auris de ejemplo: cuadra con 2 cargos del banco', /Cuadra con 2 cargo\(s\) del banco por \$4,671\.84/.test(t), t.slice(-1500));
+  check('propuesta: neto → puente, impuestos → impuestos pagados, fee → gasto administrativo', /Nómina USA por pagar \(puente\)/.test(t) && /Impuestos de nómina pagados/.test(t) && /Gasto administrativo/.test(t));
+  check('prorrateo de impuestos a las SO en vista previa', /Prorrateo de impuestos de 2026-11/.test(t));
+  check('sin desborde a 380', !(await desborda()));
+  await fotos('gerardo-costo-conciliacion');
+
+  seccion('MVP: avisos entre pasos (en sombra)');
+  await como('esteban', 'avisos');
+  t = await txt();
+  check('cada paso dejó su aviso: envío → Magaly, validación → Erick, autorización → Gerardo, subida → los tres', /Richard envió la solicitud/.test(t) && /Magaly validó/.test(t) && /súbela a Auris/.test(t) && /ya está en Auris/.test(t), t.slice(0, 1500));
+  check('«Pedir a Magaly que la revise» también avisó a Magaly', /revisa una incidencia en disputa/.test(t));
+  check('todos en sombra: ninguno salió', /sombra: no salió/.test(t) && !/enviado a la bandeja/.test(t));
+  check('cuatro banderas nuevas, todas en sombra o apagadas', await page.evaluate(() => ['avisos_modo', 'vigilante_modo', 'costo_odoo_activo', 'conciliacion_activa'].every(k => /SOMBRA|APAGADO/.test(document.querySelector('[data-band="' + k + '"]').innerText))));
+  check('sin desborde a 380', !(await desborda()));
+  await fotos('esteban-avisos');
+
   seccion('Viernes: ajuste precargado en la siguiente solicitud');
   await como('richard', 'solicitud');
   await page.click('[data-sem="7"]'); await page.waitForFunction(() => /2026-11-06/.test(document.getElementById('vista').innerText));

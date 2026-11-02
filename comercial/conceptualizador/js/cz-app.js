@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.65.4';
+  var VERSION = 'V1.65.6';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -117,6 +117,8 @@
   /* V1.65 (fts-suite#442, db/064) · y POR PERSONA: `interruptores_actor: {<nombre>: bool}` (lo nuevo nace prendido solo para quien lo
    * pidió). Orden: el caso, la persona, el global; la misma regla que la base (prendido_para). Sin el campo, igual que antes. */
   ST.intActor = {};
+  // V1.64a parte 14 (#20 punto 3) · ayudante propio: en algunas funciones hay una `var on` local (los clics) que tapa a on().
+  function limpioOn() { return on('limpio_v164'); }
   function on(n, cid) {
     var id = cid || (ST.sel && ST.sel.id), m = id && ST.intCaso ? ST.intCaso[id] : null;
     if (m && typeof m === 'object' && Object.prototype.hasOwnProperty.call(m, n)) return m[n] === true;
@@ -438,7 +440,8 @@
       });
       h += '</div></div>';
     });
-    h += '<p class="pie">Una sesión por cotización · <a href="#" id="bAprendio">Lo que aprendió</a> · ' + VERSION + '</p></div>';
+    // V1.64a parte 14 (#20 punto 3 #6, `limpio_v164`) · la versión ya sale en el encabezado: el pie no la repite.
+    h += '<p class="pie">Una sesión por cotización · <a href="#" id="bAprendio">Lo que aprendió</a>' + (limpioOn() ? '' : ' · ' + VERSION) + '</p></div>';
     h += G.CzInterruptor('pantalla_v153') ? '<button class="fab nueva chn-mas" id="bNueva" aria-label="Nueva cotización" title="Nueva cotización">' + ico('nuevo') + '</button>'
       : '<button class="fab nueva" id="bNueva">' + ico('nuevo') + 'Nueva cotización</button>';
     $('#lista').innerHTML = h;
@@ -500,7 +503,8 @@
       ST.busca ? 'Nada con «' + esc(ST.busca) + '».' :
       ST.filtro === 'vivas' && !gu ? 'No hay cotizaciones en curso. Abre una con «Nueva cotización» y platícale el trabajo.' : 'Nada aquí con estos filtros.') + '</p>';
     L.forEach(function (c) { h += filaSes(c); });
-    h += '<p class="pie">Una sesión por cotización · <a href="#" id="bAprendio">Lo que aprendió</a> · ' + VERSION + '</p></div>';
+    // V1.64a parte 14 (#20 punto 3 #6, `limpio_v164`) · la versión ya sale en el encabezado: el pie no la repite.
+    h += '<p class="pie">Una sesión por cotización · <a href="#" id="bAprendio">Lo que aprendió</a>' + (limpioOn() ? '' : ' · ' + VERSION) + '</p></div>';
     // V1.53b (`pantalla_v153`) · la bolita «+» redonda del núcleo; «Nueva cotización» queda como nombre y aviso al pasar el mouse.
     if (!ST.archivadas) h += G.CzInterruptor('pantalla_v153') ? '<button class="fab nueva chn-mas" id="bNueva" aria-label="Nueva cotización" title="Nueva cotización">' + ico('nuevo') + '</button>'
       : '<button class="fab nueva" id="bNueva">' + ico('nuevo') + 'Nueva cotización</button>';
@@ -1650,7 +1654,8 @@
         : 'Sin ella no se buscan precios: tiendas, fletes y viáticos se miden contra ella.') +
       (mia(c) ? ' <button type="button" class="link" id="avCiudad">' + (x ? 'Cambiar' : 'Elegir') + '</button>' : '') + '</div>';
     h += '<ol class="avl-pasos">' + P.map(function (p, i) { var e = av.e[i]; return '<li class="' + e + '" title="' + esc(av.det[i]) + '">' + (e === 'hecho' ? '✓ ' : '') + (i + 1) + ' ' + esc(p) + '</li>'; }).join('') + '</ol>';
-    if (av.machote) h += '<div class="avl-maq">Machote ' + esc(folio || '') + ' · <button type="button" class="link" id="avAbrir">Abrir ' + esc(folio || 'machote') + '</button></div>';
+    // V1.64a parte 14 (#20 punto 3 #7, `limpio_v164`) · «Machote · Abrir COT-…»: el folio una sola vez.
+    if (av.machote) h += '<div class="avl-maq">Machote ' + (limpioOn() ? '' : esc(folio || '') + ' ') + '· <button type="button" class="link" id="avAbrir">Abrir ' + esc(folio || 'machote') + '</button></div>';
     h += '<div class="avl-sub">Rubros</div>';
     if (R) {
       h += R.lista.map(function (r) {
@@ -1768,7 +1773,8 @@
           on('cierre_tarjetas') && r.abiertas ? '<span class="rub-tag esp">' + esc(plural(r.abiertas, 'abierta', 'abiertas')) + '</span>' : '') + '</b><span class="rub-sub">' + esc(sub) + '</span>' + barraRubro(r) + '</span>' +
         '<span class="rub-pct">' + (r.estado === 'cerrado' ? '✓' : typeof r.pct === 'number' ? r.pct + ' %' : '') + '</span></button>';
     });
-    var tit = 'Rubros ' + cerr + '/' + R.lista.length + ' · ' + (P ? G.CzAvance.textoPrecios(P) : 'Llevas ' + R.total_pct + ' %');
+    // V1.64a parte 14 (#20 punto 3 #8, `limpio_v164`) · el % ya sale en la franja y en el panel: la tarjeta deja solo «Rubros n/m».
+    var tit = 'Rubros ' + cerr + '/' + R.lista.length + (P ? ' · ' + G.CzAvance.textoPrecios(P) : limpioOn() ? '' : ' · Llevas ' + R.total_pct + ' %');
     var hv = on('pantalla_v153') && ST.ultVis ? hora(ST.ultVis) : ST.hilo && ST.hilo.ultima && ST.hilo.ultima.created_at ? hora(ST.hilo.ultima.created_at) : '';
     // V1.51 · B · la tarjeta de estado VIGENTE (prototipo aprobado: una sola, al final y colapsada; las anteriores, superadas).
     return '<div class="carta rub-carta vigente" id="estadoVigente"><div class="vig-cab">Estado de la cotización <span class="vig">vigente' + (hv ? ' · ' + esc(hv) : '') + '</span></div>' +
@@ -2378,7 +2384,7 @@
       if (det) leer = '';
       // Sin trabajo en modo «ya tengo el levantamiento»: guardado; el motor lo lee todo junto al disparar.
       var tk = mio ? (!m.trabajo_id && modo === 'levantamiento' ? '<span class="tk leido" title="Guardado; lo reviso todo junto cuando toques «Ya es todo»">' + palomita(true) + '</span>' : tick(tr)) : '';
-      if (!pleg) burbuja(mio ? 'yo' : 'el', '', 'Conceptualizador' + (/respaldo/.test(m.autor) ? ' · respaldo' : ''),
+      if (!pleg) burbuja(mio ? 'yo' : 'el', '', 'Conceptualizador' + (/respaldo/.test(m.autor) && !limpioOn() ? ' · respaldo' : ''),   // V1.64a parte 14 (#20 punto 3 #13) · sin jerga interna
         citaDe(m.responde_a, m.texto) +
         adjuntosHtml((m.adjuntos || []).map(function (a) { return Object.assign({}, a, meta[a.id] || {}); }), false) +
         (sinMarca(m.texto) ? '<div class="txt' + (corto ? ' txt-corto' : '') + '"' + leer + '>' + (mio ? esc(sinMarca(m.texto)) : det ? md(det.linea) +
