@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="412" height="412" viewBox="0 0 412 412"><g fill="none" stroke="#c8bfb3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".38">
+<path d="M30 40h40a8 8 0 0 1 8 8v22a8 8 0 0 1-8 8H48l-12 10v-10h-6a8 8 0 0 1-8-8V48a8 8 0 0 1 8-8z"/>
+<path d="M140 30l-12 26h14l-10 26 26-34h-15l11-18z"/>
+<path d="M230 32h34v46l-6-4-5 4-6-4-6 4-5-4-6 4z M238 46h18 M238 56h18 M238 66h10"/>
+<path d="M330 40a14 14 0 1 0 22 16l18 18 8-8-18-18a14 14 0 0 0-16-22l8 8-6 6z"/>
+<circle cx="60" cy="150" r="14"/><path d="M60 140v10l7 5"/>
+<path d="M150 130h46v32h-46z M150 140h46 M162 130v-6h22v6"/>
+<path d="M250 130l20 12-20 12z M244 124h34v36h-34z"/>
+<path d="M340 130c0-10 22-10 22 0v10c0 10-22 10-22 0z M336 140c0 14 30 14 30 0 M351 156v10"/>
+<path d="M28 250h48v28H28z M40 250v-8h24v8 M52 260v8"/>
+<path d="M140 240l26 0 0 26-26 0z M146 246l14 14 M160 246l-14 14"/>
+<path d="M240 250a18 18 0 1 0 36 0a18 18 0 1 0-36 0 M258 240v10h8"/>
+<path d="M330 240h40v8h-40z M336 248v26h28v-26 M346 256h8"/>
+<path d="M40 340l14 14 26-28"/><path d="M140 340h40l-8 26h-24z M148 336v-10 M172 336v-10"/>
+<path d="M240 334h40v30h-40z M240 334l20 16 20-16"/><path d="M336 330v40 M326 340h20 M326 360h20"/>
+</g></svg>
