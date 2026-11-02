@@ -1,6 +1,11 @@
 {
-  "version": "V1.65.5",
+  "version": "V1.65.6",
   "historial": [
+    {
+      "version": "V1.65.6",
+      "fecha": "2026-11-01",
+      "nota": "fts-conceptualizador#20 (V1.64a parte 14, punto 3, `limpio_v164`, ya prendido): menos ruido. #6 el pie de la lista ya no repite la versión; #7 panel «Machote · Abrir COT-…» (el folio una vez); #8 la tarjeta de rubros dice «Rubros n/m» sin el % (ya sale en la franja y el panel); #9 vista interna: la descripción completa solo si el título se corta, la nota del nivel una vez, sin «Sin nivel» ni «sin liga»; #13 sin el sufijo «· respaldo» en las burbujas."
+    },
     {
       "version": "V1.65.5",
       "fecha": "2026-11-01",

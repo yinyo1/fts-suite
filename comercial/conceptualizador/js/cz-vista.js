@@ -205,6 +205,7 @@
   }
   function idx(k) { var i = ORDEN.indexOf(k); return i < 0 ? 9 : i; }
   function suma(L) { return L.reduce(function (a, x) { a.c += x.c; a.p += x.p; return a; }, { c: 0, p: 0 }); }
+  var DESC_CORTA = 70;   // V1.64a parte 14 (#9) · a partir de aquí el título de un renglón se corta en pantalla
   function margen(c, p, com) { return p ? (p - c - com) / p : null; }
 
   /* ── pintado ── */
@@ -240,12 +241,17 @@
     var quien = r.o === 'tu'
       ? '🔒 Lo dijiste tú' + ((r.dec || []).length ? ': ' + (r.dec || []).map(function (k) { return esc(quienDe(k, REF)); }).join('<br>') : '')
       : '🤖 Lo supuso el agente' + (r.tipo === 'Mano de obra' ? ' (tarifa de plantilla del machote)' : ', con la fuente de arriba');
-    return '<dl><dt>Descripción completa</dt><dd>' + esc(r.d) + '</dd>' +
+    // V1.64a parte 14 (#20 punto 3 #9, `limpio_v164`) · sin lo repetido ni lo que no dice nada: la descripción completa solo si el título
+    // se corta (más de DESC_CORTA letras), la nota del nivel UNA vez por vista, y sin «Sin nivel» ni «sin liga».
+    var LV = prendido('limpio_v164'), NV = r.nivel && prendido('niveles_v158') && G.CzNiveles;
+    var notaN = NV ? (LV && S.notasNivel && S.notasNivel[r.nivel] ? '' : '<br><small>' + esc(G.CzNiveles.nota(r.nivel)) + '</small>') : '';
+    if (NV && LV && S.notasNivel) S.notasNivel[r.nivel] = true;
+    var conLiga = !!r.liga || f.sin, piezas = prendido('ligas_v158') && G.CzLigas && G.CzLigas.piezas ? G.CzLigas.piezas(r, { sinLiga: true }) : '';
+    return '<dl>' + (LV && String(r.d || '').length <= DESC_CORTA ? '' : '<dt>Descripción completa</dt><dd>' + esc(r.d) + '</dd>') +
       '<dt>Cantidad</dt><dd>' + esc(qty) + ' ' + esc(r.unidad || '') + ' · P. unitario ' + pu + (r.moneda || mon ? ' ' + esc(r.moneda || mon) : '') + '</dd>' +
-      '<dt>Nivel</dt><dd>' + (r.nivel && prendido('niveles_v158') && G.CzNiveles ? esc(G.CzNiveles.nombre(r.nivel)) + '<br><small>' + esc(G.CzNiveles.nota(r.nivel)) + '</small>' :
-        r.nivel ? esc(NIVEL[r.nivel] || r.nivel) : (r.tipo === 'Mano de obra' ? 'Mano de obra (sin nivel)' : 'Sin nivel')) + '</dd>' +
-      '<dt>Fuente</dt><dd>' + (r.liga ? 'Liga' + liga(r.liga) : (f.sin ? 'PENDIENTE PROVEEDOR' : 'sin liga')) +
-        (prendido('ligas_v158') && G.CzLigas && G.CzLigas.piezas ? G.CzLigas.piezas(r, { sinLiga: true }) : '') + '</dd>' +
+      (LV && !r.nivel ? '' : '<dt>Nivel</dt><dd>' + (NV ? esc(G.CzNiveles.nombre(r.nivel)) + notaN :
+        r.nivel ? esc(NIVEL[r.nivel] || r.nivel) : (r.tipo === 'Mano de obra' ? 'Mano de obra (sin nivel)' : 'Sin nivel')) + '</dd>') +
+      (LV && !conLiga && !piezas ? '' : '<dt>Fuente</dt><dd>' + (r.liga ? 'Liga' + liga(r.liga) : (f.sin ? 'PENDIENTE PROVEEDOR' : 'sin liga')) + piezas + '</dd>') +
       '<dt>Fórmula</dt><dd><code>' + form + '</code></dd>' +
       '<dt>Quién</dt><dd>' + quien + '</dd>' +
       (conAlerta(r) ? '<dt>Alerta</dt><dd class="al">⚠ ' + esc(r.alerta) + '</dd>' : '') + '</dl>' + editorN0(f);
@@ -457,6 +463,7 @@
     }
     S.el.classList.remove('vz-ver-cliente');
     S.el.classList.toggle('vz-limpio', prendido('limpio_v164'));   // V1.64a parte 12 (#20 punto 3) · el h1 repetido se esconde en pantalla
+    S.notasNivel = {};   // V1.64a parte 14 (#9) · la nota de cada nivel sale una sola vez por pintada
     if (!todas.length) h += '<p class="vz-vacio">Todavía no hay machote en esta conversación. Cuando el agente mande el BOM, aquí sale todo.</p>';
     h += '<section class="vz-tiles" id="vzResumen" data-costo="' + D.tot.c + '" data-precio="' + D.tot.p + '">' +
       '<div class="vz-tile"><small>Precio a cliente (total' + (mon ? ', ' + esc(mon) : '') + ')</small><b>' + dinero(D.tot.p) + '</b></div>' +
