@@ -12,9 +12,10 @@ const PIEZAS = {
   kiosko: { __VALIDAR__: 'kiosko-validar.js' },
   alertas: { __LEER__: 'alertas-leer.js' },
   'ajuste-viernes': {},
+  evidencia: { __LEER__: 'evidencia-leer.js' },
   'db-migrate': { __DECIDIR__: 'db-migrate-decidir.js' }
 };
-const LIBS = { '/*__SESION__*/': 'retardos/lib/sesion.js', '/*__KIOSKO__*/': 'shared/nomina-usa/kiosko.js', '/*__ALERTAS__*/': 'shared/nomina-usa/alertas.js' };
+const LIBS = { '/*__SESION__*/': 'retardos/lib/sesion.js', '/*__KIOSKO__*/': 'shared/nomina-usa/kiosko.js', '/*__ALERTAS__*/': 'shared/nomina-usa/alertas.js', '/*__EVIDENCIA__*/': 'shared/nomina-usa/evidencia.js' };
 function armar(wf) {
   if (!PIEZAS[wf]) throw new Error('uso: armar.js ' + Object.keys(PIEZAS).join('|'));
   let sdk = fs.readFileSync(path.join(R, wf + '.sdk.js'), 'utf8');
