@@ -25,6 +25,14 @@
       '<button class="btn" data-sem="-7">← Anterior</button> <button class="btn" data-sem="7">Siguiente →</button></div>' +
       '<p class="muted">Semana FTS del <b>' + sem.inicio + '</b> (viernes) al <b>' + sem.fin + '</b> (jueves). Miércoles ' + sem.miercoles + ' y jueves ' + sem.jueves + ' van estimados. Montos netos en USD (Auris agrega impuestos).</p>';
 
+    // Bolsas con algo por confirmar (ej. pagos previos de SO11791): se avisa SIEMPRE, aunque la SO
+    // no tenga horas esta semana. Lo pone Esteban en la bolsa (0015, bolsa.por_confirmar).
+    var porConf = x.bolsas_por_confirmar || [];
+    if (porConf.length) h += '<div class="aviso" id="nu-por-confirmar"><div><b>Por confirmar con Richard</b><ul>' +
+      porConf.map(function (b) { return '<li><span style="font-weight:700">' + e(String(b.so_nombre || ('SO ' + b.so_id)).split(' - ')[0]) + '</span> · bolsa ' + e(b.folio || '') + ': ' + e(b.texto) +
+        ' <span class="muted">(ya pagado capturado: supervisor ' + $$(b.pagado_previo_supervisor) + ' · técnicos ' + $$(b.pagado_previo_tecnicos) + ')</span></li>'; }).join('') +
+      '</ul></div></div>';
+
     if (x.solicitud) {
       h += '<div class="aviso"><div><b>Ya enviada: ' + e(x.solicitud.estado) + '</b>Esta semana ya tiene solicitud. Su revisión está en la pestaña «Revisión».</div></div>';
       el.innerHTML = h; cablearSemana(el, c); return;
@@ -92,6 +100,11 @@
     var totAj = ajustes.reduce(function (a, j) { return a + Number(j.monto || 0); }, 0);
     if (ajustes.length) h += '<div class="caja nu-so" id="nu-ajuste"><h3>Ajuste de la semana anterior</h3><p class="muted">Se compara lo estimado el miércoles contra lo real. Va precargado y no se edita.</p><div class="nu-scroll"><table class="nu-tabla"><thead><tr><th>Persona</th><th>Día</th><th class="n">Estimado</th><th class="n">Real</th><th class="n">Ajuste</th></tr></thead><tbody>' +
       ajustes.map(function (a) { return '<tr><td>' + e(a.alias || nom(a.employee_id)) + '</td><td>' + e(a.fecha || '') + '</td><td class="n">' + a.estimado + '%</td><td class="n">' + a.real + '%</td><td class="n"><b>' + $$(a.monto) + '</b></td></tr>'; }).join('') +
+      '</tbody></table></div></div>';
+    // Ajuste de avance: INFORMATIVO (0006). No suma: el disponible de esta semana ya se calcula con el avance real.
+    var info = x.ajustes_info || [];
+    if (info.length) h += '<div class="caja nu-so" id="nu-ajuste-info"><h3>Ajuste de avance de la semana anterior (informativo)</h3><p class="muted">Avance estimado al jueves contra el real. No se suma a la solicitud: el disponible de esta semana ya se calcula con el avance real y lo pagado.</p><div class="nu-scroll"><table class="nu-tabla"><thead><tr><th>SO</th><th>Rol</th><th class="n">Estimado</th><th class="n">Real</th><th class="n">Diferencia</th></tr></thead><tbody>' +
+      info.map(function (a) { return '<tr><td>' + e(String(a.so_nombre || ('SO ' + a.so_id)).split(' - ')[0]) + '</td><td>' + e(a.rol || '') + '</td><td class="n">' + a.estimado + '%</td><td class="n">' + a.real + '%</td><td class="n">' + $$(a.monto) + '</td></tr>'; }).join('') +
       '</tbody></table></div></div>';
     h += '<div class="nu-kpis"><div class="nu-kpi"><b id="nu-total">—</b><small>total de la solicitud</small></div></div>' +
       '<div class="err hid" id="nu-envio-err"></div>' +

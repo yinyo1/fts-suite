@@ -17,6 +17,7 @@
     if (sin.length) h += '<div class="nu-bloq">Sin bolsa: ' + sin.map(function (s) { return '<b>' + e(s.so_nombre) + '</b>'; }).join(', ') + '. No se puede pedir pago de estas SO hasta capturar su bolsa.</div>';
     r.bolsas.forEach(function (b) {
       h += '<div class="caja nu-so"><h3>' + e(b.so_nombre) + ' <span class="chip ' + (b.origen === 'machote' ? 'e-validado' : 'e-espera') + '">' + (b.origen === 'machote' ? 'machote' : 'provisional · folio ' + e(b.folio)) + '</span></h3>' +
+        (b.por_confirmar ? '<div class="aviso"><div><b>Por confirmar con Richard</b>' + e(b.por_confirmar) + '</div></div>' : '') +
         '<div class="muted">Avance vigente: <b>' + b.avance + '%</b></div><div class="nu-scroll"><table class="nu-tabla"><thead><tr><th>Rol</th><th class="n">Bolsa</th><th class="n">Pagado</th><th class="n nu-oc">Bolsa × avance</th><th class="n">Disponible</th></tr></thead><tbody>' +
         ['supervisor', 'tecnicos'].map(function (rol) {
           var pag = b['pagado_previo_' + rol] + (b['pagado_' + rol] || 0);

@@ -1,9 +1,15 @@
 {
-  "version": "V1.07",
+  "version": "V1.08",
   "fecha": "2026-11-02",
   "modulo": "rh/nomina-usa",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Contador propio de este modulo.",
   "historial": [
+    {
+      "version": "V1.08",
+      "fecha": "2026-11-02",
+      "titulo": "Activacion del 2-nov: bolsas por confirmar y ajuste de avance visible (#448)",
+      "nota": "La solicitud del miercoles avisa de las bolsas con algo por confirmar (SO11791: pagos previos por confirmar con Richard), aunque la SO no tenga horas en la semana. El ajuste de avance del viernes se ve como informativo (no suma). La pestana Bolsas marca la bolsa por confirmar."
+    },
     {
       "version": "V1.07",
       "fecha": "2026-11-02",
