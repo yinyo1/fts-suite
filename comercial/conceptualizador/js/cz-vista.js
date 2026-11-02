@@ -406,6 +406,10 @@
       '<span class="vz-nom"><b>Métricas del caso</b><small>' + mins + ' · ' + n(t.total) + ' toques · ' + n(v.total) + ' versiones</small></span><span></span></button>' +
       '<div class="vz-cuerpo"' + (ab ? '' : ' hidden') + '><dl>' +
       fila('De la primera nota al primer borrador en Odoo', mins, (F.primera_nota || '') + ' → ' + (F.primer_borrador || '')) +
+      // V1.64a parte 13 (#20 punto 1, db/074): el primer machote (lo que mide machote_motor_v165). Sin la 0074 no viene y no se pinta.
+      (m.primer_machote && typeof m.primer_machote === 'object' ? fila('De la primera nota al primer machote',
+        (m.primer_machote.at ? n(m.primer_machote.minutos) + ' min · v' + n(m.primer_machote.version) + ' de ' + n(m.primer_machote.hecha_por || m.primer_machote.version_autor) +
+          ' · ' + n(m.primer_machote.toques_antes) + ' toques antes' : 'todavía sin machote'), m.primer_machote.fuente) : '') +
       fila('Toques de la persona', n(t.total) + ': ' + n(t.mensajes_texto) + ' mensajes de texto, ' + n(t.notas_voz) + ' notas de voz, ' + n(t.otros_adjuntos) + ' otros archivos, ' + n(t.clics) + ' clics', F.toques) +
       fila('Decisiones', n(d.sin_clic_voz) + ' aplicadas sin clic (voz) · ' + n(d.en_tarjeta_voz) + ' quedaron en tarjeta · ' + n(d.aprobadas_con_clic) + ' aprobadas con clic · «sí, aplícalo» por texto: ' + n(d.texto_aplicalo_aplicadas) + ' de ' + n(d.texto_aplicalo) + ' aplicadas', F.decisiones) +
       fila('Afirmaciones sobre la orden (✓)', n(a.sostenidas) + ' sostenidas contra Odoo · ' + n(a.no_sostenidas) + ' no sostenidas · ' + n(a.sin_monto) + ' sin monto (no medible) · ' + n(a.avisos) + ' avisos ⚠' +

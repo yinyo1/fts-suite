@@ -1,6 +1,11 @@
 {
-  "version": "V1.65.4",
+  "version": "V1.65.5",
   "historial": [
+    {
+      "version": "V1.65.5",
+      "fecha": "2026-11-01",
+      "nota": "fts-conceptualizador#20 (V1.64a parte 13, punto 1, db/074, `metricas_caso_v164`): «Métricas del caso» agrega «De la primera nota al primer machote» (minutos, versión, quién la hizo y toques antes), con su fuente. Si la base no lo manda, no se pinta."
+    },
     {
       "version": "V1.65.4",
       "fecha": "2026-11-01",
