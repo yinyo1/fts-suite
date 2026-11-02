@@ -1,9 +1,9 @@
 {
   "_nota": "Llave del kiosko USA de nómina (#448). activo=false apaga todo el flujo USA del kiosko: todos checan como hoy. Cada persona tiene su propia bandera (activo). La segunda llave vive en la base (nomina_usa.config kiosko_activo y nomina_usa.ficha kiosko_usa): si el servidor dice que no, el kiosko sigue el flujo de México. Perfiles: so_entrada (pide SO al entrar en USA), plan_avance (plan al entrar y avance al salir).",
-  "activo": false,
+  "activo": true,
   "personas": {
-    "75": { "alias": "Mateo", "perfil": "so_entrada", "activo": false },
-    "79": { "alias": "José Luis", "perfil": "so_entrada", "activo": false },
-    "98": { "alias": "Ricardo", "perfil": "plan_avance", "activo": false }
+    "75": { "alias": "Mateo", "perfil": "so_entrada", "activo": true },
+    "79": { "alias": "José Luis", "perfil": "so_entrada", "activo": true },
+    "98": { "alias": "Ricardo", "perfil": "plan_avance", "activo": true }
   }
 }
