@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.65.6';
+  var VERSION = 'V1.65.7';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -172,6 +172,7 @@
     archivar: '<rect x="3.5" y="4" width="17" height="4.5" rx="1"/><path d="M5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5"/><path d="M10 12.5h4"/>',
     desarchivar: '<rect x="3.5" y="4" width="17" height="4.5" rx="1"/><path d="M5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5"/><path d="M12 17v-5.5"/><path d="M9.5 14L12 11.5 14.5 14"/>',
     lapiz: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+    compartir: '<circle cx="18" cy="5.5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="18.5" r="2.5"/><path d="M8.2 10.8l7.6-4.1M8.2 13.2l7.6 4.1"/>',
     play: '<path d="M8 5.5v13l11-6.5z"/>',
     pausa: '<rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/>',
     nuevo: '<path d="M12 5v14"/><path d="M5 12h14"/>',
@@ -283,7 +284,8 @@
   /* V1.51 · «Mis proyectos» por omisión (pedido de Esteban, 16-oct): la lista abre con los casos donde eres dueño o
    * escribiste (`participa`, 0013; sin la 0013, el dueño). «Todos» muestra el resto a quien puede verlos (hoy el servidor
    * enseña todos a todos; Esteban y los admins siempre). La elección se recuerda por usuario (ChatWA.misProyectos). */
-  function esMio(c) { return c.estado === 'local' || c.autor === yo() || c.participa === true; }
+  // V1.64a parte 14 (#20 punto 4) · lo que te compartieron (la base lo marca `compartido`, db/076) también es tuyo en «Mis proyectos».
+  function esMio(c) { return c.estado === 'local' || c.autor === yo() || c.participa === true || !!c.compartido; }
   function mis() {
     if (!G.ChatWA) return null;
     if (!ST.mis || ST.misDe !== yo()) { ST.misDe = yo(); ST.mis = G.ChatWA.misProyectos({ claveUsuario: yo() || 'anon', esMio: esMio, puedeVerTodos: true, textoMios: 'Mis proyectos', textoTodos: 'Todos' }); }
@@ -569,7 +571,39 @@
       { k: 'renombrar', ic: 'lapiz', t: 'Renombrar', sub: porque, ok: mia },
       { k: arch ? 'desarchivar' : 'archivar', ic: arch ? 'desarchivar' : 'archivar', t: arch ? 'Desarchivar' : 'Archivar',
         sub: porque || (arch ? '<small>' + quien + '</small>' : '<small>No se borra: sigue en la base</small>'), ok: mia }
-    ];
+    ].concat(compartirDe(c) ? [{ k: 'compartir', ic: 'compartir', t: 'Compartir', ok: true,
+      sub: '<small>' + (compartirDe(c).compartidos.length ? 'Con ' + compartirDe(c).compartidos.map(function (x) { return esc(nombreCorto(x.para)); }).join(', ') : 'Con alguien del equipo') + '</small>' }] : []);
+  }
+  /* V1.64a parte 14 (#20 punto 4, `compartir_caso_v165`, apagado) · «Compartir»: el dueño (o Esteban) elige a alguien del equipo, en
+   * lectura o edición, lo quita, y ve con quién está compartido. Solo sale si la base mandó `compartir` en el hilo de ESTE caso (db/079:
+   * interruptor prendido y quien mira es el dueño o el admin). Lo que se pinta sale del servidor después de cada cambio (nunca antes). */
+  function compartirDe(c) { return c && ST.compartir && ST.compartir.caso === c.id && ST.compartir.d && Array.isArray(ST.compartir.d.compartidos) ? ST.compartir.d : null; }
+  function dialogoCompartir(c) {
+    var d = compartirDe(c); if (!d) return;
+    var ya = d.compartidos.map(function (x) { return x.para; }), libres = (d.equipo || []).filter(function (u) { return ya.indexOf(u) < 0; });
+    var NIV = { lectura: 'Solo leer', edicion: 'Leer y escribir' }, quien = function (u) { var n = nombreCorto(u); return n.length > 3 ? n + ' · ' + u : u; };
+    var h = '<div class="dlg dlg-comp" role="dialog" aria-label="Compartir"><h3>Compartir</h3><p>Quien lo reciba lo ve en su lista. Renombrar y archivar siguen siendo solo tuyos.</p>' +
+      (d.compartidos.length ? '<ul class="comp-l">' + d.compartidos.map(function (x) {
+        return '<li><span><b>' + esc(quien(x.para)) + '</b><small>' + esc(NIV[x.nivel] || x.nivel) + '</small></span><button type="button" data-quitar="' + esc(x.para) + '">Quitar</button></li>'; }).join('') + '</ul>'
+        : '<p class="comp-n">Todavía no lo compartes con nadie.</p>') +
+      (libres.length ? '<label class="comp-f">Con<select id="cPara">' + libres.map(function (u) { return '<option value="' + esc(u) + '">' + esc(quien(u)) + '</option>'; }).join('') + '</select></label>' +
+        '<div class="comp-niv" role="radiogroup" aria-label="Qué puede hacer"><label><input type="radio" name="cNiv" value="lectura" checked> ' + NIV.lectura + '</label>' +
+        '<label><input type="radio" name="cNiv" value="edicion"> ' + NIV.edicion + '</label></div>' : '<p class="comp-n">Ya está compartido con todo el equipo.</p>') +
+      '<div class="acciones"><button id="cNo">Cerrar</button>' + (libres.length ? '<button id="cSi">Compartir</button>' : '') + '</div></div>';
+    var v = velo(h, true);
+    var hecho = async function (r, txt) {
+      if (!r || !r.ok) { v.querySelectorAll('button').forEach(function (b) { b.disabled = false; }); return aviso(r || { ok: false }); }
+      await cargarHilo(); toast(txt); dialogoCompartir(c);
+    };
+    $('#cNo', v).onclick = cerrarVelo;
+    var si = $('#cSi', v); if (si) si.onclick = async function () {
+      var para = $('#cPara', v).value, n = (v.querySelector('input[name=cNiv]:checked') || {}).value || 'lectura'; si.disabled = true;
+      hecho(await C.compartir(c.id, para, n), 'Compartido con ' + quien(para) + ' · ' + NIV[n].toLowerCase());
+    };
+    v.querySelectorAll('[data-quitar]').forEach(function (b) { b.onclick = async function () {
+      var para = b.getAttribute('data-quitar'); b.disabled = true;
+      hecho(await C.dejarDeCompartir(c.id, para), quien(para) + ' ya no lo ve');
+    }; });
   }
   function cerrarVelo() { var v = $('#velo'); v.className = 'velo'; v.innerHTML = ''; if (ST.hojaMenu) { var h = ST.hojaMenu; ST.hojaMenu = null; h.cerrar('eleccion'); } }
   function velo(html, oscuro) {
@@ -1097,6 +1131,7 @@
   }
   async function hacerSesion(a, c) {
     if (a === 'renombrar') return dialogoRenombrar(c);
+    if (a === 'compartir') return dialogoCompartir(c);
     if (a === 'detalles') return menuSesion();
     var r = await C[a](c.id);
     if (!r.ok) return aviso(r);
@@ -4273,6 +4308,8 @@
     if (tec !== null && ST.tecleo) ST.tecleo.avisado = tec;
     if ((ST.sel || {}).id !== s.id) return;
     ponInterruptores(r); ST.motor = r.motor; motorV152(r);
+    // V1.64a parte 14 (#20 punto 4) · con quién está compartido y a quién se puede compartir: solo si la base lo manda (db/079).
+    if (r.compartir && typeof r.compartir === 'object') ST.compartir = { caso: s.id, d: r.compartir }; else if (ST.compartir && ST.compartir.caso === s.id) delete ST.compartir;
     // V1.52.1 (0015) · el horario del panel y el permiso de administrador del robot en ESTE caso (null = sin permiso).
     if (r.robot_horario) ST.robotHorario = r.robot_horario;
     if ('robot_permiso' in r) ST.robotPermiso = { caso: s.id, p: r.robot_permiso || null }; else delete ST.robotPermiso;

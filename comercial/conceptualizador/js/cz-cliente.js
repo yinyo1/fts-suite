@@ -160,6 +160,9 @@
     archivar: function (casoId) { return pedir('archivar', { caso_id: casoId }); },
     desarchivar: function (casoId) { return pedir('desarchivar', { caso_id: casoId }); },
     fijar: function (casoId) { return pedir('fijar', { caso_id: casoId }); },
+    // V1.64a parte 14 (#20 punto 4, `compartir_caso_v165`) · compartir el caso con alguien del equipo (lectura|edicion) y quitárselo.
+    compartir: function (casoId, para, nivel) { return pedir('compartir', { caso_id: casoId, datos: { para: para, nivel: nivel } }); },
+    dejarDeCompartir: function (casoId, para) { return pedir('dejar_de_compartir', { caso_id: casoId, datos: { para: para } }); },
     desfijar: function (casoId) { return pedir('desfijar', { caso_id: casoId }); },
     // V1.32 (0006): «Listo, sigue» de la palomeada, «Es una prueba» (si/no) y la empresa de la sesión.
     palomeadaLista: function (casoId) { return pedir('palomeada_lista', { caso_id: casoId }); },

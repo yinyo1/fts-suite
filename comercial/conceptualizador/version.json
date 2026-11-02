@@ -1,6 +1,11 @@
 {
-  "version": "V1.65.6",
+  "version": "V1.65.7",
   "historial": [
+    {
+      "version": "V1.65.7",
+      "fecha": "2026-11-01",
+      "nota": "fts-conceptualizador#20 (V1.64a parte 14, punto 4, `compartir_caso_v165`, apagado; db/079): «Compartir» en el ⋮ del caso para el dueño o Esteban: elegir a alguien del equipo, solo leer o leer y escribir, quitarlo, y la lista de con quién está compartido. Sin el interruptor (o sin la 0079) no aparece."
+    },
     {
       "version": "V1.65.6",
       "fecha": "2026-11-01",
