@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.65.7';
+  var VERSION = 'V1.65.8';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -2333,14 +2333,36 @@
   }
   function pintarSenal() {
     var mias = salidaDelCaso(), pend = mias.filter(function (x) { return x.estado !== 'error'; }).length;
+    // V1.65.8 (#20): el letrero ya no dice «el servidor no contesta» por cualquier falla. Si hay mensajes atorados o
+    // rechazados, dice cuántos y que el motivo va en cada uno; «Reintentar» vuelve a firmar y a intentar TODOS ya.
+    var atorados = mias.filter(function (x) { return x.estado === 'error' || (Q.atorado && Q.atorado(x)); }).length;
+    var sinRed = mias.some(function (x) { return x.error_codigo === 'SIN_RED' && x.fallas; });
     var el = $('#senal');
-    if (!navigator.onLine || (pend && mias.some(function (x) { return x.intentos > 1; }))) {
+    if (atorados) {
+      el.innerHTML = '<span>⚠ ' + atorados + ' mensaje' + (atorados > 1 ? 's' : '') + ' no se ha' + (atorados > 1 ? 'n' : '') + ' podido mandar. El motivo va en cada uno; siguen guardados en el teléfono.</span>' +
+        '<button id="bReint">Reintentar</button>';
+      el.style.display = 'flex'; $('#bReint').onclick = function () { (Q.reintentarTodo || Q.correr)(true); };
+    } else if (!navigator.onLine || (pend && sinRed)) {
       el.innerHTML = '<span>📶 ' + (!navigator.onLine ? 'Sin señal' : 'El servidor no contesta') + (pend ? ': ' + pend + ' mensaje' + (pend > 1 ? 's' : '') + ' en cola con su hora real. Se mandan solos.' : '. Lo que escribas se guarda.') +
         '</span><button id="bReint">Reintentar</button>';
-      el.style.display = 'flex'; $('#bReint').onclick = function () { Q.correr(true); };
+      el.style.display = 'flex'; $('#bReint').onclick = function () { (Q.reintentarTodo || Q.correr)(true); };
     } else if (!Q.persistente()) {
       el.innerHTML = '<span>⚠ Este navegador no deja guardar la cola: no cierres la pestaña hasta que tus mensajes tengan palomita.</span>'; el.style.display = 'flex';
     } else el.style.display = 'none';
+  }
+  /** V1.65.8 (#20) · baja al teléfono los adjuntos de un mensaje que no se ha podido mandar, para no perderlos. */
+  function guardarDeCola(cid) {
+    var x = ST.salida.filter(function (y) { return y.cliente_id === cid; })[0]; if (!x) return;
+    var n = 0, mal = 0;
+    (x.archivos || []).forEach(function (a, i) {
+      try {
+        if (!a.blob) throw new Error('sin blob');
+        var u = URL.createObjectURL(a.blob), l = document.createElement('a');
+        l.href = u; l.download = a.nombre || ('nota-' + new Date(Number(x.escrito_at)).toISOString().slice(0, 16).replace(/[:T]/g, '-') + '-' + (i + 1));
+        document.body.appendChild(l); l.click(); l.remove(); setTimeout(function () { URL.revokeObjectURL(u); }, 60000); n++;
+      } catch (e) { mal++; }
+    });
+    toast(n ? 'Guardé ' + n + ' archivo' + (n > 1 ? 's' : '') + ' en el teléfono.' + (mal ? ' ' + mal + ' ya no se pudo leer.' : '') : 'El teléfono ya no puede leer este archivo.');
   }
   function salidaDelCaso() {
     var s = ST.sel || {}, loc = s.local, id = s.id;
@@ -2476,7 +2498,9 @@
       var subidos = x.archivos.filter(function (a) { return a.adjunto_id; }).length, total = x.archivos.length;
       var actual = x.archivos.filter(function (a) { return Q.progreso(a.local) !== undefined; })[0];
       var reloj = '<svg class="ico xs" viewBox="0 0 24 24" aria-hidden="true" style="width:13px;height:13px">' + P.reloj + '</svg>';
+      var atx = x.estado === 'error' || (Q.atorado && Q.atorado(x));
       var est = x.estado === 'error' ? '<span class="mal">⚠ no se mandó</span>' :
+        atx ? '<span class="mal">⚠ no se ha podido mandar</span>' :
         x.estado === 'subiendo' && total ? '<span class="cola">' + reloj + 'subiendo ' + (subidos + (actual ? 1 : 0)) + '/' + total + (actual ? ' · ' + Math.round(Q.progreso(actual.local) * 100) + '%' : '') + '</span>' :
         x.estado === 'enviando' ? '<span class="pend-env">' + reloj + 'enviando…</span>' :
         '<span class="pend-env" title="Guardado en el teléfono con su hora real; se manda solo al volver la señal">' + reloj + 'pendiente de enviar</span>';
@@ -2485,7 +2509,10 @@
         (sinMarca(x.texto) ? '<div class="txt">' + esc(sinMarca(x.texto)) + '</div>' : '') +
         (total && x.estado === 'subiendo' ? '<div class="barra"><i style="width:' + Math.round(100 * (subidos + (actual ? Q.progreso(actual.local) : 0)) / total) + '%"></i></div>' : '') +
         '<span class="hora">' + esc(hora(x.escrito_at)) + ' ' + est + '</span><div style="clear:both"></div>' +
-        (x.estado === 'error' ? '<div class="corr"><span class="err">' + esc(x.error) + '</span><button class="boton" data-reint="' + esc(x.cliente_id) + '">Reintentar</button><button class="boton" data-desc="' + esc(x.cliente_id) + '">Descartar</button></div>' : ''));
+        // V1.65.8 (#20): el motivo en palabras simples; «Reintentar» vuelve a firmar. Lo que trae un adjunto sin confirmar NO
+        // se descarta (nunca se pierde un audio): se ofrece guardarlo en el teléfono.
+        (atx ? '<div class="corr cola-atorada"><span class="err">' + esc(Q.aviso ? Q.aviso(x) : (x.error || '')) + '</span><button class="boton" data-reint="' + esc(x.cliente_id) + '">Reintentar</button>' +
+          (Q.sinConfirmar && Q.sinConfirmar(x) ? '<button class="boton" data-guardar="' + esc(x.cliente_id) + '">Guardar en el teléfono</button>' : '<button class="boton" data-desc="' + esc(x.cliente_id) + '">Descartar</button>') + '</div>' : ''));
     });
     // V1.60 (`chat_limpio_v160`) · la falla de Odoo vigente, con su salida, y «N ocultos · mostrar todo». Las resueltas no se pintan.
     if (on('chat_limpio_v160') && G.CzLimpio && H && H.caso) {
@@ -3542,6 +3569,7 @@
     $$('[data-doc]', M).forEach(function (d) { d.onclick = function () { bajar(d.dataset.doc); }; });
     $$('[data-reint]', M).forEach(function (b) { b.onclick = function () { Q.reintentar(b.dataset.reint); }; });
     $$('[data-desc]', M).forEach(function (b) { b.onclick = function () { if (confirm('¿Descartar este mensaje? No se manda.')) Q.descartar(b.dataset.desc); }; });
+    $$('[data-guardar]', M).forEach(function (b) { b.onclick = function () { guardarDeCola(b.dataset.guardar); }; });
     $$('[data-acepta]', M).forEach(function (b) { b.onclick = function () { decidirConcepto(b.dataset.acepta, 'aceptar'); }; });
     $$('[data-corrige]', M).forEach(function (b) { b.onclick = function () { abrirCaja('c:' + b.dataset.corrige); }; });
     $$('[data-conf]', M).forEach(function (b) { b.onclick = function () {

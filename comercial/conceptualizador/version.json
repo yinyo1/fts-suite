@@ -1,6 +1,11 @@
 {
-  "version": "V1.65.7",
+  "version": "V1.65.8",
   "historial": [
+    {
+      "version": "V1.65.8",
+      "fecha": "2026-11-02",
+      "nota": "fts-conceptualizador#20 (V1.64a, la cola de Richard): un mensaje atorado ya no bloquea a los demás. Cada mensaje se intenta por su lado y firma con ts y nonce nuevos; un rechazo que no se arregla reintentando se marca en rojo con el motivo en palabras simples; 3 fallas seguidas o más de 30 min en la cola dicen «Este audio no se ha podido mandar: <motivo>» y avisan al servidor (cola_atorada). Un audio sin confirmar nunca se descarta: se ofrece «Guardar en el teléfono». Al abrir, lo que quedó «subiendo» vuelve a «pendiente»."
+    },
     {
       "version": "V1.65.7",
       "fecha": "2026-11-01",
