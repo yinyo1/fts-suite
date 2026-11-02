@@ -29,6 +29,8 @@ db.q(`UPDATE nomina_usa.ficha SET hora_entrada_ref = '08:00', zona_horaria = 'Am
 db.panel({ accion: 'bolsa_provisional', so_id: 2362, so_nombre: 'SO11842 - prensas materials - Mission Foods', sale_order_id: 12041, supervisor: 3200, tecnicos: 7200,
   pagado_previo_supervisor: 2240, pagado_previo_tecnicos: 5040, folio: 'BP-2026-001' }, SC.esteban, 'esteban.delacruz');
 db.panel({ accion: 'bolsa_provisional', so_id: 2361, so_nombre: 'SO11791 - Power and control panels - Calbee Fairfield', sale_order_id: 11990, supervisor: 4000, tecnicos: 6000, folio: 'BP-2026-002' }, SC.esteban, 'esteban.delacruz');
+// Como en producción (#448, activación 2-nov): SO11791 con pagado 0 y «pagos previos por confirmar con Richard».
+db.panel({ accion: 'bolsa_por_confirmar', so_id: 2361, texto: 'Pagos previos por confirmar con Richard. Por ahora pagado = 0.', motivo: 'Esteban 2-nov (#448)' }, SC.esteban, 'esteban.delacruz');
 db.q(`SELECT nomina_usa.horas_registrar($j$${JSON.stringify({ horas: FX.horas })}$j$::jsonb)`);
 for (const a of FX.alertas) db.q(`INSERT INTO nomina_usa.alerta (clave, tipo, employee_id, fecha, attendance_id, modo_al_crear, pais) VALUES ('${a.clave}', '${a.tipo}', ${a.employee_id}, '${a.fecha}', ${a.attendance_id}, 'sombra', 'USA')`);
 // DATO DE ENSAYO (el kiosko USA está apagado, así que nadie ha reportado su día): el lunes 2-nov
@@ -68,7 +70,7 @@ const envio0 = db.q('SELECT count(*) FROM retardos.envio');
   };
   const txt = () => page.evaluate(() => document.getElementById('vista').innerText);
   const desborda = () => page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
-  const fotos = async (n) => { for (const w of [380, 1280]) { await page.setViewportSize({ width: w, height: 900 }); await page.waitForTimeout(80);
+  const fotos = async (n) => { for (const w of [380, 760, 900, 1280]) { await page.setViewportSize({ width: w, height: 900 }); await page.waitForTimeout(80);
     check(n + ': sin desborde a ' + w + ' px', !(await desborda())); if (OUT) await page.screenshot({ path: path.join(OUT, n + '-' + w + '.png'), fullPage: true }); }
     await page.setViewportSize({ width: 380, height: 900 }); };
 
@@ -78,6 +80,7 @@ const envio0 = db.q('SELECT count(*) FROM retardos.envio');
   check('pantalla en modo REAL (sin franja de práctica), semana vie 30-oct → jue 5-nov', !(await page.isVisible('#aviso-demo')) && /2026-10-30/.test(t) && /2026-11-05/.test(t), t.slice(0, 300));
   check('SO11842 aparece con su bolsa provisional BP-2026-001', /SO11842/.test(t) && /BP-2026-001/.test(t));
   check('SO11854 (Mateo, 31-oct) y SO94 (José Luis, México) aparecen SIN bolsa', /SO11854/.test(t) && /SO94/.test(t));
+  check('aviso: «Por confirmar con Richard» SO11791 · BP-2026-002, aunque SO11791 no tenga horas esta semana', await page.isVisible('#nu-por-confirmar') && /Por confirmar con Richard/.test(t) && /SO11791 · bolsa BP-2026-002: Pagos previos por confirmar con Richard/.test(t), t.slice(0, 900));
   if (process.env.DEBUG) { console.log(t); console.log(await page.evaluate(() => document.getElementById('vista').innerHTML.slice(0, 3000))); }
   const idx = await page.evaluate(() => [...document.querySelectorAll('.nu-so')].find(c => /SO11842/.test(c.querySelector('h3').textContent)).dataset.so);
   let card = '.nu-so[data-so="' + idx + '"]';
