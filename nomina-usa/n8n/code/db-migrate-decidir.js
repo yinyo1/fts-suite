@@ -26,6 +26,7 @@ for (var i = 1; i < n; i++) { var v = 'nomina_usa_' + ('000' + i).slice(-4); if 
 if (faltan.length) return [{ json: { aplicar:false, error:'FUERA_DE_ORDEN', version: version, mensaje:'Falta aplicar ' + faltan.join(', ') } }];
 if (contenido.indexOf('{' + '{') >= 0) return [{ json: { aplicar:false, error:'LLAVES_DOBLES', mensaje:'El .sql trae dos llaves juntas: el nodo Postgres las evaluaria como expresion.' } }];
 if (contenido.indexOf('$' + '$') >= 0) return [{ json: { aplicar:false, error:'DOLAR_DOBLE', mensaje:'El .sql trae dos signos de dólar juntos (db/README regla 4).' } }];
+if (/[$]['&`0-9]/.test(contenido)) return [{ json: { aplicar:false, error:'DOLAR_PATRON', mensaje:'El .sql trae un dólar seguido de comilla, &, acento grave o dígito (db/README regla 8).' } }];
 return [{ json: { aplicar: !dryRun, dry_run: dryRun, version: version, archivo: archivo, sha256: sha256, bytes: contenido.length, sql: contenido,
   ya_aplicadas: filas.map(function(f){ return f.version; }).join(', ') || '(ninguna)',
   mensaje: dryRun ? 'ENSAYO: la ' + version + ' se aplicaría. Nada se escribió.' : 'Aplicando la ' + version } }];

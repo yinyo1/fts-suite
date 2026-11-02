@@ -243,7 +243,7 @@ $fn$;
 CREATE OR REPLACE FUNCTION nomina_usa.kiosko(p jsonb) RETURNS jsonb
 LANGUAGE plpgsql AS $fn$
 BEGIN
-  IF (p->>'employee_id') IS NULL OR (p->>'employee_id') !~ '^\d+$' THEN RETURN jsonb_build_object('ok', false, 'error', 'EMPLEADO_INVALIDO'); END IF;
+  IF (p->>'employee_id') IS NULL OR (p->>'employee_id') = '' OR (p->>'employee_id') ~ '[^0-9]' THEN RETURN jsonb_build_object('ok', false, 'error', 'EMPLEADO_INVALIDO'); END IF;
   IF p->>'accion' = 'contexto' THEN RETURN nomina_usa.kiosko_contexto(p); END IF;
   IF p->>'accion' = 'evento' THEN RETURN nomina_usa.kiosko_evento(p); END IF;
   RETURN jsonb_build_object('ok', false, 'error', 'ACCION_DESCONOCIDA');

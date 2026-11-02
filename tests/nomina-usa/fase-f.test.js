@@ -24,6 +24,8 @@ seccion('Migraciones listas para el aplicador (nomina-usa/db-migrate)');
     const $ = n => ({ 'Set - Config': { item: { json: { archivo: 'nomina_usa/' + f, dry_run: true } } }, 'HTTP - Bajar .sql del repo': { item: { json: { data: sql } } },
       'Crypto - sha256': { item: { json: { sha256: 'a'.repeat(64) } } }, 'Postgres - Estado bitacora': { all: () => prev.map(j => ({ json: j })) } })[n];
     const r = new Function('$', code)($)[0].json;
+    // n8n mete el .sql al nodo Postgres por un String.replace (db/README regla 8): tiene que llegar intacto.
+    check(f + ': sobrevive el String.replace de n8n sin mutilarse', 'X'.replace('X', sql) === sql);
     check(f + ': el aplicador la acepta (sin llaves dobles ni dólar doble, en orden)', !r.error && r.version === f.slice(0, 15), r.error + ' ' + (r.mensaje || ''));
   });
 }
