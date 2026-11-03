@@ -1,6 +1,11 @@
 {
-  "version": "V1.65.9",
+  "version": "V1.65.10",
   "historial": [
+    {
+      "version": "V1.65.10",
+      "fecha": "2026-11-03",
+      "nota": "fts-suite#464: con una tarjeta «Actualizar el machote» pendiente, ⚡ ya no ofrece «Actualizar SO… en Odoo» (mandaría la versión de antes) y el letrero rojo de un conflicto del machote deja de pintarse: su salida es esa tarjeta, no «Volver a armar»."
+    },
     {
       "version": "V1.65.9",
       "fecha": "2026-11-03",

@@ -191,6 +191,9 @@
     var od = intOn('recalculo_v157') ? odooDesactualizada(H) : (intOn('actualizar_v158') ? odooDesactualizada(H, { soloHueco: true }) : null);
     // V1.58 (#12 B) · si la orden salió con hueco, el mismo clic pide rearmarla con la tabla de pagos; con un borrador ya
     // propuesto (de la versión que sea) no se pide otro: ese botón ya está arriba, como hoy.
+    // V1.65.10 (fts-suite#464) · con una tarjeta de machote pendiente, primero esa: «Actualizar SO… en Odoo» mandaría la versión de
+    // antes (la que todavía no trae lo propuesto) y la orden saldría sin los cambios.
+    if (cmP) od = null;
     if (od && od.hueco && !od.propuesto && !brP && !espera)
       L.push({ txt: 'Actualizar ' + od.orden + ' en Odoo · ' + od.razon, acc: 'mandar', razon: od.razon,
         texto: 'Vuelve a armar la cotización de ' + od.orden + ' con la tabla de pagos y una sola condición de pago, y propón actualizarla en Odoo.' });
