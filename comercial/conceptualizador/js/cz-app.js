@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.65.8';
+  var VERSION = 'V1.65.9';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -1229,7 +1229,8 @@
       var titulo = [d.cliente, d.nombre].filter(Boolean).join(' · ').slice(0, 110) || (m.folio_txt || 'Recotización');
       b.disabled = true; b.insertAdjacentHTML('beforeend', '<span class="rq-giro">' + GIRO + 'Creando el caso…</span>');
       var cp = ciudadMenu();
-      var r = await C.nueva({ titulo: titulo, cliente: d.cliente || '', pais: emp === 'usa_usd' ? 'usa' : 'mx', modo_sesion: 'acompanamiento', empresa: emp,
+      // V1.65.9 (fts-suite#464 punto 1) · una recotización no es una visita a planta: nace en modo libre, no en acompañamiento.
+      var r = await C.nueva({ titulo: titulo, cliente: d.cliente || '', pais: emp === 'usa_usd' ? 'usa' : 'mx', modo_sesion: 'libre', empresa: emp,
         datos: Object.assign({ machote_base: { machote_id: m.id } }, cp ? { proyecto: { ciudad: cp.c, estado: cp.e || '', pais: cp.pais === 'US' ? 'US' : 'MX', fuente: cp.fuente || 'elegida' } } : {}) });
       if (!r || !r.ok || !r.caso_id) { b.disabled = false; var g = b.querySelector('.rq-giro'); if (g) g.remove(); av.hidden = false; av.textContent = (r && (r.mensaje || r.error)) || 'No se pudo crear el caso.'; return; }
       cerrar(); await cargarCasos(); $('#app').classList.remove('en-menu'); abrir({ id: r.caso_id });
@@ -3811,13 +3812,19 @@
     if (a.tipo === 'cerrar') return confirmarCierre(function () { return resolver(id, 'hecha', { texto: 'Cerrada a mano' }, b); });
     var m = G.CzAcciones && G.CzAcciones[a.tipo]; if (!m) return;
     // V1.65 (fts-suite#442) · recotización: solo las secciones palomeadas (las demás se quedan como en el machote guardado).
-    if (a.tipo === 'crear_machote' && a.datos && a.datos.recotizacion === true && G.CzDeltas) {
-      var bD = ST.hilo && ST.hilo.machote_doc && ST.hilo.machote_doc.documento, noD = ST.deltaNo[a.id] || {};
-      if (!bD) { toast('No tengo la versión guardada del machote para compararla: recarga y vuelve a tocar.'); return; }
-      var apr = G.CzDeltas.deltas(bD, a.datos.documento).filter(function (x) { return x.estado !== 'sin_cambio' && !noD[x.clave]; }).map(function (x) { return x.clave; });
-      if (!apr.length) { toast('No marcaste ninguna sección: no hay nada que guardar.'); return; }
-      a = Object.assign({}, a, { datos: Object.assign({}, a.datos, { aprobadas: apr }) });
-    }
+    // V1.65.9 (fts-suite#464) · las secciones aprobadas se calculan sobre la tarjeta que de verdad se va a
+    // aplicar: DESPUÉS de releerla de la base (tarjetas_v162). Antes se calculaban aquí y el `a = a2` de abajo las tiraba, así que
+    // cz-acciones caía en «solo llenar precios faltantes»: la versión nueva salía idéntica a la anterior y las secciones aprobadas se quedaban fuera.
+    var conAprobadas = function (x) {
+      if (!(x.tipo === 'crear_machote' && x.datos && x.datos.recotizacion === true)) return x;
+      if (!G.CzDeltas) { toast('No cargó la comparación por sección: recarga la página y vuelve a tocar.'); return null; }
+      var bD = ST.hilo && ST.hilo.machote_doc && ST.hilo.machote_doc.documento, noD = ST.deltaNo[x.id] || {};
+      if (!bD) { toast('No tengo la versión guardada del machote para compararla: recarga y vuelve a tocar.'); return null; }
+      var apr = G.CzDeltas.deltas(bD, x.datos.documento).filter(function (d) { return d.estado !== 'sin_cambio' && !noD[d.clave]; }).map(function (d) { return d.clave; });
+      if (!apr.length) { toast('No marcaste ninguna sección: no hay nada que guardar.'); return null; }
+      return Object.assign({}, x, { datos: Object.assign({}, x.datos, { aprobadas: apr }) });
+    };
+    a = conAprobadas(a); if (!a) return;
     // V1.57b · regla 15: sin decidir cada frase no se manda (el servidor también lo frena).
     if (a.tipo === 'crear_borrador' && G.CzR15 && !G.CzR15.listo(a)) { toast('Primero decide las frases de la regla 15: texto limpio o liberar con su razón.'); return; }
     b.disabled = true;
@@ -3827,7 +3834,7 @@
       try { await cargarHilo(); } catch (e) { /* sin señal: lo revisa la base al registrar */ }
       var a2 = ((ST.hilo && ST.hilo.acciones) || []).filter(function (x) { return String(x.id) === String(id); })[0];
       if (!a2 || a2.estado !== 'propuesta') { b.disabled = false; toast('Esa tarjeta ya se reemplazó con un cálculo más nuevo: usa la tarjeta más reciente del chat.'); pintarChat(); return; }
-      a = a2;
+      a = conAprobadas(a2); if (!a) { b.disabled = false; return; }
     }
     // V1.57b (`tarjeta_v157`) · el giro va en el MISMO botón mientras trabaja; si falla, vuelve su texto.
     var txt0 = b.innerHTML; if (on('tarjeta_v157')) b.innerHTML = GIRO + ' ' + ({ crear_borrador: 'Escribiendo en Odoo…', crear_machote: 'Guardando el machote…', enviada: 'Marcando en Odoo…', alta_contacto: 'Dando de alta…', actualizar_cliente: 'Actualizando la ficha…' }[a.tipo] || 'Trabajando…');

@@ -1,6 +1,11 @@
 {
-  "version": "V1.65.8",
+  "version": "V1.65.9",
   "historial": [
+    {
+      "version": "V1.65.9",
+      "fecha": "2026-11-03",
+      "nota": "fts-suite#464: (1) en una recotización, «Actualizar el machote» guarda las secciones aprobadas (antes la tarjeta se releía de la base, perdía la lista y se guardaba una versión idéntica a la anterior). (2) Sin la lista de secciones, o sin nada que guardar, no se guarda versión y se dice por qué; «Ya no falta nada para cotizar» ya no sale si quedan renglones fuera. (3) La recotización desde un machote nace en modo libre, no en acompañamiento."
+    },
     {
       "version": "V1.65.8",
       "fecha": "2026-11-02",
