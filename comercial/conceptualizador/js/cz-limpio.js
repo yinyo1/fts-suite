@@ -150,6 +150,9 @@
     if (A.some(function (a) { return a.estado === 'hecha' && (a.tipo === que || (que === 'crear_borrador' && a.tipo === 'enviada')) && t(a.hecha_at) > at; })) return 'hecha';
     if (A.some(function (a) { return a.tipo === que && Number(a.id) > Number(f.accion_id || 0) && t(a.created_at) > at; })) return 'tarjeta_nueva';
     if (MACHOTE.indexOf(f.codigo) >= 0 && A.some(function (a) { return a.tipo === 'crear_machote' && a.estado === 'hecha' && t(a.hecha_at) > at; })) return 'machote';
+    // V1.65.10 (fts-suite#464) · la salida de un conflicto del machote es la tarjeta «Actualizar el machote» que llegó DESPUÉS: con ella
+    // pendiente, el letrero rojo con «Volver a armar» ya no es lo que toca (y rearmar daría la versión de antes).
+    if (MACHOTE.indexOf(f.codigo) >= 0 && A.some(function (a) { return a.tipo === 'crear_machote' && a.estado === 'propuesta' && t(a.created_at) > at; })) return 'machote_propuesto';
     if (((H && H.fallas_odoo) || []).some(function (g) { return Number(g.id) > Number(f.id) && (g.que || 'crear_borrador') === que; })) return 'otra_falla';
     return null;
   }
