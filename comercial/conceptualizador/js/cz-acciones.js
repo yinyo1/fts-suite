@@ -148,7 +148,12 @@
     var intacto = u.version && Number(fila.version) === Number(u.version);
     // V1.65 (fts-suite#442) · recotización: se parte de lo GUARDADO y solo entran las secciones que la persona palomeó
     // (cz-deltas.js). Lo demás se queda exactamente como estaba, aunque la propuesta lo traiga distinto.
-    var recot = d.recotizacion === true && Array.isArray(d.aprobadas) && G.CzDeltas ? G.CzDeltas.mezclar(actual, nuevo, d.aprobadas) : null;
+    // V1.65.9 (fts-suite#464) · una tarjeta de recotización SIEMPRE va por la mezcla por sección. Sin la lista de secciones aprobadas
+    // (o sin cz-deltas cargado) no se guarda nada: antes caía al camino de «solo llenar precios faltantes» y guardaba una versión
+    // idéntica a la anterior diciendo «Ya no falta nada para cotizar en Odoo».
+    if (d.recotizacion === true && !(Array.isArray(d.aprobadas) && d.aprobadas.length && G.CzDeltas))
+      return { ok: false, error: 'RECOTIZACION_SIN_SECCIONES', mensaje: 'No guardé nada: no me llegó qué secciones aprobaste. Recarga la página y vuelve a tocar «Actualizar el machote».' };
+    var recot = d.recotizacion === true ? G.CzDeltas.mezclar(actual, nuevo, d.aprobadas) : null;
     if (recot) {
       doc = recot.documento; intacto = false;
       ['id', 'nombre', 'cliente', 'cliente_id', 'creado_por', 'creado_por_nombre', 'origen', 'oportunidad'].forEach(function (k) { if (actual[k] !== undefined) doc[k] = actual[k]; });
@@ -179,6 +184,11 @@
       // Precios nuevos que el editor ya no tiene igual (alguien cambió la descripción o la sección).
       Object.keys(conPrecio).forEach(function (k) { var p = conPrecio[k];
         (actual.secciones || []).some(function (sec) { return (sec.partidas || []).some(function (l) { return clave(sec, l) === k; }); }) || sinLugar.push(p.descripcion); });
+      // V1.65.9 (fts-suite#464) · si no se llenó nada y hay renglones que no caben, guardar daría una versión IGUAL a la anterior que
+      // parece aplicada. No se guarda y se dice qué se quedó fuera.
+      if (!llenos.length && sinLugar.length)
+        return { ok: false, error: 'NADA_QUE_GUARDAR', mensaje: 'No guardé versión nueva del machote: los ' + sinLugar.length + ' renglones nuevos no caben en lo que tiene ' + (u.folio || 'el machote') +
+          ' (' + sinLugar.slice(0, 6).join('; ') + (sinLugar.length > 6 ? '; y ' + (sinLugar.length - 6) + ' más' : '') + '). Pídele al agente que te lo proponga por sección.' };
     }
     var r = await C.suite('/webhook/comercial/machote-guardar', { id_local: fila.id_local, cliente_odoo_id: doc.cliente_id || null, version_leida: Number(fila.version) || 0,
       estado: fila.estado || 'borrador', motivo: 'Actualizado desde el conceptualizador', documento: doc, resumen: intacto ? (d.resumen || null) : await resumenDe(doc) });
@@ -194,7 +204,7 @@
       ajeno: fila.ajeno ? { dueno: fila.dueno || null, dueno_nombre: fila.dueno_nombre || null, por: S0.actor || null } : undefined,
       texto: deOtro + 'Machote ' + folio + ' actualizado (versión ' + r.version + ')' + (intacto ? '' : ': ' + llenos.length + ' precio' + (llenos.length === 1 ? '' : 's') + ' en renglones que seguían sin precio; lo que editaste a mano no se tocó') +
         '.' + (sinLugar.length ? ' No encontré en el machote (¿le cambiaste el nombre?): ' + sinLugar.join('; ') + '. Captúralo a mano.' : '') +
-        (tp ? ' ' + tp : ' Ya no falta nada para cotizar en Odoo.') } };
+        (tp ? ' ' + tp : sinLugar.length ? '' : ' Ya no falta nada para cotizar en Odoo.') } };
   }
 
   // ── V1.42 · cotización en Odoo: permiso, borrador, la misma orden, enviada ──
