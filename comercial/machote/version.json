@@ -1,11 +1,16 @@
 {
-  "version": "V1.56",
-  "build": "V1.56",
-  "fecha": "2026-10-29",
+  "version": "V1.57",
+  "build": "V1.57",
+  "fecha": "2026-11-04",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.57",
+      "fecha": "2026-11-04",
+      "nota": "REGLA mo-sin-tarifa SOLO CON HORAS (#464). Los roles de la plantilla (dias de viaje, horas en fin de semana y en festivo) nacen con 1 persona, sin horas y sin tarifa: cuestan 0 y la regla dura los reclamaba igual, asi que el conceptualizador no dejaba cotizar en Odoo un machote con la mano de obra completa. Ahora la regla solo cuenta un renglon con horas (o dias) capturadas y la tarifa vacia; no se inventa ninguna tarifa."
+    },
     {
       "version": "V1.56",
       "fecha": "2026-10-29",
