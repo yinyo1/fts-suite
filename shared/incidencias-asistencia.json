@@ -4722,12 +4722,22 @@
           "hora_propuesta_cst": null,
           "comentario": "Incidencia confirmada",
           "accion": "aprobado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-11-04T16:30:57.647Z",
+          "hora_propuesta_cst": "17:40",
+          "comentario": "Incidencia confirmada",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "hora_final_aplicada_utc": "2026-07-02 23:40:00",
       "aplicado_en_odoo": true,
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "creada_por_modulo": "kiosk",
       "creada_por_build": "20260521-kiosk-face-opt-in-default"
     },
