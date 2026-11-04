@@ -442,8 +442,9 @@
       id: 'mo-sin-tarifa', severidad: 'dura', area: 'Captura',
       titulo: 'Mano de obra con horas y sin tarifa',
       evaluar: (m, c) => c.moSinTarifa ? {
-        detalle: 'Hay renglones con horas o personas capturadas y la tarifa vacía.',
-        items: renglonesMo(m).filter(x => (Number(x.l.qty) > 0 || Number(x.l.personas) > 0) &&
+        detalle: 'Hay renglones con horas capturadas y la tarifa vacía.',
+        // V1.65.11 (#464) · solo con horas: personas sin horas no mueven el precio (calc.js cuenta igual).
+        items: renglonesMo(m).filter(x => Number(x.l.qty) > 0 &&
                                           (x.l.pu === null || x.l.pu === undefined || x.l.pu === ''))
                              .map(x => x.s.nombre + ' · ' + (C.ROL[x.l.rol] ? C.ROL[x.l.rol].label : x.l.rol))
       } : null

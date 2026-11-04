@@ -18,7 +18,7 @@
    * que no es el que espera. Se bumpea junto con `const VERSION_ARCHIVO` de
    * `app.js`, el `?v=` de `index.html` y `version.json` — hay una prueba que
    * falla si los cuatro se separan. */
-  const VERSION = 'V1.56';
+  const VERSION = 'V1.57';
 
   const num = (v) => (typeof v === 'number' && isFinite(v)) ? v : 0;
   const vacio = (v) => v === null || v === undefined || v === '';
@@ -813,7 +813,9 @@
     (s.mo || []).forEach(l => {
       const c = costoMo(l, m, s);
       costoMoTot += c.costo; ventaMo += c.conUtilidad; horas += c.horas; dias += c.dias;
-      if (c.sinTarifa && (num(l.qty) > 0 || num(l.personas) > 0)) moSinTarifa++;
+      // V1.65.11 (#464) · cuenta solo si hay HORAS (o días) capturadas: un rol de la plantilla con personas y sin horas cuesta 0
+      // y no tiene tarifa que reclamar (dias_viaje, hrs_finde y hrs_festivo nacen con 1 persona y sin horas).
+      if (c.sinTarifa && num(l.qty) > 0) moSinTarifa++;
       if (l.moneda) monedas[l.moneda] = 1;
     });
     (s.partidas || []).forEach(l => {
