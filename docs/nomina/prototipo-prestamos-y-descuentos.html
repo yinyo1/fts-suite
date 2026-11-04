@@ -1,0 +1,369 @@
+<title>Préstamos y descuentos</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: una sola columna de trabajo (la ficha de captura) con dos lecturas al lado:
+   lo que recibe Ulises y cómo lo cruza Carga MO. Tokens = los del módulo (nomina.css). */
+:root{
+  --green:#107C10; --green-d:#0b5d0b; --green-l:#e8f4e8; --green-b:#b5dcb5;
+  --red:#c42b1c;   --red-l:#fdeceb;   --red-b:#f3c2bd;
+  --amber:#8a5d00; --amber-l:#fff4ce; --amber-b:#f0dfa8;
+  --blue:#0f6cbd;  --blue-l:#eaf2fb;  --blue-b:#c3ddf5;
+  --violet:#6b3fa0; --violet-l:#f3edfa; --violet-b:#dccbef;
+  --bg:#f5f5f5; --card:#fff; --border:#e0e0e0; --soft:#fafafa;
+  --text:#1a1a1a; --muted:#8a8a8a; --muted2:#5c5c5c;
+  --bar:#107C10; --bar-fg:#fff;
+  --f-ui:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --f-num:ui-monospace,'SF Mono','Cascadia Mono',Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --green:#5fbf5f; --green-d:#8fd68f; --green-l:#163a16; --green-b:#2f5f2f;
+  --red:#ff8a7e; --red-l:#3b1a17; --red-b:#6a2e28;
+  --amber:#f2c35b; --amber-l:#3a2e0e; --amber-b:#5e4a17;
+  --blue:#7db8f0; --blue-l:#13283d; --blue-b:#27486b;
+  --violet:#c3a3ec; --violet-l:#2a1f3a; --violet-b:#4a3866;
+  --bg:#141514; --card:#1d1f1d; --border:#333733; --soft:#191b19;
+  --text:#ececec; --muted:#8c918c; --muted2:#b3b8b3;
+  --bar:#0b5d0b; --bar-fg:#fff; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --green:#5fbf5f; --green-d:#8fd68f; --green-l:#163a16; --green-b:#2f5f2f;
+  --red:#ff8a7e; --red-l:#3b1a17; --red-b:#6a2e28;
+  --amber:#f2c35b; --amber-l:#3a2e0e; --amber-b:#5e4a17;
+  --blue:#7db8f0; --blue-l:#13283d; --blue-b:#27486b;
+  --violet:#c3a3ec; --violet-l:#2a1f3a; --violet-b:#4a3866;
+  --bg:#141514; --card:#1d1f1d; --border:#333733; --soft:#191b19;
+  --text:#ececec; --muted:#8c918c; --muted2:#b3b8b3;
+  --bar:#0b5d0b; --bar-fg:#fff; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--f-ui);font-size:15px;line-height:1.45}
+.num{font-variant-numeric:tabular-nums;font-family:var(--f-num);font-size:.93em}
+.top{background:var(--bar);color:var(--bar-fg);padding-block:10px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.top .in{max-width:1180px;margin:0 auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.top b{font-size:16px}
+.pill{font-size:11px;border-radius:99px;padding:2px 8px;white-space:nowrap}
+.top .pill{background:rgba(255,255,255,.2)}
+.wrap{max-width:1180px;margin:0 auto;padding-block:16px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:grid;gap:14px}
+.demo{background:var(--amber-l);border:1px dashed var(--amber-b);color:var(--amber);border-radius:10px;padding:10px 14px;font-size:13px}
+h1{font-size:21px;margin:0;text-wrap:balance}
+h2{font-size:15px;margin:0 0 8px}
+.sub{color:var(--muted2);font-size:13px;margin:2px 0 0}
+.grid{display:grid;gap:14px;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;min-width:0}
+.persona{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:10px}
+.persona .n{font-weight:700}
+.persona .m{color:var(--muted2);font-size:13px}
+
+/* candado */
+.candado{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px;padding:8px 10px;border-radius:10px;border:1px solid}
+.candado.ok{background:var(--green-l);border-color:var(--green-b);color:var(--green-d)}
+.candado.mal{background:var(--red-l);border-color:var(--red-b);color:var(--red)}
+.candado .seg{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:99px;padding:1px 8px}
+
+/* lista de lo declarado */
+.lista{display:grid;gap:8px;margin:12px 0}
+.item{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--border);border-radius:10px;padding:9px 11px;background:var(--soft)}
+.item .c{flex:1 1 auto;min-width:0}
+.item .t{font-weight:600;font-size:14px}
+.item .d{font-size:12.5px;color:var(--muted2);overflow-wrap:anywhere}
+.item button{border:1px solid var(--border);background:var(--card);color:var(--muted2);border-radius:7px;font-size:12px;padding:3px 8px;cursor:pointer}
+.vacio{color:var(--muted);font-size:13px;padding:6px 2px}
+
+/* la marca que decide el dinero, visible ANTES de elegir */
+.marca{display:inline-block;font-size:11px;font-weight:600;border-radius:99px;padding:1px 7px;border:1px solid;white-space:nowrap;vertical-align:1px}
+.marca.sale{background:var(--violet-l);border-color:var(--violet-b);color:var(--violet)}
+.marca.quita{background:var(--blue-l);border-color:var(--blue-b);color:var(--blue)}
+.marca.nuevo{background:var(--green-l);border-color:var(--green-b);color:var(--green-d)}
+.marca.prop{background:var(--amber-l);border-color:var(--amber-b);color:var(--amber)}
+
+/* selector de tipo propio: lo que hace visible no_costo sin abrir nada */
+.grupo{border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.grupo .gh{padding:9px 12px;background:var(--soft);border-bottom:1px solid var(--border)}
+.grupo .gh b{font-size:14px}
+.grupo .gh .ay{font-size:12.5px;color:var(--muted2)}
+.sub-h{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 12px 2px}
+.opt{display:flex;gap:8px;align-items:center;flex-wrap:wrap;width:100%;text-align:left;border:0;border-top:1px solid var(--border);background:var(--card);color:var(--text);padding:9px 12px;font:inherit;font-size:14px;cursor:pointer}
+.opt:first-of-type{border-top:0}
+.opt:hover{background:var(--soft)}
+.opt[aria-pressed="true"]{background:var(--green-l);box-shadow:inset 3px 0 0 var(--green)}
+.opt .l{flex:1 1 auto;min-width:0}
+.opt:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--green);outline-offset:1px}
+
+.campos{display:grid;gap:8px;margin-top:12px}
+.fila{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+label{font-size:12.5px;color:var(--muted2);display:block;margin-bottom:3px}
+input,select{width:100%;border:1px solid var(--border);border-radius:8px;padding:7px 9px;font:inherit;font-size:14px;background:var(--card);color:var(--text)}
+.nota{font-size:12.5px;border-radius:9px;padding:8px 10px;border:1px solid}
+.nota.violet{background:var(--violet-l);border-color:var(--violet-b);color:var(--violet)}
+.nota.blue{background:var(--blue-l);border-color:var(--blue-b);color:var(--blue)}
+.nota.amber{background:var(--amber-l);border-color:var(--amber-b);color:var(--amber)}
+.acc{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:9px;padding:8px 13px;font:inherit;font-size:14px;cursor:pointer}
+.btn.pri{background:var(--green);border-color:var(--green);color:#fff}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.err{color:var(--red);font-size:12.5px;min-height:1em}
+
+/* lado derecho */
+.desp{font-family:var(--f-num);font-size:12.5px;background:var(--soft);border:1px solid var(--border);border-radius:10px;padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+.tw{overflow-x:auto;border:1px solid var(--border);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:520px}
+th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--border);vertical-align:top}
+th{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--soft)}
+tr:last-child td{border-bottom:0}
+.st-ok{color:var(--green-d);font-weight:600}
+.st-mal{color:var(--red);font-weight:600}
+.st-pend{color:var(--amber);font-weight:600}
+.tot{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+@media (max-width:480px){.tot{grid-template-columns:minmax(0,1fr)}}
+.tot > div{border:1px solid var(--border);border-radius:10px;padding:8px 10px}
+.tot .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.tot .v{font-size:18px;font-weight:700}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<div class="top"><div class="in">
+  <b>Nómina · Incidencias</b><span class="pill">PROTOTIPO · no es el módulo</span>
+  <span class="pill num">S45/2026 · vie 30-oct al jue 5-nov</span>
+</div></div>
+
+<main class="wrap">
+  <div class="demo"><b>Valores de ejemplo.</b> Las personas, los montos y la semana son inventados. Nada de esta página escribe en ningún lado. Sirve para ver los dos conceptos nuevos y el grupo renombrado antes de tocar el módulo (#312).</div>
+
+  <div>
+    <h1>Préstamos y descuentos</h1>
+    <p class="sub">Así quedaría el grupo que hoy se llama «Descuentos y compensaciones». Cada concepto dice, antes de elegirlo, si saca dinero de FTS o si se lo quita a la persona.</p>
+  </div>
+
+  <div class="grid">
+    <section class="card" aria-labelledby="h-captura">
+      <div class="persona">
+        <span class="n" id="pnom">Persona de ejemplo A</span>
+        <span class="m">Técnico · Operaciones · código 0XX</span>
+      </div>
+
+      <div id="candado" class="candado ok" aria-live="polite"></div>
+
+      <div class="lista" id="lista"></div>
+
+      <h2 id="h-captura">Agregar a esta semana</h2>
+      <div class="grupo" role="group" aria-label="Préstamos y descuentos">
+        <div class="gh"><b>Préstamos y descuentos</b><div class="ay">Dinero que FTS presta o adelanta, y lo que se le descuenta a la persona. No consume días de la semana.</div></div>
+        <div id="opciones"></div>
+      </div>
+
+      <div class="campos" id="campos"></div>
+    </section>
+
+    <div style="display:grid;gap:14px;min-width:0;align-content:start">
+      <section class="card">
+        <h2>Lo que lee Ulises en el despacho</h2>
+        <p class="sub" style="margin-bottom:8px">Columna INSTRUCCION, una línea por persona, como la escribe hoy el generador.</p>
+        <pre class="desp" id="desp"></pre>
+      </section>
+
+      <section class="card">
+        <h2>Cómo lo cruza Carga MO contra CONTPAQi</h2>
+        <div class="tot" id="tot"></div>
+        <div class="tw"><table>
+          <thead><tr><th>Concepto de RH</th><th>Columna de CONTPAQi</th><th>Estado</th></tr></thead>
+          <tbody id="cruce"></tbody>
+        </table></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script>
+(function(){
+'use strict';
+// ── El grupo renombrado. `dir` es lo que se ve antes de elegir; `no_costo` es lo que decide el dinero.
+//    En el módulo la marca saldría de no_costo, no de una segunda bandera: un solo escritor.
+var GRUPO = [
+  { sub:'Sale dinero de FTS · no es costo del proyecto' },
+  { k:'anticipo_sueldo',    l:'Anticipo de sueldo',       no_costo:true, fuente:true, campos:[['monto','Monto','num'],['plazo','Semanas para pagarlo','num']], verbo:'AGREGAR', col:'ANTICIPO DE SUELDOS', est:'ok' },
+  { k:'prestamo_otorgado',  l:'Préstamo otorgado',        no_costo:true, fuente:true, campos:[['monto','Monto','num'],['plazo','Semanas para pagarlo','num']], verbo:'AGREGAR', col:'ANTICIPO DE SUELDOS', est:'ok' },
+  { k:'abonos_estadio_otorgado', l:'Abonos del estadio pagados por FTS', no_costo:true, fuente:true, prop:'solo si FTS paga los abonos por adelantado',
+    campos:[['monto','Monto total pagado','num'],['abonos','En cuántos abonos se recupera','num']], verbo:'AGREGAR', col:'por definir con Ulises', est:'pend' },
+  { sub:'Se le descuenta a la persona' },
+  { k:'descuento_anticipo', l:'Descuento de anticipo',    campos:[['monto','Monto','num']], verbo:'DESCONTAR', col:'PRESTAMO EMPRESA + PTMO EMPRESA2', est:'ok' },
+  { k:'descuento_prestamo', l:'Descuento por préstamo',   campos:[['monto','Monto','num'],['pago','Número de pago','num']], verbo:'DESCONTAR', col:'PRESTAMO EMPRESA + PTMO EMPRESA2', est:'ok' },
+  { k:'compensa_deuda',     l:'Compensa contra deuda',    campos:[['monto','Monto','num']], verbo:'DESCONTAR', col:'PRESTAMO EMPRESA + PTMO EMPRESA2', est:'ok' },
+  { k:'descuento_estadio',  l:'Descuento abonos estadio', nuevo:true,
+    campos:[['monto','Monto de esta semana','num'],['abono','Abono número','num'],['de','De cuántos abonos','num']],
+    verbo:'DESCONTAR', col:'concepto propio (lo da de alta Ulises)', est:'pend' },
+  { k:'tiempo_no_laborado', l:'Descuento por horas no laboradas', nuevo:true, prop:'propuesta · falta la respuesta de Magaly',
+    campos:[['horas','Horas','num'],['motivo','Motivo',['Jornada semanal incompleta (Retardos)','Llegó tarde','Salió antes','Otro']],['detalle','Detalle','txt']],
+    verbo:'DESCONTAR', col:'por definir: ¿baja el sueldo o columna aparte?', est:'pend' },
+  { sub:'Otro' },
+  { k:'pagado_fts_usa',     l:'Pagado por FTS USA',       fuente:true, campos:[['monto','Monto','num']], verbo:'NO PAGAR EN MÉXICO', col:'no lo paga esta nómina', est:'ok' }
+];
+var DEF = {}; GRUPO.forEach(function(g){ if (g.k) DEF[g.k] = g; });
+var FUENTES = { J96:'BBVA Nómina', J8:'BBVA General', J74:'Payana' };
+
+// ── Semana de ejemplo: 5 días hábiles; falta media jornada el martes.
+var semana = { dias: 5 };
+var persona = {
+  dias_mexico: 4.5,
+  dias: [ { tipo:'falta_injustificada', l:'Falta injustificada', dias:0.5, nota:'no vino el martes por la tarde' } ],
+  decl: [
+    { tipo:'descuento_prestamo', v:{ monto:500, pago:6 } },
+    { tipo:'descuento_estadio',  v:{ monto:398.5, abono:4, de:20 } },
+    { tipo:'tiempo_no_laborado', v:{ horas:2.5, motivo:'Llegó tarde', detalle:'lunes 2-nov, entró 9:30' } }
+  ]
+};
+var elegido = null;
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function mx(n){ return '$' + (Number(n)||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function nd(n){ n = Number(n)||0; return (Math.round(n*100)/100).toLocaleString('es-MX'); }
+function marcas(d){
+  var h = '';
+  if (d.no_costo) h += '<span class="marca sale">sale dinero · no es costo</span> ';
+  else if (d.verbo === 'DESCONTAR') h += '<span class="marca quita">se descuenta</span> ';
+  if (d.nuevo) h += '<span class="marca nuevo">nuevo</span> ';
+  if (d.prop) h += '<span class="marca prop">' + esc(d.prop) + '</span>';
+  return h;
+}
+
+// ── Candado aritmético, igual que logica.js: suma en centésimos para que 4.5 + 0.5 dé 5 exacto.
+function candado(){
+  var c = Math.round(persona.dias_mexico*100), f = 0;
+  persona.dias.forEach(function(d){ f += Math.round(d.dias*100); });
+  var total = (c + f)/100, ok = (c + f) === semana.dias*100;
+  var el = $('candado');
+  el.className = 'candado ' + (ok ? 'ok' : 'mal');
+  el.innerHTML = (ok ? '✓ Los días suman ' : '✗ Los días no suman ' + semana.dias + ': van ') + nd(total) +
+    ' <span class="seg num">México ' + nd(persona.dias_mexico) + '</span>' +
+    persona.dias.map(function(d){ return '<span class="seg num">' + esc(d.l) + ' ' + nd(d.dias) + '</span>'; }).join('') +
+    ' <span style="color:var(--muted2)">· las horas no laboradas no entran aquí: no son días</span>';
+}
+
+function resumen(d, v){
+  var p = [];
+  (d.campos||[]).forEach(function(c){
+    var x = v[c[0]]; if (x === undefined || x === '') return;
+    p.push(c[1] + ': ' + (c[2] === 'num' && /onto/i.test(c[1]) ? mx(x) : x));
+  });
+  if (d.k === 'descuento_estadio' && v.de && v.abono) {
+    p.push('quedan ' + (v.de - v.abono) + ' abonos');
+  }
+  if (v.fuente) p.push('Fuente: ' + v.fuente + ' ' + FUENTES[v.fuente]);
+  if (d.no_costo) p.push('no es costo del proyecto');
+  return p.join(' · ');
+}
+
+function pintarLista(){
+  var h = persona.dias.map(function(d){
+    return '<div class="item"><div class="c"><div class="t">' + esc(d.l) + ' <span class="marca quita">días y ausencias</span></div>' +
+      '<div class="d">Días: ' + nd(d.dias) + ' · ' + esc(d.nota) + '</div></div></div>';
+  }).join('');
+  h += persona.decl.map(function(x, i){
+    var d = DEF[x.tipo];
+    return '<div class="item"><div class="c"><div class="t">' + esc(d.l) + ' ' + marcas(d) + '</div>' +
+      '<div class="d">' + esc(resumen(d, x.v)) + '</div></div>' +
+      '<button type="button" data-quitar="' + i + '">quitar</button></div>';
+  }).join('');
+  $('lista').innerHTML = h || '<div class="vacio">Nada declarado esta semana.</div>';
+}
+
+function pintarOpciones(){
+  var h = '';
+  GRUPO.forEach(function(g){
+    if (g.sub) { h += '<div class="sub-h">' + esc(g.sub) + '</div>'; return; }
+    h += '<button type="button" class="opt" id="op-' + g.k + '" data-k="' + g.k + '" aria-pressed="' + (elegido === g.k) + '">' +
+      '<span class="l">' + esc(g.l) + '</span>' + marcas(g) + '</button>';
+  });
+  $('opciones').innerHTML = h;
+}
+
+function pintarCampos(){
+  var d = DEF[elegido];
+  if (!d) { $('campos').innerHTML = ''; return; }
+  var h = '<div class="fila">';
+  d.campos.forEach(function(c){
+    var id = 'c_' + c[0];
+    h += '<div><label for="' + id + '">' + esc(c[1]) + '</label>';
+    if (Array.isArray(c[2])) {
+      h += '<select id="' + id + '"><option value="">—</option>' + c[2].map(function(o){ return '<option>' + esc(o) + '</option>'; }).join('') + '</select>';
+    } else {
+      h += '<input id="' + id + '" type="' + (c[2] === 'num' ? 'number' : 'text') + '"' +
+        (c[2] === 'num' ? ' step="' + (c[0] === 'horas' ? '0.25' : (/onto/i.test(c[1]) ? '0.01' : '1')) + '" min="0"' : '') + '>';
+    }
+    h += '</div>';
+  });
+  if (d.fuente) {
+    h += '<div><label for="c_fuente">Fuente de pago</label><select id="c_fuente"><option value="">— elige —</option>' +
+      Object.keys(FUENTES).map(function(k){ return '<option value="' + k + '">' + k + ' · ' + FUENTES[k] + '</option>'; }).join('') + '</select></div>';
+  }
+  h += '</div>';
+  if (d.no_costo) h += '<div class="nota violet"><b>Sale dinero de FTS y la persona lo debe.</b> No entra al reparto de mano de obra ni al puente de MO.</div>';
+  if (d.k === 'descuento_estadio') h += '<div class="nota blue">Es su propio concepto para que no se sume con los préstamos personales. «De cuántos abonos» basta para saber cuándo termina, sin llevar un saldo a mano.</div>';
+  if (d.k === 'abonos_estadio_otorgado') h += '<div class="nota amber">Este renglón sólo existe si FTS compra los abonos y los recupera por nómina. Si el club cobra directo, no hay punta de «pagado» y este concepto sobra.</div>';
+  if (d.k === 'tiempo_no_laborado') h += '<div class="nota amber"><b>Horas, no días.</b> No toca el candado de días: la persona sí vino. Si no vino medio día, va como <i>Falta injustificada 0.5</i> en «Días y ausencias». El monto lo calcula CONTPAQi; RH no lo teclea.</div>';
+  h += '<div class="err" id="err" aria-live="polite"></div><div class="acc"><button type="button" class="btn pri" id="agregar">Agregar</button><button type="button" class="btn" id="cancelar">Cancelar</button></div>';
+  $('campos').innerHTML = h;
+}
+
+function pintarDespacho(){
+  var L = [];
+  persona.dias.forEach(function(d){ L.push('DESCONTAR ' + nd(d.dias) + ' día · ' + d.l + ' · ' + d.nota); });
+  persona.decl.forEach(function(x){
+    var d = DEF[x.tipo], v = x.v, s = d.verbo + ' ';
+    if (x.tipo === 'tiempo_no_laborado') s += nd(v.horas) + ' h · Horas no laboradas · ' + (v.motivo||'') + (v.detalle ? ' · ' + v.detalle : '');
+    else if (x.tipo === 'descuento_estadio') s += mx(v.monto) + ' · Abonos estadio · abono ' + v.abono + ' de ' + v.de;
+    else if (x.tipo === 'descuento_prestamo') s += mx(v.monto) + ' · Préstamo · pago ' + v.pago;
+    else s += mx(v.monto) + ' · ' + d.l;
+    L.push(s);
+  });
+  $('desp').textContent = 'Persona de ejemplo A (0XX)\n' + (L.length ? L.map(function(l){ return '• ' + l; }).join('\n') : '(en blanco: semana normal)');
+}
+
+function pintarCruce(){
+  var prest = 0, est = 0, nc = 0;
+  persona.decl.forEach(function(x){
+    var d = DEF[x.tipo], m = Number(x.v.monto)||0;
+    if (d.no_costo) nc += m;
+    else if (x.tipo === 'descuento_estadio') est += m;
+    else if (d.verbo === 'DESCONTAR' && x.tipo !== 'tiempo_no_laborado') prest += m;
+  });
+  $('tot').innerHTML =
+    '<div><div class="k">Préstamos</div><div class="v num">' + mx(prest) + '</div></div>' +
+    '<div><div class="k">Estadio</div><div class="v num">' + mx(est) + '</div></div>' +
+    '<div><div class="k">Sale, no es costo</div><div class="v num">' + mx(nc) + '</div></div>';
+  var filas = persona.decl.map(function(x){
+    var d = DEF[x.tipo];
+    var st = d.est === 'ok' ? '<span class="st-ok">se cruza hoy</span>' : '<span class="st-pend">falta la columna</span>';
+    return '<tr><td>' + esc(d.l) + '</td><td>' + esc(d.col) + '</td><td>' + st + '</td></tr>';
+  });
+  filas.push('<tr><td>Falta injustificada 0.5</td><td>baja SUELDO: 4.5 días pagados</td><td><span class="st-ok">cuadra con la derivación</span></td></tr>');
+  $('cruce').innerHTML = filas.join('');
+}
+
+function todo(){ candado(); pintarLista(); pintarOpciones(); pintarCampos(); pintarDespacho(); pintarCruce(); }
+
+document.addEventListener('click', function(e){
+  var t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.k) { elegido = t.dataset.k; pintarOpciones(); pintarCampos(); var f = document.querySelector('#campos input,#campos select'); if (f) f.focus(); return; }
+  if (t.dataset.quitar !== undefined) { persona.decl.splice(Number(t.dataset.quitar), 1); todo(); return; }
+  if (t.id === 'cancelar') { elegido = null; pintarOpciones(); pintarCampos(); return; }
+  if (t.id === 'agregar') {
+    var d = DEF[elegido], v = {}, falta = [];
+    d.campos.forEach(function(c){
+      var x = $('c_' + c[0]).value;
+      if (c[2] === 'num') { if (!(Number(x) > 0)) falta.push(c[1]); else v[c[0]] = Number(x); }
+      else if (c[0] === 'detalle') { if (x.trim()) v[c[0]] = x.trim(); }
+      else if (!String(x).trim()) falta.push(c[1]); else v[c[0]] = x;
+    });
+    if (d.fuente) { var fu = $('c_fuente').value; if (!fu) falta.push('Fuente de pago'); else v.fuente = fu; }
+    if (d.k === 'descuento_estadio' && v.abono && v.de && v.abono > v.de) falta.push('un número de abono menor o igual al total');
+    if (falta.length) { $('err').textContent = 'Falta: ' + falta.join(', ').toLowerCase() + '.'; return; }
+    persona.decl.push({ tipo: elegido, v: v }); elegido = null; todo();
+  }
+});
+todo();
+})();
+</script>
