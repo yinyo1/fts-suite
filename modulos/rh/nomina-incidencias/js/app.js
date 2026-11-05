@@ -577,7 +577,8 @@
       opts += '<optgroup label="' + esc(G.titulo) + '">';
       for (var t in G.items) {
         var sel = (editando && t === previo.tipo) ? ' selected' : '';
-        opts += '<option value="' + t + '"' + sel + '>' + esc(G.items[t].label) + '</option>';
+        // El texto lleva la marca de no_costo (#312): se ve en la lista, antes de elegir.
+        opts += '<option value="' + t + '"' + sel + '>' + esc(Cat.textoOpcion(G.items[t])) + '</option>';
       }
       opts += '</optgroup>';
     }

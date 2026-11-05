@@ -168,6 +168,28 @@ seccion('Catálogo');
     for (const t in Cat.CATALOGO.dinero.items) if (!Cat.CATALOGO.dinero.items[t].fuente) sinFuente.push(t);
     return sinFuente.length === 0;
   })());
+
+  // #312 (V1.23): el grupo nombra las dos direcciones del dinero, y la marca que de
+  // verdad decide —no_costo— se ve en el texto de la opción, ANTES de elegir.
+  check('el grupo se llama «Préstamos y descuentos»',
+    Cat.CATALOGO.desc.titulo === 'Préstamos y descuentos', Cat.CATALOGO.desc.titulo);
+  check('la opción de TODO tipo no_costo lleva la marca, y ninguna otra', (function () {
+    const mal = [];
+    for (const g in Cat.CATALOGO) for (const t in Cat.CATALOGO[g].items) {
+      const d = Cat.CATALOGO[g].items[t], tx = Cat.textoOpcion(d);
+      const lleva = tx.indexOf(Cat.MARCA_NO_COSTO) >= 0;
+      if (lleva !== !!d.no_costo) mal.push(t);
+    }
+    return mal.length === 0 ? true : (console.log('    sin cuadrar: ' + mal.join(', ')), false);
+  })());
+  check('la marca NO cambia la etiqueta: el despacho y el cruce de Carga MO casan por label', (function () {
+    for (const g in Cat.CATALOGO) for (const t in Cat.CATALOGO[g].items) {
+      const d = Cat.CATALOGO[g].items[t];
+      if (Cat.textoOpcion(d).indexOf(d.label) !== 0) return false;
+      if (d.label.indexOf(Cat.MARCA_NO_COSTO) >= 0) return false;
+    }
+    return true;
+  })());
 }
 
 // ═══════════════════ 5 · TOTALES Y ESTADOS ═══════════════════

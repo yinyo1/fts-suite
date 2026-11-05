@@ -92,9 +92,15 @@
         ajuste_sueldo:    { label: 'Ajuste de sueldo', fuente: true, campos: [['monto', 'Monto', 'num'], ['motivo', 'Motivo', ['Corrección de captura', 'Retroactivo', 'Cambio de tabulador']]] }
       }
     },
+    // TITULO (#312, V1.23). Se llamaba 'Descuentos y compensaciones' y hablaba de una
+    // sola dirección del dinero, pero aquí viven las dos: lo que FTS PRESTA (anticipo,
+    // préstamo otorgado) y lo que se le DESCUENTA a la persona. La ayuda ya lo decía;
+    // el título no. Lo que decide el dinero NO es el grupo sino `no_costo` (logica.js
+    // lo revisa primero), así que esa marca se pinta en el propio selector:
+    // ver MARCA_NO_COSTO abajo.
     desc: {
-      titulo: 'Descuentos y compensaciones',
-      ayuda: 'Dinero que se descuenta o que se entrega y luego se recupera.',
+      titulo: 'Préstamos y descuentos',
+      ayuda: 'Dinero que FTS presta o adelanta, y lo que se le descuenta a la persona. No consume días de la semana.',
       items: {
         // NO_COSTO: es un préstamo, no costo laboral de la semana. Ver #134/#141:
         // mandarlo al puente de MO lo convertiría en gasto indirecto, que no es.
@@ -128,6 +134,22 @@
     }
   };
 
+  // ─── La marca que decide el dinero, visible ANTES de elegir (#312) ───
+  // Hasta V1.22 la pantalla decía "no es costo del proyecto" sólo DESPUÉS de elegir el
+  // concepto. La persona lee el grupo y la máquina lee `no_costo`: si se separan, nada
+  // se queja. Con la marca en el texto de la opción, quien agregue mañana un concepto
+  // copiando al de al lado ve en la lista cuál trae la bandera y cuál no.
+  // Se deriva SÓLO de `no_costo` —un solo escritor (§20 #4)— y nunca del grupo: una
+  // decisión de pantalla no debe mover dinero. El <select> es nativo a propósito: un
+  // <option> no admite estilos, pero sí texto, y eso basta para verlo antes de elegir.
+  // Corta a propósito: a 380 px «sale dinero, no es costo» se cortaba en el selector
+  // cerrado justo antes de «es costo», que es la parte que decide.
+  var MARCA_NO_COSTO = 'no es costo';
+
+  function textoOpcion(def) {
+    return def.no_costo ? def.label + ' — ' + MARCA_NO_COSTO : def.label;
+  }
+
   // Busca un tipo en los 4 grupos. Devuelve {grupo, grupoDef, def} o null.
   function meta(tipo) {
     for (var g in CATALOGO) {
@@ -159,6 +181,8 @@
     // cosas distintas y nadie lo note.
     IMPUESTOS: IMPUESTOS,
     LIBRE: LIBRE,
+    MARCA_NO_COSTO: MARCA_NO_COSTO,
+    textoOpcion: textoOpcion,
     meta: meta,
     rubroBono: rubroBono,
     tiposDeclarables: tiposDeclarables,

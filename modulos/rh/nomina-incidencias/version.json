@@ -1,6 +1,6 @@
 {
-  "version": "V1.22",
-  "fecha": "2026-09-19",
+  "version": "V1.23",
+  "fecha": "2026-11-05",
   "modulo": "rh/nomina-incidencias",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "ambito": "El CONTADOR es solo de este modulo. finanzas, comercial/machote y operaciones/carga-mo usan el mismo esquema con contadores PROPIOS (ver sus version.json): que aqui vaya en V1.16 y carga-mo en V1.00 es lo correcto, no un desfase — son modulos distintos que avanzan por separado. operaciones/planeacion sigue en 2.4.1; kiosk y confirmar-horas solo con cadena de build.",
@@ -113,6 +113,19 @@
     }
   ],
   "changelog": [
+    {
+      "version": "V1.23",
+      "fecha": "2026-11-05",
+      "cambios": [
+        "El grupo 'Descuentos y compensaciones' pasa a llamarse 'Prestamos y descuentos' (#312, camino B). Ahi viven las dos direcciones del dinero: lo que FTS presta y lo que se le descuenta a la persona, y el titulo solo nombraba una.",
+        "La marca no_costo se ve ANTES de elegir: el texto de la opcion dice 'Anticipo de sueldo — no es costo' y 'Prestamo otorgado — no es costo'. Se probo primero 'sale dinero, no es costo' y a 380 px el selector cerrado lo cortaba justo antes de 'es costo'. Hasta V1.22 solo aparecia despues de elegir el concepto.",
+        "La marca se deriva solo de no_costo, nunca del grupo: un solo escritor. Cualquier concepto futuro con no_costo la trae sola, en cualquier grupo.",
+        "La ETIQUETA no cambia: el despacho y el cruce de Carga MO casan por label letra por letra. La marca vive solo en el texto de la opcion.",
+        "Select nativo, no selector propio (decision de Esteban en #471): la marca se lee igual y no se pierde teclado ni foco.",
+        "index.html declara un icono vacio: el navegador pedia /favicon.ico, recibia 404 y el gate visual lo contaba como error de JavaScript en el primer ancho.",
+        "Gates: nomina +3 checks (titulo, marca exactamente en los no_costo, etiqueta intacta); visual +2 checks por ancho, y pasa de 3 a 5 anchos (1440, 1280, 900, 760, 380)."
+      ]
+    },
     {
       "version": "V1.22",
       "fecha": "2026-09-25",

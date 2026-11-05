@@ -64,9 +64,13 @@ function servir() {
 const esDelEntorno = t => /ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|ERR_BLOCKED|fonts\.googleapis|fonts\.gstatic|net::ERR/.test(t);
 
 const VIEWPORTS = [
+  // Los cuatro de §20 #20 (380 · 760 · 900 · 1280) más el de escritorio grande.
+  // Lo que se rompe vive EN MEDIO, donde una regla se apagó y la otra no entra.
   ['desktop-1440', 1440, 900],
   ['laptop-1280', 1280, 800],
-  ['movil-390', 390, 844]
+  ['tableta-900', 900, 900],
+  ['tableta-760', 760, 900],
+  ['movil-380', 380, 844]
 ];
 
 (async () => {
@@ -249,8 +253,26 @@ const VIEWPORTS = [
     // Agregar una declaración de verdad, desde la interfaz.
     await page.click('#addDecl');
     await page.waitForSelector('#ntipo');
+    // #312: la marca de no_costo se lee en la lista ANTES de elegir, y el grupo se
+    // llama por las dos direcciones del dinero.
+    const opc = await page.$$eval('#ntipo option', os => os.map(o => ({ v: o.value, t: o.textContent })));
+    const marcadas = opc.filter(o => /— no es costo$/.test(o.t)).map(o => o.v).sort().join(',');
+    check('la lista marca «no es costo» antes de elegir, y sólo en los no_costo',
+      marcadas === 'anticipo_sueldo,prestamo_otorgado', marcadas);
+    check('el grupo del selector se llama «Préstamos y descuentos»',
+      (await page.$$eval('#ntipo optgroup', gs => gs.map(g => g.label))).indexOf('Préstamos y descuentos') >= 0);
+    // Captura de la LISTA desplegada. El popup nativo no sale en una captura, así que
+    // se muestra en línea con `size` solo para la foto, y se regresa como estaba.
+    await page.evaluate(() => { const s = document.getElementById('ntipo'); s.size = 14; s.value = 'anticipo_sueldo'; });
+    await (await page.$('#ntipo')).screenshot({ path: path.join(OUT, nombre + '-3a-lista-marca.png') });
+    await page.evaluate(() => { const s = document.getElementById('ntipo'); s.removeAttribute('size'); });
     await page.selectOption('#ntipo', 'anticipo_sueldo');
     await page.waitForSelector('#c_monto');
+    // Y el selector CERRADO con el texto largo: a 380 px es donde se corta, si se corta.
+    const selBox = await (await page.$('#ntipo')).boundingBox();
+    check('el selector con la marca cabe en la pantalla', !!selBox && selBox.x >= 0 && selBox.x + selBox.width <= w + 1,
+      selBox ? Math.round(selBox.x + selBox.width) + ' de ' + w : 'sin caja');
+    await page.screenshot({ path: path.join(OUT, nombre + '-3b-elegido-marca.png') });
     check('el aviso de "es préstamo, no costo" aparece al elegir anticipo',
       /préstamo/.test(await page.textContent('#ncampos')), (await page.textContent('#ncampos')).slice(0, 80));
     await page.fill('#c_monto', '3500');

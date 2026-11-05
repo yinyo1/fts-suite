@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nómina · Incidencias — FTS Suite</title>
+<!-- Sin esto el navegador pide /favicon.ico a la raíz del dominio, recibe 404 y el
+     gate visual lo cuenta como error de JavaScript. No es código del módulo. -->
+<link rel="icon" href="data:,">
 <link rel="stylesheet" href="css/nomina.css">
 </head>
 <body>
@@ -16,7 +19,7 @@
        que se ve si el fetch de version.json no contesta (abrir el archivo por file://,
        Pages cacheando, red caída). Dejarlo atrasado convierte el badge en un falso
        negativo: el código es nuevo y la pantalla jura que es viejo. -->
-  <span class="badge" id="ver-badge">V1.22</span>
+  <span class="badge" id="ver-badge">V1.23</span>
   <button class="badge modo" id="modo-badge" title="Cambiar entre datos reales y modo práctica">REAL</button>
   <span class="sp"></span>
   <span class="guardado" id="guardado"></span>
@@ -108,15 +111,15 @@
      resultado es un badge que dice la version nueva corriendo el codigo viejo, y
      eso manda a buscar los bugs al lugar equivocado. El valor es el MISMO de
      version.json y del badge, y el gate exige que los tres coincidan. -->
-<script src="js/catalogo.js?v=V1.22"></script>
-<script src="js/logica.js?v=V1.22"></script>
-<script src="js/despacho.js?v=V1.22"></script>
-<script src="js/excel.js?v=V1.22"></script>
-<script src="js/indice.js?v=V1.22"></script>
-<script src="js/nom-auth.js?v=V1.22"></script>
-<script src="js/nom-client.js?v=V1.22"></script>
-<script src="js/nom-resolver.js?v=V1.22"></script>
-<script src="js/app.js?v=V1.22"></script>
+<script src="js/catalogo.js?v=V1.23"></script>
+<script src="js/logica.js?v=V1.23"></script>
+<script src="js/despacho.js?v=V1.23"></script>
+<script src="js/excel.js?v=V1.23"></script>
+<script src="js/indice.js?v=V1.23"></script>
+<script src="js/nom-auth.js?v=V1.23"></script>
+<script src="js/nom-client.js?v=V1.23"></script>
+<script src="js/nom-resolver.js?v=V1.23"></script>
+<script src="js/app.js?v=V1.23"></script>
 <script>
 (function () {
   'use strict';
