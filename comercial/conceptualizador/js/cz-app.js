@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.65.10';
+  var VERSION = 'V1.65.11';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -928,6 +928,7 @@
     ['seleccion_v160', 'Seleccionar parte del texto', 'Con el mouse se arrastra y el chat ya no se repinta mientras hay selección; en el teléfono, mantener presionado sobre el texto da las manijas del sistema.'],
     // V1.61 (#12) · estado visible. Migración 0031: cuántos van antes, la hora de cada paso, orden cancelada = Perdida y la huella de precios.
     ['barra_v161', 'Barra de estado', 'Arriba solo los datos del caso y «escribiendo…» cuando de verdad escribe alguien; abajo UNA barra con segundero: esperando turno, paso N de M (con Detener), listo en m:ss, lo que pasa en Odoo y el error con qué hacer. orden-odoo compara precios y no el número de versión; una orden del caso cancelada cierra como Perdida.'],
+    ['hitos_v16511', 'Hitos de pago en el machote', 'Los hitos de pago (número, %, cuándo, inicio de fabricación y crédito) viven en el machote: cambiarlos es versión nueva, y la nota y la tabla «Hitos de pago» salen de esa misma lista (también hito único 100 % contra OC). El título de «Actualizar SO…» lleva el total del machote.'],
     ['cuadre_v162', 'Todo cuadra', 'El borrador se arma del machote GUARDADO (si no cuadra, primero «Actualizar el machote»); la nota de pago y la tabla «Hitos de pago» salen de los mismos hitos (también 50/30/20); orden-odoo dice en palabras qué no cuadra y el botón lo arregla.'],
     ['tarjetas_v162', 'Tarjetas viejas', 'Un cálculo nuevo descarta las tarjetas de machote y de orden con otro total; una tarjeta reemplazada no se aplica; la que lleva 24 h (panel) sin aplicarse avisa una vez al dueño.'],
     ['oportunidad_v162', 'La oportunidad no se pierde', 'La oportunidad elegida se guarda en el caso al elegirla y se crea aunque la orden falle por otra razón.'],
