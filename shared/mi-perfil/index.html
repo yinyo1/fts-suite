@@ -7,7 +7,7 @@
 <script>
   // Cache busting + BUILD_DATE expuesto a window.
   (function() {
-    const BUILD_DATE = '20260504-mp-f2-1-roles-auto';
+    const BUILD_DATE = '20261109-mp-seguridad';
     window.BUILD_DATE = BUILD_DATE;
     if (!window.location.search.includes('v=')) {
       document.addEventListener('DOMContentLoaded', function() {
@@ -315,6 +315,12 @@
         <div class="mp-card-title">Panel de Incidencias</div>
         <div class="mp-card-sub">Aprueba o rechaza incidencias del equipo.</div>
         <div class="mp-card-roles" id="mp-card-roles"></div>
+      </a>
+
+      <a id="mp-card-seguridad" class="mp-card" href="../../chats/?seguridad">
+        <div class="mp-card-icon">🔐</div>
+        <div class="mp-card-title">Seguridad</div>
+        <div class="mp-card-sub">Cambia tu contraseña del Suite y cierra tus otras sesiones.</div>
       </a>
 
       <div class="mp-card disabled">
