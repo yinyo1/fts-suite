@@ -26,9 +26,19 @@
           "hora_propuesta_cst": "2026-11-09 08:00:00",
           "comentario": "Olvide check",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-11-09T14:40:07.058Z",
+          "hora_propuesta_cst": "08:00",
+          "comentario": "Incidencia verificada",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 6,
@@ -43,7 +53,7 @@
       "rh_directo_ceo": false,
       "directo_ceo": true,
       "sin_supervisor": false,
-      "tag_disputa_activo": true
+      "tag_disputa_activo": false
     },
     {
       "id_interno": "INC-AUTO-CIERRE-98-2026-11-04T18-28-44-390Z",
