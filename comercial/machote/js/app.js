@@ -57,7 +57,7 @@
    *   2. el `?v=` de la URL con la que el navegador lo bajó,
    *   3. la que declara cada pieza que se carga aparte (hoy el motor).
    * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
-  const VERSION_ARCHIVO = 'V1.57';
+  const VERSION_ARCHIVO = 'V1.58';
 
   const VERSION_URL = (function () {
     try {
@@ -1357,6 +1357,9 @@
      * necesita identificar de un vistazo. El servidor manda `dueno_nombre`. */
     const nombresAjenos = {};
     (ST.ajenos || []).forEach(m => { if (m._dueno) nombresAjenos[m._dueno] = m._dueno_nombre || m._dueno; });
+    /* Directorio de perfiles (sesión 5): quien RH dio de alta como dueño posible aparece aunque no tenga machotes. */
+    const DIR = (G.MachoteDirectorio && G.MachoteDirectorio.duenosPosibles()) || [];
+    DIR.forEach(p => { if (!nombresAjenos[p.username]) nombresAjenos[p.username] = p.nombre || p.username; });
     const nombreDe = (a) => (a === yo ? yoNom : (nombresAjenos[a] || a));
 
     /* El universo de personas sale de los DATOS, no de una lista escrita a
@@ -1370,6 +1373,7 @@
       const d = duenoDe(m);
       if (d && personas.indexOf(d) < 0) personas.push(d);
     });
+    DIR.forEach(p => { if (personas.indexOf(p.username) < 0) personas.push(p.username); });
     personas.sort();
 
     const f = ST.filtros;
@@ -3979,6 +3983,10 @@
     (ST.ajenos || []).forEach(m => {
       if (m && m._dueno && m._dueno !== yo) vistos[m._dueno] = m._dueno_nombre || m._dueno;
     });
+    /* Más el directorio de perfiles (sesión 5): el dueño posible recién dado de alta ya se puede elegir. */
+    ((G.MachoteDirectorio && G.MachoteDirectorio.duenosPosibles()) || []).forEach(p => {
+      if (p.username !== yo && !vistos[p.username]) vistos[p.username] = p.nombre || p.username;
+    });
     return Object.keys(vistos).sort().map(a => ({ actor: a, nombre: vistos[a] }));
   }
 
@@ -5466,5 +5474,11 @@
    * llamada a Odoo, y el campo lo pide el revisador en cada machote. */
   if (G.MachoteGeo) {
     G.MachoteGeo.cargar().then(() => { render(); });
+  }
+
+  /* El directorio de perfiles (sesión 5), igual: en segundo plano; se repinta
+   * solo si trajo a alguien. Si falla, la lista sigue saliendo de los datos. */
+  if (G.MachoteDirectorio) {
+    G.MachoteDirectorio.cargar().then(l => { if (l && l.length) render(); });
   }
 })(window);
