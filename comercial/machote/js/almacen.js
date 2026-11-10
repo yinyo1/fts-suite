@@ -471,7 +471,17 @@
    *  entera antes de mergear. */
   function puedeEscribir(m) {
     if (!m) return false;
-    return !esAjeno(m) || prestadoAMi(m);
+    return !esAjeno(m) || prestadoAMi(m) || editoComoSupervisor(m);
+  }
+
+  /** Supervisor comercial (#480): con el scope `comercial:supervisor` se editan los machotes del equipo sin préstamo.
+   *  Esto solo DESBLOQUEA la pantalla: quien decide es el servidor (`comercial/machote-guardar` lee el scope del token
+   *  en cada guardado). Archivar y ceder lo ajeno siguen siendo solo del dueño. El dueño no cambia. */
+  function soySupervisor() {
+    try { return !!(G.SuiteAuth && G.SuiteAuth.tieneScope && G.SuiteAuth.tieneScope('comercial:supervisor')); } catch (e) { return false; }
+  }
+  function editoComoSupervisor(m) {
+    return !!m && esAjeno(m) && !prestadoAMi(m) && soySupervisor();
   }
 
   function empujarUno(m, ses, motivo) {
@@ -490,7 +500,7 @@
      * prestados y no en la libreta de lo mío. Mezclarlas era la forma de que
      * el `M-1041` de Ricardo pisara el mío. */
     if (esAjeno(m)) {
-      if (!prestadoAMi(m)) {
+      if (!prestadoAMi(m) && !editoComoSupervisor(m)) {
         return Promise.resolve({ ok: false, error: 'ES_AJENO',
           mensaje: 'Ese machote es de otra persona: se puede ver, no guardar.' });
       }
@@ -1793,6 +1803,7 @@
     prestamosDe: prestamosDe,
     puedeEscribir: puedeEscribir,
     prestadoAMi: prestadoAMi,
+    editoComoSupervisor: editoComoSupervisor,
     guardarPrestadoLocal: guardarPrestadoLocal,
     leerPrestados: leerPrestados,
     olvidarPrestado: olvidarPrestado,

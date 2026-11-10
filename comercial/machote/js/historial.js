@@ -155,8 +155,10 @@
         '<div><span class="n">Versión ' + v.version + '</span> ' +
         (i === 0 ? '<span class="chip ult">la última</span>'
                  : '<span class="chip">' + esc(v.estado) + '</span>') + '</div>' +
-        '<div class="meta">' + esc(quien) +
-        (deOtro
+        '<div class="meta">' + (deOtro && v.motivo === 'editado como supervisor' ? 'editado por ' : '') + esc(quien) +
+        (deOtro && v.motivo === 'editado como supervisor'
+          ? ' <span class="chip otro" title="Supervisor comercial: edita los machotes del equipo; el dueño no cambia.">como supervisor</span>'
+          : deOtro
           ? ' <span class="chip otro" title="La escribió alguien que no es el dueño de esta ' +
             'cotización, con un permiso temporal.">no es el dueño</span>'
           : '') +
