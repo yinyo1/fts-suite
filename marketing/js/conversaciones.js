@@ -164,10 +164,11 @@
   }
   function reasignar(c, aSeguimiento) {
     var cap = modal('<h3>' + (aSeguimiento ? 'Pasar a quien da seguimiento' : 'Reasignar') + '</h3>' +
-      '<label class="ch-campo">Usuario de la suite de quien la va a trabajar<input id="ra" autocomplete="off" placeholder="nombre.apellido"></label><br>' +
+      '<label class="ch-campo">Usuario de la suite de quien la va a trabajar<input id="ra" autocomplete="off" placeholder="nombre.apellido" list="raDir"></label><datalist id="raDir"></datalist><br>' +
       '<label class="ch-campo">Por qué (opcional)<input id="rz"></label>' +
       (aSeguimiento ? '<p class="ch-nota" style="margin-top:8px">Pasa a Etapa 2: se cierra la prospección y el motor consolida sus lecciones de búsqueda. La historia completa se queda.</p>' : '<p class="ch-nota" style="margin-top:8px">La historia completa se queda.</p>') +
       '<div class="ch-fila" style="margin-top:10px"><button class="ch-btn ch-btn-s" data-no>Cancelar</button><button class="ch-btn ch-btn-p" id="ok">' + (aSeguimiento ? 'Pasar' : 'Reasignar') + '</button></div>');
+    if (G.Mkt.llenarDirectorio) G.Mkt.llenarDirectorio(cap.querySelector('#raDir'));   // #480: cotizadores del directorio de perfiles
     cap.querySelector('#ok').onclick = async function () {
       var r = await C.pedir('conv_reasignar', { conversacion_id: c.id, texto: cap.querySelector('#ra').value.trim(), razon: cap.querySelector('#rz').value, datos: aSeguimiento ? { etapa: 2 } : {} });
       if (r.ok) { cap.remove(); U.toast('Listo. La historia se queda.'); if (est.conv) cargarConv(); else cargarLista(); } else U.toast(r.mensaje || r.error);

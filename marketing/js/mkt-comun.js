@@ -54,6 +54,25 @@
       '<br><span style="color:var(--muted2)">Antes de gastar una sola consulta web, el motor revisa Odoo y la lista negra: si ya es cliente, competidor o duplicado, esa empresa no gasta.</span></div></div>';
   }
   function hoyISO() { var d = new Date(Date.now() - 6 * 3600e3); return d.toISOString().slice(0, 10); }
-  G.Mkt = { cliente: cliente, cola: laCola, marco: marco, sesion: sesion, tiene: tiene, cab: cab, usoHtml: usoHtml, presupuestoHtml: presupuestoHtml,
+  /** Directorio de perfiles (#480): quién cotiza / es dueño posible, asignado por RH en la base. Para ofrecer
+   *  a quién reasignar en vez de teclear el usuario a ciegas. Si no contesta, [] y el campo sigue siendo libre. */
+  var dirP = null;
+  function directorio() {
+    if (dirP) return dirP;
+    var s = sesion();
+    if (!s.token) return Promise.resolve([]);
+    dirP = fetch('https://primary-production-5c3c.up.railway.app/webhook/suite/perfiles', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: s.token }), credentials: 'omit', cache: 'no-store' })
+      .then(function (r) { return r.json(); }).then(function (j) { return (j && j.ok && Array.isArray(j.personas)) ? j.personas : []; })
+      .catch(function () { dirP = null; return []; });
+    return dirP;
+  }
+  /** Llena un <datalist> con el directorio (nombre visible, usuario como valor). */
+  function llenarDirectorio(dl) {
+    directorio().then(function (l) {
+      l.forEach(function (p) { var o = document.createElement('option'); o.value = p.username; o.label = (p.nombre || p.username) + (p.perfil_nombre ? ' · ' + p.perfil_nombre : ''); o.textContent = o.label; dl.appendChild(o); });
+    });
+  }
+  G.Mkt = { directorio: directorio, llenarDirectorio: llenarDirectorio, cliente: cliente, cola: laCola, marco: marco, sesion: sesion, tiene: tiene, cab: cab, usoHtml: usoHtml, presupuestoHtml: presupuestoHtml,
             medidor: medidor, hoyISO: hoyISO, esc: U.esc, toast: function (t, ms) { return G.ChatUI.toast(t, ms); } };
 })(window);
