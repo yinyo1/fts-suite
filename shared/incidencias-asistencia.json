@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-149-2026-11-10T00-54-59-720Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 149,
+      "empleado_nombre": "Erick Belmont Kato",
+      "department_id": 18,
+      "department_name": "Administracion y Finanzas",
+      "sin_departamento": false,
+      "depto_invalido": true,
+      "supervisor_id": null,
+      "supervisor_name": null,
+      "supervisor_email": "erick@fts.mx",
+      "supervisor_phone": "+52 81 1497 5381",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": true,
+      "sin_supervisor": false,
+      "attendance_id": 16552,
+      "fecha_creacion": "2026-11-10T00:54:59.720Z",
+      "check_in_original_utc": "2026-11-09 13:13:23",
+      "check_out_propuesto_utc": "2026-11-09 22:00:00",
+      "check_out_propuesto_cst": "2026-11-09 16:00:00",
+      "geolocation": {
+        "lat": 25.7839838,
+        "lng": -100.456879,
+        "accuracy": 12.982000350952148,
+        "captured_at": "2026-11-10T00:54:57.849Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-11-10T00:54:59.720Z",
+          "hora_propuesta_cst": "16:00",
+          "comentario": "Olvide checar"
+        }
+      ],
+      "status": "pendiente_rh",
+      "hora_final_aplicada_utc": "2026-11-09 22:00:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20261101-kiosk-nomina-usa"
+    },
+    {
       "id_interno": "INC-OLV-CHK-161-2026-11-10T00-54-17-221Z",
       "tipo": "olvido_checkout",
       "empleado_id": 161,
