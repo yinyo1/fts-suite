@@ -82,12 +82,22 @@
           "fecha": "2026-11-10T00:54:59.720Z",
           "hora_propuesta_cst": "16:00",
           "comentario": "Olvide checar"
+        },
+        {
+          "paso": 2,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-11-10T14:10:06.583Z",
+          "hora_propuesta_cst": "16:00",
+          "comentario": "Incidencia aprobada",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "hora_final_aplicada_utc": "2026-11-09 22:00:00",
       "aplicado_en_odoo": true,
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "creada_por_modulo": "kiosk",
       "creada_por_build": "20261101-kiosk-nomina-usa"
     },
