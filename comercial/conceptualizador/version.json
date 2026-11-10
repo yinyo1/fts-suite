@@ -1,6 +1,11 @@
 {
-  "version": "V1.65.10",
+  "version": "V1.65.11",
   "historial": [
+    {
+      "version": "V1.65.11",
+      "fecha": "2026-11-05",
+      "nota": "COT-0079 / SO11954 (Nalco, Montalvo): los hitos de pago viven en el machote y de ahí salen la nota y la tabla «Hitos de pago» (también hito único 100 % contra OC, fabricación contra GR y crédito Net 60), detrás de `hitos_v16511`. El aviso de PAGO_NO_CUADRA dice la causa técnica (la tarjeta lleva congelados la tabla vieja y la nota nueva) y el título de «Actualizar SO…» lleva el total del machote, no el anticipo."
+    },
     {
       "version": "V1.65.10",
       "fecha": "2026-11-03",

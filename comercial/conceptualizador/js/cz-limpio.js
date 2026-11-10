@@ -113,7 +113,10 @@
       var dijo = f && f.mensaje ? String(f.mensaje) : '';
       X.NO_CUADRA = { texto: (dijo || 'El machote guardado y la cotización no dicen lo mismo.') + ' Toca «Actualizar el machote»: guardo el cálculo vigente y después te dejo la cotización.',
         boton: 'Actualizar el machote', hacer: { acc: 'mandar', texto: 'Arma el machote' } };
-      X.PAGO_NO_CUADRA = { texto: (dijo ? dijo.replace(/ Las dos salen de los mismos hitos:.*$/, '') : 'La nota y la tabla «Hitos de pago» no dicen lo mismo.') + ' Toca «Rehacer las condiciones de pago»: las dos salen de los mismos hitos.',
+      // V1.65.11 (`hitos_v16511`, SO11954) · la causa técnica: la tarjeta lleva CONGELADOS la nota y la tabla con que se armó; si las dos
+      // salieron de fuentes distintas (el % de un decreto viejo y el texto de uno nuevo), repetir el MISMO clic manda lo mismo cada vez.
+      var tecnica = prendido('hitos_v16511') ? ' Causa técnica: la tarjeta se armó con la tabla de hitos de antes y la nota nueva, y las lleva congeladas; volver a tocarla manda lo mismo. Hace falta una tarjeta nueva armada de los hitos guardados en el machote.' : '';
+      X.PAGO_NO_CUADRA = { texto: (dijo ? dijo.replace(/ Las dos salen de los mismos hitos:.*$/, '') : 'La nota y la tabla «Hitos de pago» no dicen lo mismo.') + tecnica + ' Toca «Rehacer las condiciones de pago»: las dos salen de los mismos hitos.',
         boton: 'Rehacer las condiciones de pago', hacer: { acc: 'mandar', texto: 'Rehaz las condiciones de pago con los hitos vigentes (la nota y la tabla del PDF de la misma lista) y vuelve a armar la cotización para Odoo.' } };
     }
     var r = X[codigo] || reintentar;
