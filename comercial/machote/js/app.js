@@ -57,7 +57,7 @@
    *   2. el `?v=` de la URL con la que el navegador lo bajó,
    *   3. la que declara cada pieza que se carga aparte (hoy el motor).
    * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
-  const VERSION_ARCHIVO = 'V1.58';
+  const VERSION_ARCHIVO = 'V1.59';
 
   const VERSION_URL = (function () {
     try {
@@ -299,13 +299,14 @@
     const ses = (G.SuiteAuth && G.SuiteAuth.getToken && G.SuiteAuth.getToken()) ? true : false;
     if (!ses) return;
     (ST.ajenos || []).forEach(m => {
-      if (!A.prestadoAMi(m)) return;
+      const comoSup = !A.prestadoAMi(m) && m._sup_tocado === true && A.editoComoSupervisor && A.editoComoSupervisor(m);
+      if (!A.prestadoAMi(m) && !comoSup) return;
       A.empujarUno(m, { token: G.SuiteAuth.getToken() },
-                   'editado con permiso de ' + (m._dueno_nombre || m._dueno || 'su dueño'))
+                   comoSup ? 'editado como supervisor' : 'editado con permiso de ' + (m._dueno_nombre || m._dueno || 'su dueño'))
         .then(r => {
           if (r && r.ok === true) {
             if (A.olvidarPrestado) A.olvidarPrestado(m.id);
-            m._sin_subir = false;
+            m._sin_subir = false; m._sup_tocado = false;
             return;
           }
           /* Rechazado. Lo tecleado se queda en el cajón —`empujarPrestado` lo
@@ -438,6 +439,8 @@
    *  nadie tocó no sale de aquí; lo que alguien escribió, sí. */
   function tocado(m) {
     if (m && m._demo) delete m._demo;
+    /* Supervisor (#480): sólo sube el ajeno que de verdad tocó, no todos los del equipo. */
+    if (m && A && A.editoComoSupervisor && A.editoComoSupervisor(m)) m._sup_tocado = true;
     if (!A || !A.disponible()) { ST.pulso = 'sin-almacen'; pintarPulso(); pintarPendientes(); return; }
     ST.pulso = 'sucio'; pintarPulso(); pintarPendientes();
     if (_reloj) clearTimeout(_reloj);
@@ -2154,6 +2157,22 @@
           'La estás viendo en <strong>sólo lectura</strong>: se puede revisar, no editar. ' +
           'Si quieres partir de ella, duplícala a tu nombre.</div>'
         : '') +
+      /* Supervisor comercial (#480): el ajeno se abre editable y se dice con todas sus letras. */
+      ((A && A.editoComoSupervisor && A.editoComoSupervisor(m))
+        ? '<div class="aviso-ajeno aviso-supervisor">✏️ <strong>Editando como supervisor.</strong> Esta cotización es de <strong>' +
+          esc(m._dueno_nombre || m._dueno || 'otra persona') + '</strong> y lo seguirá siendo: cada cambio queda en su historial a tu nombre. ' +
+          'Archivar o ceder solo lo hace su dueño.</div>'
+        : '') +
+      /* Al DUEÑO: si la última versión la guardó otra persona (un supervisor o alguien con préstamo), se le avisa. */
+      (() => {
+        if (!m || m._ajeno || !A || !A.ultimaVersion) return '';
+        const u = A.ultimaVersion(m.id), yo0 = ((G.SuiteAuth && G.SuiteAuth.getSession && G.SuiteAuth.getSession()) || {}).actor || '';
+        if (!u || !u.autor || !yo0 || u.autor === yo0) return '';
+        const f = new Date(u.guardada_at);
+        return '<div class="aviso-ajeno aviso-editado">👀 <strong>' + esc(u.autor_nombre || u.autor) + '</strong> editó esta cotización' +
+          (isNaN(f) ? '' : ' el ' + esc(f.toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }).replace(/[.]$/, ''))) +
+          '. Revisa el historial para ver qué cambió.</div>';
+      })() +
       /* La franja del préstamo. Dos caras del mismo dato: al PRESTATARIO le
        * dice hasta cuándo puede escribir; al DUEÑO, a quién le prestó y hasta
        * cuándo, con el botón de recoger. Es cortesía, no seguridad —saber que
