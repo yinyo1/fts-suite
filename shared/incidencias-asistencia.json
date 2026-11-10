@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-161-2026-11-10T00-54-17-221Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 161,
+      "empleado_nombre": "MAURICIO BRIONES PUENTE",
+      "department_id": 6,
+      "department_name": "Comercial",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": null,
+      "supervisor_name": null,
+      "supervisor_email": "maubripue1@hotmail.com",
+      "supervisor_phone": "4441795941",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": true,
+      "sin_supervisor": false,
+      "attendance_id": 16558,
+      "fecha_creacion": "2026-11-10T00:54:17.221Z",
+      "check_in_original_utc": "2026-11-09 14:29:17",
+      "check_out_propuesto_utc": "2026-11-09 23:00:00",
+      "check_out_propuesto_cst": "2026-11-09 17:00:00",
+      "geolocation": {
+        "lat": 25.7839838,
+        "lng": -100.456879,
+        "accuracy": 12.982000350952148,
+        "captured_at": "2026-11-10T00:54:15.051Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-11-10T00:54:17.221Z",
+          "hora_propuesta_cst": "17:00",
+          "comentario": "Olvide checar"
+        }
+      ],
+      "status": "pendiente_rh",
+      "hora_final_aplicada_utc": "2026-11-09 23:00:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20261101-kiosk-nomina-usa"
+    },
+    {
       "id_interno": "INC-OLV-161-2026-11-09T14-29-20-055Z",
       "odoo_incidencia_id": null,
       "tipo": "olvido_entrada",
