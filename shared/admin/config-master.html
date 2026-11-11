@@ -477,7 +477,7 @@
           <div class="cm-field">
             <label class="cm-label" for="cnx_odoo_api">API Key de Odoo</label>
             <input type="password" id="cnx_odoo_api" class="cm-input" placeholder="••••••••">
-            <div class="cm-hint">Se sincroniza también como <code>key_odoo_api</code></div>
+            <div class="cm-hint">Se guarda también como <code>key_odoo_api</code>. <strong>No se sincroniza</strong>: se teclea en cada dispositivo.</div>
           </div>
         </div>
       </div>
@@ -503,10 +503,10 @@
     <!-- ════════════════════════════════════════ -->
     <section class="cm-section" id="sec-apikeys">
       <h1 class="cm-section-title">🔑 API Keys</h1>
-      <p class="cm-section-sub">Claves de servicios IA y GitHub. Todas las apps de la suite leen de estas keys estandarizadas. Las keys se cifran con AES-GCM al hacer Sync → GitHub.</p>
+      <p class="cm-section-sub">Claves de servicios IA y GitHub. Todas las apps de la suite leen de estas keys estandarizadas. Las keys se quedan en este navegador: no se sincronizan.</p>
 
       <div class="cm-status info">
-        ℹ️ Las API Keys se sincronizan a <code>shared/ops-config.json</code> (cifrado) al usar la sección <strong>Sync</strong>.
+        <span>ℹ️ Las API Keys y el token de GitHub <b>no se sincronizan</b>: se quedan en este navegador. En otro dispositivo hay que teclearlas de nuevo.</span>
       </div>
 
       <div class="cm-card">
@@ -552,7 +552,6 @@
 
       <div class="cm-btn-group">
         <button class="cm-btn cm-btn-primary" onclick="saveAPIKeys()">💾 Guardar localmente</button>
-        <button class="cm-btn cm-btn-orange" onclick="encryptAndPushKeys()">🔒 Cifrar y subir a GitHub</button>
         <button class="cm-btn cm-btn-secondary" onclick="loadAPIKeys()">↻ Recargar</button>
       </div>
       <div style="height:1px;margin-top:20px;" aria-hidden="true"></div>
@@ -832,7 +831,7 @@
     <!-- ════════════════════════════════════════ -->
     <section class="cm-section" id="sec-sync">
       <h1 class="cm-section-title">☁️ Sincronización</h1>
-      <p class="cm-section-sub">Cifra y respalda toda la configuración (<code>ops_*</code>, <code>key_*</code>, <code>fts_*</code>) a GitHub. Permite recuperar la config en otro dispositivo con la contraseña maestra.</p>
+      <p class="cm-section-sub">Cifra y respalda la configuración del panel (<code>ops_*</code>, sin llaves de API ni tokens) a GitHub. Permite recuperar la config en otro dispositivo con la contraseña maestra.</p>
 
       <div class="cm-status" id="sync_status">⏳ Verificando estado…</div>
 
@@ -861,7 +860,7 @@
           <button class="cm-btn cm-btn-secondary" onclick="doSyncLoad()">⬇️ Cargar config desde GitHub</button>
         </div>
         <div class="cm-hint" style="margin-top:14px">
-          ⬆️ <strong>Guardar</strong>: cifra TODAS las keys locales (<code>ops_*</code>, <code>key_*</code>, <code>fts_*</code>) y sube a <code>shared/ops-config.json</code>.<br>
+          ⬆️ <strong>Guardar</strong>: cifra la configuración del panel (lista blanca <code>ConfigSync.PERMITIDAS</code>, sin llaves de API ni tokens) y sube a <code>shared/ops-config.json</code>.<br>
           ⬇️ <strong>Cargar</strong>: descarga, descifra con tu contraseña y aplica al localStorage local. Recarga la página al terminar.
         </div>
       </div>
