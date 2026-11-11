@@ -27,7 +27,10 @@ jobs:
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           if [ -n "$BASE" ]; then R="$BASE..$HEAD"
-          elif [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then R="$AFTER~1..$AFTER"
+          elif [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            # rama nueva: todo lo que trae desde que se separó de main (no solo el último commit)
+            R="$(git merge-base origin/main "$AFTER")..$AFTER"
           else R="$BEFORE..$AFTER"; fi
           echo "rango: $R"
+          echo "commits a revisar: $(git rev-list --count "$R")"
           gitleaks git --log-opts="$R" --redact --no-banner -c .gitleaks.toml -v
