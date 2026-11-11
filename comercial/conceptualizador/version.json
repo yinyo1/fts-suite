@@ -1,6 +1,11 @@
 {
-  "version": "V1.65.10",
+  "version": "V1.66",
   "historial": [
+    {
+      "version": "V1.66",
+      "fecha": "2026-11-10",
+      "nota": "fts-conceptualizador#20 (db/081): en la lista, un caso que te llegó de otra persona (compartido, por su machote prestado o cedido, o porque eres supervisor comercial) dice «de <dueño>», y «solo leer» si te lo dieron en lectura."
+    },
     {
       "version": "V1.65.10",
       "fecha": "2026-11-03",
