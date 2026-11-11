@@ -59,6 +59,7 @@
       <div id="m" class="msg" role="alert" aria-live="polite"></div>
     </form>
     <p class="pie">Sesión de 8 horas · misma cuenta para toda la Suite</p>
+    <p class="pie" style="margin-top:8px"><a href="../index.html" id="volver" style="color:var(--mut)">Volver a la entrada anterior</a></p>
   </main>
 
 <script src="auth-jwt.js"></script>
@@ -131,6 +132,19 @@
     location.replace(SuiteAuth.destino(INICIO)); return;
   }
 
+  // Medición (#485): entradas por la cuenta personal y regresos a la entrada anterior. Nunca la contraseña.
+  function registrarAcceso(tipo, extra) {
+    try {
+      var d = localStorage.getItem('fts_portal_dispositivo');
+      if (!d) { d = 'pt-' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); localStorage.setItem('fts_portal_dispositivo', d); }
+      var b = Object.assign({ tipo: tipo, modulo: 'login', dispositivo: d, build: '20261111-login-dual' }, extra || {});
+      fetch('https://primary-production-5c3c.up.railway.app/webhook/suite/acceso-registro',
+        { method: 'POST', keepalive: true, headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(b) }).catch(function () {});
+    } catch (e) {}
+  }
+  var volver = document.getElementById('volver');
+  if (volver) volver.addEventListener('click', function () { registrarAcceso('dual_volver'); });
+
   function error(t) { m.className = 'msg err'; m.textContent = t; }
 
   f.addEventListener('submit', async function (ev) {
@@ -139,6 +153,7 @@
     b.disabled = true; b.textContent = 'Entrando…';
     var r = await SuiteAuth.login(document.getElementById('u').value, document.getElementById('p').value);
     if (r.ok) {
+      registrarAcceso('portal_nuevo', { resultado: 'ok', usuario: String((r.sesion && r.sesion.actor) || '').toLowerCase() });
       // El aviso de contraseña temporal se da UNA vez, al entrar: todavía no
       // existe la pantalla para cambiarla (la columna `debe_cambiar_password`
       // está en la tabla, el flujo no está construido). Mejor decirlo que
