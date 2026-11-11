@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Panel de Incidencias — Mi Perfil — FTS</title>
 <script src="../../auth-jwt.js"></script>
+<script src="../../lib/jerarquia.js?v=20261111-jer1"></script>
 <script>
   (function(){
-    const BUILD_DATE = '20261111-pi-suite-v1b';
+    const BUILD_DATE = '20261111-pi-jerarquia-v1';
     window.BUILD_DATE = BUILD_DATE;
   })();
 </script>
@@ -115,6 +116,7 @@
   .pi-chip-auto{background:#fb923c}
   .pi-chip-sindepto{background:#a855f7}
   .pi-chip-disputa{background:#f97316}
+  .pi-chip-escalada{background:#7c3aed}
 
   .pi-card-empleado{font-size:15px;margin-bottom:4px}
   .pi-card-id{font-size:11px;color:var(--muted);margin-left:6px}
@@ -296,7 +298,7 @@
   <a class="pi-back" href="../index.html">← Mi Perfil</a>
   <div class="pi-title-wrap">
     <span class="pi-title">⚖️ Panel de Incidencias</span>
-    <span class="pi-build">build 20261111-pi-suite-v1b</span>
+    <span class="pi-build">build 20261111-pi-jerarquia-v1</span>
   </div>
   <div class="pi-user">
     <span id="pi-user-nombre">—</span>
@@ -435,12 +437,48 @@ function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(
 // La bandeja de supervisor sigue siendo SOLO su gente (supervisor_id) y nadie ve las suyas.
 // ═══════════════════════════════════════════════
 let _suiteV1 = false;
+// ═══ #501 Fase 2 · incidencias_jerarquia_v1 ═══
+// Apagado = como antes (bandeja del supervisor por el supervisor_id congelado al crear).
+// Prendido para quien lo trae: quién autoriza sale EN VIVO del organigrama de Odoo
+// (empleados-master.json) y de quién tiene cuenta personal activa (panel/aprobadores):
+// si el jefe directo no tiene cuenta, sube al siguiente; si no hay nadie, va a RH con aviso.
+// Si cualquiera de las dos lecturas falla, se queda el comportamiento de antes.
+let _jerV1 = false, _jer = null;
+const APROBADORES_URL = 'https://primary-production-5c3c.up.railway.app/webhook/panel/aprobadores';
+function flagPara(v){
+  if (v === true) return true;
+  if (typeof v === 'string' && v.indexOf('scope:') === 0) {
+    try { const ss = window.SuiteAuth && SuiteAuth.isValid() && SuiteAuth.getSession(); return !!(ss && Array.isArray(ss.scopes) && ss.scopes.indexOf(v.slice(6)) >= 0); } catch(e){ return false; }
+  }
+  return false;
+}
+async function cargarJerarquia(){
+  _jer = null;
+  if (!_jerV1 || !window.FTSJerarquia) return;
+  try {
+    const tok = window.SuiteAuth && SuiteAuth.getToken();
+    if (!tok) return;
+    const [rm, ra] = await Promise.all([
+      fetch('../../config/empleados-master.json?t=' + Date.now(), { cache: 'no-store' }),
+      fetch(APROBADORES_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: tok }) })
+    ]);
+    if (!rm.ok || !ra.ok) return;
+    const master = await rm.json(), ap = await ra.json();
+    if (!ap || ap.ok !== true || !Array.isArray(ap.con_cuenta)) return;
+    const set = {}; ap.con_cuenta.forEach(function(id){ set[Number(id)] = true; });
+    _jer = { ix: FTSJerarquia.indice(master), con: function(id){ return set[Number(id)] === true; } };
+  } catch(e){ _jer = null; }
+}
+function jerDe(inc){ return _jer ? FTSJerarquia.aprobador(inc.empleado_id, _jer.ix, _jer.con) : null; }
+// En RH, una incidencia escalada sigue en pendiente_supervisor: se actúa como supervisor (el resolver lo permite).
+function rolEfectivo(inc){ return (_jer && _tabActiva === 'rh' && inc && inc.status === 'pendiente_supervisor') ? 'supervisor' : _tabActiva; }
 async function leerInterruptorSuite(){
   try {
     const r = await fetch('../../public-config.json?t=' + Date.now(), { cache: 'no-store' });
     const j = r.ok ? await r.json() : {};
     // #501: true = todos · "scope:<s>" = solo las cuentas personales que traen ese scope
     // (piloto por permiso, sin nombres en el repo) · cualquier otro valor = apagado.
+    _jerV1 = flagPara(j && j.incidencias_jerarquia_v1);
     const v = j && j.incidencias_suite_v1;
     if (v === true) _suiteV1 = true;
     else if (typeof v === 'string' && v.indexOf('scope:') === 0) {
@@ -643,6 +681,8 @@ function filtrarPorRol(rol, incidencias, verResueltas){
   const statusActivo = STATUS_PENDIENTE_POR_ROL[rol];
 
   let filtradas = incidencias.filter(function(i){
+    // #501: RH ve además las escaladas (pendiente_supervisor sin nadie con cuenta en la cadena).
+    if (_jer && rol === 'rh' && i.status === 'pendiente_supervisor') { const a = jerDe(i); return !!(a && a.destino === 'rh'); }
     if (verResueltas){
       return i.status === statusActivo || STATUS_RESUELTOS.indexOf(i.status) !== -1;
     }
@@ -652,6 +692,7 @@ function filtrarPorRol(rol, incidencias, verResueltas){
   // F2.1: Supervisor por jerarquía Odoo (parent_id) — filtro por supervisor_id == empleado_id
   if (rol === 'supervisor' && _empleadoAcceso){
     filtradas = filtradas.filter(function(i){
+      if (_jer && i.status === 'pendiente_supervisor') { const a = jerDe(i); return !!(a && a.destino === 'supervisor' && Number(a.aprobador_id) === Number(_empleadoAcceso.empleado_id)); }
       return Number(i.supervisor_id) === Number(_empleadoAcceso.empleado_id);
     });
   }
@@ -707,12 +748,14 @@ function renderCard(inc){
   if (inc.autoincidencia === true) flags.push('<span class="pi-chip pi-chip-auto">🟡 AUTO</span>');
   if (inc.sin_departamento === true) flags.push('<span class="pi-chip pi-chip-sindepto">⚠️ SIN DEPTO</span>');
   if (inc.tag_disputa_activo === true) flags.push('<span class="pi-chip pi-chip-disputa">🏷️ En disputa</span>');
+  const jer = (inc.status === 'pendiente_supervisor') ? jerDe(inc) : null;
+  if (jer && jer.escalada) flags.push('<span class="pi-chip pi-chip-escalada" title="' + (jer.destino === 'rh' ? 'Nadie en su cadena tiene cuenta activa: pasa a RH' : 'Su jefe directo no tiene cuenta activa: subió al siguiente') + '">↗ Escalada</span>');
 
   const esResuelta = STATUS_RESUELTOS.indexOf(inc.status) !== -1;
 
   const botonAcciones = esResuelta
     ? '<button class="pi-btn-acciones pi-btn-disabled" disabled title="Incidencia resuelta — solo lectura">✓ Resuelta</button>'
-    : renderBotonesAccion(inc, _tabActiva);
+    : renderBotonesAccion(inc, rolEfectivo(inc));
 
   const motivoHtml = motivoTrunc
     ? '<div class="pi-card-motivo">"' + esc(motivoTrunc) + '"</div>'
@@ -1015,7 +1058,7 @@ function abrirModalAccion(accion, idInterno){
   $('pi-acc-contexto').innerHTML = contextoHtml;
 
   // Hora final
-  const requiereHora = accionRequiereHora(accion, _tabActiva);
+  const requiereHora = accionRequiereHora(accion, rolEfectivo(inc));
   $('pi-acc-hora-grupo').style.display = requiereHora ? 'block' : 'none';
 
   if (requiereHora){
@@ -1116,8 +1159,10 @@ async function confirmarAccion(){
     return;
   }
 
+  const incAcc = (_incidencias || []).filter(function(x){ return x.id_interno === idInterno; })[0];
+  const rolEje = rolEfectivo(incAcc);
   let horaFinalCst = null;
-  if (accionRequiereHora(accion, _tabActiva)){
+  if (accionRequiereHora(accion, rolEje)){
     const inputHora = $('pi-acc-hora-final').value;
     if (!inputHora){
       mostrarFeedbackAccion('Debes especificar la hora final.', 'error');
@@ -1134,7 +1179,7 @@ async function confirmarAccion(){
   const payload = {
     id_interno:               idInterno,
     accion:                   accion,
-    rol_ejecutor:             _tabActiva,
+    rol_ejecutor:             rolEje,
     empleado_ejecutor_id:     _session.empleado_id,
     empleado_ejecutor_nombre: _session.empleado_nombre || ('id ' + _session.empleado_id),
     comentario:               comentario
@@ -1215,6 +1260,7 @@ document.addEventListener('DOMContentLoaded', async function(){
     });
   }
 
+  await cargarJerarquia();
   await cargarIncidencias();
 
   console.log('[panel-incidencias] init OK build=' + window.BUILD_DATE +
