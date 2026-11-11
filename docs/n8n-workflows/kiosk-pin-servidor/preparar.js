@@ -38,7 +38,8 @@ const motivo_estimado = String(body.motivo_estimado || '');
 // Validación mínima
 // fts-suite#486: 'verificar_pin' solo verifica el PIN y responde ANTES de cualquier escritura
 // (Code - Validar empleado). Un servidor sin este cambio lo rechaza aquí: nunca escribe.
-const TIPOS_VALIDOS = ['entrada', 'salida', 'salida_comida', 'regreso_comida', 'verificar_pin'];
+// 'metricas_pin': solo devuelve los contadores del día (números, nunca un PIN ni un nombre).
+const TIPOS_VALIDOS = ['entrada', 'salida', 'salida_comida', 'regreso_comida', 'verificar_pin', 'metricas_pin'];
 if (!empleado_id || !tipo || !TIPOS_VALIDOS.includes(tipo)) {
   return [{
     json: {

@@ -13,7 +13,8 @@ const response = {
   // fts-suite#486: PIN verificado en el servidor (nunca trae el PIN)
   pin_verificado: data.pin_verificado === true,
   minutos_bloqueo: data.minutos_bloqueo || null,
-  intentos_restantes: (data.intentos_restantes === 0 || data.intentos_restantes) ? data.intentos_restantes : null
+  intentos_restantes: (data.intentos_restantes === 0 || data.intentos_restantes) ? data.intentos_restantes : null,
+  pin_metricas: data.codigo_error === 'PIN_METRICAS' ? (data.pin_metricas || {}) : undefined
 };
 
 return [{ json: response }];

@@ -22,3 +22,13 @@ Read-back: `active:true` y `activeVersionId == a0c4b0e8…`. El kiosko vuelve ex
 antes (sin PIN en el servidor). El frontend nuevo sigue funcionando con la reversa: manda `pin`
 y el servidor viejo lo ignora; `solo_verificar_pin` en el servidor viejo **escribiría** una
 checada, por eso el frontend solo lo usa si el servidor contesta `pin_verificado` (ver kiosk.js).
+
+## Versiones publicadas (read-back `versionId == activeVersionId` en cada una)
+| versión | qué | reversa |
+|---|---|---|
+| `dd2513ed-d05d-47a9-8847-4e16932f0336` | paso 1: PIN en el servidor, tolerante | `a0c4b0e8…` (sin PIN) |
+| `f9c51072-6b09-4545-bf9f-714040aa5b89` | + `tipo:'metricas_pin'` (contadores del día) | `dd2513ed…` |
+
+`metricas_pin`: `POST /webhook/kiosk/checkin {"empleado_id":1,"tipo":"metricas_pin"}` →
+`pin_metricas: { "AAAA-MM-DD": { con_pin, sin_pin, ok, malo, bloqueado, sin_pin_odoo, error } }`
+(días en CST, últimos 35). Solo números. Es la fuente de la alarma (`alarma.js`).

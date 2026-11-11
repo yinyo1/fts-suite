@@ -98,6 +98,17 @@ ok('Preparar nuevo acepta verificar_pin', !prep('preparar.js', 'verificar_pin').
 ok('Preparar viejo lo rechaza (no escribe)', prep('preparar.ANTES.js', 'verificar_pin').codigo_error === 'DATOS_INCOMPLETOS');
 ok('Preparar nuevo sigue rechazando basura', prep('preparar.js', 'otra').codigo_error === 'DATOS_INCOMPLETOS');
 
+// 7c métricas
+sd = { pin_metricas: { '2026-11-11': { con_pin: 3, malo: 1 } } };
+r = correr({ odoo: [], sd, params: { empleado_id: 1, tipo: 'metricas_pin' }, body: {} });
+ok('metricas_pin → solo contadores, aunque el empleado no exista', r.codigo_error === 'PIN_METRICAS' && r.pin_metricas['2026-11-11'].con_pin === 3 && !r._valido);
+ok('Preparar nuevo acepta metricas_pin', !new Function('$input', fs.readFileSync(path.join(__dirname, 'preparar.js'), 'utf8'))({ first: () => ({ json: { body: { empleado_id: 1, tipo: 'metricas_pin' } } }) })[0].json._error);
+const RE2 = fs.readFileSync(path.join(__dirname, 'respuesta-error.js'), 'utf8');
+const rm = new Function('$input', RE2)({ first: () => ({ json: r }) })[0].json;
+ok('Respuesta Error pasa pin_metricas solo en PIN_METRICAS', rm.pin_metricas && rm.pin_metricas['2026-11-11'].malo === 1);
+const rn = new Function('$input', RE2)({ first: () => ({ json: { codigo_error: 'PIN_INCORRECTO', pin_metricas: { x: 1 } } }) })[0].json;
+ok('… y no en otro código', rn.pin_metricas === undefined);
+
 // 8 lo de antes
 r = correr({ odoo: [], sd: {}, body: { pin: '4821' } });
 ok('empleado no existe → EMPLEADO_NO_EXISTE', r.codigo_error === 'EMPLEADO_NO_EXISTE');

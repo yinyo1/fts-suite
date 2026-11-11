@@ -29,6 +29,13 @@ function rechazo(codigo, mensaje, extra) {
   return [{ json: Object.assign({}, params, { _error: true, codigo_error: codigo, mensaje: mensaje, error_msg: mensaje }, extra || {}) }];
 }
 
+// ── Métricas (fuente de la alarma del correo diario): solo números, antes de todo ──
+if (params.tipo === 'metricas_pin') {
+  let m = {};
+  try { const s = $getWorkflowStaticData('global'); m = (s && s.pin_metricas) || {}; } catch (e) { m = {}; }
+  return rechazo('PIN_METRICAS', 'Contadores del PIN por día (CST).', { pin_metricas: JSON.parse(JSON.stringify(m)) });
+}
+
 // ── Lo que ya hacía este nodo (sin cambios) ──
 if (empleados.length === 0 || !empleados[0].id) {
   return rechazo('EMPLEADO_NO_EXISTE', 'Empleado no encontrado en el sistema (id: ' + params.empleado_id + ')');
