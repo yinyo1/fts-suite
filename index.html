@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="shared/fts-styles.css">
 <script src="shared/config-sync.js"></script>
 <script src="shared/auth-suite.js"></script>
+<script src="shared/auth-jwt.js"></script>
 <script src="shared/keepalive.js"></script>
 <script src="shared/modules-registry.js"></script>
 <style>
@@ -62,6 +63,9 @@
     </div>
 
     <button id="login-btn" onclick="doLogin()" style="width:100%;background:#D83B01;color:#fff;border:none;padding:14px;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit">Ingresar</button>
+
+    <!-- login_dual_v1 (#485): enlace discreto al acceso personal; oculto mientras el interruptor esté apagado -->
+    <div id="dual-acceso" style="display:none;margin-top:12px;text-align:center"><a href="#" id="dual-enlace" style="font-size:12px;color:#5b6b82;text-decoration:none">¿Ya tienes usuario y contraseña personales? Entra aquí</a></div>
 
     <p id="login-error" style="color:#D83B01;text-align:center;font-size:13px;margin:12px 0 0;min-height:20px;font-weight:600"></p>
 
@@ -228,6 +232,7 @@ async function doLogin(){
       return;
     }
     FTSAuth.setSession(result.user);
+    if (window.ftsRegistrarAcceso) window.ftsRegistrarAcceso('portal_anterior', { resultado:'ok', usuario: String(result.user.username||'').toLowerCase() });
 
     // Restaurar config cifrada (ops_*/key_*/fts_*) usando la misma password del login
     const masterPwd = document.getElementById('login-pass').value;
@@ -478,5 +483,65 @@ document.addEventListener('DOMContentLoaded', initAuth);
 </script>
 
 <script src="chats/tarjeta.js" defer></script>
+<!-- login_dual_v1 (#485): ventanita del acceso personal -->
+<div id="dual-modal" role="dialog" aria-modal="true" aria-labelledby="dual-titulo" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(15,23,42,.45);align-items:center;justify-content:center;padding:16px;font-family:'Inter',sans-serif">
+  <div style="background:#fff;border-radius:12px;max-width:360px;width:100%;padding:22px 20px;box-shadow:0 10px 30px rgba(0,0,0,.2)">
+    <h3 id="dual-titulo" style="margin:0 0 8px;font-size:17px;color:#1a1a1a">Acceso con tu cuenta personal</h3>
+    <p style="margin:0 0 18px;font-size:14px;line-height:1.5;color:#444">Úsalo solo si RH ya te dio tu usuario y contraseña personales. Si todavía no los tienes, sigue entrando como siempre y pídele tu liga a Ana por WhatsApp.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button type="button" id="dual-si" style="flex:1;min-width:120px;background:#1d4ed8;color:#fff;border:0;border-radius:8px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Sí, los tengo</button>
+      <button type="button" id="dual-no" style="flex:1;min-width:120px;background:#e5e7eb;color:#374151;border:0;border-radius:8px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Todavía no</button>
+    </div>
+  </div>
+</div>
+<script>
+// login_dual_v1 (#485): convivencia de la entrada anterior (FTSAuth) con la cuenta personal (SuiteAuth).
+// Con el interruptor apagado la pantalla queda exactamente igual. El interruptor vive en
+// shared/public-config.json (`login_dual_v1`). Las entradas se registran en suite/acceso-registro (sin contraseñas).
+(function(){
+  var REGISTRO = 'https://primary-production-5c3c.up.railway.app/webhook/suite/acceso-registro';
+  function dispositivo(){
+    try { var k='fts_portal_dispositivo', v=localStorage.getItem(k);
+      if(!v){ v='pt-'+Math.random().toString(36).slice(2,10)+Date.now().toString(36); localStorage.setItem(k,v); } return v;
+    } catch(e){ return 'pt-sin-almacen'; }
+  }
+  function registrar(tipo, extra){
+    try {
+      var b = Object.assign({ tipo:tipo, modulo:'portal', dispositivo:dispositivo(), build:'20261111-portal-login-dual' }, extra||{});
+      fetch(REGISTRO,{ method:'POST', keepalive:true, headers:{'Content-Type':'text/plain'}, body:JSON.stringify(b) }).catch(function(){});
+    } catch(e){}
+  }
+  window.ftsRegistrarAcceso = registrar;
+  var dualOn = false, sesionNueva = false;
+  function modal(abrir){ document.getElementById('dual-modal').style.display = abrir ? 'flex' : 'none'; }
+  document.getElementById('dual-enlace').addEventListener('click', function(ev){ ev.preventDefault(); registrar('dual_enlace'); modal(true); });
+  document.getElementById('dual-no').addEventListener('click', function(){ registrar('dual_no'); modal(false); });
+  document.getElementById('dual-si').addEventListener('click', function(){
+    registrar('dual_si');
+    location.href = 'shared/login.html';
+  });
+  // Entrada por la cuenta personal: la Suite se abre con esa sesión (sin módulos del acceso anterior;
+  // los módulos con cuenta personal deciden sus permisos en su propia pantalla).
+  function abrirConCuentaNueva(){
+    if (typeof FTSAuth !== 'undefined' && FTSAuth.getSession()) return;
+    if (!window.SuiteAuth || !SuiteAuth.isValid()) return;
+    var s = SuiteAuth.getSession() || {};
+    sesionNueva = true;
+    document.getElementById('login-overlay').style.display = 'none';
+    applyModuleAccess({ role:'suite', modulos:{}, nombre: s.nombre || s.actor || 'Cuenta personal', username: s.actor });
+  }
+  // Salir: si la sesión vino de la cuenta personal, también se cierra esa.
+  var logoutViejo = window.doLogout;
+  window.doLogout = function(){ if (sesionNueva && window.SuiteAuth) { try { SuiteAuth.logout(); } catch(e){} sesionNueva = false; } logoutViejo(); };
+  fetch('shared/public-config.json?t=' + Date.now(), { cache:'no-store' })
+    .then(function(r){ return r.ok ? r.json() : {}; })
+    .then(function(c){
+      dualOn = !!(c && c.login_dual_v1 === true);
+      if (!dualOn) return;
+      document.getElementById('dual-acceso').style.display = 'block';
+      abrirConCuentaNueva();
+    }).catch(function(){});
+})();
+</script>
 </body>
 </html>

@@ -1,4 +1,5 @@
 {
+  "login_dual_v1": false,
   "n8n_url": "https://primary-production-5c3c.up.railway.app",
   "odoo_url": "https://serviciosfts.odoo.com",
   "demo_mode": false,
