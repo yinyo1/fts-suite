@@ -68,7 +68,8 @@ async function escenario(browser, base, nombre, o, fn) {
 const checar = (page, tipo) => page.evaluate(t => { K.seleccionado = K.empleados[0]; K.tipo = t; afterVerifyContinue(); }, tipo);
 async function esperar(arr, n, ms) { for (let i = 0; i < (ms || 6000) / 100 && arr.length < n; i++) await new Promise(r => setTimeout(r, 100)); return arr[n - 1]; }
 const overlay = page => page.waitForSelector('#nusaOverlay', { timeout: 8000 }).then(() => true).catch(() => false);
-const sinVolatiles = p => { const c = Object.assign({}, p); delete c.timestamp; delete c.foto_b64; return c; };
+const sinVolatiles = p => { const c = Object.assign({}, p); delete c.timestamp; delete c.foto_b64; delete c.dispositivo_id; // #486: id aleatorio por dispositivo
+  return c; };
 async function fotos(page, nombre) { if (!OUT) return; for (const w of [380, 1280]) { await page.setViewportSize({ width: w, height: 860 }); await page.waitForTimeout(80); await page.screenshot({ path: path.join(OUT, nombre + '-' + w + '.png'), fullPage: true }); } await page.setViewportSize({ width: 380, height: 860 }); }
 
 (async () => {
