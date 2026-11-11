@@ -7,7 +7,7 @@
 <script src="../../auth-jwt.js"></script>
 <script>
   (function(){
-    const BUILD_DATE = '20261111-pi-suite-v1';
+    const BUILD_DATE = '20261111-pi-suite-v1b';
     window.BUILD_DATE = BUILD_DATE;
   })();
 </script>
@@ -296,7 +296,7 @@
   <a class="pi-back" href="../index.html">← Mi Perfil</a>
   <div class="pi-title-wrap">
     <span class="pi-title">⚖️ Panel de Incidencias</span>
-    <span class="pi-build">build 20261111-pi-suite-v1</span>
+    <span class="pi-build">build 20261111-pi-suite-v1b</span>
   </div>
   <div class="pi-user">
     <span id="pi-user-nombre">—</span>
@@ -439,7 +439,15 @@ async function leerInterruptorSuite(){
   try {
     const r = await fetch('../../public-config.json?t=' + Date.now(), { cache: 'no-store' });
     const j = r.ok ? await r.json() : {};
-    _suiteV1 = !!(j && j.incidencias_suite_v1 === true);
+    // #501: true = todos · "scope:<s>" = solo las cuentas personales que traen ese scope
+    // (piloto por permiso, sin nombres en el repo) · cualquier otro valor = apagado.
+    const v = j && j.incidencias_suite_v1;
+    if (v === true) _suiteV1 = true;
+    else if (typeof v === 'string' && v.indexOf('scope:') === 0) {
+      let sc = [];
+      try { const ss = window.SuiteAuth && SuiteAuth.isValid() && SuiteAuth.getSession(); sc = (ss && Array.isArray(ss.scopes)) ? ss.scopes : []; } catch(e){}
+      _suiteV1 = sc.indexOf(v.slice(6)) >= 0;
+    } else _suiteV1 = false;
   } catch(e){ _suiteV1 = false; }
   return _suiteV1;
 }

@@ -11,7 +11,7 @@
 <script src="shared/auth-suite.js"></script>
 <script src="shared/auth-jwt.js"></script>
 <script src="shared/keepalive.js"></script>
-<script src="shared/modules-registry.js"></script>
+<script src="shared/modules-registry.js?v=20261111-acceso-suite"></script>
 <style>
   body{padding-top:32px}
   .launcher{min-height:100vh;display:flex;flex-direction:column;max-width:520px;margin:0 auto;padding-bottom:28px}
@@ -507,7 +507,7 @@ document.addEventListener('DOMContentLoaded', initAuth);
   }
   function registrar(tipo, extra){
     try {
-      var b = Object.assign({ tipo:tipo, modulo:'portal', dispositivo:dispositivo(), build:'20261111-portal-login-dual' }, extra||{});
+      var b = Object.assign({ tipo:tipo, modulo:'portal', dispositivo:dispositivo(), build:'20261111-portal-acceso-suite' }, extra||{});
       fetch(REGISTRO,{ method:'POST', keepalive:true, headers:{'Content-Type':'text/plain'}, body:JSON.stringify(b) }).catch(function(){});
     } catch(e){}
   }
@@ -532,10 +532,55 @@ document.addEventListener('DOMContentLoaded', initAuth);
     sesionNueva = true;
     document.getElementById('login-overlay').style.display = 'none';
     applyModuleAccess({ role:'suite', modulos:{}, nombre: s.nombre || s.actor || 'Cuenta personal', username: s.actor });
+    aplicarAccesoSuite(Array.isArray(s.scopes) ? s.scopes : []);
+  }
+  // #501: con la cuenta personal, cada tarjeta se decide por los scopes del token
+  // (SUITE_TARJETAS en shared/modules-registry.js). La entrada anterior no pasa por aquí.
+  function aplicarAccesoSuite(scopes){
+    if (typeof SUITE_TARJETAS === 'undefined' || typeof suiteTarjeta !== 'function') return;
+    SUITE_TARJETAS.forEach(function(def){
+      var card = document.getElementById(def.cardId);
+      if (!card) return;
+      var modo = suiteTarjeta(def, scopes);
+      if (!modo) {
+        // Sin permiso. Las del registro ya las bloqueó applyModuleAccess; PMO no está en el
+        // registro y con la cuenta personal quedaba abierta para cualquiera: se bloquea igual.
+        if (getComputedStyle(card).display !== 'none' && card.style.pointerEvents !== 'none' && !card.classList.contains('disabled')) {
+          card.style.opacity = '0.4'; card.style.pointerEvents = 'none'; card.style.cursor = 'not-allowed';
+          card.setAttribute('data-suite-bloqueada', '1');
+          if (!card.querySelector('.access-badge')) {
+            var bb = document.createElement('div'); bb.className = 'access-badge';
+            bb.style.cssText = 'position:absolute;top:8px;right:8px;background:#D83B01;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px';
+            bb.textContent = '🔒 Sin acceso'; card.style.position = 'relative'; card.appendChild(bb);
+          }
+        }
+        return;
+      }
+      var b = card.querySelector('.access-badge'); if (b) b.remove();
+      card.style.opacity = ''; card.style.pointerEvents = ''; card.style.cursor = 'pointer';
+      if (def.oculta) { card.style.display = 'flex'; card.setAttribute('data-suite-mostrada','1'); }
+      if (def.rh) activarTileRH({ role:'master' });
+      if (modo === 'c4' && !card.querySelector('.suite-sello')) {
+        var sello = document.createElement('div');
+        sello.className = 'suite-sello';
+        sello.title = 'Este módulo todavía pide la entrada anterior';
+        sello.style.cssText = 'position:absolute;bottom:6px;left:50%;transform:translateX(-50%);background:#e5e7eb;color:#374151;font-size:9px;font-weight:600;padding:1px 6px;border-radius:10px;white-space:nowrap';
+        sello.textContent = '🔑 entrada anterior';
+        card.style.position = 'relative';
+        card.appendChild(sello);
+      }
+      card.setAttribute('data-suite-acceso', modo);
+    });
+  }
+  function quitarAccesoSuite(){
+    document.querySelectorAll('.suite-sello').forEach(function(x){ x.remove(); });
+    document.querySelectorAll('[data-suite-mostrada]').forEach(function(c){ c.style.display = 'none'; c.removeAttribute('data-suite-mostrada'); });
+    document.querySelectorAll('[data-suite-acceso]').forEach(function(c){ c.removeAttribute('data-suite-acceso'); });
+    document.querySelectorAll('[data-suite-bloqueada]').forEach(function(c){ c.style.opacity=''; c.style.pointerEvents=''; c.style.cursor=''; c.removeAttribute('data-suite-bloqueada'); });
   }
   // Salir: si la sesión vino de la cuenta personal, también se cierra esa.
   var logoutViejo = window.doLogout;
-  window.doLogout = function(){ if (sesionNueva && window.SuiteAuth) { try { SuiteAuth.logout(); sessionStorage.removeItem('fts_portal_via_nuevo'); } catch(e){} sesionNueva = false; } logoutViejo(); };
+  window.doLogout = function(){ if (sesionNueva && window.SuiteAuth) { try { SuiteAuth.logout(); sessionStorage.removeItem('fts_portal_via_nuevo'); } catch(e){} sesionNueva = false; quitarAccesoSuite(); } logoutViejo(); };
   fetch('shared/public-config.json?t=' + Date.now(), { cache:'no-store' })
     .then(function(r){ return r.ok ? r.json() : {}; })
     .then(function(c){

@@ -117,6 +117,18 @@ async function caso(browser, base, o) {
     r = await caso(browser, base, { flag: true, suite: { id: 900004, scopes: [] } });
     errs.push(...r.errores);
     chk('lo regresa con el aviso de sin roles', r.fuera && /No tienes roles/.test(r.alertas.join()), r);
+    console.log('J · #501 "scope:incidencias:resolver", auditor con el scope por cuenta personal → prendido para él');
+    r = await caso(browser, base, { flag: 'scope:incidencias:resolver', suite: AUD });
+    errs.push(...r.errores);
+    chk('tabs = supervisor, direccion, rh', JSON.stringify(r.tabs) === '["supervisor","direccion","rh"]', r.tabs);
+    console.log('K · #501 "scope:incidencias:resolver", supervisor SIN el scope → apagado para él (como antes: fuera)');
+    r = await caso(browser, base, { flag: 'scope:incidencias:resolver', suite: { id: 900001, scopes: ['chats:usar'] } });
+    errs.push(...r.errores);
+    chk('sin sesión de Mi Perfil lo regresa', r.fuera && /Sesión no válida/.test(r.alertas.join()), r);
+    console.log('L · #501 un arreglo (forma no admitida) = apagado');
+    r = await caso(browser, base, { flag: ['zz.prueba'], suite: AUD });
+    errs.push(...r.errores);
+    chk('lo regresa', r.fuera, r);
     chk('ningún pageerror en los casos', errs.length === 0, errs);
   } finally { await browser.close(); srv.close(); }
   console.log((mal ? '✗ ' : '✓ ') + ok + '/' + (ok + mal));
