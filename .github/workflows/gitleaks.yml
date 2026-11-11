@@ -1,0 +1,36 @@
+# #486 · gitleaks sobre los commits NUEVOS de cada push y PR (no sobre el historial
+# viejo: los hallazgos históricos se atienden rotando, ver el issue).
+name: gitleaks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Instalar gitleaks 8.21.2 (checksum verificado)
+        run: |
+          V=8.21.2
+          curl -sSfL -o gl.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${V}/gitleaks_${V}_linux_x64.tar.gz"
+          echo "5bc41815076e6ed6ef8fbecc9d9b75bcae31f39029ceb55da08086315316e3ba  gl.tgz" | sha256sum -c -
+          tar xzf gl.tgz gitleaks && sudo mv gitleaks /usr/local/bin/ && rm gl.tgz
+      - name: Revisar los commits nuevos
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ -n "$BASE" ]; then R="$BASE..$HEAD"
+          elif [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            # rama nueva: todo lo que trae desde que se separó de main (no solo el último commit)
+            R="$(git merge-base origin/main "$AFTER")..$AFTER"
+          else R="$BEFORE..$AFTER"; fi
+          echo "rango: $R"
+          echo "commits a revisar: $(git rev-list --count "$R")"
+          gitleaks git --log-opts="$R" --redact --no-banner -c .gitleaks.toml -v

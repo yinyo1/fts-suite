@@ -1,0 +1,6 @@
+# #486 · Huellas exactas (commit:archivo:regla:línea) de falsos positivos YA commiteados.
+# Solo cosas medidas que NO son secretos. Un secreto real no se ignora: se quita y se rota.
+#
+# 745e7f1 (antes f405bed, rebasado sobre #487) tests/seguridad/pmo-token.js:14 · JWT FALSO de prueba ({"sub":"prueba"}, firma literal
+# «firma-de-prueba»). El commit siguiente lo arma en ejecución; esto solo evita que el PR lo vuelva a marcar.
+745e7f1de7a985f144885cec1802f2e7e403f02b:tests/seguridad/pmo-token.js:jwt:14

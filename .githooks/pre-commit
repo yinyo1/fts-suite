@@ -1,0 +1,17 @@
+#!/bin/sh
+# #486 · gitleaks sobre lo que vas a commitear. ESTE REPO ES PÚBLICO.
+# Se activa una vez por clon:  git config core.hooksPath .githooks
+# Instalar gitleaks: https://github.com/gitleaks/gitleaks#installing  (o brew install gitleaks)
+# Si gitleaks no está instalado, el hook AVISA y deja pasar: la red dura es el CI
+# (.github/workflows/gitleaks.yml) y el push protection de GitHub.
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks git --pre-commit --staged --redact --no-banner -c .gitleaks.toml || {
+    echo ""
+    echo "commit detenido: gitleaks encontró algo que parece un secreto (arriba, redactado)."
+    echo "Quítalo del archivo. Si ya se publicó alguna vez, hay que ROTARLO aunque lo borres."
+    exit 1
+  }
+else
+  echo "aviso: gitleaks no está instalado; este commit no se revisó en local (el CI sí lo revisa)."
+fi
+exit 0

@@ -1,0 +1,24 @@
+# #486 · Avisos y PRs de actualización de dependencias. Solo abre PRs: nada se mergea solo.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "America/Monterrey"
+    open-pull-requests-limit: 5
+    labels: ["dependencias"]
+    # xlsx viene del CDN de SheetJS (tarball), no de npm: dependabot no lo puede seguir.
+    # Se revisa a mano contra https://cdn.sheetjs.com/ cuando salga un aviso.
+    ignore:
+      - dependency-name: "xlsx"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "America/Monterrey"
+    labels: ["dependencias"]
