@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Usuarios y roles</title>
+<!-- PROTOTIPO (fts-suite#485, sesión 10, 11-nov-2026). Datos DEMO inventados; no habla con ningún servidor. Nada aquí se guarda. -->
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1d2330;--mut:#5f6b7a;--bd:#dfe3e8;--ac:#1f6feb;--ok:#1a7f37;--warn:#9a6700;--bad:#cf222e;--chip:#eef2f6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1318;--card:#171c23;--tx:#e6e9ee;--mut:#9aa5b1;--bd:#2a313b;--ac:#4c8dff;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--chip:#222a33}}
+:root[data-theme="dark"]{--bg:#0f1318;--card:#171c23;--tx:#e6e9ee;--mut:#9aa5b1;--bd:#2a313b;--ac:#4c8dff;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--chip:#222a33}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{padding:14px 16px;border-bottom:1px solid var(--bd);background:var(--card);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+header h1{font-size:18px;margin:0;flex:1 1 auto}
+.demo{font-size:12px;background:#fff3cd;color:#664d03;border-radius:6px;padding:3px 8px}
+main{max-width:1100px;margin:0 auto;padding:16px}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.tabs button,.btn{border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:8px;padding:8px 12px;font:inherit;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--ac);color:#fff;border-color:var(--ac)}
+.btn.pri{background:var(--ac);color:#fff;border-color:var(--ac)}
+.btn.bad{color:var(--bad);border-color:var(--bad)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:12px}
+.fila{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1.4fr) minmax(0,1.2fr) 240px;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--bd)}
+.fila:first-child{border-top:0}
+.nom{font-weight:600}.sub{color:var(--mut);font-size:13px;overflow-wrap:anywhere}
+.chip{display:inline-block;background:var(--chip);border-radius:999px;padding:2px 9px;font-size:12px;margin:2px 4px 2px 0}
+.chip.ok{color:var(--ok)}.chip.bad{color:var(--bad)}.chip.warn{color:var(--warn)}
+label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
+input,select{width:100%;padding:9px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+.sug{border-left:3px solid var(--ac);padding:8px 10px;background:var(--chip);border-radius:6px;margin-top:10px;font-size:14px}
+.err{color:var(--bad);font-size:14px;margin-top:8px}
+.okm{color:var(--ok);font-size:14px;margin-top:8px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 6px;border-top:1px solid var(--bd);vertical-align:top}
+td:last-child{overflow-wrap:anywhere}td:nth-child(3){white-space:nowrap}
+@media (max-width:760px){table,thead,tbody,tr,td,th{display:block}thead{display:none}tr{border-top:1px solid var(--bd);padding:8px 0}td{border:0;padding:2px 0}td:nth-child(1),td:nth-child(2){display:inline;color:var(--mut);font-size:13px}td:nth-child(2)::before{content:' · '}}
+th{color:var(--mut);font-weight:600;font-size:12px}
+.acc{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.dos{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:760px){.fila{grid-template-columns:1fr;gap:4px}.acc{justify-content:flex-start}.dos{grid-template-columns:1fr}}
+dialog{border:1px solid var(--bd);border-radius:12px;background:var(--card);color:var(--tx);max-width:520px;width:calc(100% - 32px)}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+</style>
+</head>
+<body>
+<header><h1>Usuarios y roles</h1><span class="demo">Prototipo · datos de ejemplo</span><span class="sub" id="quien"></span></header>
+<main>
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-t="lista">Usuarios</button>
+    <button role="tab" aria-selected="false" data-t="alta">Dar de alta</button>
+    <button role="tab" aria-selected="false" data-t="bitacora">Bitácora</button>
+  </div>
+  <section id="v-lista"></section>
+  <section id="v-alta" hidden></section>
+  <section id="v-bitacora" hidden></section>
+</main>
+<dialog id="dlg"><form method="dialog" id="dlgf"></form></dialog>
+<script>
+'use strict';
+// ── Lo que manda el servidor en la versión real (aquí es demo) ──────────────────────────────
+// Roles que RH puede dar. NO están: Dirección, Supervisor comercial, Administración (sensibles: solo Esteban).
+const ROLES = {
+  tecnico:{n:'Técnico',ve:'Chat de obra'},
+  residente:{n:'Residente de obra',ve:'Chat de obra y residentes'},
+  ingeniero_comercial:{n:'Ingeniero comercial',ve:'Comercial (lectura), conceptualizador, cotiza',nivel:true},
+  cotizador:{n:'Cotizador',ve:'Conceptualizador y machotes, cotiza',nivel:true},
+  soporte:{n:'Soporte',ve:'Edita como apoyo los casos que le autorizan; no cotiza a su nombre',nivel:true},
+  marketing:{n:'Marketing',ve:'Prospectador, bandeja y CRM'}
+};
+const PROHIBIDOS = {direccion:'Dirección',supervisor_comercial:'Supervisor comercial',administracion:'Administración'};
+// Puesto de Odoo (job_id) → rol y nivel sugeridos. Se SUGIERE: RH confirma o cambia. Nunca se aplica solo.
+const PUESTOS = [
+  {id:11,n:'Ingeniero Comercial',rol:'ingeniero_comercial',nivel:'junior'},
+  {id:14,n:'Sr Technical Sales',rol:'ingeniero_comercial',nivel:'senior'},
+  {id:21,n:'Residente de Obra',rol:'residente'},
+  {id:22,n:'Técnico Electricista',rol:'tecnico'},
+  {id:30,n:'Analista de Marketing',rol:'marketing'},
+  {id:31,n:'Cotizador',rol:'cotizador',nivel:'junior'},
+  {id:40,n:'Supervisor de Compras',rol:null}
+];
+const EMPLEADOS = [
+  {id:901,n:'Laura Demo Treviño',job:11},{id:902,n:'Pedro Demo Garza',job:21},{id:903,n:'Sofía Demo Ruiz',job:30},
+  {id:904,n:'Iván Demo Salinas',job:31},{id:905,n:'Marta Demo Leal',job:40},{id:906,n:'Hugo Demo Cantú',job:22}
+];
+const YO = 'ana.demo';   // quien opera la pantalla (RH)
+let usuarios = [
+  {u:'carlos.demo',n:'Carlos Demo Peña',rol:'ingeniero_comercial',nivel:'senior',emp:801,activo:true,ses:2},
+  {u:'rosa.demo',n:'Rosa Demo Villa',rol:'residente',emp:802,activo:true,ses:1},
+  {u:'tomas.demo',n:'Tomás Demo Elizondo',rol:'tecnico',emp:803,activo:true,ses:0},
+  {u:'nadia.demo',n:'Nadia Demo Olvera',rol:'marketing',emp:804,activo:false,ses:0},
+  {u:YO,n:'Ana Demo (RH)',rol:'rh',emp:805,activo:true,ses:1,fijo:true}
+];
+let bitacora = [{at:'2026-11-10 17:02',por:'esteban.delacruz',que:'alta',u:'carlos.demo',det:'Ingeniero comercial · senior'}];
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ahora = () => { const d = new Date(Date.now() - 6*3600e3); return d.toISOString().slice(0,16).replace('T',' '); };
+const rolN = r => (ROLES[r] || {}).n || (PROHIBIDOS[r]) || (r === 'rh' ? 'Recursos Humanos' : r);
+function apunta(que, u, det) { bitacora.unshift({at: ahora(), por: YO, que, u, det}); }
+// La puerta que en la versión real vive en la BASE (no en el navegador): sin roles sensibles, sin tocarse a sí misma.
+function puerta(u, rol) {
+  if (PROHIBIDOS[rol]) return 'RH no puede dar «' + PROHIBIDOS[rol] + '». Ese rol solo lo da Esteban.';
+  if (!ROLES[rol]) return 'Rol desconocido.';
+  if (u === YO) return 'No puedes cambiar tu propia cuenta.';
+  return '';
+}
+$('#quien').textContent = 'Entraste como ' + YO + ' (RH)';
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
+  ['lista','alta','bitacora'].forEach(t => $('#v-' + t).hidden = t !== b.dataset.t);
+  pinta();
+});
+function pinta() { pintaLista(); pintaAlta(); pintaBitacora(); }
+function pintaLista() {
+  const filas = usuarios.map(x => `<div class="fila">
+      <div><div class="nom">${esc(x.n)}</div><div class="sub">${esc(x.u)} · empleado ${x.emp}</div></div>
+      <div><span class="chip">${esc(rolN(x.rol))}${x.nivel ? ' · ' + esc(x.nivel) : ''}</span></div>
+      <div>${x.activo ? '<span class="chip ok">Activa</span>' + (x.ses ? `<span class="chip">${x.ses > 1 ? x.ses + ' sesiones abiertas' : '1 sesión abierta'}</span>` : '') : '<span class="chip bad">Dada de baja</span>'}</div>
+      <div class="acc">${x.fijo ? '<span class="sub">Tu cuenta</span>' : x.activo
+        ? `<button class="btn" data-rol="${esc(x.u)}">Cambiar rol</button><button class="btn bad" data-baja="${esc(x.u)}">Dar de baja</button>`
+        : `<button class="btn" data-reac="${esc(x.u)}">Reactivar</button>`}</div></div>`).join('');
+  $('#v-lista').innerHTML = `<div class="card">${filas}</div>`;
+  document.querySelectorAll('[data-rol]').forEach(b => b.onclick = () => dlgRol(b.dataset.rol));
+  document.querySelectorAll('[data-baja]').forEach(b => b.onclick = () => dlgBaja(b.dataset.baja));
+  document.querySelectorAll('[data-reac]').forEach(b => b.onclick = () => { const x = usuarios.find(y => y.u === b.dataset.reac); x.activo = true; apunta('reactivar', x.u, 'Debe crear contraseña nueva con su código'); pinta(); });
+}
+function opcionesRol(sel) {
+  return Object.keys(ROLES).map(k => `<option value="${k}"${k === sel ? ' selected' : ''}>${esc(ROLES[k].n)}</option>`).join('')
+    + '<optgroup label="Solo Esteban">' + Object.keys(PROHIBIDOS).map(k => `<option value="${k}">${esc(PROHIBIDOS[k])}</option>`).join('') + '</optgroup>';
+}
+function pintaAlta() {
+  const libres = EMPLEADOS.filter(e => !usuarios.some(u => u.emp === e.id));
+  $('#v-alta').innerHTML = `<div class="card">
+    <label for="emp">Empleado (de Odoo)</label><select id="emp"><option value="">Elige…</option>${libres.map(e => `<option value="${e.id}">${esc(e.n)} · ${esc((PUESTOS.find(p => p.id === e.job) || {}).n || 'sin puesto')}</option>`).join('')}</select>
+    <div id="sug"></div>
+    <div class="dos"><div><label for="usr">Usuario</label><input id="usr" placeholder="nombre.apellido" autocomplete="off"></div>
+    <div><label for="rol">Rol</label><select id="rol">${opcionesRol('tecnico')}</select></div></div>
+    <div id="niv-w"><label for="niv">Nivel</label><select id="niv"><option value="junior">Junior</option><option value="senior">Senior</option></select></div>
+    <div style="margin-top:14px"><button class="btn pri" id="alta-ok">Dar de alta y generar código</button></div>
+    <div id="alta-msg"></div></div>`;
+  const nivVis = () => { $('#niv-w').hidden = !(ROLES[$('#rol').value] || {}).nivel; };
+  $('#rol').onchange = nivVis; nivVis();
+  $('#emp').onchange = () => {
+    const e = EMPLEADOS.find(x => x.id === Number($('#emp').value)); if (!e) { $('#sug').innerHTML = ''; return; }
+    const p = PUESTOS.find(x => x.id === e.job) || {};
+    const partes = e.n.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(' ');
+    $('#usr').value = partes[0] + '.' + partes[partes.length - 1];
+    if (p.rol) { $('#rol').value = p.rol; if (p.nivel) $('#niv').value = p.nivel; nivVis();
+      $('#sug').innerHTML = `<div class="sug">Por su puesto en Odoo (<b>${esc(p.n)}</b>) te sugiero <b>${esc(ROLES[p.rol].n)}${p.nivel ? ' · ' + p.nivel : ''}</b>. Es una sugerencia: cámbiala si no va.</div>`; }
+    else $('#sug').innerHTML = `<div class="sug">Su puesto (<b>${esc(p.n || 'sin puesto')}</b>) no tiene un rol sugerido. Elige uno.</div>`;
+  };
+  $('#alta-ok').onclick = () => {
+    const u = $('#usr').value.trim().toLowerCase(), rol = $('#rol').value, e = EMPLEADOS.find(x => x.id === Number($('#emp').value));
+    const m = $('#alta-msg');
+    if (!e) { m.innerHTML = '<div class="err">Elige el empleado.</div>'; return; }
+    if (!/^[a-z0-9._-]{3,40}$/.test(u)) { m.innerHTML = '<div class="err">El usuario lleva solo minúsculas, números y punto.</div>'; return; }
+    if (usuarios.some(x => x.u === u)) { m.innerHTML = '<div class="err">Ese usuario ya existe.</div>'; return; }
+    const no = puerta(u, rol); if (no) { m.innerHTML = '<div class="err">' + esc(no) + '</div>'; apunta('rechazo', u, no); return; }
+    const nivel = ROLES[rol].nivel ? $('#niv').value : undefined;
+    usuarios.push({u, n:e.n, rol, nivel, emp:e.id, activo:true, ses:0});
+    apunta('alta', u, ROLES[rol].n + (nivel ? ' · ' + nivel : ''));
+    const cod = Math.random().toString(36).slice(2, 8).toUpperCase();
+    m.innerHTML = `<div class="okm">Alta lista. Código de un solo uso para que ${esc(e.n.split(' ')[0])} cree su contraseña: <b>${cod}</b> (vence en 24 h). Nadie más ve su contraseña, tampoco RH.</div>`;
+    pintaLista(); pintaBitacora();
+  };
+}
+function pintaBitacora() {
+  $('#v-bitacora').innerHTML = `<div class="card"><table><thead><tr><th>Cuándo (CST)</th><th>Quién</th><th>Qué</th><th>Cuenta</th><th>Detalle</th></tr></thead><tbody>${
+    bitacora.map(b => `<tr><td>${esc(b.at)}</td><td>${esc(b.por)}</td><td>${esc(b.que)}</td><td>${esc(b.u)}</td><td>${esc(b.det)}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function dlg(html, onOk) { const f = $('#dlgf'); f.innerHTML = html; $('#dlg').showModal(); f.onsubmit = ev => { if (ev.submitter && ev.submitter.value === 'ok') { const r = onOk(); if (r) { ev.preventDefault(); $('#dlg-err').textContent = r; } } }; }
+function dlgRol(u) {
+  const x = usuarios.find(y => y.u === u);
+  dlg(`<h3 style="margin-top:0">Cambiar rol · ${esc(x.n)}</h3><label for="d-rol">Rol</label><select id="d-rol">${opcionesRol(x.rol)}</select>
+    <label for="d-niv">Nivel (si aplica)</label><select id="d-niv"><option value="">—</option><option value="junior"${x.nivel === 'junior' ? ' selected' : ''}>Junior</option><option value="senior"${x.nivel === 'senior' ? ' selected' : ''}>Senior</option></select>
+    <p class="sub">El cambio aplica en su siguiente pantalla: sus sesiones abiertas se cierran para que vuelva a entrar con el rol nuevo.</p>
+    <div class="err" id="d-err"></div><div class="acc"><button class="btn" value="no">Cancelar</button><button class="btn pri" value="ok">Guardar</button></div>`.replace('d-err', 'dlg-err'), () => {
+    const rol = $('#d-rol').value, no = puerta(u, rol); if (no) { apunta('rechazo', u, no); pintaBitacora(); return no; }
+    const antes = rolN(x.rol) + (x.nivel ? ' · ' + x.nivel : ''); x.rol = rol; x.nivel = ROLES[rol].nivel ? ($('#d-niv').value || 'junior') : undefined; x.ses = 0;
+    apunta('cambio de rol', u, antes + ' → ' + rolN(rol) + (x.nivel ? ' · ' + x.nivel : '')); pinta(); });
+}
+function dlgBaja(u) {
+  const x = usuarios.find(y => y.u === u);
+  dlg(`<h3 style="margin-top:0">Dar de baja · ${esc(x.n)}</h3><p>Sale <b>de inmediato</b>: sus ${x.ses} sesión(es) abierta(s) dejan de servir en la siguiente petición, y su contraseña queda invalidada. Sus casos, machotes y mensajes no se borran.</p>
+    <label for="d-mot">Motivo</label><input id="d-mot" placeholder="Ej. dejó la empresa">
+    <div class="err" id="dlg-err"></div><div class="acc"><button class="btn" value="no">Cancelar</button><button class="btn bad" value="ok">Dar de baja</button></div>`, () => {
+    if (u === YO) return 'No puedes darte de baja a ti misma.';
+    const mot = $('#d-mot').value.trim(); if (mot.length < 3) return 'Escribe el motivo.';
+    const s = x.ses; x.activo = false; x.ses = 0; apunta('baja', u, mot + ' · ' + s + ' sesión(es) revocada(s)'); pinta(); });
+}
+pinta();
+</script>
+</body>
+</html>
