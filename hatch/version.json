@@ -1,7 +1,7 @@
 {
   "module": "hatch",
   "version": "0.4.1-integrated",
-  "build": "2026-05-02-fts-auth-integrated",
+  "build": "2026-11-11-hatch-sri-cdn",
   "status": "online",
   "data_files": [
     "data/catalog.json",

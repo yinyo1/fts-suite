@@ -20,6 +20,7 @@ async function generateExcel(){
       await new Promise((res,rej)=>{
         const s=document.createElement('script');
         s.src='https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js';
+        s.integrity='sha384-P7KKlGD3Ng66Ds7oTliLzTnol6DbK+k7PafNYXIBDQ4b5eFWtmqctplDVOxslglR'; s.crossOrigin='anonymous';
         s.onload=res; s.onerror=()=>rej(new Error('No se pudo cargar ExcelJS'));
         document.head.appendChild(s);
       });

@@ -1,10 +1,16 @@
 {
-  "version": "V1.09",
-  "fecha": "2026-10-02",
+  "version": "V1.10",
+  "fecha": "2026-11-11",
   "modulo": "operaciones/carga-mo",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "ambito": "El CONTADOR es SOLO de este modulo y arranca en V1.00 aunque el modulo lleve meses en produccion: antes se versionaba con una cadena de build (la ultima fue 20260904-cmo-cruce-rh) y esa numeracion no se puede continuar. rh/nomina-incidencias, finanzas y comercial/machote usan el MISMO esquema con contadores PROPIOS — que aqui diga V1.00 y alla V1.16 es lo correcto, no un desfase.",
   "historial": [
+    {
+      "version": "V1.10",
+      "fecha": "2026-11-11",
+      "titulo": "SheetJS 0.20.3 desde cdn.sheetjs.com con integrity (#486)",
+      "nota": "CERO LOGICA TOCADA. La 0.18.5 de cdnjs tiene dos avisos altos (contaminacion de prototipo y ReDoS) y cdnjs ya no publica versiones nuevas; SheetJS solo publica en su propio CDN. Ahora el script lleva integrity sha384 y crossorigin, asi que si el CDN sirve otra cosa el navegador no la ejecuta."
+    },
     {
       "version": "V1.09",
       "fecha": "2026-10-02",

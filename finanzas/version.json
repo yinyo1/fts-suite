@@ -1,9 +1,15 @@
 {
-  "version": "V1.15",
-  "fecha": "2026-10-07",
+  "version": "V1.16",
+  "fecha": "2026-11-11",
   "modulo": "finanzas",
   "esquema": "V<mayor>.<menor de dos dígitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.16",
+      "fecha": "2026-11-11",
+      "titulo": "Data Bancos: SheetJS 0.20.3 con integrity (#486)",
+      "nota": "CERO LOGICA TOCADA. La descarga a Excel cargaba xlsx 0.18.5 de cdnjs, que tiene dos avisos altos (contaminacion de prototipo y ReDoS) y ya no recibe versiones ahi. Ahora carga la 0.20.3 de cdn.sheetjs.com con integrity sha384 y crossorigin. Rentabilidad solo sube el numero."
+    },
     {
       "version": "V1.15",
       "pr": null,

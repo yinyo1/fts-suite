@@ -171,10 +171,12 @@
   if (window.__ftsSinAcceso) return;
 
   // Versión visible. DEBE coincidir con finanzas/version.json — el gate lo verifica.
-  var DB_BUILD = 'V1.15';
+  var DB_BUILD = 'V1.16';
   var RUTA = '/webhook/fin/bancos-data';
   var RUTA_EXP = '/webhook/fin/bancos-data-exportar';
-  var XLSX_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  // SheetJS 0.20.3 desde su propio CDN, con integrity (#486): la 0.18.5 de cdnjs tiene dos avisos altos.
+  var XLSX_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+  var XLSX_SRI = 'sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT';
 
   var ses = window.SuiteAuth.getSession() || {};
   // Columnas visibles: una preferencia POR USUARIO. Es una llave de DATOS: el armazón no la borra
@@ -431,7 +433,7 @@
   function cargarXlsx() {
     if (window.XLSX) return Promise.resolve(window.XLSX);
     return new Promise(function (ok, mal) {
-      var s = document.createElement('script'); s.src = XLSX_CDN;
+      var s = document.createElement('script'); s.src = XLSX_CDN; s.integrity = XLSX_SRI; s.crossOrigin = 'anonymous';
       s.onload = function () { window.XLSX ? ok(window.XLSX) : mal(new Error('SheetJS no cargó')); };
       s.onerror = function () { mal(new Error('No se pudo cargar SheetJS')); };
       document.head.appendChild(s);

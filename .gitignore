@@ -24,3 +24,14 @@ docs/trazabilidad/_privado/
 # pueden traer datos de pantalla; el repo es público. Se miran en la máquina y
 # lo que queda en el repo es la conclusión, no la imagen.
 comercial/machote/tests/_capturas-*/
+
+# Secretos (#486). ESTE REPO ES PÚBLICO. Estas reglas son una red, no la defensa:
+# la defensa es gitleaks (pre-commit + CI) y el secret scanning de GitHub. Un archivo
+# que ya está commiteado NO se des-commitea por aparecer aquí.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*credentials*.json
+*secret*
