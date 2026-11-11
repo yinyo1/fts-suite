@@ -6,11 +6,13 @@
 <title>Módulo RH — FTS Suite</title>
 <script>
   (function(){
-    const BUILD_DATE = '20261007-rh-hub-retardos-texto';
+    const BUILD_DATE = '20261111-rh-hub-cuenta-personal';
     window.BUILD_DATE = BUILD_DATE;
   })();
 </script>
 <script src="../../shared/auth-suite.js"></script>
+<script src="../../shared/auth-jwt.js"></script>
+<script src="../../shared/modules-registry.js?v=20261111-acceso-suite"></script>
 <style>
   :root{
     --green:  #107C10;
@@ -166,24 +168,42 @@
 // ═══════════════════════════════════════════════
 function rh_check_auth(){
   const session = (window.FTSAuth && FTSAuth.getSession && FTSAuth.getSession()) || null;
-  if (!session){
-    alert('Sesión no válida. Redirigiendo al launcher.');
-    window.location.href = '../../index.html';
-    return null;
+  if (session){
+    const tieneRH = session.role === 'master'
+      || session.modulos === 'all'
+      || (session.modulos && session.modulos.rh && session.modulos.rh.acceso === true);
+    if (!tieneRH){
+      alert('No tienes acceso al módulo RH.');
+      window.location.href = '../../index.html';
+      return null;
+    }
+    return session;
   }
-  const tieneRH = session.role === 'master'
-    || session.modulos === 'all'
-    || (session.modulos && session.modulos.rh && session.modulos.rh.acceso === true);
-  if (!tieneRH){
-    alert('No tienes acceso al módulo RH.');
-    window.location.href = '../../index.html';
-    return null;
-  }
-  return session;
+  // #501: cuenta personal (SuiteAuth). Entra quien traiga un scope de RH o el de Dirección,
+  // con la misma regla que la tarjeta del lanzador (SUITE_TARJETAS). Las tarjetas que
+  // todavía piden la entrada anterior se marcan; la entrada anterior sigue igual.
+  const suite = rh_sesion_suite();
+  if (suite) return suite;
+  alert('Sesión no válida. Redirigiendo al launcher.');
+  window.location.href = '../../index.html';
+  return null;
+}
+
+function rh_sesion_suite(){
+  try {
+    if (!window.SuiteAuth || !SuiteAuth.isValid() || typeof suiteTarjeta !== 'function') return null;
+    const s = SuiteAuth.getSession() || {};
+    const def = (window.SUITE_TARJETAS || []).filter(function(d){ return d.cardId === 'card-rh'; })[0];
+    if (!def || !suiteTarjeta(def, s.scopes || [])) return null;
+    return { username: s.actor, nombre: s.nombre || s.actor, origen: 'suite' };
+  } catch(e){ return null; }
 }
 
 function rh_logout(){
+  let soloSuite = false;
+  try { soloSuite = !(window.FTSAuth && FTSAuth.getSession && FTSAuth.getSession()); } catch(e){}
   try { window.FTSAuth && FTSAuth.logout && FTSAuth.logout(); } catch(e){}
+  try { if (soloSuite && window.SuiteAuth) SuiteAuth.logout(); } catch(e){}
   window.location.href = '../../index.html';
 }
 window.rh_logout = rh_logout;
@@ -196,6 +216,17 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('rh-user-name').textContent = '👤 ' + nom;
   document.getElementById('rh-welcome-sub').textContent =
     'Hola, ' + nom + '. Selecciona qué deseas consultar.';
+
+  // #501: con la cuenta personal, las tarjetas que piden la entrada anterior llevan sello.
+  if (session.origen === 'suite') {
+    ['visor-checkins.html','visor-incidencias.html','empleados/index.html'].forEach(function(h){
+      const a = document.querySelector('.rh-card[href="' + h + '"]');
+      if (a && !a.querySelector('.rh-sello')) {
+        const sp = document.createElement('span'); sp.className = 'rh-sello'; sp.textContent = '🔑 se entra con la entrada anterior';
+        a.appendChild(sp);
+      }
+    });
+  }
 
   // Init tracking de actividad para renovar TTL de sesión FTSAuth
   try { FTSAuth.initActivityTracking && FTSAuth.initActivityTracking(); } catch(e){}

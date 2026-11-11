@@ -120,4 +120,46 @@ const MODULES_REGISTRY = [
   }
 ];
 
-window.MODULES_REGISTRY = MODULES_REGISTRY;
+if (typeof window !== 'undefined') window.MODULES_REGISTRY = MODULES_REGISTRY;
+
+// ═══ Tarjetas con la CUENTA PERSONAL (SuiteAuth) · fts-suite#501 ═══
+// Solo la usa la rama de cuenta personal del lanzador (login_dual_v1). La entrada
+// anterior (FTSAuth) sigue decidiendo con MODULES_REGISTRY de arriba, sin cambios.
+//   tipo 'suite' → la pantalla del módulo entiende la cuenta personal: se abre con
+//                  cualquiera de `scopes` (prefijo si termina en ':').
+//   tipo 'c4'    → la pantalla todavía solo entiende la entrada anterior (plan C4 de
+//                  #501). La tarjeta se muestra a quien trae `suite:direccion`, con el
+//                  sello «entrada anterior», y el módulo pide su login como siempre.
+// `suite:direccion` es un scope del perfil Dirección (chats_0014): ningún id ni
+// nombre fijo aquí; quién lo tiene lo decide la base.
+const SUITE_TARJETAS = [
+  { cardId: 'card-comercial',     tipo: 'suite', scopes: ['comercial:read', 'conceptualizador:usar', 'marketing:usar'] },
+  { cardId: 'card-rh',            tipo: 'suite', scopes: ['nomina:write', 'retardos:read', 'rh:read', 'usuarios:alta_codigo', 'nomina_usa:'], rh: true },
+  { cardId: 'card-finanzas',      tipo: 'c4' },
+  { cardId: 'card-operaciones',   tipo: 'c4' },
+  { cardId: 'card-pmo',           tipo: 'c4' },
+  { cardId: 'card-seguridad',     tipo: 'c4' },
+  { cardId: 'card-ingenieria',    tipo: 'c4' },
+  { cardId: 'card-config-master', tipo: 'c4', oculta: true },
+  { cardId: 'card-hatch',         tipo: 'c4', oculta: true }
+];
+const SCOPE_DIRECCION = 'suite:direccion';
+
+/** ¿La cuenta personal abre esta tarjeta? Devuelve 'suite' | 'c4' | null. */
+function suiteTarjeta(def, scopes) {
+  scopes = Array.isArray(scopes) ? scopes : [];
+  const dir = scopes.indexOf(SCOPE_DIRECCION) >= 0;
+  if (def.tipo === 'c4') return dir ? 'c4' : null;
+  if (dir) return 'suite';
+  const ok = (def.scopes || []).some(function (p) {
+    return p.slice(-1) === ':' ? scopes.some(function (s) { return s.indexOf(p) === 0; }) : scopes.indexOf(p) >= 0;
+  });
+  return ok ? 'suite' : null;
+}
+
+if (typeof window !== 'undefined') {
+  window.SUITE_TARJETAS = SUITE_TARJETAS;
+  window.SCOPE_DIRECCION = SCOPE_DIRECCION;
+  window.suiteTarjeta = suiteTarjeta;
+}
+if (typeof module !== 'undefined') module.exports = { SUITE_TARJETAS: SUITE_TARJETAS, SCOPE_DIRECCION: SCOPE_DIRECCION, suiteTarjeta: suiteTarjeta };
