@@ -4,9 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Panel de Incidencias — Mi Perfil — FTS</title>
+<script src="../../auth-jwt.js"></script>
 <script>
   (function(){
-    const BUILD_DATE = '20260504-pi-f2-1-roles-auto';
+    const BUILD_DATE = '20261111-pi-suite-v1';
     window.BUILD_DATE = BUILD_DATE;
   })();
 </script>
@@ -295,7 +296,7 @@
   <a class="pi-back" href="../index.html">← Mi Perfil</a>
   <div class="pi-title-wrap">
     <span class="pi-title">⚖️ Panel de Incidencias</span>
-    <span class="pi-build">build 20260504-pi-f2-1-roles-auto</span>
+    <span class="pi-build">build 20261111-pi-suite-v1</span>
   </div>
   <div class="pi-user">
     <span id="pi-user-nombre">—</span>
@@ -423,6 +424,46 @@ function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(
 // ═══════════════════════════════════════════════
 // SESIÓN — replica del hub Mi Perfil
 // ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+// incidencias_suite_v1 (#485, 11-nov-2026): entrada con la cuenta personal (SuiteAuth).
+// Con el interruptor apagado (shared/public-config.json) todo queda como antes: solo la
+// sesión de Mi Perfil (PIN). Prendido:
+//   1) si no hay sesión de Mi Perfil, usa el empleado_id que trae la sesión SuiteAuth
+//      (viene firmado en el token; aquí solo se usa para pintar, como antes el de Mi Perfil);
+//   2) quien carga el scope incidencias:resolver ve además RH y Dirección para auditar
+//      (decisión F2.1: Esteban supervisor + RH + Dirección). Sin id fijo en el código.
+// La bandeja de supervisor sigue siendo SOLO su gente (supervisor_id) y nadie ve las suyas.
+// ═══════════════════════════════════════════════
+let _suiteV1 = false;
+async function leerInterruptorSuite(){
+  try {
+    const r = await fetch('../../public-config.json?t=' + Date.now(), { cache: 'no-store' });
+    const j = r.ok ? await r.json() : {};
+    _suiteV1 = !!(j && j.incidencias_suite_v1 === true);
+  } catch(e){ _suiteV1 = false; }
+  return _suiteV1;
+}
+function sesionSuite(){
+  try {
+    if (!window.SuiteAuth || !SuiteAuth.isValid()) return null;
+    const s = SuiteAuth.getSession() || {};
+    const id = Number(s.empleado_id);
+    if (!(id > 0)) return null;
+    return { empleado_id: id, empleado_nombre: s.nombre || s.actor || ('id ' + id), ts: Date.now(),
+             origen: 'suite', actor: s.actor || null, scopes: Array.isArray(s.scopes) ? s.scopes : [] };
+  } catch(e){ return null; }
+}
+function rolesAuditor(session, roles){
+  // Solo con el interruptor, y solo si la sesión SuiteAuth es de la MISMA persona.
+  const out = roles.slice();
+  if (!_suiteV1) return out;
+  const s = sesionSuite();
+  if (!s || Number(s.empleado_id) !== Number(session.empleado_id)) return out;
+  if (s.scopes.indexOf('incidencias:resolver') < 0) return out;
+  ['rh','direccion'].forEach(function(r){ if (out.indexOf(r) < 0) out.push(r); });
+  return out;
+}
+
 function obtenerSesionMP(){
   try {
     const raw = sessionStorage.getItem(MP_SESSION_KEY);
@@ -1128,7 +1169,8 @@ window.confirmarAccion = confirmarAccion;
 // INIT
 // ═══════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async function(){
-  const session = obtenerSesionMP();
+  await leerInterruptorSuite();
+  const session = obtenerSesionMP() || (_suiteV1 ? sesionSuite() : null);
 
   if (!session || !session.empleado_id){
     alert('Sesión no válida. Vuelve a iniciar sesión en Mi Perfil.');
@@ -1138,6 +1180,7 @@ document.addEventListener('DOMContentLoaded', async function(){
 
   // F2.1: derivar roles dinámicamente desde Odoo (parent_id + departamento)
   const empleadoAcceso = await deriveRolesFromOdoo(session.empleado_id);
+  if (empleadoAcceso && Array.isArray(empleadoAcceso.roles)) empleadoAcceso.roles = rolesAuditor(session, empleadoAcceso.roles);
 
   if (!empleadoAcceso || !Array.isArray(empleadoAcceso.roles) || empleadoAcceso.roles.length === 0){
     alert('No tienes roles asignados en el panel de incidencias (sin reportes directos ni rol RH/dirección por departamento).');
