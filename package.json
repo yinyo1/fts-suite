@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "jsdom": "^30.0.1",
+    "jsdom": "^31.0.0",
     "playwright": "^1.62.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   }
