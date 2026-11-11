@@ -66,11 +66,12 @@ function servir() { return new Promise(res => { const s = http.createServer((q, 
   check('bloqueado → no pasa y lo dice', !r.selfie && /bloquead/i.test(r.status), r.status);
   check('registro bloqueado', registros[0] && registros[0].resultado === 'bloqueado');
 
-  seccion('Servidor sin contestar → respaldo invisible');
+  // #486 (noche 11-nov): ya no hay respaldo. Sin servidor, falla cerrado aunque el PIN sea bueno.
+  seccion('Servidor sin contestar → falla cerrado (sin respaldo)');
   for (const m of ['caido', '503', 'viejo']) {
     r = await intento(m, PIN);
-    check(m + ': PIN bueno entra por el respaldo', r.selfie, r.status);
-    check(m + ': queda registrado como respaldo', registros[0] && registros[0].resultado === 'ok' && /^respaldo_/.test(registros[0].motivo), JSON.stringify(registros));
+    check(m + ': PIN bueno NO entra sin servidor', !r.selfie && /No se pudo verificar/.test(r.status), r.status);
+    check(m + ': queda registrado como sin_servidor', registros[0] && registros[0].resultado === 'error' && /^sin_servidor_/.test(registros[0].motivo), JSON.stringify(registros));
     r = await intento(m, OTRO);
     check(m + ': PIN malo no entra', !r.selfie);
   }

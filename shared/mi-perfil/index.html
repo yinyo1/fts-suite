@@ -7,7 +7,7 @@
 <script>
   // Cache busting + BUILD_DATE expuesto a window.
   (function() {
-    const BUILD_DATE = '20261111-mp-pin-servidor';
+    const BUILD_DATE = '20261111-mp-sin-respaldo';
     window.BUILD_DATE = BUILD_DATE;
     if (!window.location.search.includes('v=')) {
       document.addEventListener('DOMContentLoaded', function() {
@@ -223,7 +223,7 @@
 <div class="mp-topbar">
   <div class="mp-topbar-left">
     <a class="mp-back-suite" id="mp-nav-btn" href="../../index.html">← Volver a Suite</a>
-    <span class="mp-build">build 20261111-mp-pin-servidor</span>
+    <span class="mp-build">build 20261111-mp-sin-respaldo</span>
   </div>
   <div id="mp-topbar-right">
     <span class="mp-user-info" id="mp-user-label" style="display:none"></span>
@@ -793,16 +793,10 @@ async function mp_pin_validate(){
     return;
   }
 
-  // Respaldo invisible: el servidor no contestó. Se compara como antes, si el roster trae el PIN.
-  var expected = String(emp.pin || '');
-  if (!expected) {
-    mp_registrar('error', 'respaldo_' + v.motivo + '_sin_pin');
-    mp_pin_error('⚠️ No se pudo verificar tu PIN. Intenta de nuevo en un momento.', 2500);
-    return;
-  }
-  if (pin === expected) { mp_registrar('ok', 'respaldo_' + v.motivo); mp_pin_ok(); return; }
-  mp_registrar('mal', 'respaldo_' + v.motivo);
-  mp_pin_error('❌ PIN incorrecto. Intenta de nuevo.');
+  // #486 (noche 11-nov): sin respaldo. El roster ya no trae PIN; si el servidor no contesta,
+  // no se entra (falla cerrado) y queda registrado para la alarma del correo.
+  mp_registrar('error', 'sin_servidor_' + v.motivo);
+  mp_pin_error('⚠️ No se pudo verificar tu PIN. Intenta de nuevo en un momento.', 2500);
 }
 
 // ═══════════════════════════════════════════════
