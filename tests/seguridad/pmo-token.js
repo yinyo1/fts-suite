@@ -11,7 +11,8 @@ const RAIZ = path.resolve(__dirname, '..', '..');
 const ARCH = path.resolve(process.argv[2] || path.join(RAIZ, 'pmo/index.html'));
 const OUT = process.env.SHOTS_DIR || null; if (OUT) fs.mkdirSync(OUT, { recursive: true });
 const T = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json' };
-const TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJwcnVlYmEifQ.firma-de-prueba';
+// Token FALSO armado en ejecución (encabezado y cuerpo de prueba, firma inventada): no es un secreto.
+const TOKEN = [Buffer.from('{"alg":"none"}').toString('base64url'), Buffer.from('{"sub":"prueba"}').toString('base64url'), 'firma-de-prueba'].join('.');
 
 seccion('Estático');
 const src = fs.readFileSync(ARCH, 'utf8');
