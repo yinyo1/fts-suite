@@ -153,6 +153,7 @@
     b.disabled = true; b.textContent = 'Entrando…';
     var r = await SuiteAuth.login(document.getElementById('u').value, document.getElementById('p').value);
     if (r.ok) {
+      try { sessionStorage.setItem('fts_portal_via_nuevo', '1'); } catch (e) {}
       registrarAcceso('portal_nuevo', { resultado: 'ok', usuario: String((r.sesion && r.sesion.actor) || '').toLowerCase() });
       // El aviso de contraseña temporal se da UNA vez, al entrar: todavía no
       // existe la pantalla para cambiarla (la columna `debe_cambiar_password`

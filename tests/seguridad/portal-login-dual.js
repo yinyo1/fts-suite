@@ -85,7 +85,12 @@ async function contexto(browser, extraInit) {
   await ctx.close();
   // sesión de cuenta personal ya hecha → la Suite se abre con ella
   const exp = Math.floor(Date.now() / 1000) + 3600;
-  ctx = await contexto(browser, `localStorage.setItem('fts_suite_session', JSON.stringify({token:'x.y.z',actor:'zz.nuevo',nombre:'ZZ Nuevo',scopes:['comercial:zz'],exp:${exp}}))`);
+  const SES = `localStorage.setItem('fts_suite_session', JSON.stringify({token:'x.y.z',actor:'zz.nuevo',nombre:'ZZ Nuevo',scopes:['comercial:zz'],exp:${exp}}));`;
+  ctx = await contexto(browser, SES); page = await nueva(ctx);
+  await page.goto(base + '/index.html', { waitUntil: 'networkidle' }); await page.waitForTimeout(500);
+  check('sesión de Comercial sin pasar por el login nuevo → sigue viendo la entrada anterior', await page.evaluate(() => document.getElementById('login-overlay').style.display === 'flex'));
+  await ctx.close();
+  ctx = await contexto(browser, SES + "sessionStorage.setItem('fts_portal_via_nuevo','1');");
   page = await nueva(ctx);
   await page.goto(base + '/index.html', { waitUntil: 'networkidle' }); await page.waitForTimeout(500);
   check('con cuenta personal llega a su portal (sin pedir la entrada anterior)', await page.evaluate(() => document.getElementById('login-overlay').style.display === 'none'));

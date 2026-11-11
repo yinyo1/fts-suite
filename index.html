@@ -525,6 +525,9 @@ document.addEventListener('DOMContentLoaded', initAuth);
   function abrirConCuentaNueva(){
     if (typeof FTSAuth !== 'undefined' && FTSAuth.getSession()) return;
     if (!window.SuiteAuth || !SuiteAuth.isValid()) return;
+    // Solo si entró por la cuenta personal en esta pestaña: quien ya traía sesión de otro
+    // módulo (p. ej. Comercial) sigue viendo la entrada anterior como siempre.
+    try { if (sessionStorage.getItem('fts_portal_via_nuevo') !== '1') return; } catch(e){ return; }
     var s = SuiteAuth.getSession() || {};
     sesionNueva = true;
     document.getElementById('login-overlay').style.display = 'none';
@@ -532,7 +535,7 @@ document.addEventListener('DOMContentLoaded', initAuth);
   }
   // Salir: si la sesión vino de la cuenta personal, también se cierra esa.
   var logoutViejo = window.doLogout;
-  window.doLogout = function(){ if (sesionNueva && window.SuiteAuth) { try { SuiteAuth.logout(); } catch(e){} sesionNueva = false; } logoutViejo(); };
+  window.doLogout = function(){ if (sesionNueva && window.SuiteAuth) { try { SuiteAuth.logout(); sessionStorage.removeItem('fts_portal_via_nuevo'); } catch(e){} sesionNueva = false; } logoutViejo(); };
   fetch('shared/public-config.json?t=' + Date.now(), { cache:'no-store' })
     .then(function(r){ return r.ok ? r.json() : {}; })
     .then(function(c){
