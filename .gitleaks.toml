@@ -1,0 +1,19 @@
+# #486 · gitleaks: reglas por omisión + excepciones MEDIDAS, una por una.
+# Cada excepción dice qué falso positivo cubre. NUNCA se agrega una excepción para
+# callar un secreto real: un secreto real se quita del código y se ROTA.
+title = "fts-suite"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Falsos positivos medidos el 2026-11-11 con gitleaks 8.21.2 sobre main 48a7403"
+regexTarget = "line"
+regexes = [
+  # operaciones/planeacion/js/horarios-base.js:6 · nombre de una llave de localStorage, no un valor
+  '''KEY_LOCAL:\s*'[a-z0-9_]+'\s*,''',
+  # docs/mcp-config/README-MCP.md · plantilla con marcador para que cada quien pegue la suya
+  '''"N8N_API_KEY":\s*"PEGA_AQUI_TU''',
+  # db/migrations/marketing/marketing_0014_cuarentena_odoo.sql:16 · comentario SQL «marketing.api_crm: …»
+  '''--\s+·\s+marketing\.api_crm:''',
+]
