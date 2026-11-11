@@ -38,12 +38,22 @@
           "fecha": "2026-11-11T16:29:37.249Z",
           "hora_propuesta_cst": "09:30",
           "comentario": "Me sentí mal de salud"
+        },
+        {
+          "paso": 2,
+          "rol": "rh",
+          "user_id": 63,
+          "usuario": "Magaly Estefanía Pérez García",
+          "timestamp": "2026-11-11T17:54:52.822Z",
+          "hora_propuesta_cst": "09:00",
+          "comentario": "Se retiro de fts por temas de salud.",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_rh",
-      "hora_final_aplicada_utc": "2026-11-11 15:30:00",
+      "status": "aprobada_con_ajuste",
+      "hora_final_aplicada_utc": "2026-11-11 15:00:00",
       "aplicado_en_odoo": true,
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "creada_por_modulo": "kiosk",
       "creada_por_build": "20261111-kiosk-pin-servidor"
     },
