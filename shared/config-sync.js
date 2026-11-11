@@ -102,8 +102,7 @@
 
   const ConfigSync = {
 
-    // Recolecta todas las keys ops_*, key_* y fts_* del localStorage
-    // Excluye keys de auth/sesión locales que NO deben subirse a GitHub
+    // Recolecta SOLO las llaves de configuración de PERMITIDAS (sin llaves de API, #486)
     /* ── LISTA BLANCA. Antes era lista negra, y por eso había que cambiarla.
      *
      * Hasta el 9-sep-2026 esto barría TODA llave `ops_*`, `key_*` y `fts_*` y
@@ -146,10 +145,15 @@
       'ops_dash_refresh', 'ops_dash_alerta_sin_checar', 'ops_dash_alerta_fuera_zona',
       'ops_dash_alerta_extra', 'ops_plan_hora_entrada', 'ops_plan_hora_salida',
       'ops_plan_hora_limite', 'ops_plan_recordatorio', 'ops_plan_wa_webhook',
-      // Llaves de API que este panel administra a propósito
-      'key_claude', 'key_groq', 'key_openrouter', 'key_gemini',
-      'key_github_token', 'key_odoo_api', 'ops_github_token'
+      /* SIN llaves de API ni tokens (#486, 11-nov-2026). Antes iban aquí
+       * key_claude/groq/openrouter/gemini/github_token/odoo_api y ops_github_token,
+       * y además el token de GitHub como `_github_token`. Cifradas o no, viajaban a
+       * un archivo PÚBLICO protegidas solo por una contraseña elegida por una
+       * persona. Una llave de API se teclea en cada dispositivo; no se sincroniza. */
     ],
+
+    /* Lo que JAMÁS se escribe al cargar, aunque venga en un blob viejo del repo. */
+    VEDADAS: /^(key_|_github_token$|ops_github_token$|ops_api_key$|ops_sync_password$|fts_)/,
 
     /* Lo que HAY en este navegador y NO se sincroniza. No es un aviso de
      * error: es la lista de lo que se queda aquí a propósito. Se enseña al
@@ -192,8 +196,9 @@
         try{ console.info('[config-sync] NO se sincronizan ' + fuera.length +
           ' llave(s), se quedan en este navegador: ' + fuera.join(', ')); }catch(e){}
       }
-      // Incluir el token cifrado para poder recuperarlo en otros dispositivos
-      config['_github_token'] = token;
+      /* El token de GitHub YA NO viaja en el blob (#486). Se usa para escribir y
+       * se queda en este navegador. */
+      for(const k of Object.keys(config)){ if(ConfigSync.VEDADAS.test(k)) delete config[k]; }
 
       const encrypted = await encryptConfig(config, password);
       const existing = await githubGetFile(token);
@@ -240,28 +245,17 @@
 
       const config = await decryptConfig(fileData.data, password);
 
-      // Aplicar al localStorage (excepto _github_token que se guarda aparte)
+      /* Solo se aplica lo PERMITIDO. Un blob viejo (el commiteado es del
+       * 18-abr-2026) trae llaves de API y el token de GitHub: se ignoran (#486). */
+      const ok = new Set(ConfigSync.PERMITIDAS), VED = ConfigSync.VEDADAS;
       Object.keys(config).forEach(function(key){
-        if(key !== '_github_token'){
-          localStorage.setItem(key, config[key]);
-        }
+        if(ok.has(key) && !VED.test(key)) localStorage.setItem(key, config[key]);
       });
-
-      // Guardar token recuperado si venía en el payload
-      if(config._github_token){
-        localStorage.setItem('ops_github_token', config._github_token);
-      }
 
       // Dual-write para keys críticas (sin prefijo ops_)
       if(config['ops_n8n_url'])  localStorage.setItem('n8n_url',  config['ops_n8n_url']);
       if(config['ops_odoo_url']) localStorage.setItem('odoo_url', config['ops_odoo_url']);
       if(config['ops_demo_mode'] !== undefined) localStorage.setItem('demo_mode', config['ops_demo_mode'] === '1' ? 'true' : 'false');
-      if(config['ops_github_token']) localStorage.setItem('key_github_token', config['ops_github_token']);
-      if(config._github_token)       localStorage.setItem('key_github_token', config._github_token);
-      if(config['key_claude'])       localStorage.setItem('key_claude', config['key_claude']);
-      if(config['key_groq'])         localStorage.setItem('key_groq', config['key_groq']);
-      if(config['key_openrouter'])   localStorage.setItem('key_openrouter', config['key_openrouter']);
-      if(config['key_gemini'])       localStorage.setItem('key_gemini', config['key_gemini']);
 
       localStorage.setItem('ops_sync_password', password);
       localStorage.setItem('ops_last_sync',     new Date().toISOString());
