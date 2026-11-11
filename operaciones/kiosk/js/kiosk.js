@@ -1,7 +1,7 @@
 // ═══ FTS Kiosk — Lógica principal ═══
 // Script clásico, estado global compartido
 
-const KIOSK_BUILD = '20261101-kiosk-nomina-usa';
+const KIOSK_BUILD = '20261111-kiosk-pin-servidor';
 console.log('[kiosk] build:', KIOSK_BUILD);
 window.KIOSK_BUILD = KIOSK_BUILD;
 // PR-7: auto version-check — si el navegador sirve un bundle viejo cacheado
@@ -32,12 +32,23 @@ const K = {
   sosError: null,
 };
 
+// ═══ Modo demo (fts-suite#486, 11-nov-2026) ═══
+// Antes: demo PRENDIDO por omisión (`ops_demo_mode !== '0'`) y también si faltaba la URL de
+// n8n. En demo la checada solo se escribía en consola: la pantalla decía ✓ y no llegaba nada
+// a Odoo. Ahora: solo con `ops_demo_mode === '1'` puesto a mano Y fuera del dominio de
+// producción. En producción NUNCA, aunque alguien lo prenda en la configuración.
+function kioskDemoPermitido(){
+  var h = (location && location.hostname) || '';
+  return h !== 'yinyo1.github.io';
+}
+window.kioskDemoPermitido = kioskDemoPermitido;
+
 // ═══ Carga de configuración (nuevo schema) ═══
 function loadKioskConfig(){
   return {
-    n8nUrl:        localStorage.getItem('ops_n8n_url') || '',
+    n8nUrl:        localStorage.getItem('ops_n8n_url') || (typeof N8N_DEFAULT !== 'undefined' ? N8N_DEFAULT : ''),
     apiKey:        localStorage.getItem('ops_api_key') || '',
-    demoMode:      localStorage.getItem('ops_demo_mode') !== '0',
+    demoMode:      localStorage.getItem('ops_demo_mode') === '1' && kioskDemoPermitido(),
     // 21-may-2026: face recognition opt-in explícito (default OFF). Tras PR #44 (CDN gh
     // sirviendo modelos reales) la validación volvió a operar tras semanas de bypass
     // silencioso (CDN npm 404 → loadFaceModels throw → K.faceReady=false → flow saltaba
@@ -446,12 +457,11 @@ window.terminarYHome = terminarYHome;
 // (localStorage.ops_demo_mode = '1'). El catch del fetch NO regresa a demos:
 // cae en estado 'error' con K.empleados/K.sos = [] y la UI muestra banner.
 // Ver docs/audit-kiosk-empleados-fallback.md
+// fts-suite#486: sin PINs (el demo acepta cualquiera) y sin nombres del equipo.
 const _LEGACY_DEMOS_OPTIN_ONLY_EMPLEADOS = [
-  { id:1, nombre:'Mateo Salazar',     puesto:'Ingeniero',  foto:'', pin:'1234' },
-  { id:2, nombre:'Felipe Pérez',      puesto:'Supervisor', foto:'', pin:'5678' },
-  { id:3, nombre:'Esteban De La Cruz',puesto:'Director',   foto:'', pin:'0000' },
-  { id:4, nombre:'Ana Ramírez',       puesto:'Soldador',   foto:'', pin:'1111' },
-  { id:5, nombre:'Carlos Hernández',  puesto:'Ayudante',   foto:'', pin:'2222' },
+  { id:1, nombre:'Técnico Demo Uno',  puesto:'Ingeniero',  foto:'' },
+  { id:2, nombre:'Técnico Demo Dos',  puesto:'Supervisor', foto:'' },
+  { id:3, nombre:'Técnico Demo Tres', puesto:'Soldador',   foto:'' },
 ];
 const _LEGACY_DEMOS_OPTIN_ONLY_SOS = [
   { id:101, name:'🛠️ SO-2026-001 - Topo Chico Radium',        cliente:'Ecolab Nalco',        nombre:'Topo Chico — Radium',       num:'SO-2026-001' },
@@ -514,7 +524,7 @@ async function loadEmpleados(){
   K.empleadosLastTryAt = new Date();
   K.empleadosTryCount = (K.empleadosTryCount || 0) + 1;
   setEmpState('loading');
-  // Opt-in explícito: solo si Esteban setea ops_demo_mode='1' a propósito para testing.
+  // Opt-in explícito: ops_demo_mode='1' y fuera de producción (kioskDemoPermitido).
   if(K.config.demoMode || !K.config.n8nUrl){
     K.empleados = _LEGACY_DEMOS_OPTIN_ONLY_EMPLEADOS.slice();
     K.empleadosState = 'ok';
@@ -690,17 +700,40 @@ function updatePinDots(){
   });
 }
 
-function verifyPin(){
-  if(!K.seleccionado) return;
+// ═══ PIN verificado en el SERVIDOR (fts-suite#486, 11-nov-2026) ═══
+// Antes el kiosko recibía el PIN de todo el roster en kiosk/empleados y comparaba aquí.
+// Ahora manda el PIN a kiosk/checkin con tipo 'verificar_pin': el servidor compara contra
+// Odoo, cuenta intentos y bloquea; esa llamada NUNCA escribe (un servidor viejo la rechaza).
+// La checada real vuelve a mandar el PIN (registrarAsistencia).
+// Respaldo: si el servidor todavía no verifica (respuesta sin `pin_verificado`) o no hay red,
+// se compara contra el PIN del roster SOLO mientras kiosk/empleados lo siga mandando.
+function kioskDispositivoId(){
+  try{
+    var k = 'ops_kiosk_dispositivo_id';
+    var v = localStorage.getItem(k);
+    if(!v){
+      v = 'k-' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+      localStorage.setItem(k, v);
+    }
+    return v;
+  } catch(e){ return null; }
+}
+window.kioskDispositivoId = kioskDispositivoId;
+
+function setPinBusy(busy){
+  var el = document.getElementById('ks-verify');
+  if(el) el.classList.toggle('ks-verify-busy', !!busy);
+  var btn = document.getElementById('ksPinOkBtn');
+  if(btn) btn.disabled = !!busy || K.pin.length !== 4;
+}
+
+var _pinVerificando = false;
+async function verifyPin(){
+  if(!K.seleccionado || _pinVerificando) return;
+  if(K.pin.length !== 4) return;
   const pinStatus = document.getElementById('pin-status');
-  const expected = K.seleccionado.pin;
 
-  console.log('[KIOSK PIN] Ingresado:', K.pin,
-    'Esperado:', expected,
-    'Empleado:', K.seleccionado.name || K.seleccionado.nombre,
-    K.seleccionado);
-
-  function failPin(msg){
+  function failPin(msg, ms){
     setFaceStatus('❌ ' + msg);
     if(pinStatus) pinStatus.textContent = msg;
     shakeVerify();
@@ -709,25 +742,50 @@ function verifyPin(){
     setTimeout(() => {
       const ps = document.getElementById('pin-status');
       if(ps) ps.textContent = '';
-    }, 2000);
+    }, ms || 2000);
+  }
+  function okPin(){
+    if(pinStatus) pinStatus.textContent = '';
+    setFaceStatus('✅ PIN correcto — verificando rostro…');
+    if(K.config.faceEnabled){
+      doFaceVerify();
+    } else {
+      afterVerifyContinue();
+    }
   }
 
-  if(!expected){
-    failPin('Empleado sin PIN configurado');
+  // Modo demo (solo fuera de producción, ver kioskDemoPermitido): no hay PINs en el bundle.
+  if(K.config.demoMode || !K.config.n8nUrl){ okPin(); return; }
+
+  _pinVerificando = true;
+  setPinBusy(true);
+  setFaceStatus('🔐 Verificando PIN…', true);
+  var r = null, sinRed = false;
+  try{
+    r = await window.OdooKiosk.verificarPin(K.seleccionado.id, K.pin);
+    r = Array.isArray(r) ? r[0] : r;
+  } catch(e){
+    sinRed = true;
+    console.warn('[kiosk] verificar PIN: sin respuesta del servidor', e && e.message);
+  }
+  _pinVerificando = false;
+  setPinBusy(false);
+
+  // Servidor que ya verifica: siempre trae la llave `pin_verificado`.
+  if(r && Object.prototype.hasOwnProperty.call(r, 'pin_verificado')){
+    if(r.pin_verificado === true && r.codigo_error === 'PIN_VERIFICADO'){ okPin(); return; }
+    var bloqueado = r.codigo_error === 'PIN_BLOQUEADO';
+    failPin(r.error_msg || r.mensaje || 'PIN incorrecto — intenta de nuevo', bloqueado ? 6000 : 2500);
     return;
   }
-  if(K.pin !== expected){
-    failPin('PIN incorrecto — intenta de nuevo');
+  // Servidor sin verificación (reversa) o sin red: respaldo con el PIN del roster, si todavía viene.
+  var local = K.seleccionado.pin;
+  if(local){
+    if(K.pin === String(local)) okPin();
+    else failPin('PIN incorrecto — intenta de nuevo');
     return;
   }
-  // PIN correcto
-  if(pinStatus) pinStatus.textContent = '';
-  setFaceStatus('✅ PIN correcto — verificando rostro…');
-  if(K.config.faceEnabled){
-    doFaceVerify();
-  } else {
-    afterVerifyContinue();
-  }
+  failPin(sinRed ? 'Sin conexión con el servidor. Intenta de nuevo.' : 'No se pudo verificar tu PIN. Intenta de nuevo.', 3500);
 }
 
 function flashPinDotsError(){
@@ -1234,6 +1292,9 @@ async function registrarAsistencia(){
     so_empresa:         (K.soSeleccionada && (K.soSeleccionada._empresa || null)) || null,
     supervisor_id:      (K.seleccionado && K.seleccionado.manager_id)   || null,
     supervisor_nombre:  (K.seleccionado && K.seleccionado.manager_name) || null,
+    // fts-suite#486: el servidor vuelve a verificar el PIN en la checada real.
+    pin:                K.pin || undefined,
+    dispositivo_id:     kioskDispositivoId(),
   };
 
   // Mostrar pantalla de confirmación inmediatamente
@@ -1278,15 +1339,26 @@ async function registrarAsistencia(){
     ? (payload.so_empresa ? payload.so_empresa + ' · ' : '') + payload.so_nombre
     : (payload.cuenta_nombre ? '🗂️ Bolsa: ' + payload.cuenta_nombre : '—');
   if(confirmHora)   confirmHora.textContent   = now.toLocaleTimeString('es-MX');
-  if(confirmGeo){
-    confirmGeo.innerHTML = payload.geo_autorizada
-      ? '<span class="kiosk-geo-dot ok"></span>📍 ' + (payload.geo_sitio || 'Ubicación autorizada')
-      : '<span class="kiosk-geo-dot warn"></span>⚠️ Pendiente aprobación supervisor';
+  // fts-suite#486 + Hallazgo #15: la pantalla NO muestra éxito antes de que el servidor
+  // conteste. Mientras tanto, ⏳ «Registrando…». La ✓ se pinta en pintarConfirmOk().
+  function pintarConfirmOk(){
+    if(confirmGeo){
+      confirmGeo.innerHTML = payload.geo_autorizada
+        ? '<span class="kiosk-geo-dot ok"></span>📍 ' + (payload.geo_sitio || 'Ubicación autorizada')
+        : '<span class="kiosk-geo-dot warn"></span>⚠️ Pendiente aprobación supervisor';
+    }
+    if(confirmIcon){
+      confirmIcon.textContent = payload.geo_autorizada ? '✓' : '⚠';
+      confirmIcon.className   = payload.geo_autorizada ? 'kiosk-status-ok' : 'kiosk-status-err';
+    }
   }
   if(confirmIcon){
-    confirmIcon.textContent = payload.geo_autorizada ? '✓' : '⚠';
-    confirmIcon.className   = payload.geo_autorizada ? 'kiosk-status-ok' : 'kiosk-status-err';
+    confirmIcon.textContent = '⏳';
+    confirmIcon.className   = 'kiosk-status-wait';
   }
+  if(confirmGeo) confirmGeo.innerHTML = '<span class="kiosk-geo-dot warn"></span>Registrando…';
+  var counterEl = document.getElementById('ksReturnCounter');
+  if(counterEl) counterEl.textContent = '';
 
   // Enviar a n8n (o solo log en demo)
   var checkinResp = null;
@@ -1314,12 +1386,22 @@ async function registrarAsistencia(){
     } catch(e){
       console.warn('Error enviando a n8n:', e);
       checkinOk = false;
+      // fts-suite#486 + Hallazgo #15: la checada NO llegó. Se dice en pantalla, sin ✓.
+      if(confirmIcon){ confirmIcon.textContent = '✕'; confirmIcon.className = 'kiosk-status-err'; }
+      if(confirmTipo){ confirmTipo.textContent = 'SIN CONFIRMAR'; confirmTipo.className = 'kiosk-big-type out'; }
+      if(confirmGeo) confirmGeo.innerHTML = '<span class="kiosk-geo-dot warn"></span>El servidor no confirmó tu checada. Vuelve a checar: si ya había quedado, el kiosko te lo dice.';
       habilitarBotonTerminado();
+      var _sp = document.getElementById('btnTerminadoSpinner'), _tx = document.getElementById('btnTerminadoText');
+      if(_sp) _sp.textContent = '';
+      if(_tx) _tx.textContent = 'Entendido';
+      clearOlvidoEntradaFlag('registrarAsistencia_sin_red');
+      return;
     }
   } else {
-    console.log('[DEMO] Payload kiosk:', payload);
+    console.log('[DEMO] Payload kiosk:', Object.assign({}, payload, { pin: payload.pin ? '****' : undefined, foto_b64: undefined }));
     checkinResp = { demo: true };
   }
+  pintarConfirmOk();
 
   // ── Flujo olvido entrada: crear incidencia paralela ──
   console.log('[kiosk:registrar] pre-incidencia check', {

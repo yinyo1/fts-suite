@@ -267,6 +267,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
 
 .kiosk-status-ok{color:#107C10;font-size:96px;line-height:1}
 .kiosk-status-err{color:#D83B01;font-size:96px;line-height:1}
+.kiosk-status-wait{color:#8a8a8a;font-size:96px;line-height:1}
 .kiosk-big-name{
   font-size:32px;font-weight:700;
   text-align:center;margin:16px 0 8px;

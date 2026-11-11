@@ -69,6 +69,18 @@ async function registrarCheckin(payload){
   return n8nFetch('/webhook/kiosk/checkin', payload);
 }
 
+// fts-suite#486: el PIN se verifica en el servidor. tipo 'verificar_pin' NUNCA escribe
+// (un servidor sin el cambio lo rechaza en Preparar parámetros). 1 reintento, no 2:
+// cada intento malo cuenta para el bloqueo.
+async function verificarPin(empleadoId, pin){
+  return n8nFetch('/webhook/kiosk/checkin', {
+    empleado_id: empleadoId,
+    tipo: 'verificar_pin',
+    pin: String(pin || ''),
+    dispositivo_id: (window.kioskDispositivoId ? window.kioskDispositivoId() : null)
+  }, 1);
+}
+
 async function getAsistenciaHoy(empleadoId){
   return n8nFetch('/webhook/kiosk/asistencia', { empleado_id: empleadoId });
 }
@@ -96,6 +108,7 @@ window.OdooKiosk = {
   getSOsCompania,
   getPlanDia,
   registrarCheckin,
+  verificarPin,
   getAsistenciaHoy,
   getAsistenciaRango,
   testConnection
