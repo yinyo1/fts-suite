@@ -542,6 +542,8 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
   .niv-res .niv-toca{flex-basis:100%;font-size:11.5px;color:var(--ter)}
   /* ═══ V1.32 · piezas de la pantalla (prototipo aprobado chat-v3, puntos 3 a 9) ═══ */
   .chip-prueba{font-size:10.5px;font-weight:700;color:#8a5300;background:#fff1d6;border-radius:6px;padding:0 6px;line-height:17px;flex-shrink:0}
+  /* V1.66 (fts-conceptualizador#20, db/081) · un chat que te llegó (compartido, por machote prestado o cedido, o como supervisor): de quién es */
+  .chip-de{font-size:10.5px;font-weight:600;color:#1f4e79;background:#e3eef9;border-radius:6px;padding:0 6px;line-height:17px;flex-shrink:1;min-width:0;max-width:11em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   #grab{display:none;flex:1;min-width:0}
   .compose.grabando .caja,.compose.grabando #bEnviar{display:none}
   /* conceptos: el renglón NUNCA se angosta; el cuadro de la razón va DEBAJO, a todo lo ancho */
@@ -962,38 +964,38 @@ a.fuente{color:var(--acento-osc);font-weight:600;text-decoration:none}
 <link rel="stylesheet" href="../../shared/chat/chat-wa.css?v=V1.61" />
 <script src="../../shared/chat/chat-wa.js?v=V1.61"></script>
 <script src="../../shared/chat/chat-firma.js?v=V1.57b"></script>
-<script src="js/cz-cliente.js?v=V1.65.10"></script>
-<script src="js/cz-medios.js?v=V1.65.10"></script>
-<script src="js/cz-grabadora.js?v=V1.65.10"></script>
-<script src="js/cz-archivos.js?v=V1.65.10"></script>
-<script src="js/cz-ciudad.js?v=V1.65.10"></script>
-<script src="js/cz-cola.js?v=V1.65.10"></script>
-<script src="js/cz-deltas.js?v=V1.65.10"></script>
-<script src="js/cz-acciones.js?v=V1.65.10"></script>
-<script src="js/cz-regla15.js?v=V1.65.10"></script>
-<script src="js/cz-regla15-ui.js?v=V1.65.10"></script>
-<script src="js/cz-indicadores.js?v=V1.65.10"></script>
-<script src="js/cz-niveles.js?v=V1.65.10"></script>
-<script src="js/cz-estado.js?v=V1.65.10"></script>
-<script src="js/cz-avance.js?v=V1.65.10"></script>
-<script src="js/cz-ligas.js?v=V1.65.10"></script>
-<script src="js/cz-tabla.js?v=V1.65.10"></script>
-<script src="js/cz-visor.js?v=V1.65.10"></script>
-<script src="js/cz-correo.js?v=V1.65.10"></script>
-<script src="js/cz-enviar.js?v=V1.65.10"></script>
-<script src="js/cz-condiciones.js?v=V1.65.10"></script>
-<script src="js/cz-vista.js?v=V1.65.10"></script>
-<script src="js/cz-vozvista.js?v=V1.65.10"></script>
-<script src="js/cz-camara.js?v=V1.65.10"></script>
+<script src="js/cz-cliente.js?v=V1.66"></script>
+<script src="js/cz-medios.js?v=V1.66"></script>
+<script src="js/cz-grabadora.js?v=V1.66"></script>
+<script src="js/cz-archivos.js?v=V1.66"></script>
+<script src="js/cz-ciudad.js?v=V1.66"></script>
+<script src="js/cz-cola.js?v=V1.66"></script>
+<script src="js/cz-deltas.js?v=V1.66"></script>
+<script src="js/cz-acciones.js?v=V1.66"></script>
+<script src="js/cz-regla15.js?v=V1.66"></script>
+<script src="js/cz-regla15-ui.js?v=V1.66"></script>
+<script src="js/cz-indicadores.js?v=V1.66"></script>
+<script src="js/cz-niveles.js?v=V1.66"></script>
+<script src="js/cz-estado.js?v=V1.66"></script>
+<script src="js/cz-avance.js?v=V1.66"></script>
+<script src="js/cz-ligas.js?v=V1.66"></script>
+<script src="js/cz-tabla.js?v=V1.66"></script>
+<script src="js/cz-visor.js?v=V1.66"></script>
+<script src="js/cz-correo.js?v=V1.66"></script>
+<script src="js/cz-enviar.js?v=V1.66"></script>
+<script src="js/cz-condiciones.js?v=V1.66"></script>
+<script src="js/cz-vista.js?v=V1.66"></script>
+<script src="js/cz-vozvista.js?v=V1.66"></script>
+<script src="js/cz-camara.js?v=V1.66"></script>
 <script src="../../shared/chat/chat-gestos.js?v=V1.60"></script>
 <script src="../../shared/chat/chat-nucleo-cz.js?v=V1.57b"></script>
-<script src="../../shared/chat/chat-nucleo.js?v=V1.65.10"></script>
-<script src="js/cz-push.js?v=V1.65.10"></script>
-<script src="js/cz-limpio.js?v=V1.65.10"></script>
-<script src="js/cz-rayito.js?v=V1.65.10"></script>
-<script src="js/cz-pasos.js?v=V1.65.10"></script>
-<script src="js/cz-app.js?v=V1.65.10"></script>
-<script src="js/cz-version.js?v=V1.65.10"></script>
+<script src="../../shared/chat/chat-nucleo.js?v=V1.66"></script>
+<script src="js/cz-push.js?v=V1.66"></script>
+<script src="js/cz-limpio.js?v=V1.66"></script>
+<script src="js/cz-rayito.js?v=V1.66"></script>
+<script src="js/cz-pasos.js?v=V1.66"></script>
+<script src="js/cz-app.js?v=V1.66"></script>
+<script src="js/cz-version.js?v=V1.66"></script>
 <script>window.CzApp.arrancar().then(function () { if (window.CzVersion) window.CzVersion.iniciar(); if (window.CzPush) window.CzPush.iniciar(); });</script>
 </body>
 </html>

@@ -41,7 +41,7 @@
  */
 (function (G) {
   'use strict';
-  var VERSION = 'V1.65.10';
+  var VERSION = 'V1.66';
   /* V1.49 (#4) · notas de voz en cualquier idioma. El motor guarda el ORIGINAL (en el idioma en que se habló) y, si no es el
    * idioma del dueño del caso, la traducción DEBAJO con «— Traducción (inglés → español) —». Una transcripción que whisper no
    * entendió bien empieza con «⚠ Transcripción dudosa: »: el motor no la toma como decreto ni instrucción y pregunta. */
@@ -285,6 +285,14 @@
    * escribiste (`participa`, 0013; sin la 0013, el dueño). «Todos» muestra el resto a quien puede verlos (hoy el servidor
    * enseña todos a todos; Esteban y los admins siempre). La elección se recuerda por usuario (ChatWA.misProyectos). */
   // V1.64a parte 14 (#20 punto 4) · lo que te compartieron (la base lo marca `compartido`, db/076) también es tuyo en «Mis proyectos».
+  /* V1.66 (fts-conceptualizador#20, db/081) · un caso que no es tuyo y te llegó (compartido por chat, por el machote prestado o
+   * cedido, o porque eres supervisor comercial) lleva «de <dueño>». La base manda `de` y `compartido`; sin esos campos, nada. */
+  function chipDe(c) {
+    if (!c || !c.autor || c.autor === yo() || !(c.compartido || c.supervisor)) return '';
+    var n = nombreCorto(c.de || c.autor, c.de_nombre || c.autor_nombre);
+    return '<span class="chip-de" title="' + esc('Es de ' + n + (c.compartido === 'lectura' ? ': solo puedes leerlo' : '')) + '">de ' + esc(n) +
+      (c.compartido === 'lectura' ? ' · solo leer' : '') + '</span>';
+  }
   function esMio(c) { return c.estado === 'local' || c.autor === yo() || c.participa === true || !!c.compartido; }
   function mis() {
     if (!G.ChatWA) return null;
@@ -360,6 +368,8 @@
       (c.estado === 'enviada' ? '<span class="est enviada">enviada</span>' : c.estado === 'cerrado' ? '<span class="est cerrada">cerrada</span>' :
        c.estado === 'local' ? '<span class="est local">sin enviar</span>' : '') +
       (c.demo ? '<span class="chip-prueba">PRUEBA</span>' : '') +
+      // V1.66 (#20, db/081) · lo que te llegó de otra persona dice de quién es; «solo leer» si te lo dieron en lectura.
+      chipDe(c) +
       (!x && ST.usuario === 'todos' && c.autor ? '<span class="quien-ses">' + esc(nombreCorto(c.autor, c.autor_nombre)) + '</span>' : '') +
       (c.fijado ? '<span title="Fijada arriba (solo en tu lista)" aria-label="Fijada">' + ico('fijar', 'xs') + '</span>' : '') +
       (x && x.monto ? '<span class="m">' + esc(x.monto) + '</span>' : x && x.sinMonto ? '<span class="m sin">sin monto</span>' : '') +
