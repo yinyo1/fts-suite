@@ -1,7 +1,7 @@
 // ═══ FTS Kiosk — Lógica principal ═══
 // Script clásico, estado global compartido
 
-const KIOSK_BUILD = '20261101-kiosk-nomina-usa';
+const KIOSK_BUILD = '20261111-kiosk-sin-pin-consola';
 console.log('[kiosk] build:', KIOSK_BUILD);
 window.KIOSK_BUILD = KIOSK_BUILD;
 // PR-7: auto version-check — si el navegador sirve un bundle viejo cacheado
@@ -695,10 +695,8 @@ function verifyPin(){
   const pinStatus = document.getElementById('pin-status');
   const expected = K.seleccionado.pin;
 
-  console.log('[KIOSK PIN] Ingresado:', K.pin,
-    'Esperado:', expected,
-    'Empleado:', K.seleccionado.name || K.seleccionado.nombre,
-    K.seleccionado);
+  /* Nunca se imprime el PIN (ni el tecleado ni el esperado) ni el objeto del
+   * empleado: la consola de un kiosko compartido la abre cualquiera. #486 */
 
   function failPin(msg){
     setFaceStatus('❌ ' + msg);
