@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-112-2026-11-11T16-29-37-249Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 112,
+      "empleado_nombre": "Felipe Pérez Guzmán",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": null,
+      "supervisor_name": null,
+      "supervisor_email": "felipe@fts.mx",
+      "supervisor_phone": "8118956256",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": true,
+      "sin_supervisor": false,
+      "attendance_id": 16597,
+      "fecha_creacion": "2026-11-11T16:29:37.249Z",
+      "check_in_original_utc": "2026-11-11 13:01:40",
+      "check_out_propuesto_utc": "2026-11-11 15:30:00",
+      "check_out_propuesto_cst": "2026-11-11 09:30:00",
+      "geolocation": {
+        "lat": 25.6604544,
+        "lng": -100.1097971,
+        "accuracy": 13.520999908447266,
+        "captured_at": "2026-11-11T16:29:33.754Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-11-11T16:29:37.249Z",
+          "hora_propuesta_cst": "09:30",
+          "comentario": "Me sentí mal de salud"
+        }
+      ],
+      "status": "pendiente_rh",
+      "hora_final_aplicada_utc": "2026-11-11 15:30:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20261111-kiosk-pin-servidor"
+    },
+    {
       "id_interno": "INC-AUTO-CIERRE-101-2026-11-11T16-00-29-051Z",
       "tipo": "auto_cierre_pendiente",
       "status": "pendiente_rh",
