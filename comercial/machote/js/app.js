@@ -57,7 +57,7 @@
    *   2. el `?v=` de la URL con la que el navegador lo bajó,
    *   3. la que declara cada pieza que se carga aparte (hoy el motor).
    * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
-  const VERSION_ARCHIVO = 'V1.59';
+  const VERSION_ARCHIVO = 'V1.60';
 
   const VERSION_URL = (function () {
     try {
@@ -302,7 +302,7 @@
       const comoSup = !A.prestadoAMi(m) && m._sup_tocado === true && A.editoComoSupervisor && A.editoComoSupervisor(m);
       if (!A.prestadoAMi(m) && !comoSup) return;
       A.empujarUno(m, { token: G.SuiteAuth.getToken() },
-                   comoSup ? 'editado como supervisor' : 'editado con permiso de ' + (m._dueno_nombre || m._dueno || 'su dueño'))
+                   comoSup ? (A.delegadoAMi && A.delegadoAMi(m) && !(A.soySupervisor && A.soySupervisor()) ? 'editado como apoyo' : 'editado como supervisor') : 'editado con permiso de ' + (m._dueno_nombre || m._dueno || 'su dueño'))
         .then(r => {
           if (r && r.ok === true) {
             if (A.olvidarPrestado) A.olvidarPrestado(m.id);
@@ -2159,7 +2159,7 @@
         : '') +
       /* Supervisor comercial (#480): el ajeno se abre editable y se dice con todas sus letras. */
       ((A && A.editoComoSupervisor && A.editoComoSupervisor(m))
-        ? '<div class="aviso-ajeno aviso-supervisor">✏️ <strong>Editando como supervisor.</strong> Esta cotización es de <strong>' +
+        ? '<div class="aviso-ajeno aviso-supervisor">✏️ <strong>' + (A.delegadoAMi && A.delegadoAMi(m) && !(A.soySupervisor && A.soySupervisor()) ? 'Editando como apoyo.' : 'Editando como supervisor.') + '</strong> Esta cotización es de <strong>' +
           esc(m._dueno_nombre || m._dueno || 'otra persona') + '</strong> y lo seguirá siendo: cada cambio queda en su historial a tu nombre. ' +
           'Archivar o ceder solo lo hace su dueño.</div>'
         : '') +

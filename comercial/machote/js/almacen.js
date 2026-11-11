@@ -480,8 +480,14 @@
   function soySupervisor() {
     try { return !!(G.SuiteAuth && G.SuiteAuth.tieneScope && G.SuiteAuth.tieneScope('comercial:supervisor')); } catch (e) { return false; }
   }
+  /** V1.67 (#20, bloque A) · apoyo autorizado por el dueño (puede_mover, delegación V1.59). Lo dice el SERVIDOR por
+   *  machote (`delegado`, comercial/machotes-leer, detrás de delegacion_pantalla_v167); el navegador nunca lo deduce.
+   *  Igual que el supervisor: solo desbloquea la pantalla, el dueño no cambia y archivar/ceder siguen siendo del dueño. */
+  function delegadoAMi(m) {
+    return !!m && esAjeno(m) && m._delegado === true;
+  }
   function editoComoSupervisor(m) {
-    return !!m && esAjeno(m) && !prestadoAMi(m) && soySupervisor();
+    return !!m && esAjeno(m) && !prestadoAMi(m) && (soySupervisor() || delegadoAMi(m));
   }
 
   function empujarUno(m, ses, motivo) {
@@ -746,6 +752,7 @@
            * por uuid. Puede ir en el objeto sin riesgo: `pendienteUno` excluye
            * lo ajeno del conteo de «por subir». */
           doc._odoo_lead_id = fila.odoo_lead_id || null;
+          doc._delegado = fila.delegado === true;   // V1.67 · apoyo autorizado (lo decide el servidor)
 
           /* Los préstamos VIGENTES que el servidor decidió enseñarme: los que
            * yo otorgué (si el machote es mío) o el mío (si soy prestatario).
@@ -778,6 +785,7 @@
             recuperado._odoo_lead_id = doc._odoo_lead_id;
             recuperado._prestamos = doc._prestamos;
             recuperado._prestamo_para_mi = doc._prestamo_para_mi;
+            recuperado._delegado = doc._delegado;
             recuperado._sin_subir = true;
             doc = recuperado;
           }
@@ -1804,6 +1812,8 @@
     puedeEscribir: puedeEscribir,
     prestadoAMi: prestadoAMi,
     editoComoSupervisor: editoComoSupervisor,
+    delegadoAMi: delegadoAMi,
+    soySupervisor: soySupervisor,
     guardarPrestadoLocal: guardarPrestadoLocal,
     leerPrestados: leerPrestados,
     olvidarPrestado: olvidarPrestado,
