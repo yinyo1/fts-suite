@@ -9,7 +9,8 @@
 //       'estricto'  → sin pin, se rechaza con PIN_REQUERIDO.
 //   - Límite de intentos en staticData: 5 fallos por empleado / 15 min y
 //     20 fallos por dispositivo / 15 min → bloqueo de 15 min.
-//   - `solo_verificar_pin: true` → responde antes de cualquier escritura.
+//   - `tipo: 'verificar_pin'` → responde antes de cualquier escritura (un servidor
+//     viejo lo rechaza en Preparar parámetros: nunca escribe).
 // El PIN real NUNCA sale de este nodo: se borra del objeto antes de devolver
 // y las dos respuestas del workflow son listas blancas.
 // Falla cerrado: si algo truena con pin presente, se rechaza. Sin pin (modo
@@ -50,7 +51,7 @@ try {
 } catch (e) { body = {}; }
 
 const pinVino = body.pin !== undefined && body.pin !== null && String(body.pin) !== '';
-const soloVerificar = body.solo_verificar_pin === true;
+const soloVerificar = params.tipo === 'verificar_pin' || body.solo_verificar_pin === true;
 
 // Contadores (fuente de la alarma). Fecha en CST (UTC-6).
 let sd = null;

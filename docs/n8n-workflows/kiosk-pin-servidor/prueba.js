@@ -83,6 +83,21 @@ ok('solo_verificar malo → PIN_INCORRECTO', r.codigo_error === 'PIN_INCORRECTO'
 r = correr({ odoo: [emp()], sd, body: { solo_verificar_pin: true } });
 ok('solo_verificar sin pin → PIN_REQUERIDO (nunca deja pasar)', r.codigo_error === 'PIN_REQUERIDO' && !r._valido);
 
+// 7b tipo verificar_pin (lo que manda el kiosko)
+sd = {};
+const PV = { empleado_id: 900001, tipo: 'verificar_pin' };
+r = correr({ odoo: [emp()], sd, params: PV, body: { pin: '4821' } });
+ok('tipo verificar_pin bueno → PIN_VERIFICADO sin seguir', r.codigo_error === 'PIN_VERIFICADO' && !r._valido);
+r = correr({ odoo: [emp()], sd, params: PV, body: {} });
+ok('tipo verificar_pin sin pin → PIN_REQUERIDO, nunca _valido', r.codigo_error === 'PIN_REQUERIDO' && !r._valido);
+r = correr({ code: CODE.replace("const PIN_MODO = 'tolerante';", "const PIN_MODO = 'estricto';"), odoo: [emp()], sd, params: PV, body: { pin: '4821' } });
+ok('tipo verificar_pin en estricto → tampoco sigue', r.codigo_error === 'PIN_VERIFICADO' && !r._valido);
+// Preparar acepta verificar_pin y el ANTES no
+const prep = (f, tipo) => new Function('$input', fs.readFileSync(path.join(__dirname, f), 'utf8'))({ first: () => ({ json: { body: { empleado_id: 900001, tipo } } }) })[0].json;
+ok('Preparar nuevo acepta verificar_pin', !prep('preparar.js', 'verificar_pin')._error);
+ok('Preparar viejo lo rechaza (no escribe)', prep('preparar.ANTES.js', 'verificar_pin').codigo_error === 'DATOS_INCOMPLETOS');
+ok('Preparar nuevo sigue rechazando basura', prep('preparar.js', 'otra').codigo_error === 'DATOS_INCOMPLETOS');
+
 // 8 lo de antes
 r = correr({ odoo: [], sd: {}, body: { pin: '4821' } });
 ok('empleado no existe → EMPLEADO_NO_EXISTE', r.codigo_error === 'EMPLEADO_NO_EXISTE');
