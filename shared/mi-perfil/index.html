@@ -7,7 +7,7 @@
 <script>
   // Cache busting + BUILD_DATE expuesto a window.
   (function() {
-    const BUILD_DATE = '20261109-mp-seguridad';
+    const BUILD_DATE = '20261111-mp-pin-servidor';
     window.BUILD_DATE = BUILD_DATE;
     if (!window.location.search.includes('v=')) {
       document.addEventListener('DOMContentLoaded', function() {
@@ -223,7 +223,7 @@
 <div class="mp-topbar">
   <div class="mp-topbar-left">
     <a class="mp-back-suite" id="mp-nav-btn" href="../../index.html">← Volver a Suite</a>
-    <span class="mp-build">build 20260424-mp-panel-card-v1</span>
+    <span class="mp-build">build 20261111-mp-pin-servidor</span>
   </div>
   <div id="mp-topbar-right">
     <span class="mp-user-info" id="mp-user-label" style="display:none"></span>
@@ -370,6 +370,13 @@
 // ═══════════════════════════════════════════════
 const N8N_BASE   = 'https://primary-production-5c3c.up.railway.app';
 const EMPLEADOS_ENDPOINT = N8N_BASE + '/webhook/kiosk/empleados';
+// fts-suite#486 · el PIN se verifica en el SERVIDOR (misma lógica, intentos y bloqueo que el kiosko:
+// kiosk/checkin con tipo 'verificar_pin', que nunca escribe). Respaldo invisible: SOLO si el servidor
+// no contesta (red, timeout, 5xx o un servidor que todavía no verifica) se compara como antes en el
+// navegador, y cada uso del respaldo queda registrado para medirlo.
+const VERIFICAR_ENDPOINT = N8N_BASE + '/webhook/kiosk/checkin';
+const REGISTRO_ENDPOINT  = N8N_BASE + '/webhook/suite/acceso-registro';
+const VERIFICAR_TIMEOUT_MS = 8000;
 const FACE_MODELS_URL    = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights';
 const FACE_THRESHOLD     = 0.5;
 const SESSION_KEY        = 'fts_mi_perfil_session';
@@ -708,24 +715,94 @@ function mp_pin_update(){
   });
 }
 
-function mp_pin_validate(){
-  if (!_selectedEmp) return;
-  const expected = String(_selectedEmp.pin || '');
-  if (!expected) {
-    $('mp-pin-status').textContent = '⚠️ Empleado sin PIN configurado. Avisa a sistemas.';
-    return;
-  }
-  if (_pin !== expected) {
-    document.querySelectorAll('#mp-pin-dots .mp-pin-dot').forEach(function(d){ d.classList.add('error'); });
-    $('mp-pin-status').textContent = '❌ PIN incorrecto. Intenta de nuevo.';
-    setTimeout(function(){ _pin=''; mp_pin_update(); $('mp-pin-status').textContent=''; }, 900);
-    return;
-  }
-  // PIN OK → al selfie
+function mp_dispositivo(){
+  try {
+    var k = 'fts_mp_dispositivo', v = localStorage.getItem(k);
+    if (!v) { v = 'mp-' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); localStorage.setItem(k, v); }
+    return v;
+  } catch(e) { return 'mp-sin-almacen'; }
+}
+
+// Registro de la medición (nunca lleva el PIN). Si falla, no pasa nada.
+function mp_registrar(resultado, motivo){
+  try {
+    fetch(REGISTRO_ENDPOINT, {
+      method:'POST', keepalive:true,
+      headers:{ 'Content-Type':'text/plain' },
+      body: JSON.stringify({ tipo:'mp_pin', resultado: resultado, motivo: motivo,
+        usuario: _selectedEmp ? ('emp-' + _selectedEmp.id) : '', modulo:'mi-perfil',
+        dispositivo: mp_dispositivo(), build: window.BUILD_DATE || '' })
+    }).catch(function(){});
+  } catch(e) {}
+}
+
+// Pregunta al servidor. Devuelve {servidor:true, r} si el servidor verificó,
+// o {servidor:false, motivo} si no contestó (solo ahí entra el respaldo).
+async function mp_verificar_servidor(empleadoId, pin){
+  var ctl = new AbortController(), t = setTimeout(function(){ ctl.abort(); }, VERIFICAR_TIMEOUT_MS);
+  try {
+    var res = await fetch(VERIFICAR_ENDPOINT, {
+      method:'POST', headers:{ 'Content-Type':'application/json' }, signal: ctl.signal,
+      body: JSON.stringify({ empleado_id: empleadoId, tipo:'verificar_pin', pin: String(pin), dispositivo_id: mp_dispositivo() })
+    });
+    if (res.status >= 500) return { servidor:false, motivo:'http_5xx' };
+    var data = null;
+    try { data = await res.json(); } catch(e) { return { servidor:false, motivo:'respuesta_invalida' }; }
+    var r = Array.isArray(data) ? data[0] : data;
+    if (r && Object.prototype.hasOwnProperty.call(r, 'pin_verificado')) return { servidor:true, r: r };
+    return { servidor:false, motivo: res.ok ? 'sin_verificacion' : 'http_4xx' };
+  } catch(e) {
+    return { servidor:false, motivo: (e && e.name === 'AbortError') ? 'timeout' : 'red' };
+  } finally { clearTimeout(t); }
+}
+
+function mp_pin_error(msg, ms){
+  document.querySelectorAll('#mp-pin-dots .mp-pin-dot').forEach(function(d){ d.classList.add('error'); });
+  $('mp-pin-status').textContent = msg;
+  clearTimeout(_mpErrTimer);
+  _mpErrTimer = setTimeout(function(){ _pin=''; mp_pin_update(); $('mp-pin-status').textContent=''; }, ms || 900);
+}
+var _mpErrTimer = null;
+
+function mp_pin_ok(){
   $('mp-pin-status').textContent = '';
   mp_step('mp-step-selfie');
   mp_update_nav_button('selfie');
   mp_start_camera();
+}
+
+var _mpVerificando = false;
+async function mp_pin_validate(){
+  if (!_selectedEmp || _mpVerificando || _pin.length !== 4) return;
+  _mpVerificando = true;
+  clearTimeout(_mpErrTimer);
+  var emp = _selectedEmp, pin = _pin;
+  $('mp-pin-status').textContent = '🔐 Verificando PIN…';
+  var v;
+  try { v = await mp_verificar_servidor(emp.id, pin); }
+  finally { _mpVerificando = false; }
+  if (_selectedEmp !== emp) return;   // cambió de empleado mientras verificaba
+
+  if (v.servidor) {
+    // El servidor decide: un «incorrecto» o «bloqueado» NUNCA cae al respaldo.
+    var r = v.r;
+    if (r.pin_verificado === true && r.codigo_error === 'PIN_VERIFICADO') { mp_registrar('ok', 'servidor'); mp_pin_ok(); return; }
+    var bloqueado = r.codigo_error === 'PIN_BLOQUEADO';
+    mp_registrar(bloqueado ? 'bloqueado' : 'mal', 'servidor');
+    mp_pin_error('❌ ' + (r.error_msg || r.mensaje || 'PIN incorrecto. Intenta de nuevo.'), bloqueado ? 6000 : 1500);
+    return;
+  }
+
+  // Respaldo invisible: el servidor no contestó. Se compara como antes, si el roster trae el PIN.
+  var expected = String(emp.pin || '');
+  if (!expected) {
+    mp_registrar('error', 'respaldo_' + v.motivo + '_sin_pin');
+    mp_pin_error('⚠️ No se pudo verificar tu PIN. Intenta de nuevo en un momento.', 2500);
+    return;
+  }
+  if (pin === expected) { mp_registrar('ok', 'respaldo_' + v.motivo); mp_pin_ok(); return; }
+  mp_registrar('mal', 'respaldo_' + v.motivo);
+  mp_pin_error('❌ PIN incorrecto. Intenta de nuevo.');
 }
 
 // ═══════════════════════════════════════════════
