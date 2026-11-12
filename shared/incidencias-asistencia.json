@@ -194,11 +194,21 @@
           "hora_propuesta_cst": null,
           "comentario": "Incidencia comprobada",
           "accion": "aprobado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 63,
+          "usuario": "Magaly Estefanía Pérez García",
+          "timestamp": "2026-11-12T16:06:04.166Z",
+          "hora_propuesta_cst": "07:00",
+          "comentario": "Ingreso el día 10 de noviembre y por que no tenia acceso al checador hasta que se realizo el alta por RH.",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_rh",
-      "hora_final_aplicada_utc": null,
-      "aplicado_en_odoo": false,
+      "status": "aprobada_con_ajuste",
+      "hora_final_aplicada_utc": "2026-11-10 13:00:00",
+      "aplicado_en_odoo": true,
       "department_id": 3,
       "department_name": "Operaciones",
       "sin_departamento": false,
@@ -211,7 +221,7 @@
       "rh_directo_ceo": false,
       "directo_ceo": false,
       "sin_supervisor": false,
-      "tag_disputa_activo": true
+      "tag_disputa_activo": false
     },
     {
       "id_interno": "INC-OLV-CHK-149-2026-11-10T00-54-59-720Z",
