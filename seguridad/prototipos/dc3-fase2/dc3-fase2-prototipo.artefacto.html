@@ -3648,24 +3648,29 @@ function addCursoPersonalizado(){
   const blobs = new Map();
   const _crear = URL.createObjectURL.bind(URL);
   URL.createObjectURL = function (o) { const u = _crear(o); if (o instanceof Blob) blobs.set(u, o); return u; };
-  let dl = null;
-  if (window.claude && typeof window.claude.use === 'function') {
-    window.claude.use('downloads').then(x => { dl = x; }).catch(() => {});
-  }
-  function guardar(nombre, blob) {
-    return dl.save({ filename: nombre, data: blob }).then(() => toast('✅ ' + nombre), e => { if (e && e.code !== 'declined') toast('⚠️ No se pudo guardar: ' + (e.code || e.message)); });
+  // La capacidad se pide al momento de descargar: en el visor, window.claude puede llegar
+  // después de que corre este script. Fuera del visor no existe y se usa la descarga normal.
+  let dlP = null;
+  const visor = () => !!(window.claude && typeof window.claude.use === 'function');
+  const obtenerDl = () => (dlP = dlP || window.claude.use('downloads').catch(() => null));
+  function guardar(nombre, blob, normal) {
+    return obtenerDl().then(dl => {
+      if (!dl) { if (normal) normal(); return; }
+      return dl.save({ filename: nombre, data: blob }).then(() => toast('✅ ' + nombre), e => { if (e && e.code !== 'declined') toast('⚠️ No se pudo guardar: ' + (e.code || e.message)); });
+    });
   }
   const _click = HTMLAnchorElement.prototype.click;
   HTMLAnchorElement.prototype.click = function () {
-    if (dl && this.download && blobs.has(this.href)) { guardar(this.download, blobs.get(this.href)); return; }
-    return _click.apply(this, arguments);
+    const a = this;
+    if (visor() && a.download && blobs.has(a.href)) { guardar(a.download, blobs.get(a.href), () => _click.call(a)); return; }
+    return _click.apply(a, arguments);
   };
   // El PDF individual sale de doc.save(); se cambia SOLO ese método del documento ya armado
   // por el _docDC3 de producción, y solo dentro del visor.
   const _docDC3 = window._docDC3;
   window._docDC3 = function () {
     const doc = _docDC3.apply(this, arguments);
-    if (dl) doc.save = function (nombre) { guardar(nombre, doc.output('blob')); return doc; };
+    if (visor()) { const _s = doc.save.bind(doc); doc.save = function (nombre) { guardar(nombre, doc.output('blob'), () => _s(nombre)); return doc; }; }
     return doc;
   };
   // Ningún dato sale del archivo: GitHub y Railway quedan bloqueados aunque haya red.
