@@ -12,6 +12,8 @@
 <link rel="apple-touch-icon" id="pwa-icon">
 <title>FTS · Seguridad Industrial</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG" crossorigin="anonymous"></script>
+<script src="js/dc3-periodo.js?v=1.1.0"></script>
 <link rel="stylesheet" href="../shared/fts-styles.css">
 <script src="../shared/auth-suite.js"></script>
 <script>
@@ -201,6 +203,49 @@
 .mt2{margin-top:6px}
 .row{display:flex;gap:8px}
 .row>.btn{flex:1}
+
+/* ══════════════════ #505 · DC-3 periodo real + Impresión por Lote ══════════════════ */
+/* El botón fijo «← Suite» (top:10px;left:10px) tapaba el inicio del título de cada topbar */
+@media (max-width:700px){.scr .topbar{padding-left:92px}}
+/* 4 pestañas: caben con scroll horizontal en 380 px, sin cortar texto */
+.tab-row{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tab-row::-webkit-scrollbar{display:none}
+.tab-row .tab{flex:1 0 auto;white-space:nowrap;padding:12px 12px}
+.dc3-ver{font-size:10px;color:var(--muted2);font-weight:600;letter-spacing:.2px}
+#s-inst .card-title{font-size:14px;font-weight:700;line-height:1.3}
+#s-inst .card-sub{font-size:12px;color:var(--muted2);line-height:1.4;margin-top:2px}
+.dc3-err{background:#fde8e6;border:1px solid #f5c2bc;color:#b42318;border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.45;display:flex;flex-direction:column;gap:4px}
+.dc3-ok{background:#e5f3e5;border:1px solid #b9dfb9;color:#107c10;border-radius:10px;padding:10px 12px;font-size:12px}
+.dc3-hint{font-size:11px;color:var(--muted2);line-height:1.45}
+.dc3-dates{display:flex;gap:10px;flex-wrap:wrap}
+.dc3-dates .field{flex:1 1 140px;margin-bottom:0;min-width:0}
+.lote-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--border);border-radius:10px;background:var(--d2)}
+table.lote-mx{border-collapse:separate;border-spacing:0;font-size:11px;min-width:100%}
+table.lote-mx th,table.lote-mx td{border-bottom:1px solid var(--border);border-right:1px solid var(--border);padding:6px;vertical-align:top;background:var(--d2);text-align:left}
+table.lote-mx th{background:var(--d3);font-weight:600}
+table.lote-mx .lm-emp{position:sticky;left:0;z-index:1;min-width:130px;max-width:150px}
+table.lote-mx th.lm-cur{min-width:110px;max-width:130px;font-size:10px;line-height:1.25}
+table.lote-mx th.lm-cur small{display:block;color:var(--muted2);font-weight:500;margin-top:2px}
+table.lote-mx td.lm-cel{min-width:110px}
+table.lote-mx td.lm-cel.on{background:#e5f3e5}
+table.lote-mx td.lm-cel.err{background:#fde8e6}
+.lote-mx input[type=checkbox]{width:18px;height:18px;accent-color:var(--o);flex-shrink:0}
+.lm-lbl{display:flex;gap:6px;align-items:flex-start;cursor:pointer}
+.lm-p{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10px;color:var(--muted2);margin-top:3px}
+.lm-e{color:#b42318;font-size:10px;margin-top:3px;line-height:1.3;font-weight:600}
+.lote-grp{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--d2)}
+.lote-grp>.lg-hd{background:var(--d3);padding:8px 10px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-weight:600;font-size:12px}
+.lote-it{padding:10px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
+.lote-it.err{background:#fde8e6}
+.lote-it .li-top{display:flex;justify-content:space-between;gap:8px}
+.lote-it .li-nm{font-weight:600;font-size:12px}
+.lote-it .li-act{display:flex;gap:10px;flex-shrink:0}
+.lote-it .li-act button{background:none;border:none;color:var(--o);font-size:12px;text-decoration:underline;cursor:pointer;padding:0;font-family:inherit}
+.lote-it .li-e{color:#b42318;font-size:11px;line-height:1.4}
+.lote-it .li-p{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:var(--text)}
+.lote-it input[type=date]{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;background:var(--d2);color:var(--text)}
+.chip-ok,.chip-bad{display:inline-block;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700}
+.chip-ok{background:#e5f3e5;color:#107c10}.chip-bad{background:#fde8e6;color:#b42318}
 </style>
 
 </style>
@@ -292,7 +337,7 @@
 <div id="s-inst" class="scr">
   <div class="topbar">
     <div class="tb-logo"></div>
-    <div class="tb-info"><strong>Panel del Instructor</strong><span>SERVICIOS FTS SA DE CV</span></div>
+    <div class="tb-info"><strong>Panel del Instructor</strong><span>SERVICIOS FTS SA DE CV · <b class="dc3-ver" id="dc3-ver-inst">v—</b></span></div>
     <button id="btn-settings" style="display:none;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:16px;cursor:pointer;color:var(--muted2)" onclick="toggleSettings()">⚙️</button>
     <div class="tb-badge" style="color:var(--o);cursor:pointer" onclick="stopHeartbeat();_loggedUser=null;const b=document.getElementById('expiry-warning-banner');if(b)b.remove();go('s-home')">Salir</div>
   </div>
@@ -300,6 +345,7 @@
     <button class="tab on" onclick="instTab('workers')">👷 Trabajadores</button>
     <button class="tab" onclick="instTab('courses')">📋 Cursos</button>
     <button class="tab" onclick="instTab('generate')">📄 Generar DC-3</button>
+    <button class="tab" onclick="instTab('lote')">🗂️ Impresión por Lote</button>
   </div>
 
   <!-- Settings Panel (solo master) -->
@@ -371,12 +417,14 @@
   <!-- Tab: Generate -->
   <div class="tab-pane" id="tp-generate">
     <div class="card">
-      <div class="card-hd"><div class="card-icon" style="font-size:16px">📅</div><div><div class="card-title">Fecha de impartición</div><div class="card-sub">Se aplica a todos los cursos seleccionados</div></div></div>
-      <div class="card-body">
-        <div class="field" style="margin-bottom:0">
-          <label>Fecha del curso</label>
-          <input type="date" id="inst-fecha">
+      <div class="card-hd"><div class="card-icon" style="font-size:16px">📅</div><div><div class="card-title">Periodo de ejecución</div><div class="card-sub">Fechas reales en que se impartió. Se aplica a todos los cursos seleccionados</div></div></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+        <div class="dc3-dates">
+          <div class="field"><label>Inicio</label><input type="date" id="inst-fecha" onchange="onGenFechas('ini')"></div>
+          <div class="field"><label>Fin</label><input type="date" id="inst-fecha-fin" onchange="onGenFechas('fin')"></div>
         </div>
+        <div class="dc3-hint">Curso de hasta 12 h: inicio y fin pueden ser el mismo día. Más de 12 h: la fecha fin es obligatoria y debe cubrir al menos 1 día por cada 12 h. Para fechas distintas por persona o por curso usa <b>Impresión por Lote</b>.</div>
+        <div id="gen-val"></div>
       </div>
     </div>
     <div id="gen-summary" class="card">
@@ -386,6 +434,31 @@
       </div>
     </div>
     <button class="btn btn-p" onclick="generateDC3()">🖨️ Generar DC-3 (PDF)</button>
+  </div>
+
+  <!-- Tab: Impresión por Lote (#505) -->
+  <div class="tab-pane" id="tp-lote">
+    <div class="card">
+      <div class="card-hd"><div class="card-icon" style="font-size:16px">📅</div><div><div class="card-title">Fechas por defecto</div><div class="card-sub">Se aplican a todas las asignaciones; después cambia las que necesites</div></div></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+        <div class="dc3-dates">
+          <div class="field"><label>Inicio</label><input type="date" id="lote-ini"></div>
+          <div class="field"><label>Fin</label><input type="date" id="lote-fin"></div>
+        </div>
+        <button class="btn btn-s" style="padding:10px" onclick="loteAplicarFechas()">Aplicar a todas las asignaciones</button>
+        <div class="dc3-hint">Si dejas el fin vacío o antes de lo que permite el curso, se pone la fecha fin más temprana válida (12 h por día). Tope diario por persona: <b id="lote-tope">12</b> h sumando todos sus cursos; entre personas no se suma.</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><div class="card-icon" style="font-size:16px">🧮</div><div><div class="card-title">Trabajador × curso</div><div class="card-sub">La casilla de la fila o de la columna marca o desmarca todas. Instructor: <b id="lote-instr">—</b></div></div></div>
+      <div class="card-body"><div class="lote-scroll"><table class="lote-mx" id="lote-mx"></table></div></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><div class="card-icon" style="font-size:16px">📋</div><div><div class="card-title">Asignaciones</div><div class="card-sub" id="lote-sub">—</div></div></div>
+      <div class="card-body" id="lote-asg" style="display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+    <div id="lote-estado"></div>
+    <button class="btn btn-p" id="lote-btn" onclick="loteDescargarZip()">🗜️ Descargar ZIP (un PDF por trabajador)</button>
   </div>
 </div>
 
@@ -672,7 +745,8 @@ const MASTER_PASS = 'FTS#DC3!2026';
 let isMasterSession = false;
 
 // ═══ CONTROL REMOTO — GitHub (yinyo1/fts-suite) ═══
-const APP_VERSION  = '1.0';
+const APP_VERSION  = '1.1.0';
+const DC3_BUILD    = '20261113-seguridad-dc3-lote';
 const BASE_RAW     = 'https://raw.githubusercontent.com/yinyo1/fts-suite/main/';
 const VERSION_URL  = BASE_RAW + 'seguridad/data/version.json';
 const VERSION_API  = 'https://api.github.com/repos/yinyo1/fts-suite/contents/seguridad/data/version.json';
@@ -1503,17 +1577,20 @@ function loadInstDashboard() {
   renderInstSelector();
   renderCourseSelector();
   renderGenSummary();
-  // Set today's date
-  document.getElementById('inst-fecha').value = todayISO();
+  // Periodo por defecto: hoy a hoy (curso de un día)
+  if(!document.getElementById('inst-fecha').value) document.getElementById('inst-fecha').value = todayISO();
+  if(!document.getElementById('inst-fecha-fin').value) document.getElementById('inst-fecha-fin').value = document.getElementById('inst-fecha').value;
+  if(!document.getElementById('lote-ini').value) document.getElementById('lote-ini').value = todayISO();
 }
 
 function instTab(tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('on'));
-  const map = {workers:'tp-workers', courses:'tp-courses', generate:'tp-generate'};
+  const map = {workers:'tp-workers', courses:'tp-courses', generate:'tp-generate', lote:'tp-lote'};
   document.getElementById(map[tab]).classList.add('on');
   event.target.classList.add('on');
   if (tab === 'generate') renderGenSummary();
+  if (tab === 'lote') renderLote();
 }
 
 function addWorker() {
@@ -1598,6 +1675,7 @@ function renderGenSummary() {
        </div>
        <p style="font-size:12px;color:var(--muted2);margin-top:12px">Instructor: <strong style="color:var(--text)">${INSTRUCTORES[inst.instructor].name}</strong></p>`
     : '<p style="font-size:13px;color:var(--muted2)">Selecciona al menos un trabajador y un curso.</p>';
+  renderGenVal();
 }
 
 // ══════════════════════════════════════════════════════
@@ -1611,10 +1689,13 @@ const DC3_CFG = {
   repTrab:'FRANCISCOMONTALVORAMIREZ',
 };
 
-function _dateParts(s){
-  if(!s) return {y:'    ',m:'  ',d:'  ',ye:'    ',me:'  ',de:'  '};
-  const [y,m,d]=s.split('-');
-  return {y,m,d,ye:String(parseInt(y)+1),me:m,de:d};
+// #505: «Periodo de ejecución» = fechas reales de inicio y fin. La DC-3 NO tiene vigencia
+// (antes el fin salía como inicio + 1 año).
+function _dateParts(ini, fin){
+  const vacio={y:'    ',m:'  ',d:'  '};
+  const p=s=>{ if(!s) return vacio; const [y,m,d]=s.split('-'); return {y,m,d}; };
+  const a=p(ini), b=p(fin);
+  return {y:a.y,m:a.m,d:a.d,ye:b.y,me:b.m,de:b.d};
 }
 
 function buildPage(doc,worker,course,instrName,instrIdx){
@@ -1675,7 +1756,7 @@ function buildPage(doc,worker,course,instrName,instrIdx){
   LBL('Duracion en horas',ml+2,DY+2);LBL('Periodo de ejecucion:',ml+22,DY+2);
   BOX(ml+2,DY+4,15,8.5);
   doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text(String(course.hrs),ml+9.5,DY+11.2,{align:'center'});
-  const dp=_dateParts(course._fecha||'');
+  const dp=_dateParts(course._ini||'', course._fin||'');
   const DX1=ml+33,DX2=DX1+43;
   doc.setFont('helvetica','normal');doc.setFontSize(5);doc.setTextColor(110,110,110);
   doc.text('Anno',DX1,DY+5.5);doc.text('Mes',DX1+15,DY+5.5);doc.text('Dia',DX1+24,DY+5.5);
@@ -1765,6 +1846,14 @@ function buildPage(doc,worker,course,instrName,instrIdx){
   doc.text('DC-3  ANVERSO',mr,H-5,{align:'right'});doc.setTextColor(0);
 }
 
+function _docDC3(worker, courses, instrIdx){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'letter'});
+  const instrName=INSTRUCTORES[instrIdx].name;
+  courses.forEach((c,i)=>{if(i>0)doc.addPage('letter','portrait');buildPage(doc,worker,c,instrName,instrIdx);});
+  return doc;
+}
+
 async function _makeDC3(worker, courses, instrIdx){
   // Garantizar JPEG listo aunque el usuario genere el PDF antes de que cargue el load async
   // Imágenes ya en JPEG — no se necesita conversión
@@ -1775,10 +1864,7 @@ async function _makeDC3(worker, courses, instrIdx){
       console.error('window.jspdf is undefined - CDN script failed to load');
       return;
     }
-    const {jsPDF}=window.jspdf;
-    const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'letter'});
-    const instrName=INSTRUCTORES[instrIdx].name;
-    courses.forEach((c,i)=>{if(i>0)doc.addPage('letter','portrait');buildPage(doc,worker,c,instrName,instrIdx);});
+    const doc=_docDC3(worker, courses, instrIdx);
     doc.save('DC3_'+worker.name.replace(/\s+/g,'_')+'.pdf');
   } catch(err) {
     toast('❌ Error al generar PDF: '+err.message, 'red');
@@ -1792,15 +1878,203 @@ function generateDC3() {
   const cCount = inst.selCourses.size;
   if (!wCount) { toast('⚠️ Selecciona al menos un trabajador'); return; }
   if (!cCount) { toast('⚠️ Selecciona al menos un curso'); return; }
-  const fecha = document.getElementById('inst-fecha').value;
-  if (!fecha) { toast('⚠️ Ingresa la fecha de impartición'); return; }
-  const courses = CURSOS.filter(c=>inst.selCourses.has(c.id)).map(c=>({...c,_fecha:fecha}));
+  const v = validarGenerar();
+  if (!v.ok) { renderGenVal(); toast('⚠️ '+v.msg); return; }
+  const courses = CURSOS.filter(c=>inst.selCourses.has(c.id)).map(c=>({...c,_ini:v.ini,_fin:v.fin}));
   const selArr  = [...inst.selWorkers];
   toast(`⏳ Generando ${selArr.length} PDF(s)…`);
   selArr.forEach((wi,i)=>setTimeout(()=>{
     _makeDC3(inst.workers[wi], courses, inst.instructor);
     if(i===selArr.length-1) toast(`✅ ${selArr.length} DC-3 descargado(s)`);
   }, i*700));
+}
+
+// ══════════════════════════════════════════════════════
+// #505 · PERIODO REAL + IMPRESIÓN POR LOTE
+// Reglas en js/dc3-periodo.js: días mínimos = ceil(horas / tope); fin ≥ inicio;
+// tope diario por persona sumando todos sus cursos (reparto parejo; sábado y domingo cuentan);
+// entre personas no se suma. Solo valida dentro de lo que se va a generar (D2 a).
+// ══════════════════════════════════════════════════════
+const DC3_TOPE_DIARIO_H = 12; // regla FTS, no STPS. Configurable aquí.
+const DC3_OPTS = { tope: DC3_TOPE_DIARIO_H, reparto: 'parejo', contarFines: true };
+
+window.addEventListener('load', function(){
+  const v = 'v' + APP_VERSION + ' · ' + DC3_BUILD;
+  const a = document.getElementById('dc3-ver-inst'); if (a) { a.textContent = 'v' + APP_VERSION; a.title = v; }
+  const t = document.getElementById('lote-tope'); if (t) t.textContent = DC3_TOPE_DIARIO_H;
+});
+
+function _esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function _cursosMapa(){ const m = {}; CURSOS.forEach(c => { m[c.id] = {nombre:c.nombre, hrs:Number(c.hrs)}; }); return m; }
+function _cursoPorId(id){ return CURSOS.find(c => String(c.id) === String(id)); }
+
+// ── Generar DC-3 (individual): un solo periodo para lo seleccionado ──
+function onGenFechas(cual){
+  const i = document.getElementById('inst-fecha'), f = document.getElementById('inst-fecha-fin');
+  if (cual === 'ini' && i.value && (!f.value || f.value < i.value)) f.value = i.value;
+  renderGenVal();
+}
+
+function validarGenerar(){
+  const ini = document.getElementById('inst-fecha').value;
+  const fin = document.getElementById('inst-fecha-fin').value;
+  if (!ini) return {ok:false, msg:'Ingresa la fecha de inicio', errores:['Ingresa la fecha de inicio.']};
+  if (!fin) return {ok:false, msg:'Ingresa la fecha de fin', errores:['Ingresa la fecha de fin.']};
+  const cursos = CURSOS.filter(c => inst.selCourses.has(c.id));
+  const workers = [...inst.selWorkers];
+  if (!workers.length || !cursos.length) return {ok:false, msg:'Selecciona trabajadores y cursos', errores:[], ini, fin};
+  // Todos los seleccionados tienen el mismo periodo, así que basta validar un trabajador.
+  let id = 0;
+  const asg = cursos.map(c => ({id: id++, empleado: 'w', curso: c.id, ini, fin}));
+  const r = DC3Periodo.validarLote(asg, _cursosMapa(), DC3_OPTS);
+  const vistos = new Set(), errores = [];
+  asg.forEach(a => r.porAsignacion[a.id].errores.forEach(e => {
+    const t = (e.tipo === 'minimo' ? _cursoPorId(a.curso).nombre + ': ' : '') + e.texto;
+    if (!vistos.has(t)) { vistos.add(t); errores.push(t); }
+  }));
+  if (errores.length) return {ok:false, msg:'Revisa el periodo: hay '+errores.length+' problema(s)', errores, ini, fin};
+  return {ok:true, ini, fin, errores:[]};
+}
+
+function renderGenVal(){
+  const el = document.getElementById('gen-val'); if (!el) return;
+  if (!inst.selWorkers.size || !inst.selCourses.size) { el.innerHTML = ''; return; }
+  const v = validarGenerar();
+  if (v.ok) {
+    el.innerHTML = '<div class="dc3-ok">✓ Periodo de ejecución en el PDF: De '+DC3Periodo.fmtDC3(v.ini)+' a '+DC3Periodo.fmtDC3(v.fin)+'</div>';
+  } else {
+    el.innerHTML = '<div class="dc3-err"><b>No se puede generar todavía:</b>' + v.errores.map(t => '<span>⛔ '+_esc(t)+'</span>').join('') + '</div>';
+  }
+}
+
+// ── Impresión por Lote ──
+const lote = { asg: [], seq: 1 };
+
+function _loteFechas(cursoId){
+  const ini = document.getElementById('lote-ini').value || todayISO();
+  const finDef = document.getElementById('lote-fin').value;
+  const min = DC3Periodo.finMinima(ini, Number(_cursoPorId(cursoId).hrs), DC3_TOPE_DIARIO_H, true);
+  return { ini, fin: (finDef && finDef >= min) ? finDef : min };
+}
+function _loteDe(wi, cid){ return lote.asg.filter(a => a.empleado === wi && String(a.curso) === String(cid)); }
+function loteCelda(wi, cid, on){
+  if (on) { if (!_loteDe(wi, cid).length) lote.asg.push(Object.assign({id: lote.seq++, empleado: wi, curso: cid}, _loteFechas(cid))); }
+  else lote.asg = lote.asg.filter(a => !(a.empleado === wi && String(a.curso) === String(cid)));
+}
+function loteCelEv(el){ loteCelda(Number(el.dataset.w), el.dataset.c, el.checked); renderLote(); }
+function loteColEv(el){ inst.workers.forEach((w, wi) => loteCelda(wi, el.dataset.c, el.checked)); renderLote(); }
+function loteFilaEv(el){ const wi = Number(el.dataset.w); CURSOS.forEach(c => loteCelda(wi, String(c.id), el.checked)); renderLote(); }
+function loteFecha(el){ const a = lote.asg.find(x => x.id === Number(el.dataset.id)); if (a) { a[el.dataset.k] = el.value; renderLote(); } }
+function loteQuitar(id){ lote.asg = lote.asg.filter(a => a.id !== id); renderLote(); }
+function loteRepetir(id){ const a = lote.asg.find(x => x.id === id); if (a) { lote.asg.push({id: lote.seq++, empleado: a.empleado, curso: a.curso, ini: a.ini, fin: a.fin}); renderLote(); } }
+function loteAplicarFechas(){
+  lote.asg.forEach(a => Object.assign(a, _loteFechas(a.curso)));
+  renderLote();
+  toast('✅ Fechas aplicadas a ' + lote.asg.length + ' asignación(es)');
+}
+function _loteValidar(){
+  // Solo cursos que siguen existiendo
+  lote.asg = lote.asg.filter(a => _cursoPorId(a.curso) && inst.workers[a.empleado]);
+  return DC3Periodo.validarLote(lote.asg, _cursosMapa(), DC3_OPTS);
+}
+
+function renderLote(){
+  const mx = document.getElementById('lote-mx'); if (!mx) return;
+  document.getElementById('lote-instr').textContent = INSTRUCTORES[inst.instructor].name;
+  const r = _loteValidar();
+  const P = DC3Periodo;
+  if (!inst.workers.length) {
+    mx.innerHTML = '<tbody><tr><td style="padding:14px;font-size:12px;color:var(--muted2)">Primero agrega trabajadores en la pestaña «Trabajadores».</td></tr></tbody>';
+  } else {
+    let h = '<thead><tr><th class="lm-emp">Trabajador</th>';
+    CURSOS.forEach(c => {
+      const todos = inst.workers.every((w, wi) => _loteDe(wi, c.id).length);
+      h += '<th class="lm-cur"><label class="lm-lbl"><input type="checkbox" data-c="'+_esc(c.id)+'" onchange="loteColEv(this)"'+(todos?' checked':'')+' aria-label="Toda la columna"><span>'+_esc(c.nombre)+'<small>'+_esc(c.hrs)+' h</small></span></label></th>';
+    });
+    h += '</tr></thead><tbody>';
+    inst.workers.forEach((w, wi) => {
+      const todos = CURSOS.every(c => _loteDe(wi, c.id).length);
+      h += '<tr><td class="lm-emp"><label class="lm-lbl"><input type="checkbox" data-w="'+wi+'" onchange="loteFilaEv(this)"'+(todos?' checked':'')+' aria-label="Toda la fila"><span><b>'+_esc(w.name)+'</b><br><span class="lm-p">'+_esc(w.curp)+'</span></span></label></td>';
+      CURSOS.forEach(c => {
+        const lista = _loteDe(wi, c.id);
+        let errs = []; lista.forEach(a => { errs = errs.concat(r.porAsignacion[a.id].errores); });
+        h += '<td class="lm-cel'+(lista.length ? (errs.length ? ' err' : ' on') : '')+'"><label class="lm-lbl"><input type="checkbox" data-w="'+wi+'" data-c="'+_esc(c.id)+'" onchange="loteCelEv(this)"'+(lista.length?' checked':'')+' aria-label="'+_esc(w.name)+' · '+_esc(c.nombre)+'">'+(lista.length>1?'<b>×'+lista.length+'</b>':'')+'</label>';
+        lista.forEach(a => { h += '<div class="lm-p">'+P.fmt(a.ini).slice(0,5)+(a.fin !== a.ini ? '→'+P.fmt(a.fin).slice(0,5) : '')+'</div>'; });
+        if (errs.length) {
+          const e = errs.find(x => x.tipo === 'tope') || errs[0];
+          h += '<div class="lm-e">'+(e.tipo === 'tope' ? _esc(P.fmt(e.dia).slice(0,5)+': '+P.red(e.suma)+' h sumadas') : _esc(e.texto.split('. Fecha')[0]))+'</div>';
+        }
+        h += '</td>';
+      });
+      h += '</tr>';
+    });
+    mx.innerHTML = h + '</tbody>';
+  }
+
+  // Lista por trabajador
+  let out = '';
+  inst.workers.forEach((w, wi) => {
+    const mias = lote.asg.filter(a => a.empleado === wi);
+    if (!mias.length) return;
+    const malas = mias.filter(a => r.porAsignacion[a.id].errores.length).length;
+    out += '<div class="lote-grp"><div class="lg-hd"><span>'+_esc(w.name)+'</span><span class="'+(malas?'chip-bad':'chip-ok')+'">'+(malas ? malas+' con error' : mias.length+' DC-3')+'</span></div>';
+    mias.forEach(a => {
+      const c = _cursoPorId(a.curso), ra = r.porAsignacion[a.id];
+      out += '<div class="lote-it'+(ra.errores.length?' err':'')+'">'
+        + '<div class="li-top"><div><div class="li-nm">'+_esc(c.nombre)+'</div><div class="dc3-hint">'+_esc(c.hrs)+' h · mínimo '+P.diasMinimos(Number(c.hrs), DC3_TOPE_DIARIO_H)+' día(s)</div></div>'
+        + '<div class="li-act"><button onclick="loteRepetir('+a.id+')">Repetir</button><button onclick="loteQuitar('+a.id+')">Quitar</button></div></div>'
+        + '<div class="dc3-dates"><div class="field"><label>Inicio</label><input type="date" data-id="'+a.id+'" data-k="ini" value="'+_esc(a.ini)+'" onchange="loteFecha(this)"></div>'
+        + '<div class="field"><label>Fin</label><input type="date" data-id="'+a.id+'" data-k="fin" value="'+_esc(a.fin)+'" onchange="loteFecha(this)"></div></div>'
+        + ra.errores.map(e => '<div class="li-e">⛔ '+_esc(e.texto)+'</div>').join('')
+        + (ra.errores.length ? '' : '<div class="li-p">Periodo de ejecución: De '+P.fmtDC3(a.ini)+' a '+P.fmtDC3(a.fin)+'</div>')
+        + '</div>';
+    });
+    out += '</div>';
+  });
+  document.getElementById('lote-asg').innerHTML = out || '<p class="dc3-hint">Marca casillas en la matriz para armar el lote.</p>';
+  const nEmp = new Set(lote.asg.map(a => a.empleado)).size;
+  document.getElementById('lote-sub').textContent = lote.asg.length + ' DC-3 · ' + nEmp + ' trabajador(es)';
+
+  const est = document.getElementById('lote-estado'), btn = document.getElementById('lote-btn');
+  if (!lote.asg.length) { est.innerHTML = ''; btn.disabled = true; }
+  else if (r.conError) { est.innerHTML = '<div class="dc3-err"><b>'+r.conError+' de '+lote.asg.length+' asignaciones con error.</b><span>Corrígelas (en rojo arriba) para poder descargar.</span></div>'; btn.disabled = true; }
+  else { est.innerHTML = '<div class="dc3-ok">✓ '+lote.asg.length+' DC-3 listas para '+nEmp+' trabajador(es).</div>'; btn.disabled = false; }
+  btn.style.opacity = btn.disabled ? '.45' : '';
+}
+
+async function loteDescargarZip(){
+  const r = _loteValidar();
+  if (!lote.asg.length) { toast('⚠️ Marca al menos una asignación'); return; }
+  if (r.conError) { renderLote(); toast('⚠️ Hay '+r.conError+' asignación(es) con error'); return; }
+  if (!window.jspdf) { toast('❌ jsPDF no cargó. Revisa tu conexión y recarga.'); return; }
+  if (!window.JSZip) { toast('❌ No cargó el generador de ZIP. Revisa tu conexión y recarga.'); return; }
+  const btn = document.getElementById('lote-btn'); btn.disabled = true;
+  try {
+    toast('⏳ Generando ZIP…');
+    const zip = new JSZip(), usados = {};
+    const porW = new Map();
+    lote.asg.forEach(a => { if (!porW.has(a.empleado)) porW.set(a.empleado, []); porW.get(a.empleado).push(a); });
+    for (const [wi, lista] of porW) {
+      const w = inst.workers[wi];
+      const courses = lista.map(a => Object.assign({}, _cursoPorId(a.curso), {_ini: a.ini, _fin: a.fin}));
+      const doc = _docDC3(w, courses, inst.instructor);
+      let nombre = 'DC3_' + w.name.replace(/\s+/g, '_').replace(/[^A-Za-z0-9_ÑñÁÉÍÓÚáéíóúÜü-]/g, '');
+      if (usados[nombre]) nombre += '_' + (++usados[nombre]); else usados[nombre] = 1;
+      zip.file(nombre + '.pdf', doc.output('arraybuffer'));
+    }
+    const blob = await zip.generateAsync({type: 'blob'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'DC3_lote_' + todayISO() + '.zip';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    toast('✅ ZIP con ' + porW.size + ' PDF(s) · ' + lote.asg.length + ' DC-3');
+  } catch (err) {
+    console.error('ZIP DC-3:', err);
+    toast('❌ Error al generar el ZIP: ' + err.message);
+  } finally {
+    renderLote();
+  }
 }
 
 // ═══════════════════════════════════════════════════
@@ -2291,7 +2565,11 @@ function generateEmpDC3(){
   const fecha = todayISO();
   const courses = CURSOS
     .filter(c=>emp.completed.has(c.id))
-    .map(c=>({...c, _fecha: emp.completed.get(c.id).fechaISO || fecha}));
+    .map(c=>{
+      // #505: periodo = día en que terminó el curso; si pasa de 12 h, la fecha fin mínima válida.
+      const ini = emp.completed.get(c.id).fechaISO || fecha;
+      return {...c, _ini: ini, _fin: DC3Periodo.finMinima(ini, c.hrs, DC3_TOPE_DIARIO_H, true)};
+    });
   toast('⏳ Generando DC-3…');
   setTimeout(()=>{ _makeDC3(worker, courses, 0); }, 300);
 }
@@ -2322,7 +2600,7 @@ function generateEmpDC3(){
   const iLink=document.getElementById('pwa-icon');
   if(iLink) iLink.href=icon192;
   const swCode=`
-const CACHE='fts-cap-v7';
+const CACHE='fts-cap-v8';
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>fetch('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js').then(r=>c.put('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',r)).catch(()=>{})).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{
@@ -2355,7 +2633,7 @@ self.addEventListener('fetch',e=>{
   function showBar(){
     if(document.getElementById('pwa-bar'))return;
     const b=document.createElement('div');b.id='pwa-bar';
-    b.innerHTML=`<div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0"><div style="width:36px;height:36px;background:#D83B01;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;color:#fff;flex-shrink:0">FTS</div><div style="min-width:0"><div style="font-weight:600;font-size:13px">Instalar FTS Capacitación</div><div style="font-size:11px;color:#666">Acceso directo desde tu pantalla de inicio</div></div></div><div style="display:flex;gap:8px;flex-shrink:0"><button id="pwa-ok" style="background:#D83B01;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Instalar</button><button id="pwa-x" style="background:#f0f0f0;color:#666;border:none;padding:8px 12px;border-radius:8px;font-size:13px;cursor:pointer">✕</button></div>`;
+    b.innerHTML=`<div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0"><div style="width:36px;height:36px;background:#D83B01;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;color:#fff;flex-shrink:0">FTS</div><div style="min-width:0"><div style="font-weight:600;font-size:13px;color:#ffffff">Instalar FTS Capacitación</div><div style="font-size:11px;color:#b8b8b8">Acceso directo desde tu pantalla de inicio</div></div></div><div style="display:flex;gap:8px;flex-shrink:0"><button id="pwa-ok" style="background:#D83B01;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Instalar</button><button id="pwa-x" style="background:#f0f0f0;color:#666;border:none;padding:8px 12px;border-radius:8px;font-size:13px;cursor:pointer">✕</button></div>`;
     b.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#1c1c1c;border-top:1px solid #2c2c2c;padding:12px 16px;display:flex;align-items:center;gap:12px;z-index:9999;box-shadow:0 -4px 20px rgba(0,0,0,.5)';
     document.body.appendChild(b);
     document.getElementById('pwa-ok').onclick=async()=>{if(!_dp)return;_dp.prompt();const{outcome}=await _dp.userChoice;if(outcome==='accepted')hideBar();_dp=null;};
