@@ -38,9 +38,19 @@
           "fecha": "2026-11-13T13:18:04.945Z",
           "hora_propuesta_cst": "05:40",
           "comentario": "Se me hizo olvido checar salida"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-11-13T15:51:46.197Z",
+          "hora_propuesta_cst": null,
+          "comentario": "OLVIDO REGISTRAR SALIDA, SALIO 5:40 PM",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": "2026-11-13 11:40:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
