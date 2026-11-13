@@ -11,7 +11,7 @@ const { execFileSync } = require('child_process');
 
 const BASE = (process.env.BASE || 'http://localhost:8765').replace(/\/$/, '');
 const SHOTS = process.argv[2] || null;
-const ESPERADO_VER = '1.1.0';
+const ESPERADO_VER = '1.2.0';
 const resultados = [];
 function check(nombre, ok, detalle) { resultados.push({ nombre, ok: !!ok, detalle }); console.log((ok ? 'OK   ' : 'FALLA ') + nombre + (detalle ? '  → ' + detalle : '')); }
 

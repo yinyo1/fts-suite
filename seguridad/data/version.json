@@ -1,6 +1,6 @@
 {
-  "version": "1.1.0",
-  "build": "20261113-seguridad-dc3-lote",
+  "version": "1.2.0",
+  "build": "20261113-seguridad-dc3-formato-stps",
   "modulo": "seguridad",
   "status": "online",
   "updated": "2026-11-13"
