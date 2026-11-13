@@ -1,0 +1,506 @@
+[
+ {
+  "ronda": "R1",
+  "nombre": "Prototipo abre sin red en el Panel del Instructor, v1.2.0 y marca PROTOTIPO",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R1",
+  "nombre": "Odoo completo: entra con nombre en orden DC-3, CURP y puesto",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R1",
+  "nombre": "A · PDF: nombre, CURP 18 casillas, 12 h el mismo día",
+  "ok": true,
+  "detalle": "GOMEZ TREVIÑO LAURA PATRICIA · 18 · 12 · 2026-11-20 a 2026-11-20"
+ },
+ {
+  "ronda": "R1",
+  "nombre": "A · PDF: Puesto* lleno desde Odoo",
+  "ok": true,
+  "detalle": "Segurista"
+ },
+ {
+  "ronda": "R1",
+  "nombre": "A · PDF: tres firmas y logo",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R1",
+  "nombre": "A: sin datos retirados (registro patronal, D4247032…)",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R1",
+  "nombre": "A vs producción: el texto es el mismo salvo «Segurista» en Puesto*",
+  "ok": true,
+  "detalle": "extra=[\"Segurista\"] falta=[]"
+ },
+ {
+  "ronda": "R1",
+  "nombre": "A vs producción: los pixeles solo cambian en la fila Puesto* (71.5–81.5 mm)",
+  "ok": true,
+  "detalle": "{\"n\":244,\"caja_mm\":[12.4,77,25.1,80]}"
+ },
+ {
+  "ronda": "R1",
+  "nombre": "B · sin CURP: Generar muestra el motivo",
+  "ok": true,
+  "detalle": "No se puede generar todavía:⛔ ELIZONDO CARDENAS MARTIN: sin CURP (complétalo en Trabajadores)"
+ },
+ {
+  "ronda": "R1",
+  "nombre": "B · sin CURP: no descarga nada",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R1",
+  "nombre": "B · CURP capturada a mano: el trabajador queda completo",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R1",
+  "nombre": "B · ya genera: CURP en casillas y puesto Soldador",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R1",
+  "nombre": "C · manual: texto idéntico a producción",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R1",
+  "nombre": "C · manual: imagen idéntica a producción (0 pixeles distintos)",
+  "ok": true,
+  "detalle": "{\"n\":0,\"caja_mm\":null}"
+ },
+ {
+  "ronda": "R1",
+  "nombre": "C · manual: mismo nombre de archivo que producción",
+  "ok": true,
+  "detalle": "DC3_PRUEBA_MANUAL_CARLOS.pdf"
+ },
+ {
+  "ronda": "R1",
+  "nombre": "D · 16 h en un día: bloquea con mensaje",
+  "ok": true,
+  "detalle": "No se puede generar todavía:⛔ SEGURIDAD DE ARC FLASH (NFPA 70E): 16 h requiere al menos 2 días (tope 12 h por día). Fech"
+ },
+ {
+  "ronda": "R1",
+  "nombre": "D · 16 h en dos días: pasa, periodo 20→21",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R1",
+  "nombre": "Sin errores de JavaScript (prototipo)",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R2",
+  "nombre": "5 trabajadores: 3 de Odoo y 2 manuales",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R2",
+  "nombre": "Tope: 8 h + 6 h la misma persona el mismo día bloquea",
+  "ok": true,
+  "detalle": "20/11: 14 h sumadas"
+ },
+ {
+  "ronda": "R2",
+  "nombre": "Tope: 8 h + 4 h la misma persona pasa",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R2",
+  "nombre": "Dos o más personas, mismo curso de 12 h el mismo día: pasa",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R2",
+  "nombre": "Lote: 26 DC-3 (3×4 + 2×7), sin errores",
+  "ok": true,
+  "detalle": "26"
+ },
+ {
+  "ronda": "R2",
+  "nombre": "ZIP R2-lote-proto: nombres con acento/Ñ marcados como UTF-8",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R2",
+  "nombre": "ZIP: nombre DC3_lote_AAAA-MM-DD.zip y 5 PDF",
+  "ok": true,
+  "detalle": "DC3_lote_2026-11-13.zip → DC3_GOMEZ_TREVIÑO_LAURA_PATRICIA.pdf, DC3_MANUAL_DOS_BENITO.pdf, DC3_MANUAL_UNO_ANDREA.pdf, DC3_TREVIÑO_LEAL_GABRIELA.pdf, DC3_VILLARREAL_OCHOA_RODRIGO.pdf"
+ },
+ {
+  "ronda": "R2",
+  "nombre": "Cada página: nombre, CURP, su fecha por renglón, Puesto* (Odoo lleno, manual vacío), 3 firmas",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R2",
+  "nombre": "ZIP · DC3_GOMEZ_TREVIÑO_LAURA_PATRICIA.pdf: 4 páginas",
+  "ok": true,
+  "detalle": "4"
+ },
+ {
+  "ronda": "R2",
+  "nombre": "ZIP · DC3_GOMEZ_TREVIÑO_LAURA_PATRICIA.pdf: sin datos retirados (registro patronal, D4247032…)",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R2",
+  "nombre": "ZIP · DC3_MANUAL_DOS_BENITO.pdf: 7 páginas",
+  "ok": true,
+  "detalle": "7"
+ },
+ {
+  "ronda": "R2",
+  "nombre": "ZIP · DC3_MANUAL_DOS_BENITO.pdf: sin datos retirados (registro patronal, D4247032…)",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R2",
+  "nombre": "ZIP · DC3_MANUAL_UNO_ANDREA.pdf: 4 páginas",
+  "ok": true,
+  "detalle": "4"
+ },
+ {
+  "ronda": "R2",
+  "nombre": "ZIP · DC3_MANUAL_UNO_ANDREA.pdf: sin datos retirados (registro patronal, D4247032…)",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R2",
+  "nombre": "ZIP · DC3_TREVIÑO_LEAL_GABRIELA.pdf: 4 páginas",
+  "ok": true,
+  "detalle": "4"
+ },
+ {
+  "ronda": "R2",
+  "nombre": "ZIP · DC3_TREVIÑO_LEAL_GABRIELA.pdf: sin datos retirados (registro patronal, D4247032…)",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R2",
+  "nombre": "ZIP · DC3_VILLARREAL_OCHOA_RODRIGO.pdf: 7 páginas",
+  "ok": true,
+  "detalle": "7"
+ },
+ {
+  "ronda": "R2",
+  "nombre": "ZIP · DC3_VILLARREAL_OCHOA_RODRIGO.pdf: sin datos retirados (registro patronal, D4247032…)",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R2",
+  "nombre": "ZIP R2-lote-prod: nombres con acento/Ñ marcados como UTF-8",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R2",
+  "nombre": "Lote vs producción · DC3_MANUAL_DOS_BENITO.pdf: 7 páginas idénticas en pixeles",
+  "ok": true,
+  "detalle": "[0,0,0,0,0,0,0]"
+ },
+ {
+  "ronda": "R2",
+  "nombre": "Lote vs producción · DC3_MANUAL_UNO_ANDREA.pdf: 4 páginas idénticas en pixeles",
+  "ok": true,
+  "detalle": "[0,0,0,0]"
+ },
+ {
+  "ronda": "R2",
+  "nombre": "Sin errores de JavaScript (prototipo)",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R3",
+  "nombre": "Odoo no responde: aviso y pasa a captura manual",
+  "ok": true,
+  "detalle": "{\"w\":2,\"a\":2,\"s\":\"0,1\",\"tab\":\"tp-workers\",\"foco\":\"new-ap\",\"aviso\":true}"
+ },
+ {
+  "ronda": "R3",
+  "nombre": "Odoo no responde: no se pierde lo ya elegido (trabajadores, selección, asignaciones)",
+  "ok": true,
+  "detalle": "{\"antes\":{\"w\":2,\"a\":2,\"s\":\"0,1\"},\"desp\":{\"w\":2,\"a\":2,\"s\":\"0,1\",\"tab\":\"tp-workers\",\"foco\":\"new-ap\",\"aviso\":true}}"
+ },
+ {
+  "ronda": "R3",
+  "nombre": "Odoo caído: la captura manual sigue funcionando",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R3",
+  "nombre": "ZIP R3-lote-tras-caida: nombres con acento/Ñ marcados como UTF-8",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R3",
+  "nombre": "Odoo caído: el ZIP sale con los 3 (Odoo + manuales)",
+  "ok": true,
+  "detalle": "DC3_GOMEZ_TREVIÑO_LAURA_PATRICIA.pdf, DC3_MANUAL_TRES_CECILIA.pdf, DC3_MANUAL_UNO_ANDREA.pdf"
+ },
+ {
+  "ronda": "R3",
+  "nombre": "Odoo vuelve: el buscador responde y el aviso se quita",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R3",
+  "nombre": "CURP inválida: se marca y bloquea Generar",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R3",
+  "nombre": "CURP inválida: corregirla con 17 caracteres se rechaza",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R3",
+  "nombre": "CURP inválida: con la CURP correcta queda listo",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R3",
+  "nombre": "Nombre sin separar: se marca y el ZIP queda bloqueado",
+  "ok": true,
+  "detalle": "1 de 4 asignaciones con error.Corrígelas (en rojo arriba) para poder descargar."
+ },
+ {
+  "ronda": "R3",
+  "nombre": "Nombre completado a mano: queda «RAMIREZ GARZA SOFIA» y el ZIP se habilita",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R3",
+  "nombre": "Duplicado archivado: la búsqueda muestra a la persona una sola vez",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R3",
+  "nombre": "Duplicado: elegirla dos veces no la repite en la lista",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R3",
+  "nombre": "Fin antes que inicio: Generar bloquea",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R3",
+  "nombre": "Fin antes que inicio: el lote bloquea",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R3",
+  "nombre": "Captura manual: CURP con formato inválido no se agrega",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R3",
+  "nombre": "Sin errores de JavaScript (prototipo)",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R4",
+  "nombre": "380 px · [hallazgo producción] Cursos vacío al entrar desde la Suite: sí ocurre",
+  "ok": true,
+  "detalle": "0 cursos pintados"
+ },
+ {
+  "ronda": "R4",
+  "nombre": "380 px · Trabajadores: fuera del buscador nuevo, los mismos textos que producción",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R4",
+  "nombre": "380 px · Trabajadores: sin scroll lateral",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R4",
+  "nombre": "380 px · Cursos: fuera del buscador nuevo, los mismos textos que producción",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R4",
+  "nombre": "380 px · Cursos: sin scroll lateral",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R4",
+  "nombre": "380 px · Generar DC-3: fuera del buscador nuevo, los mismos textos que producción",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R4",
+  "nombre": "380 px · Generar DC-3: sin scroll lateral",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R4",
+  "nombre": "380 px · Impresión por Lote: fuera del buscador nuevo, los mismos textos que producción",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R4",
+  "nombre": "380 px · Impresión por Lote: sin scroll lateral",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R4",
+  "nombre": "380 px · el heartbeat de GitHub no corre en el prototipo (no cierra la sesión sin red)",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R4",
+  "nombre": "380 px · mismas 4 pestañas y en el mismo orden",
+  "ok": true,
+  "detalle": "👷 Trabajadores | 📋 Cursos | 📄 Generar DC-3 | 🗂️ Impresión por Lote"
+ },
+ {
+  "ronda": "R4",
+  "nombre": "1280 px · [hallazgo producción] Cursos vacío al entrar desde la Suite: sí ocurre",
+  "ok": true,
+  "detalle": "0 cursos pintados"
+ },
+ {
+  "ronda": "R4",
+  "nombre": "1280 px · Trabajadores: fuera del buscador nuevo, los mismos textos que producción",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R4",
+  "nombre": "1280 px · Trabajadores: sin scroll lateral",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R4",
+  "nombre": "1280 px · Cursos: fuera del buscador nuevo, los mismos textos que producción",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R4",
+  "nombre": "1280 px · Cursos: sin scroll lateral",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R4",
+  "nombre": "1280 px · Generar DC-3: fuera del buscador nuevo, los mismos textos que producción",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R4",
+  "nombre": "1280 px · Generar DC-3: sin scroll lateral",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R4",
+  "nombre": "1280 px · Impresión por Lote: fuera del buscador nuevo, los mismos textos que producción",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R4",
+  "nombre": "1280 px · Impresión por Lote: sin scroll lateral",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R4",
+  "nombre": "1280 px · el heartbeat de GitHub no corre en el prototipo (no cierra la sesión sin red)",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "ronda": "R4",
+  "nombre": "1280 px · mismas 4 pestañas y en el mismo orden",
+  "ok": true,
+  "detalle": "👷 Trabajadores | 📋 Cursos | 📄 Generar DC-3 | 🗂️ Impresión por Lote"
+ },
+ {
+  "ronda": "R4",
+  "nombre": "Tras R2: ninguna CURP en localStorage ni sessionStorage",
+  "ok": true,
+  "detalle": "{\"llaves\":[]}"
+ },
+ {
+  "ronda": "R4",
+  "nombre": "Tras R2: sin caché, IndexedDB ni service worker",
+  "ok": true,
+  "detalle": "{\"caches\":[],\"idb\":[],\"sw\":0}"
+ },
+ {
+  "ronda": "R4",
+  "nombre": "Tras R3: ninguna CURP en localStorage ni sessionStorage",
+  "ok": true,
+  "detalle": "{\"llaves\":[]}"
+ },
+ {
+  "ronda": "R4",
+  "nombre": "Tras R3: sin caché, IndexedDB ni service worker",
+  "ok": true,
+  "detalle": "{\"caches\":[],\"idb\":[],\"sw\":0}"
+ },
+ {
+  "ronda": "R4",
+  "nombre": "Visor claude.ai: PDF y ZIP se entregan por la capacidad «downloads»",
+  "ok": true,
+  "detalle": "[{\"filename\":\"DC3_VISOR_PRUEBA_DIANA.pdf\",\"size\":313169},{\"filename\":\"DC3_lote_2026-11-13.zip\",\"size\":313319}]"
+ }
+]

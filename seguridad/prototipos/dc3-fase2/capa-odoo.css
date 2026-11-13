@@ -1,0 +1,36 @@
+/* PROTOTIPO DC-3 Fase 2 (#507): estilos de la capa de Odoo. Usa las variables de la app (--o, --red, --green…). */
+.po-tira{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:8px 14px 8px 92px;min-height:46px;background:#fff4d6;border-bottom:1px solid #f0d58a;color:#7a5200;font-size:12px}
+.po-marca{font-weight:800;letter-spacing:.6px}
+.po-sw{display:inline-flex;align-items:center;gap:6px}
+.po-sw span{font-weight:600}
+.po-sw button{border:1px solid #d9b860;background:#fff;color:#7a5200;border-radius:7px;padding:6px 10px;font:inherit;font-weight:600;cursor:pointer}
+.po-sw button[aria-pressed="true"]{background:var(--o);border-color:var(--o);color:#fff}
+.po-agua{position:fixed;left:8px;bottom:44px;z-index:9999;pointer-events:none;background:rgba(122,82,0,.85);color:#fff;font:700 10px/1 Inter,sans-serif;letter-spacing:.6px;padding:5px 8px;border-radius:6px}
+.po-card{margin-bottom:4px}
+.po-fila{display:flex;gap:8px;flex-wrap:wrap}
+.po-q{flex:1;min-width:0;background:var(--d2);border:1px solid var(--border);color:var(--text);padding:12px 13px;font-size:14px;font-family:Inter,sans-serif;border-radius:8px;outline:none}
+.po-q:focus{border-color:var(--o);box-shadow:0 0 0 1px var(--o)}
+.po-fila .btn{width:auto;padding:10px 12px;font-size:13px}
+.po-hint{font-size:12px;color:var(--muted2)}
+.po-lista{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.po-it{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:var(--d2);border:0;border-top:1px solid var(--border);padding:10px 12px;font:inherit;color:var(--text);cursor:pointer}
+.po-it:first-child{border-top:0}
+.po-it:hover{background:var(--d3)}
+.po-who{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.po-who b{font-size:13px}
+.po-who>span{font-size:11.5px;color:var(--muted2)}
+.po-mas{font-size:18px;color:var(--o)}
+.po-chips{display:flex;flex-wrap:wrap;gap:4px}
+.po-chip{font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px;background:var(--d3);color:var(--muted2)}
+.po-chip.ok{background:rgba(16,124,16,.1);color:var(--green)}
+.po-chip.bad{background:rgba(209,52,56,.1);color:var(--red)}
+.po-chip.warn{background:rgba(202,128,0,.12);color:#9a6200}
+.po-sel{display:flex;flex-direction:column;gap:6px}
+.po-caida{background:rgba(209,52,56,.08);border:1px solid rgba(209,52,56,.35);color:var(--red);border-radius:8px;padding:9px 11px;font-size:12.5px}
+.worker-row.po-mal{border-color:rgba(209,52,56,.55)}
+.po-org{display:block;font-size:11px;color:var(--muted2);margin-top:2px}
+.po-fix{display:flex;flex-direction:column;gap:6px;margin-top:8px;cursor:default}
+.po-fix-t{font-size:12px;color:var(--red)}
+.po-fix-g{display:flex;flex-wrap:wrap;gap:6px}
+.po-fix-g input{flex:1 1 140px;min-width:0;background:var(--d2);border:1px solid var(--border);color:var(--text);padding:9px 10px;border-radius:7px;font-size:13px;font-family:Inter,sans-serif;text-transform:uppercase}
+.po-fix .btn{width:auto;align-self:flex-start;padding:8px 12px;font-size:12.5px}

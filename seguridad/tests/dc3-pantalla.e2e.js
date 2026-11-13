@@ -56,7 +56,10 @@ async function tab(page, texto) { await page.locator('#s-inst .tab-row .tab', { 
     const ctx = await b.newContext({ viewport: { width: 380, height: 800 } });
     const p = await ctx.newPage(); p.on('pageerror', e => errores.push('lanzador: ' + e.message));
     await p.goto(BASE + '/seguridad/index.html'); await p.waitForTimeout(1500);
-    check('Sin sesión, Seguridad regresa al lanzador', /\/index\.html$|\/fts-suite\/?$|\/$/.test(p.url()) && !/seguridad/.test(p.url()), p.url());
+    // PROTOTIPO=1 (#507): el prototipo de la Fase 2 no tiene login a propósito (abre sin red y sin
+    // cuenta), así que esta verificación no le aplica; se reporta como «no aplica», no como aprobada.
+    if (process.env.PROTOTIPO === '1') console.log('N/A  Sin sesión, Seguridad regresa al lanzador  → el prototipo no tiene login');
+    else check('Sin sesión, Seguridad regresa al lanzador', /\/index\.html$|\/fts-suite\/?$|\/$/.test(p.url()) && !/seguridad/.test(p.url()), p.url());
     await sesion(p);
     await p.goto(BASE + '/index.html'); await p.waitForTimeout(1500);
     check('Lanzador con sesión muestra la tarjeta Seguridad', await p.locator('#card-seguridad').isVisible());
