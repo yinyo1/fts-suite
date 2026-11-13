@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-62-2026-11-13T13-18-04-945Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 62,
+      "empleado_nombre": "Gilberto Gibran Solís Carrillo",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": 112,
+      "supervisor_name": "Felipe Pérez Guzmán",
+      "supervisor_email": "gibran@fts.mx",
+      "supervisor_phone": "+52 81 3159 1596",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": false,
+      "sin_supervisor": false,
+      "attendance_id": 16626,
+      "fecha_creacion": "2026-11-13T13:18:04.945Z",
+      "check_in_original_utc": "2026-11-12 13:28:45",
+      "check_out_propuesto_utc": "2026-11-13 11:40:00",
+      "check_out_propuesto_cst": "2026-11-13 05:40:00",
+      "geolocation": {
+        "lat": 25.6888882,
+        "lng": -100.2918157,
+        "accuracy": 15.571000099182129,
+        "captured_at": "2026-11-13T13:17:58.224Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-11-13T13:18:04.945Z",
+          "hora_propuesta_cst": "05:40",
+          "comentario": "Se me hizo olvido checar salida"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-11-13 11:40:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20261111-kiosk-pin-servidor"
+    },
+    {
       "id_interno": "INC-AUTO-CIERRE-155-2026-11-13T12-35-13-766Z",
       "tipo": "auto_cierre_pendiente",
       "status": "pendiente_rh",
