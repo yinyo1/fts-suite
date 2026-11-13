@@ -50,7 +50,7 @@
     {
       "id_interno": "INC-AUTO-CIERRE-155-2026-11-13T12-35-13-766Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_con_ajuste",
       "fecha_creacion": "2026-11-13T12:35:15.329Z",
       "empleado_id": 155,
       "empleado_nombre": "Juan De La Cruz Maldonado",
@@ -60,7 +60,7 @@
       "check_out_aplicado_utc": "2026-11-12 22:04:10",
       "horas_originales": "24.12",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -68,7 +68,18 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 63,
+          "usuario": "Magaly Estefanía Pérez García",
+          "timestamp": "2026-11-13T15:48:26.617Z",
+          "hora_propuesta_cst": "12:00",
+          "comentario": "OLVIDO REGISTRAR SALIDA EL 12.11.2026",
+          "accion": "ajustado"
+        }
+      ]
     },
     {
       "id_interno": "INC-OLV-165-2026-11-12T16-25-51-622Z",
