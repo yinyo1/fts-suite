@@ -13,7 +13,7 @@
 <title>FTS · Seguridad Industrial</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG" crossorigin="anonymous"></script>
-<script src="js/dc3-periodo.js?v=1.2.0"></script>
+<script src="js/dc3-periodo.js?v=1.2.1"></script>
 <link rel="stylesheet" href="../shared/fts-styles.css">
 <script src="../shared/auth-suite.js"></script>
 <script>
@@ -694,8 +694,8 @@ const MASTER_PASS = 'FTS#DC3!2026';
 let isMasterSession = false;
 
 // ═══ CONTROL REMOTO — GitHub (yinyo1/fts-suite) ═══
-const APP_VERSION  = '1.2.0';
-const DC3_BUILD    = '20261113-seguridad-dc3-formato-stps';
+const APP_VERSION  = '1.2.1';
+const DC3_BUILD    = '20261114-seguridad-dc3-cursos-suite';
 const BASE_RAW     = 'https://raw.githubusercontent.com/yinyo1/fts-suite/main/';
 const VERSION_URL  = BASE_RAW + 'seguridad/data/version.json';
 const VERSION_API  = 'https://api.github.com/repos/yinyo1/fts-suite/contents/seguridad/data/version.json';
@@ -975,6 +975,9 @@ function goInstPin() {
         pin:     '',
         acceso:  'ambos'
       };
+      // v1.2.1: igual que el login con usuario y contraseña. Sin esto, al entrar desde la Suite
+      // Cursos e Instructor salían vacíos con los 11 cursos seleccionados en silencio (#507).
+      loadInstDashboard();
       go('s-inst');
       return;
     }
@@ -1525,6 +1528,9 @@ function instTab(tab) {
   const map = {workers:'tp-workers', courses:'tp-courses', generate:'tp-generate', lote:'tp-lote'};
   document.getElementById(map[tab]).classList.add('on');
   event.target.classList.add('on');
+  // v1.2.1: la selección visible y la real son la misma al abrir cada pestaña (#507)
+  if (tab === 'workers') renderWorkerList();
+  if (tab === 'courses') { renderInstSelector(); renderCourseSelector(); }
   if (tab === 'generate') renderGenSummary();
   if (tab === 'lote') renderLote();
 }
