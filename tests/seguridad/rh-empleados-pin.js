@@ -54,7 +54,8 @@ const estadoPin = p => p.evaluate(() => ({ valor: document.querySelector('#formE
 
 (async () => {
   const srv = await servir();
-  const url = 'http://127.0.0.1:' + srv.address().port + '/modulos/rh/empleados/index.html';
+  // BASE=<dominio publicado> prueba la pantalla de producción (los webhooks siguen interceptados).
+  const url = (process.env.BASE ? process.env.BASE.replace(/\/$/, '') : 'http://127.0.0.1:' + srv.address().port) + '/modulos/rh/empleados/index.html';
   const b = await chromium.launch();
   for (const w of [380, 1280]) {
     await escenario(b, url, 'servidor nuevo: pin_registrado, sin PIN', Object.assign({}, base, { pin_registrado: true }), w, async (p, env) => {

@@ -13,7 +13,7 @@ const { execFileSync } = require('child_process');
 
 const BASE = (process.env.BASE || 'http://localhost:8765').replace(/\/$/, '');
 const SHOTS = process.argv[2] || null;
-const ESPERADO_VER = process.env.ESPERADO_VER || '1.2.1';
+const ESPERADO_VER = process.env.ESPERADO_VER || '1.3.0';
 // Dos juegos de datos (Ronda 1 y Ronda 2): SET=2 usa otro trabajador, otros cursos y otras fechas.
 const D = process.env.SET === '2'
   ? { w: ['DEMO', 'RONDA', 'DOS', 'XEXX020202MNLXXX02'], cursos: ['SEGURIDAD ELECTRICA', 'USO DE HERRAMIENTAS MANUALES'], ini: '2026-12-01', fin: '2026-12-02', lote: [[2, '2026-12-07'], [5, '2026-12-08'], [6, '2026-12-09']] }
