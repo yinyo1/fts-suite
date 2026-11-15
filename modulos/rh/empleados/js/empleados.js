@@ -402,7 +402,12 @@ async function onEditSelect(){
     E['job_id'].value = e.job_id || '';
     E['resource_calendar_id'].value = e.resource_calendar_id || '';
     E['company_id'].value = e.company_id || '';
-    E['pin'].value = e.pin || '';
+    // #507 Etapa 2: el detalle YA NO devuelve el PIN del kiosko en claro, solo si hay uno.
+    // El campo nace vacío y solo se escribe para CAMBIARLO; vacío = el PIN de Odoo no se toca.
+    E['pin'].value = '';
+    var pinReg = (e.pin_registrado !== undefined) ? !!e.pin_registrado : !!e.pin;
+    var pinEst = document.getElementById('editPinEstado');
+    if (pinEst) pinEst.textContent = pinReg ? '(registrado ✓ · vacío = no se cambia)' : '(sin PIN registrado · captura uno)';
     E['x_categoria_nomina'].value = e.x_categoria_nomina || '';
     E['x_aplica_ppa'].checked = !!e.x_aplica_ppa;
     E['hora_hhmm'].value = floatToHHMM(e.x_studio_hora_entrada);
