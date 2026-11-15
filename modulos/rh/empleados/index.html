@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RH — Alta / Baja de empleados — FTS Suite</title>
 <script>
-  (function(){ window.BUILD_DATE = '20261111-rh-empleados-v10-roles'; })();
+  (function(){ window.BUILD_DATE = '20261115-rh-empleados-v11-pin-oculto'; })();
 </script>
 <script src="../../../shared/auth-suite.js"></script>
 <link rel="stylesheet" href="css/empleados.css">
@@ -16,7 +16,7 @@
   <a class="rh-back" href="../index.html">← Módulo RH</a>
   <div class="rh-title-wrap">
     <span class="rh-title">👥 Alta / Baja de empleados</span>
-    <span class="rh-build">build 20261111-rh-empleados-v10-roles</span>
+    <span class="rh-build">build 20261115-rh-empleados-v11-pin-oculto</span>
   </div>
   <div class="rh-user">
     <span class="rh-user-name" id="rh-user-name">—</span>
@@ -115,7 +115,7 @@
         <label class="rh-f"><span>Jefe directo *</span><select name="parent_id" required></select></label>
         <label class="rh-f"><span>Puesto</span><select name="job_id"></select></label>
         <label class="rh-f"><span>Horario *</span><select name="resource_calendar_id" required></select></label>
-        <label class="rh-f"><span>PIN de kiosko *</span><input name="pin" type="text" inputmode="numeric" required></label>
+        <label class="rh-f"><span>PIN de kiosko <em id="editPinEstado">(vacío = no se cambia)</em></span><input name="pin" type="text" inputmode="numeric" autocomplete="off" placeholder="Escribe uno nuevo solo para cambiarlo"></label>
         <label class="rh-f"><span>Hora de entrada <em>(HH:MM)</em></span><input name="hora_hhmm" type="time"></label>
         <label class="rh-f"><span>Tipo de contrato *</span><select name="employee_type" required></select></label>
         <label class="rh-f"><span># CONTPAQi <em>(solo si es de planta)</em></span><input name="x_studio_codigo_contpaqi" type="text" inputmode="numeric" autocomplete="off"></label>
@@ -167,6 +167,6 @@
 <script src="../../../shared/auth-jwt.js"></script>
 <script src="../../../chats/rh-acceso.js" defer></script>
 <script src="js/foto.js"></script>
-<script src="js/empleados.js"></script>
+<script src="js/empleados.js?v=20261115-pin"></script>
 </body>
 </html>
