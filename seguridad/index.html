@@ -13,8 +13,9 @@
 <title>FTS · Seguridad Industrial</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG" crossorigin="anonymous"></script>
-<script src="js/dc3-periodo.js?v=1.2.1"></script>
+<script src="js/dc3-periodo.js?v=1.3.0"></script>
 <link rel="stylesheet" href="../shared/fts-styles.css">
+<link rel="stylesheet" href="js/dc3-odoo.css?v=1.3.0">
 <script src="../shared/auth-suite.js"></script>
 <script>
 // Verificar sesión FTS Suite al cargar
@@ -694,8 +695,8 @@ const MASTER_PASS = 'FTS#DC3!2026';
 let isMasterSession = false;
 
 // ═══ CONTROL REMOTO — GitHub (yinyo1/fts-suite) ═══
-const APP_VERSION  = '1.2.1';
-const DC3_BUILD    = '20261114-seguridad-dc3-cursos-suite';
+const APP_VERSION  = '1.3.0';
+const DC3_BUILD    = '20261115-seguridad-dc3-odoo';
 const BASE_RAW     = 'https://raw.githubusercontent.com/yinyo1/fts-suite/main/';
 const VERSION_URL  = BASE_RAW + 'seguridad/data/version.json';
 const VERSION_API  = 'https://api.github.com/repos/yinyo1/fts-suite/contents/seguridad/data/version.json';
@@ -2752,6 +2753,10 @@ function addCursoPersonalizado(){
   </div>
 </div>
 
+<!-- v1.3.0 (#507): trabajadores desde Odoo. Sesión personal (SuiteAuth) + firma HMAC (misma librería que verifica el servidor). -->
+<script src="../shared/auth-jwt.js"></script>
+<script src="../retardos/lib/sesion.js"></script>
+<script src="js/dc3-odoo.js?v=1.3.0"></script>
 <script src="js/videos.js"></script>
 </body>
 </html>
