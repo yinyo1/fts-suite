@@ -49,11 +49,21 @@
           "hora_propuesta_cst": "2026-11-13 06:50:00",
           "comentario": "Olvide checar al.llegar",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "rh",
+          "user_id": 63,
+          "usuario": "Magaly Estefanía Pérez García",
+          "timestamp": "2026-11-17T16:20:10.322Z",
+          "hora_propuesta_cst": "07:00",
+          "comentario": "Olvido registrar, conforme al reporte de don juan 7:00 am",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_rh",
-      "hora_final_aplicada_utc": null,
-      "aplicado_en_odoo": false,
+      "status": "aprobada_con_ajuste",
+      "hora_final_aplicada_utc": "2026-11-13 13:00:00",
+      "aplicado_en_odoo": true,
       "department_id": 3,
       "department_name": "Operaciones",
       "sin_departamento": false,
@@ -66,7 +76,7 @@
       "rh_directo_ceo": false,
       "directo_ceo": true,
       "sin_supervisor": false,
-      "tag_disputa_activo": true
+      "tag_disputa_activo": false
     },
     {
       "id_interno": "INC-AUTO-CIERRE-98-2026-11-13T17-43-11-505Z",
