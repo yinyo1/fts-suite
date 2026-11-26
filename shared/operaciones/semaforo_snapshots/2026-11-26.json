@@ -1,0 +1,61 @@
+{
+  "fecha": "2026-11-26",
+  "total": 0,
+  "por_color": {},
+  "por_color_a": {},
+  "por_color_b": {},
+  "_metrica_por_color": "por_color es el color COMBINADO (el peor de A y B). El correo reporta por_color_a (retraso en la ETAPA). El semaforo B se retiro del reporte en S1 (#220) y se sigue calculando, por eso el combinado sale rojo casi siempre. Para comparar contra el correo, usa por_color_a.",
+  "_redaccion": "el recorte del contacto (name y cliente) vive en el MOTOR ops/semaforo-motor, via res.partner.commercial_company_name. Aqui solo se verifica que llego hecho.",
+  "_compuerta": "solo corridas de produccion commitean este archivo",
+  "_diag": [
+    {
+      "nodo": "Odoo - getAll projects",
+      "problema": "devolvio 0 filas utilizables (llave \"id\" ausente)",
+      "items_crudos": 1,
+      "critico": true
+    },
+    {
+      "nodo": "Odoo - getAll SO",
+      "problema": "devolvio 0 filas utilizables (llave \"id\" ausente)",
+      "items_crudos": 1,
+      "critico": false
+    },
+    {
+      "nodo": "Odoo - getAll partners",
+      "problema": "devolvio 0 filas utilizables (llave \"id\" ausente)",
+      "items_crudos": 1,
+      "critico": false
+    },
+    {
+      "nodo": "Odoo - getAll msg94",
+      "problema": "devolvio 0 filas utilizables (llave \"res_id\" ausente)",
+      "items_crudos": 1,
+      "critico": true
+    },
+    {
+      "nodo": "Odoo - getAll msgComment",
+      "problema": "devolvio 0 filas utilizables (llave \"res_id\" ausente)",
+      "items_crudos": 1,
+      "critico": false
+    },
+    {
+      "nodo": "Odoo - getAll trackedMsgs",
+      "problema": "devolvio 0 filas utilizables (llave \"res_id\" ausente)",
+      "items_crudos": 1,
+      "critico": false
+    },
+    {
+      "nodo": "Odoo - getAll trackingVals",
+      "problema": "devolvio 0 filas utilizables (llave \"field_id\" ausente)",
+      "items_crudos": 1,
+      "critico": false
+    },
+    {
+      "nodo": "Odoo - getAll attachments",
+      "problema": "devolvio 0 filas utilizables (llave \"id\" ausente)",
+      "items_crudos": 1,
+      "critico": false
+    }
+  ],
+  "proyectos": []
+}
