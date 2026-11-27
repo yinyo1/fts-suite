@@ -103,15 +103,26 @@
       "department_name": "Ingenieria",
       "sin_departamento": false,
       "depto_invalido": false,
-      "supervisor_id": 68,
-      "supervisor_name": "Jésus Montalvo Ramirez",
-      "supervisor_email": "9diazfigueroajuanemmanuel@gmail.com",
-      "supervisor_phone": "951 274 0186",
+      "supervisor_id": 8,
+      "supervisor_name": "Francisco Montalvo Ramirez",
+      "supervisor_email": null,
+      "supervisor_phone": null,
       "es_ceo": false,
       "rh_directo_ceo": false,
       "directo_ceo": false,
       "sin_supervisor": false,
-      "tag_disputa_activo": true
+      "tag_disputa_activo": true,
+      "reasignaciones": [
+        {
+          "fecha": "2026-11-26",
+          "de_supervisor_id": 68,
+          "de_supervisor_name": "Jésus Montalvo Ramirez",
+          "a_supervisor_id": 8,
+          "a_supervisor_name": "Francisco Montalvo Ramirez",
+          "motivo": "reasignada 26-nov: alta del 24-nov con jefe equivocado (Jésus en vez de Francisco); parent_id ya corregido en Odoo. La incidencia se creó 7 min después del alta y congeló al jefe equivocado. Issue #514.",
+          "por": "RH (Odoo parent_id 8) + CC (edicion almacen)"
+        }
+      ]
     },
     {
       "id_interno": "INC-AUTO-CIERRE-98-2026-11-23T16-42-24-933Z",
