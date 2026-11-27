@@ -138,11 +138,21 @@
           "hora_propuesta_cst": "2026-11-24 06:50:00",
           "comentario": "No estaba en sistema",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 8,
+          "usuario": "Francisco Montalvo Ramirez",
+          "timestamp": "2026-11-27T14:57:32.766Z",
+          "hora_propuesta_cst": "06:50",
+          "comentario": "Confirmo que si llego",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_supervisor",
-      "hora_final_aplicada_utc": null,
-      "aplicado_en_odoo": false,
+      "status": "pendiente_rh",
+      "hora_final_aplicada_utc": "2026-11-24 12:50:00",
+      "aplicado_en_odoo": true,
       "department_id": 17,
       "department_name": "Ingenieria",
       "sin_departamento": false,
