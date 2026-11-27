@@ -148,9 +148,19 @@
           "hora_propuesta_cst": "06:50",
           "comentario": "Confirmo que si llego",
           "accion": "ajustado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-11-27T14:58:49.027Z",
+          "hora_propuesta_cst": "06:50",
+          "comentario": "Confirmo incidencia",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "hora_final_aplicada_utc": "2026-11-24 12:50:00",
       "aplicado_en_odoo": true,
       "department_id": 17,
@@ -165,7 +175,7 @@
       "rh_directo_ceo": false,
       "directo_ceo": false,
       "sin_supervisor": false,
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "reasignaciones": [
         {
           "fecha": "2026-11-26",
