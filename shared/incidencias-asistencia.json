@@ -2,6 +2,50 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-169-2026-11-27T14-44-26-552Z",
+      "odoo_incidencia_id": null,
+      "tipo": "olvido_entrada",
+      "empleado_id": 169,
+      "empleado_nombre": "María Guadalupe Torres Gámez",
+      "fecha_creacion": "2026-11-27T14:44:26.552Z",
+      "attendance_id": 16885,
+      "hora_real_checkin_utc": "2026-11-27T14:44:23.470Z",
+      "geolocation": {
+        "lat": 25.6891327,
+        "lng": -100.2916853,
+        "sitio_detectado": "FTS Monterrey"
+      },
+      "foto_base64": "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",
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "user_id": 169,
+          "usuario": "María Guadalupe Torres Gámez",
+          "timestamp": "2026-11-27T14:44:26.552Z",
+          "hora_propuesta_cst": "2026-11-27 08:00:00",
+          "comentario": "No estaba en sistema",
+          "accion": "solicitud"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": null,
+      "aplicado_en_odoo": false,
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": 112,
+      "supervisor_name": "Felipe Pérez Guzmán",
+      "supervisor_email": "marygamez2133@gmail.com",
+      "supervisor_phone": "8123671423",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": false,
+      "sin_supervisor": false,
+      "tag_disputa_activo": true
+    },
+    {
       "id_interno": "INC-AUTO-CIERRE-167-2026-11-25T14-10-04-012Z",
       "tipo": "auto_cierre_pendiente",
       "status": "aprobada_con_ajuste",
