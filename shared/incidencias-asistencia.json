@@ -96,7 +96,7 @@
           "accion": "solicitud"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 17,
@@ -121,6 +121,17 @@
           "a_supervisor_name": "Francisco Montalvo Ramirez",
           "motivo": "reasignada 26-nov: alta del 24-nov con jefe equivocado (Jésus en vez de Francisco); parent_id ya corregido en Odoo. La incidencia se creó 7 min después del alta y congeló al jefe equivocado. Issue #514.",
           "por": "RH (Odoo parent_id 8) + CC (edicion almacen)"
+        }
+      ],
+      "escalamientos_manuales": [
+        {
+          "fecha": "2026-11-27",
+          "de_status": "pendiente_supervisor",
+          "a_status": "pendiente_rh",
+          "paso_omitido": "aprobacion del supervisor (Francisco Montalvo Ramirez, 8)",
+          "motivo": "Plan B de #514: el supervisor no aprobo antes de las 10:00 CST del 27-nov y la semana S48 se envia ese dia. Se pasa directo a RH para cerrarla en un paso. Misma salida que la tabla F2.1 usa para sin_supervisor.",
+          "autorizado_por": "Jesus Esteban De La Cruz Calderon (32, Direccion) en el issue #514",
+          "ejecutado_por": "CC (edicion almacen, PR del Plan B)"
         }
       ]
     },
